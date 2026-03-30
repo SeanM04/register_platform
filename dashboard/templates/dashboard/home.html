@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="overview-layout">
+    <section class="metrics-panel" data-metrics-url="{% url 'dashboard:home-metrics' %}">
+        <div class="metrics-grid">
+            {% for card in summary_cards %}
+            <article class="metric-card{% if card.tone == 'danger' %} metric-card-danger{% endif %}" data-card>
+                <p class="metric-label">{{ card.label }}</p>
+                <p class="metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="chart-grid">
+        {% for panel in chart_panels %}
+        <article class="chart-panel">
+            <h2 class="panel-title">{{ panel.title }}</h2>
+            <div class="chart-placeholder"></div>
+        </article>
+        {% endfor %}
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard/js/home.js' %}"></script>
+{% endblock %}

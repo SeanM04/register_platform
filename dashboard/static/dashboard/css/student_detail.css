@@ -1,0 +1,294 @@
+.detail-layout {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.detail-header h1 {
+    font-size: 1.08rem;
+}
+
+.detail-copy {
+    margin: 0.22rem 0 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.back-button {
+    min-width: 62px;
+    padding: 0.54rem 0.84rem;
+    border-radius: 12px;
+    background: var(--navy);
+    color: #ffffff;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 10px 18px rgba(8, 35, 64, 0.14);
+}
+
+.profile-card,
+.results-card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.profile-card {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr) 128px;
+    gap: 1.25rem;
+    align-items: center;
+    padding: 1rem;
+}
+
+.profile-media {
+    text-align: center;
+}
+
+.avatar-circle {
+    width: 82px;
+    height: 82px;
+    margin: 0 auto 0.5rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, #d8edf7, #9ccbe1);
+    color: var(--navy);
+    font-size: 1.55rem;
+    font-weight: 700;
+    box-shadow: var(--shadow);
+}
+
+.student-number {
+    margin: 0;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem 1.6rem;
+    margin: 0;
+}
+
+.profile-grid dt {
+    margin-bottom: 0.22rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.profile-grid dd {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.grade-card {
+    min-height: 88px;
+    padding: 0.7rem;
+    border-radius: 14px;
+    background: #f1f5f9;
+    display: grid;
+    place-items: center;
+    text-align: center;
+}
+
+.grade-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.grade-value {
+    color: #178017;
+    font-size: 2rem;
+}
+
+.year-tabs {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.year-tab {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.14rem;
+    min-width: 100px;
+    padding: 0.52rem 0.78rem;
+    border-radius: 10px;
+    background: #eef2f7;
+    color: var(--navy);
+}
+
+.year-tab.is-active {
+    background: var(--navy);
+    color: #ffffff;
+}
+
+.year-tab-label {
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.year-tab-meta {
+    font-size: 0.68rem;
+    line-height: 1.3;
+}
+
+.table-wrap {
+    position: relative;
+    overflow: auto;
+    min-height: 0;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    scrollbar-color: #9cabbc transparent;
+}
+
+.table-wrap::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #b8c5d3, #94a3b8);
+    background-clip: padding-box;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #94a3b8, #7b8ea6);
+    background-clip: padding-box;
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    min-width: 720px;
+}
+
+.results-col-code {
+    width: 9rem;
+}
+
+.results-col-course {
+    width: auto;
+}
+
+.results-col-period {
+    width: 8rem;
+}
+
+.results-col-mark {
+    width: 7rem;
+}
+
+.results-table thead {
+    background: var(--navy);
+    color: #ffffff;
+}
+
+.results-table th,
+.results-table td {
+    padding: 0.54rem 0.88rem;
+    text-align: center;
+    font-weight: 400;
+    font-size: 0.81rem;
+    word-break: break-word;
+}
+
+.results-table th {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: var(--navy);
+    font-size: 0.77rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background-clip: padding-box;
+}
+
+.results-th-code,
+.results-td-code {
+    position: sticky;
+    left: 0;
+    background-clip: padding-box;
+}
+
+.results-th-mark,
+.results-td-mark {
+    position: sticky;
+    right: 0;
+    background-clip: padding-box;
+    border-left: 1px solid #e5edf7;
+}
+
+.results-td-code,
+.results-td-mark {
+    z-index: 2;
+    background: #ffffff;
+}
+
+.results-th-code,
+.results-th-mark {
+    z-index: 10;
+    background: var(--navy);
+}
+
+.results-th-mark {
+    border-left-color: rgba(255, 255, 255, 0.08);
+}
+
+.results-td-code,
+.results-th-code {
+    box-shadow: 10px 0 18px rgba(15, 23, 42, 0.05);
+}
+
+.results-td-mark,
+.results-th-mark {
+    box-shadow: -12px 0 20px rgba(15, 23, 42, 0.06);
+}
+
+.results-td-mark {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.96), #ffffff 22px);
+}
+
+.results-table tbody td {
+    background: #ffffff;
+    box-shadow: inset 0 -1px 0 #edf2f7;
+}
+
+.results-table tbody tr:hover td {
+    background: #fbfdff;
+}
+
+.results-table tbody tr:last-child td {
+    box-shadow: none;
+}
+
+@media (max-width: 1100px) {
+    .profile-card {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+}

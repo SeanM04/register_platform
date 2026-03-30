@@ -1,0 +1,415 @@
+.students-layout {
+    display: grid;
+    gap: 0.8rem;
+    height: calc(100vh - 146px);
+    min-height: 0;
+}
+
+.table-card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: 100%;
+    min-height: 0;
+}
+
+.table-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.82rem 1rem 0.52rem;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.table-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.73rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+}
+
+.table-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.42rem;
+    align-items: center;
+    margin-left: auto;
+}
+
+.search-input {
+    width: min(240px, 100%);
+    padding: 0.56rem 0.78rem;
+    border: 1px solid #dbe4f0;
+    border-radius: 10px;
+    outline: none;
+    font-size: 0.84rem;
+    background: #f8fbff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: rgba(79, 176, 209, 0.85);
+    box-shadow: 0 0 0 3px rgba(79, 176, 209, 0.12);
+    background: #ffffff;
+}
+
+.search-button {
+    padding: 0.54rem 0.84rem;
+    border: 0;
+    border-radius: 10px;
+    background: var(--navy);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 10px 18px rgba(8, 35, 64, 0.14);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.search-button:hover {
+    background: #0d325d;
+    transform: translateY(-1px);
+}
+
+.table-wrap {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: auto;
+    min-height: 0;
+    scrollbar-gutter: stable both-edges;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #9cabbc transparent;
+}
+
+.table-wrap::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #b8c5d3, #94a3b8);
+    background-clip: padding-box;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #94a3b8, #7b8ea6);
+    background-clip: padding-box;
+}
+
+.table-wrap::before,
+.table-wrap::after {
+    content: "";
+    position: sticky;
+    top: 0;
+    bottom: 0;
+    width: 18px;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.table-wrap::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0));
+}
+
+.table-wrap::after {
+    right: 0;
+    margin-left: auto;
+    background: linear-gradient(270deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0));
+}
+
+.table-wrap.is-scrollable:not(.is-scroll-start)::before {
+    opacity: 1;
+}
+
+.table-wrap.is-scrollable:not(.is-scroll-end)::after {
+    opacity: 1;
+}
+
+.students-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    min-width: 920px;
+}
+
+.students-col-name {
+    width: 14rem;
+}
+
+.students-col-department {
+    width: 14rem;
+}
+
+.students-col-program {
+    width: 19rem;
+}
+
+.students-col-average {
+    width: 8rem;
+}
+
+.students-col-decision {
+    width: 8rem;
+}
+
+.students-col-gender {
+    width: 9rem;
+}
+
+.students-table thead {
+    background: var(--navy);
+    color: #ffffff;
+}
+
+.students-table th,
+.students-table td {
+    padding: 0.54rem 0.88rem;
+    text-align: center;
+    font-weight: 400;
+    vertical-align: top;
+    word-break: break-word;
+    font-size: 0.81rem;
+}
+
+.students-table th {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: var(--navy);
+    font-size: 0.77rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background-clip: padding-box;
+}
+
+.students-th-name,
+.students-td-name {
+    position: sticky;
+    left: 0;
+    background-clip: padding-box;
+}
+
+.students-td-name,
+.students-td-gender {
+    z-index: 2;
+    background: #ffffff;
+}
+
+.students-th-name {
+    z-index: 10;
+    background: var(--navy);
+}
+
+.students-th-gender,
+.students-td-gender {
+    position: sticky;
+    right: 0;
+    background-clip: padding-box;
+    border-left: 1px solid #e5edf7;
+}
+
+.students-th-gender {
+    z-index: 10;
+    background: var(--navy);
+    border-left-color: rgba(255, 255, 255, 0.08);
+}
+
+.students-td-name,
+.students-th-name {
+    box-shadow: 10px 0 18px rgba(15, 23, 42, 0.05);
+}
+
+.students-td-gender,
+.students-th-gender {
+    box-shadow: -12px 0 20px rgba(15, 23, 42, 0.06);
+}
+
+.students-td-gender {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.96), #ffffff 22px);
+}
+
+.students-table tbody td {
+    background: #ffffff;
+    box-shadow: inset 0 -1px 0 #edf2f7;
+}
+
+.students-table tbody tr:hover td {
+    background: #fbfdff;
+}
+
+.students-table tbody tr:last-child td {
+    box-shadow: none;
+}
+
+.student-link {
+    display: inline-grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    justify-items: center;
+    gap: 0.42rem;
+    width: 100%;
+    max-width: 11.5rem;
+    margin: 0 auto;
+    text-decoration: none;
+    color: inherit;
+    text-align: center;
+}
+
+.student-link-name {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.18;
+    color: var(--navy);
+    text-decoration-line: underline;
+    text-decoration-color: rgba(79, 176, 209, 0.32);
+    text-underline-offset: 0.14em;
+    transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+.student-link-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.65rem;
+    padding: 0.18rem 0.46rem;
+    border-radius: 999px;
+    background: #eef6fc;
+    border: 1px solid #d7e9f6;
+    color: var(--navy-soft);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.student-link-badge::after {
+    content: " >";
+}
+
+.student-link:hover .student-link-name,
+.student-link:focus-visible .student-link-name {
+    color: var(--navy-soft);
+    text-decoration-color: rgba(79, 176, 209, 0.72);
+}
+
+.student-link:hover .student-link-badge,
+.student-link:focus-visible .student-link-badge {
+    background: #e3f2fb;
+    border-color: #c5dff1;
+    color: var(--navy);
+}
+
+.student-link:focus-visible {
+    outline: none;
+}
+
+.empty-state {
+    padding: 2rem 1.5rem;
+    text-align: center;
+    color: var(--muted);
+}
+
+.table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.62rem 1rem 0.76rem;
+    border-top: 1px solid #edf2f7;
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+}
+
+.results-meta {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.page-link {
+    min-width: 34px;
+    padding: 0.42rem 0.6rem;
+    border-radius: 10px;
+    background: #eef2f7;
+    color: var(--navy);
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.page-link.is-current {
+    background: var(--navy);
+    color: #ffffff;
+}
+
+.page-link.is-disabled {
+    opacity: 0.45;
+}
+
+.page-link-arrow {
+    min-width: 54px;
+}
+
+@media (max-width: 900px) {
+    .table-topbar,
+    .table-toolbar,
+    .table-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .table-topbar {
+        align-items: stretch;
+    }
+
+    .table-hint {
+        align-self: flex-start;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .pagination {
+        justify-content: flex-start;
+    }
+
+    .students-layout,
+    .table-card {
+        height: auto;
+        min-height: auto;
+    }
+
+    .table-wrap {
+        max-height: 60vh;
+    }
+}

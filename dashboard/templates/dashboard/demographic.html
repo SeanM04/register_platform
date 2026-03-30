@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="demographic-layout">
+    <section class="demographic-metrics" data-metrics-url="{% url 'dashboard:demographic-metrics' %}">
+        {% for card in summary_cards %}
+        <article class="demographic-metric">
+            <p class="demographic-metric-label">{{ card.label }}</p>
+            <p class="demographic-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <div class="demographic-section-header">
+        <div>
+            <h1 class="panel-title">Demographic Insights</h1>
+            <p class="demographic-section-copy">Compare gender distribution, birth locations, and programme-level representation from one filtered view.</p>
+        </div>
+    </div>
+
+    <section class="demographic-grid">
+        <section class="demographic-card">
+            <form class="demographic-toolbar" method="get">
+                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                <input class="demographic-search" type="search" name="q" value="{{ search_query }}" placeholder="Search demographic data" aria-label="Search demographic data">
+                <button class="demographic-search-button" type="submit">Search</button>
+            </form>
+
+            <h2 class="demographic-title">Gender Distribution</h2>
+            <div class="demographic-table-wrap" data-scroll-region tabindex="0" aria-label="Gender distribution table">
+                <table class="demographic-table">
+                    <thead>
+                        <tr>
+                            <th>Gender</th>
+                            <th>Students</th>
+                            <th>Share</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in gender_rows %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.count }}</td>
+                            <td>{{ row.share }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="demographic-card">
+            <h2 class="demographic-title">Top Birth Locations</h2>
+            <div class="demographic-table-wrap" data-scroll-region tabindex="0" aria-label="Top birth locations table">
+                <table class="demographic-table">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Students</th>
+                            <th>Share</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in location_rows %}
+                        <tr>
+                            <td>{{ row.place }}</td>
+                            <td>{{ row.count }}</td>
+                            <td>{{ row.share }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td class="demographic-empty" colspan="3">No location data matched the current filters.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+
+    <section class="demographic-card demographic-card-large">
+        <h2 class="demographic-title">Programme Gender Mix</h2>
+        <div class="demographic-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme gender mix table">
+            <table class="demographic-table">
+                <colgroup>
+                    <col class="demographic-col-programme">
+                    <col class="demographic-col-count">
+                    <col class="demographic-col-count">
+                    <col class="demographic-col-count">
+                    <col class="demographic-col-total">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="demographic-th-programme">Programme</th>
+                        <th>Male</th>
+                        <th>Female</th>
+                        <th>Unspecified</th>
+                        <th class="demographic-th-total">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in programme_rows %}
+                    <tr>
+                        <td class="demographic-td-programme">{{ row.programme }}</td>
+                        <td>{{ row.male }}</td>
+                        <td>{{ row.female }}</td>
+                        <td>{{ row.unspecified }}</td>
+                        <td class="demographic-td-total">{{ row.total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td class="demographic-empty" colspan="5">No programme demographic data matched the current filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

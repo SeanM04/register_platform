@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 392 92" role="img" aria-labelledby="title">
+  <title>UniStudio</title>
+  <g transform="translate(4 8)">
+    <polygon fill="#0d325d" points="0 22 50 3 100 22 50 41"/>
+    <path
+      fill="#0a203b"
+      d="M20 34.5 49.5 44 81 33.5 100 22.2 50 41Z"
+    />
+    <path
+      fill="#4fb0d1"
+      d="M17 36.5c12 4.8 21.5 8.2 33 11.2 12.1-2.7 22.8-6.3 34.6-11.7 1.9 5.8 2.7 13 1.3 18.4C74.8 62.1 63.4 66 49.2 66c-14.5 0-27-4.4-39.3-12.4-1.2-6.1 1.3-12.1 7.1-17.1Z"
+    />
+    <path
+      fill="#0d325d"
+      d="M84 22.7c0-1 0.8-1.8 1.8-1.8h6c1 0 1.8 0.8 1.8 1.8S92.8 24.5 91.8 24.5h-2v19.3c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V24.5H84.8c-1 0-1.8-0.8-1.8-1.8Z"
+    />
+    <circle cx="87.3" cy="43.8" r="4.2" fill="#0d325d"/>
+    <path
+      fill="#0d325d"
+      d="M81.7 50.2c0-4.2 2.4-8.1 5.6-8.1s5.6 3.9 5.6 8.1c0 2.8-0.8 5-1.9 7.2-1.7 3.5-2.9 6.7-3.3 9.9h-1c-0.4-3.2-1.6-6.4-3.3-9.9-1.1-2.2-1.7-4.4-1.7-7.2Z"
+    />
+    <circle cx="87.3" cy="67.6" r="2.5" fill="#4fb0d1"/>
+  </g>
+  <text x="108" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="46" letter-spacing="-1.4">
+    <tspan fill="#0d325d" font-weight="700">Uni</tspan><tspan fill="#52a8d8" font-weight="300">Studio</tspan>
+  </text>
+  <text x="365" y="26" fill="#0d325d" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">TM</text>
+</svg>

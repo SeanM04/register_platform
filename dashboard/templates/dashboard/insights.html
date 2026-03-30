@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="insights-layout">
+    <section class="insights-board">
+        <div class="insights-hero">
+            <div class="insights-hero-copy">
+                <p class="insights-kicker">UniStudio Insights</p>
+                <h1 class="insights-title">Live institutional analysis</h1>
+                <p class="insights-copy">
+                    Monitor risk, retention, and faculty concentration through one executive insight surface.
+                </p>
+            </div>
+
+            <div class="insights-scope">
+                {% for pill in insight_scope_pills %}
+                <span class="insights-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <section class="insights-summary-grid">
+            {% for card in insight_summary_cards %}
+            <article class="insights-summary-card insights-summary-{{ card.tone }}">
+                <p class="insights-summary-label">{{ card.label }}</p>
+                <p class="insights-summary-value">{{ card.value }}</p>
+                <p class="insights-summary-note">{{ card.note }}</p>
+            </article>
+            {% endfor %}
+        </section>
+
+        <section class="insights-main-grid">
+            <article class="insights-panel insights-panel-flagged">
+                <div class="insights-panel-header">
+                    <div>
+                        <h2>Flagged students</h2>
+                        <p>{{ flagged_total }} students currently need closer academic attention.</p>
+                    </div>
+                    <a class="insights-panel-link" href="{% url 'dashboard:risk' %}">Open risk register</a>
+                </div>
+
+                <div class="insights-flagged-list">
+                    {% for student in flagged_students %}
+                    <a class="insights-flagged-item" href="{% url 'dashboard:student-detail' student.detail_slug %}">
+                        <span class="insights-avatar insights-avatar-{{ student.risk_key }}">{{ student.initials }}</span>
+                        <span class="insights-flagged-body">
+                            <span class="insights-flagged-name">{{ student.name }}</span>
+                            <span class="insights-flagged-meta">{{ student.meta }}</span>
+                        </span>
+                        <span class="insights-risk-badge insights-risk-badge-{{ student.risk_key }}">{{ student.risk_level }}</span>
+                    </a>
+                    {% empty %}
+                    <div class="insights-empty-state">
+                        No students are currently flagged in the selected insight scope.
+                    </div>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="insights-panel insights-panel-recommendations">
+                <div class="insights-panel-header insights-panel-header-stack">
+                    <div class="insights-panel-title-row">
+                        <span class="insights-panel-dot" aria-hidden="true"></span>
+                        <h2>Operational recommendations</h2>
+                    </div>
+                    <p>Recommended actions derived from current risk, retention, and faculty concentration signals.</p>
+                </div>
+
+                <div class="insights-recommendation-list">
+                    {% for recommendation in recommendations %}
+                    <article class="insights-recommendation-card">
+                        <div class="insights-recommendation-head">
+                            <h3>{{ recommendation.title }}</h3>
+                            <span class="insights-priority insights-priority-{{ recommendation.priority_key }}">{{ recommendation.priority }}</span>
+                        </div>
+                        <p class="insights-recommendation-copy">{{ recommendation.description }}</p>
+                        <a class="insights-recommendation-action" href="{{ recommendation.action_url }}">{{ recommendation.action_label }}</a>
+                    </article>
+                    {% endfor %}
+                </div>
+            </article>
+        </section>
+
+        <section class="insights-bottom-grid">
+            <article class="insights-panel">
+                <div class="insights-panel-header insights-panel-header-stack">
+                    <div>
+                        <h2>Faculty load overview</h2>
+                        <p>Registration concentration across faculties in the current scope.</p>
+                    </div>
+                </div>
+
+                <div class="insights-meter-list">
+                    {% for row in faculty_load_rows %}
+                    <div class="insights-meter-row">
+                        <div class="insights-meter-meta">
+                            <span class="insights-meter-label">{{ row.label }}</span>
+                            <span class="insights-meter-value">{{ row.value }}%</span>
+                        </div>
+                        <div class="insights-meter-track">
+                            <span class="insights-meter-fill insights-meter-fill-{{ row.tone }}" style="width: {{ row.value }}%"></span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="insights-empty-state">No faculty load data is available for the selected filters.</div>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="insights-panel">
+                <div class="insights-panel-header insights-panel-header-stack">
+                    <div>
+                        <h2>Dropout risk distribution</h2>
+                        <p>Student-risk signal strength across the current watchlist and stable cohort.</p>
+                    </div>
+                </div>
+
+                <div class="insights-meter-list">
+                    {% for row in risk_distribution_rows %}
+                    <div class="insights-meter-row">
+                        <div class="insights-meter-meta">
+                            <span class="insights-meter-label">{{ row.label }}</span>
+                            <span class="insights-meter-value">{{ row.count }}</span>
+                        </div>
+                        <div class="insights-meter-track">
+                            <span class="insights-meter-fill insights-meter-fill-{{ row.tone }}" style="width: {{ row.percent }}%"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="insights-panel">
+                <div class="insights-panel-header insights-panel-header-stack">
+                    <div>
+                        <h2>Insight confidence</h2>
+                        <p>Confidence scores for the strongest operational recommendations on this page.</p>
+                    </div>
+                </div>
+
+                <div class="insights-meter-list">
+                    {% for row in confidence_rows %}
+                    <div class="insights-meter-row">
+                        <div class="insights-meter-meta">
+                            <span class="insights-meter-label">{{ row.label }}</span>
+                            <span class="insights-meter-value">{{ row.value }}%</span>
+                        </div>
+                        <div class="insights-meter-track">
+                            <span class="insights-meter-fill insights-meter-fill-cyan" style="width: {{ row.value }}%"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </article>
+        </section>
+    </section>
+</section>
+{% endblock %}

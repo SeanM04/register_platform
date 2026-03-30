@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | UniStudio</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'dashboard/images/favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}">
+</head>
+<body>
+    <main class="auth-shell">
+        <section class="auth-stage" aria-hidden="true">
+            <div class="auth-stage-copy">
+                <p class="auth-stage-kicker">Registrar Intelligence Platform</p>
+                <h2>Make academic decisions with clarity, not guesswork.</h2>
+                <p class="auth-stage-text">
+                    Monitor registration, progression, completion, and risk from one focused workspace built for institutional teams.
+                </p>
+            </div>
+
+            <div class="auth-stage-bars">
+                <div class="stage-bars">
+                    <span style="--bar-height: 28%"></span>
+                    <span style="--bar-height: 42%"></span>
+                    <span style="--bar-height: 60%"></span>
+                    <span style="--bar-height: 54%"></span>
+                    <span style="--bar-height: 76%"></span>
+                    <span style="--bar-height: 90%"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="auth-brand">
+                <img
+                    class="auth-brand-image"
+                    src="{% static 'dashboard/images/unistudio-wordmark.svg' %}"
+                    alt="UniStudio"
+                >
+            </div>
+
+            <header class="auth-header">
+                <h1>Welcome back</h1>
+                <p>Sign in to continue to the registrar analytics platform.</p>
+            </header>
+
+            <div class="auth-feedback" id="auth-feedback" hidden></div>
+
+            <form method="post" action="{% url 'login' %}" class="auth-form" id="login-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <div class="auth-field">
+                    <label for="login-username">Email</label>
+                    <input id="login-username" class="auth-input" type="email" name="username" placeholder="Email address" autocomplete="username" required>
+                </div>
+
+                <div class="auth-field">
+                    <label for="login-password">Password</label>
+                    <div class="auth-password-wrap">
+                        <input id="login-password" class="auth-input" type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+                        <button
+                            type="button"
+                            class="auth-password-toggle"
+                            id="password-toggle"
+                            aria-label="Show password"
+                            aria-controls="login-password"
+                            aria-pressed="false"
+                        >
+                            <span class="auth-password-icon auth-password-icon-show" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </span>
+                            <span class="auth-password-icon auth-password-icon-hide" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 3l18 18"></path>
+                                    <path d="M10.6 10.7a3 3 0 0 0 4.2 4.2"></path>
+                                    <path d="M9.9 5.1A12.5 12.5 0 0 1 12 5c6.4 0 10 7 10 7a17.7 17.7 0 0 1-3.2 4.2"></path>
+                                    <path d="M6.6 6.7C4.2 8.1 2.7 10.4 2 12c0 0 3.6 7 10 7 1.7 0 3.2-.4 4.5-1"></path>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-button">Login</button>
+            </form>
+
+            <div class="auth-links">
+                <a href="{% url 'password_reset' %}">Forgot your password?</a>
+            </div>
+        </section>
+    </main>
+    <script src="{% static 'accounts/js/login.js' %}"></script>
+</body>
+</html>

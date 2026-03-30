@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="UniStudio favicon">
+  <rect width="64" height="64" rx="16" fill="#ffffff"/>
+  <path d="M12 29 32 17l20 12-20 12Z" fill="#123764"/>
+  <path d="M44 42.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" fill="#4fb0d1"/>
+  <path d="M42.8 31.7v8.9" fill="none" stroke="#123764" stroke-linecap="round" stroke-width="2.8"/>
+</svg>

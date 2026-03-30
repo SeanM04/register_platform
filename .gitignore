@@ -1,0 +1,62 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.env
+*.local
+*.secret
+*.secrets
+
+# Certificates and private keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Python cache and tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+.venv313/
+uni_project_env/
+venv/
+env/
+ENV/
+
+# Django and build artifacts
+db.sqlite3
+*.sqlite3
+staticfiles/
+media/
+
+# Local data snapshots and exports
+data/*.csv
+data/*.xlsx
+data/*.xls
+!data/README.md
+
+# Temporary files
+.tmp/
+*.tmp
+*.temp
+pip_bootstrap.zip
+
+# Logs
+*.log
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini

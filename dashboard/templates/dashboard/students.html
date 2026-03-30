@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/students.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="students-layout">
+    <section class="table-card">
+        <div class="table-topbar">
+            <p class="table-hint">Select a student name to view the full profile</p>
+
+            <form class="table-toolbar" method="get">
+                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                <input class="search-input" type="search" name="q" value="{{ search_query }}" placeholder="Search students" aria-label="Search students">
+                <button class="search-button" type="submit">Search</button>
+            </form>
+        </div>
+
+        <div class="table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Student directory table">
+            <table class="students-table">
+                <colgroup>
+                    <col class="students-col-name">
+                    <col class="students-col-department">
+                    <col class="students-col-program">
+                    <col class="students-col-average">
+                    <col class="students-col-decision">
+                    <col class="students-col-gender">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="students-th-name">Name</th>
+                        <th>Department</th>
+                        <th>Program</th>
+                        <th>Average Mark</th>
+                        <th>Decision</th>
+                        <th class="students-th-gender">Student Gender</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td class="students-td-name">
+                            <a class="student-link" href="{% url 'dashboard:student-detail' student.detail_slug %}" aria-label="View {{ student.name }} profile">
+                                <span class="student-link-name">{{ student.name }}</span>
+                                <span class="student-link-badge">View</span>
+                            </a>
+                        </td>
+                        <td>{{ student.department }}</td>
+                        <td>{{ student.program }}</td>
+                        <td>{{ student.average_mark }}</td>
+                        <td>{{ student.decision }}</td>
+                        <td class="students-td-gender">{{ student.gender }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td class="empty-state" colspan="6">No students matched your search.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-footer">
+            <p class="results-meta">
+                Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_students }} students
+            </p>
+
+            <nav class="pagination" aria-label="Student table pages">
+                {% if page_obj.has_previous %}
+                <a class="page-link page-link-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Prev</a>
+                {% else %}
+                <span class="page-link page-link-arrow is-disabled">Prev</span>
+                {% endif %}
+
+                {% for page_number in page_numbers %}
+                    {% if page_number == page_obj.number %}
+                    <span class="page-link is-current">{{ page_number }}</span>
+                    {% else %}
+                    <a class="page-link" href="?page={{ page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">{{ page_number }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a class="page-link page-link-arrow" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Next</a>
+                {% else %}
+                <span class="page-link page-link-arrow is-disabled">Next</span>
+                {% endif %}
+            </nav>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard/js/students.js' %}"></script>
+{% endblock %}

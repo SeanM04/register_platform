@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/placeholder.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="placeholder-layout">
+    <div class="placeholder-card">
+        <h1>{{ section_title }}</h1>
+        <p>
+            This section is ready for the real {{ section_name|lower }} analytics module once your
+            CSV data is imported and the models are in place.
+        </p>
+    </div>
+</section>
+{% endblock %}

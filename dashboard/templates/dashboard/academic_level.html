@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="level-layout">
+    <section class="level-metrics" data-metrics-url="{% url 'dashboard:academic-level-metrics' %}">
+        {% for card in summary_cards %}
+        <article class="level-metric">
+            <p class="level-metric-label">{{ card.label }}</p>
+            <p class="level-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="level-card">
+        <div class="level-card-header">
+            <div>
+                <h1 class="panel-title">Academic Level Analytics</h1>
+                <p class="level-card-copy">Review progression volume, performance, and programme concentration by level.</p>
+            </div>
+        </div>
+
+        <form class="level-toolbar" method="get">
+            {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+            {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+            {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+            <input class="level-search" type="search" name="q" value="{{ search_query }}" placeholder="Search academic levels" aria-label="Search academic levels">
+            <button class="level-search-button" type="submit">Search</button>
+        </form>
+
+        <div class="level-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Academic level table">
+            <table class="level-table">
+                <colgroup>
+                    <col class="level-col-key">
+                    <col class="level-col-students">
+                    <col class="level-col-registrations">
+                    <col class="level-col-average">
+                    <col class="level-col-pass">
+                    <col class="level-col-programme">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="level-th-key">Academic Level</th>
+                        <th>Students</th>
+                        <th>Registrations</th>
+                        <th>Average Mark</th>
+                        <th>Pass Rate</th>
+                        <th class="level-th-programme">Top Programme</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in level_rows %}
+                    <tr>
+                        <td class="level-td-key">{{ row.level }}</td>
+                        <td>{{ row.students }}</td>
+                        <td>{{ row.registrations }}</td>
+                        <td>{{ row.average_mark }}</td>
+                        <td>{{ row.pass_rate }}</td>
+                        <td class="level-td-programme">{{ row.top_programme }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td class="level-empty" colspan="6">No academic level data matched the current filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

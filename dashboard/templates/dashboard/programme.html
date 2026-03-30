@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard/js/programme.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<section class="programme-layout">
+    <section class="programme-metrics" data-metrics-url="{% url 'dashboard:programme-metrics' %}">
+        {% for card in summary_cards %}
+        <article class="programme-metric">
+            <p class="programme-metric-label">{{ card.label }}</p>
+            <p class="programme-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="programme-card">
+        <div class="programme-topbar">
+            <h1 class="panel-title">Programme Performance</h1>
+
+            <form class="programme-toolbar" method="get">
+                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programmes" aria-label="Search programmes">
+                <button class="programme-search-button" type="submit">Search</button>
+            </form>
+        </div>
+
+        <div class="programme-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme table">
+            <table class="programme-table">
+                <colgroup>
+                    <col class="programme-col-code">
+                    <col class="programme-col-name">
+                    <col class="programme-col-faculty">
+                    <col class="programme-col-department">
+                    <col class="programme-col-students">
+                    <col class="programme-col-registrations">
+                    <col class="programme-col-average">
+                    <col class="programme-col-pass">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="programme-th-code">Code</th>
+                        <th>Programme</th>
+                        <th>Faculty</th>
+                        <th>Department</th>
+                        <th>Students</th>
+                        <th>Registrations</th>
+                        <th>Average Mark</th>
+                        <th class="programme-th-pass">Pass Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in programme_rows %}
+                    <tr>
+                        <td class="programme-td-code">{{ row.code }}</td>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.faculty }}</td>
+                        <td>{{ row.department }}</td>
+                        <td>{{ row.students }}</td>
+                        <td>{{ row.registrations }}</td>
+                        <td>{{ row.average_mark }}</td>
+                        <td class="programme-td-pass">{{ row.pass_rate }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td class="programme-empty" colspan="8">No programmes matched the current filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ page_title|default:"Registrar Platform" }}{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'dashboard/images/favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar{% if hide_filters %} topbar-admin{% endif %}">
+            <div class="brand-block">
+                <img
+                    class="brand-logo-image"
+                    src="{% static 'dashboard/images/unistudio-wordmark.svg' %}"
+                    alt="UniStudio"
+                >
+            </div>
+
+            {% if hide_filters %}
+            <div class="topbar-meta">
+                <p class="topbar-kicker">{{ topbar_kicker|default:"Administration" }}</p>
+                <p class="topbar-heading">{{ topbar_heading|default:page_title }}</p>
+            </div>
+            {% else %}
+            <form class="topbar-filters" method="get">
+                {% if search_query %}
+                <input type="hidden" name="q" value="{{ search_query }}">
+                {% endif %}
+                {% for filter in filters %}
+                <div class="filter-box">
+                    <label class="filter-label" for="filter-{{ filter.name }}">{{ filter.label }}</label>
+                    <select class="filter-select" id="filter-{{ filter.name }}" name="{{ filter.name }}">
+                        <option value="">{{ filter.all_label }}</option>
+                        {% for option in filter.options %}
+                        <option value="{{ option }}" {% if option == filter.selected %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </form>
+            {% endif %}
+
+            <div class="brand-actions">
+                <div class="school-seal">
+                    <img
+                        class="school-seal-image"
+                        src="{% static 'dashboard/images/msuas-logo.png' %}"
+                        alt="MSUAS logo"
+                    >
+                </div>
+                <form method="post" action="{% url 'logout' %}" class="logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-button">Logout</button>
+                </form>
+            </div>
+        </header>
+
+        <div class="workspace{% if hide_filters %} workspace-admin{% endif %}">
+            <aside class="sidebar">
+                <nav class="sidebar-nav" aria-label="Dashboard sections">
+                    {% for item in sidebar_items %}
+                    <a class="sidebar-link{% if item.is_active %} is-active{% endif %}" href="{% url item.url_name %}">
+                        {{ item.label }}
+                    </a>
+                    {% endfor %}
+                </nav>
+                <p class="sidebar-footer">Powered by DuraCapital</p>
+            </aside>
+
+            <main class="page-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    <script src="{% static 'dashboard/js/base.js' %}"></script>
+    <script src="{% static 'dashboard/js/metrics.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

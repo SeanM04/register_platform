@@ -1,0 +1,4 @@
+Django==6.0.3
+psycopg[binary]==3.3.3
+python-dotenv==1.2.2
+pandas==3.0.1

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/student_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="detail-layout">
+    <header class="detail-header">
+        <div>
+            <h1>{{ student.name }}</h1>
+            <p class="detail-copy">Review programme, current term context, and module-level results for this student.</p>
+        </div>
+        <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+    </header>
+
+    <section class="profile-card">
+        <div class="profile-media">
+            <div class="avatar-circle">JD</div>
+            <p class="student-number">{{ student.student_number }}</p>
+        </div>
+
+        <dl class="profile-grid">
+            <div>
+                <dt>Programme:</dt>
+                <dd>{{ student.programme }}</dd>
+            </div>
+            <div>
+                <dt>Gender:</dt>
+                <dd>{{ student.gender }}</dd>
+            </div>
+            <div>
+                <dt>Academic Level:</dt>
+                <dd>{{ student.academic_level }}</dd>
+            </div>
+            <div>
+                <dt>Term:</dt>
+                <dd>{{ student.term_name }}</dd>
+            </div>
+            <div>
+                <dt>Age:</dt>
+                <dd>{{ student.age }}</dd>
+            </div>
+            <div>
+                <dt>Decision:</dt>
+                <dd>{{ student.decision }}</dd>
+            </div>
+            <div>
+                <dt>Place of Birth:</dt>
+                <dd>{{ student.place_of_birth }}</dd>
+            </div>
+        </dl>
+
+        <aside class="grade-card">
+            <span class="grade-label">Cumulative Grade</span>
+            <strong class="grade-value">{{ student.cumulative_grade }}</strong>
+        </aside>
+    </section>
+
+    <nav class="year-tabs" aria-label="Academic terms">
+        {% for tab in student.term_tabs %}
+        <a class="year-tab{% if tab.is_active %} is-active{% endif %}" href="?term={{ tab.id }}">
+            <span class="year-tab-label">{{ tab.label }}</span>
+            <span class="year-tab-meta">{{ tab.period_name }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+
+    <section class="results-card">
+        <div class="table-wrap" data-scroll-region tabindex="0" aria-label="Student results table">
+            <table class="results-table">
+                <colgroup>
+                    <col class="results-col-code">
+                    <col class="results-col-course">
+                    <col class="results-col-period">
+                    <col class="results-col-mark">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="results-th-code">Code</th>
+                        <th>Course</th>
+                        <th>Period</th>
+                        <th class="results-th-mark">Mark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in student.results %}
+                    <tr>
+                        <td class="results-td-code">{{ result.code }}</td>
+                        <td>{{ result.course }}</td>
+                        <td>{{ result.period }}</td>
+                        <td class="results-td-mark">{{ result.mark }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

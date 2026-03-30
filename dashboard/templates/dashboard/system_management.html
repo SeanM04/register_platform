@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/system_management.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="system-layout">
+    {% if messages %}
+    <section class="system-messages" aria-label="System messages">
+        {% for message in messages %}
+        <article class="system-message system-message-{{ message.tags|default:'info' }}">{{ message }}</article>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="system-metrics">
+        {% for card in summary_cards %}
+        <article class="system-metric{% if card.tone == 'danger' %} system-metric-danger{% endif %}">
+            <p class="system-metric-label">{{ card.label }}</p>
+            <p class="system-metric-value">{{ card.value }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="system-grid">
+        <article class="system-card system-card-users">
+            <div class="system-card-header system-card-header-stack">
+                <div>
+                    <h1 class="panel-title">User Access</h1>
+                    <p class="system-card-copy">Manage platform access from one clean operational view.</p>
+                </div>
+            </div>
+
+            <div class="system-table-toolbar">
+                <div class="system-toolbar-primary">
+                    <button class="system-add-button" type="button" data-modal-open="add-user-modal">Add user</button>
+                </div>
+
+                <form class="system-search-form" method="get">
+                    <input class="system-search-input" type="search" name="q" value="{{ search_query }}" placeholder="Search users" aria-label="Search users">
+                    <button class="system-search-button" type="submit">Search</button>
+                </form>
+            </div>
+
+            <div class="system-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="User access table">
+                <table class="system-table">
+                    <colgroup>
+                        <col class="system-col-user">
+                        <col class="system-col-role">
+                        <col class="system-col-status">
+                        <col class="system-col-login">
+                        <col class="system-col-lockout">
+                        <col class="system-col-actions">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="system-th-user">User</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th>Lockout</th>
+                            <th class="system-th-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td class="system-td-user">
+                                <div class="system-user-name">{{ user.name }}</div>
+                                <div class="system-user-meta">{{ user.email }}</div>
+                                <div class="system-user-meta">
+                                    Joined {{ user.joined }}
+                                    {% if user.is_self %}
+                                    <span class="system-user-session">Current session</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="system-pill">{{ user.role }}</span>
+                                {% if user.is_staff %}
+                                <span class="system-subpill">Staff access</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="system-status{% if user.is_active %} is-active{% else %} is-inactive{% endif %}">{{ user.status_label }}</span>
+                            </td>
+                            <td>{{ user.last_login }}</td>
+                            <td>
+                                <span class="system-lockout{% if user.has_lockout %} is-locked{% endif %}">{{ user.lockout_label }}</span>
+                            </td>
+                            <td class="system-td-actions">
+                                <div class="system-actions">
+                                    <form method="post" class="system-inline-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="toggle-active">
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <input type="hidden" name="next" value="{{ current_path }}">
+                                        <button class="system-action-button" type="submit" {% if not user.can_toggle_active %}disabled{% endif %}>
+                                            {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+
+                                    <form method="post" class="system-inline-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="clear-lockout">
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <input type="hidden" name="next" value="{{ current_path }}">
+                                        <button class="system-action-button system-action-button-secondary" type="submit" {% if not user.has_lockout %}disabled{% endif %}>
+                                            Unlock
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td class="system-empty" colspan="6">No users matched your search.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="system-pagination">
+                <p class="system-pagination-copy">
+                    {% if page_obj.paginator.count %}
+                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} users
+                    {% else %}
+                    No users available
+                    {% endif %}
+                </p>
+
+                {% if page_obj.paginator.num_pages > 1 %}
+                <nav class="system-page-links" aria-label="User pagination">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Prev</a>
+                    {% endif %}
+                    {% for number in page_numbers %}
+                    <a href="?page={{ number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="{% if number == page_obj.number %}is-active{% endif %}">{{ number }}</a>
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Next</a>
+                    {% endif %}
+                </nav>
+                {% endif %}
+            </div>
+        </article>
+
+    </section>
+    <section class="system-modal-backdrop{% if show_user_modal %} is-open{% endif %}" id="add-user-modal" {% if not show_user_modal %}hidden{% endif %}>
+        <div class="system-modal" role="dialog" aria-modal="true" aria-labelledby="add-user-modal-title">
+            <div class="system-modal-header">
+                <div>
+                    <h2 class="panel-title" id="add-user-modal-title">Add User</h2>
+                    <p class="system-card-copy">Provision a new platform account with the right access level and a secure password.</p>
+                </div>
+                <button class="system-modal-close" type="button" data-modal-close aria-label="Close add user dialog">x</button>
+            </div>
+
+            <form class="system-form system-modal-form" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create-user">
+                <input type="hidden" name="next" value="{{ current_path }}">
+
+                {% if user_form.non_field_errors %}
+                <div class="system-form-errors">
+                    {% for error in user_form.non_field_errors %}
+                    <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="system-form-grid">
+                    <div class="system-form-field">
+                        <label for="{{ user_form.first_name.id_for_label }}">First name</label>
+                        {{ user_form.first_name }}
+                        {% for error in user_form.first_name.errors %}<p class="system-field-error">{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="system-form-field">
+                        <label for="{{ user_form.last_name.id_for_label }}">Last name</label>
+                        {{ user_form.last_name }}
+                        {% for error in user_form.last_name.errors %}<p class="system-field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="system-form-field">
+                    <label for="{{ user_form.email.id_for_label }}">Email</label>
+                    {{ user_form.email }}
+                    {% for error in user_form.email.errors %}<p class="system-field-error">{{ error }}</p>{% endfor %}
+                </div>
+
+                <div class="system-form-field">
+                    <label for="{{ user_form.user_type.id_for_label }}">Role</label>
+                    {{ user_form.user_type }}
+                    {% for error in user_form.user_type.errors %}<p class="system-field-error">{{ error }}</p>{% endfor %}
+                </div>
+
+                <div class="system-toggle-grid">
+                    <label class="system-toggle">
+                        {{ user_form.is_active }}
+                        <span>Active account</span>
+                    </label>
+                    <label class="system-toggle">
+                        {{ user_form.grant_staff_access }}
+                        <span>Allow admin-site access</span>
+                    </label>
+                </div>
+
+                <div class="system-form-field">
+                    <label for="{{ user_form.password1.id_for_label }}">Password</label>
+                    {{ user_form.password1 }}
+                    {% for error in user_form.password1.errors %}<p class="system-field-error">{{ error }}</p>{% endfor %}
+                </div>
+
+                <div class="system-form-field">
+                    <label for="{{ user_form.password2.id_for_label }}">Confirm password</label>
+                    {{ user_form.password2 }}
+                    {% for error in user_form.password2.errors %}<p class="system-field-error">{{ error }}</p>{% endfor %}
+                </div>
+
+                <div class="system-modal-actions">
+                    <button class="system-action-button system-action-button-secondary" type="button" data-modal-close>Cancel</button>
+                    <button class="system-submit" type="submit">Create user</button>
+                </div>
+            </form>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard/js/system_management.js' %}"></script>
+{% endblock %}
