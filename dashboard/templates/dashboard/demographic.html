@@ -4,7 +4,8 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css" crossorigin="anonymous">
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260403-demographic-storyflow02">
 {% endblock %}
 
 {% block content %}
@@ -18,112 +19,142 @@
         {% endfor %}
     </section>
 
-    <div class="demographic-section-header">
-        <div>
-            <h1 class="panel-title">Demographic Insights</h1>
-            <p class="demographic-section-copy">Compare gender distribution, birth locations, and programme-level representation from one filtered view.</p>
-        </div>
-    </div>
+    <section class="demographic-story-banner" id="demographic-story-banner" aria-live="polite"></section>
 
-    <section class="demographic-grid">
-        <section class="demographic-card">
-            <form class="demographic-toolbar" method="get">
-                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
-                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
-                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
-                <input class="demographic-search" type="search" name="q" value="{{ search_query }}" placeholder="Search demographic data" aria-label="Search demographic data">
-                <button class="demographic-search-button" type="submit">Search</button>
-            </form>
+    <section class="demographic-story-flow" aria-label="Demographic storytelling flow">
+        <section class="demographic-flow-stage demographic-flow-stage-primary">
+            <div class="demographic-flow-header">
+                <p class="demographic-flow-kicker">Chapter 1</p>
+                <h2 class="demographic-flow-title">Where The Cohort Concentrates</h2>
+            </div>
 
-            <h2 class="demographic-title">Gender Distribution</h2>
-            <div class="demographic-table-wrap" data-scroll-region tabindex="0" aria-label="Gender distribution table">
-                <table class="demographic-table">
-                    <thead>
-                        <tr>
-                            <th>Gender</th>
-                            <th>Students</th>
-                            <th>Share</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in gender_rows %}
-                        <tr>
-                            <td>{{ row.label }}</td>
-                            <td>{{ row.count }}</td>
-                            <td>{{ row.share }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-top-location">
+                <div class="demographic-insight-header">
+                    <div>
+                        <p class="demographic-insight-kicker">Birth Locations</p>
+                        <h2 class="demographic-insight-title">Top Birth Locations</h2>
+                        <p class="demographic-insight-copy" id="demographic-location-copy">The ranked bars make it easier to see which locations dominate the visible cohort before you step into the geographic view.</p>
+                        <div class="demographic-chart-hints" id="demographic-location-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Top Birth Locations" aria-controls="demographic-location-chart" aria-label="View Top Birth Locations in full screen" aria-pressed="false">Full screen</button>
+                </div>
+
+                <div class="demographic-chart-stage">
+                    <div class="demographic-chart-canvas" id="demographic-location-chart" role="img" aria-label="Top birth locations chart"></div>
+                </div>
+                <div class="demographic-chart-actions">
+                    <p class="demographic-chart-note" id="demographic-location-note">This keeps count and share close together, so location concentration is easier to compare before you open the geographic view.</p>
+                    <button class="demographic-chart-reset is-hidden" id="demographic-location-reset" type="button">Back to locations</button>
+                </div>
+            </article>
+        </section>
+
+        <section class="demographic-flow-stage demographic-flow-stage-support">
+            <div class="demographic-flow-header">
+                <p class="demographic-flow-kicker">Chapter 2</p>
+                <h2 class="demographic-flow-title">Who Drives The Concentration</h2>
+            </div>
+
+            <div class="demographic-support-grid">
+                <article class="demographic-insight-card demographic-insight-card-location-mix">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Location Mix</p>
+                            <h2 class="demographic-insight-title">Birth Location Gender Mix</h2>
+                            <p class="demographic-insight-copy" id="demographic-location-mix-copy">This view reveals where each visible location cohort is concentrated across the main gender groups, instead of treating location as a single total only.</p>
+                            <div class="demographic-chart-hints" id="demographic-location-mix-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Birth Location Gender Mix" aria-controls="demographic-location-mix-chart" aria-label="View Birth Location Gender Mix in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="demographic-location-mix-chart" role="img" aria-label="Gender footprint by birth location chart"></div>
+                    </div>
+                    <p class="demographic-chart-note" id="demographic-location-mix-note">A heatmap surfaces where a specific gender-location concentration is strongest without needing to compare each location one by one.</p>
+                </article>
+
+                <article class="demographic-insight-card demographic-insight-card-gender">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Gender Split</p>
+                            <h2 class="demographic-insight-title">Gender Cohort Mix</h2>
+                            <p class="demographic-insight-copy" id="demographic-gender-copy">This chart makes the visible cohort balance easier to scan before you explore how that mix changes across locations and programmes.</p>
+                            <div class="demographic-chart-hints" id="demographic-gender-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Gender Cohort Mix" aria-controls="demographic-gender-chart" aria-label="View Gender Cohort Mix in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="demographic-gender-chart" role="img" aria-label="Visible cohort gender distribution chart"></div>
+                    </div>
+                    <p class="demographic-chart-note" id="demographic-gender-note">The tooltip keeps the exact student count and share close while the donut shows the split at a glance.</p>
+                </article>
             </div>
         </section>
 
-        <section class="demographic-card">
-            <h2 class="demographic-title">Top Birth Locations</h2>
-            <div class="demographic-table-wrap" data-scroll-region tabindex="0" aria-label="Top birth locations table">
-                <table class="demographic-table">
-                    <thead>
-                        <tr>
-                            <th>Location</th>
-                            <th>Students</th>
-                            <th>Share</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in location_rows %}
-                        <tr>
-                            <td>{{ row.place }}</td>
-                            <td>{{ row.count }}</td>
-                            <td>{{ row.share }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td class="demographic-empty" colspan="3">No location data matched the current filters.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <section class="demographic-flow-stage demographic-flow-stage-programme">
+            <div class="demographic-flow-header">
+                <p class="demographic-flow-kicker">Chapter 3</p>
+                <h2 class="demographic-flow-title">How Representation Shifts By Programme</h2>
             </div>
-        </section>
-    </section>
 
-    <section class="demographic-card demographic-card-large">
-        <h2 class="demographic-title">Programme Gender Mix</h2>
-        <div class="demographic-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme gender mix table">
-            <table class="demographic-table">
-                <colgroup>
-                    <col class="demographic-col-programme">
-                    <col class="demographic-col-count">
-                    <col class="demographic-col-count">
-                    <col class="demographic-col-count">
-                    <col class="demographic-col-total">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th class="demographic-th-programme">Programme</th>
-                        <th>Male</th>
-                        <th>Female</th>
-                        <th>Unspecified</th>
-                        <th class="demographic-th-total">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in programme_rows %}
-                    <tr>
-                        <td class="demographic-td-programme">{{ row.programme }}</td>
-                        <td>{{ row.male }}</td>
-                        <td>{{ row.female }}</td>
-                        <td>{{ row.unspecified }}</td>
-                        <td class="demographic-td-total">{{ row.total }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td class="demographic-empty" colspan="5">No programme demographic data matched the current filters.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-programme">
+                <div class="demographic-insight-header">
+                    <div>
+                        <p class="demographic-insight-kicker">Programme Mix</p>
+                        <h2 class="demographic-insight-title">Programme Gender Composition</h2>
+                        <p class="demographic-insight-copy" id="demographic-programme-copy">The stacked bars let you compare cohort size and gender composition together across the visible programmes.</p>
+                        <div class="demographic-chart-hints" id="demographic-programme-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Gender Composition" aria-controls="demographic-programme-chart" aria-label="View Programme Gender Composition in full screen" aria-pressed="false">Full screen</button>
+                </div>
+
+                <div class="demographic-chart-stage">
+                    <div class="demographic-chart-canvas" id="demographic-programme-chart" role="img" aria-label="Programme gender composition chart"></div>
+                </div>
+                <p class="demographic-chart-note" id="demographic-programme-note">The stacked view makes the strongest programme cohort and its internal gender balance visible without leaving the page.</p>
+            </article>
+        </section>
+
+        <section class="demographic-flow-stage demographic-flow-stage-map">
+            <div class="demographic-flow-header">
+                <p class="demographic-flow-kicker">Chapter 4</p>
+                <h2 class="demographic-flow-title">Where The Story Lands On The Map</h2>
+            </div>
+
+            <article class="demographic-insight-card demographic-origin-map-card">
+                <div class="demographic-insight-header">
+                    <div>
+                        <p class="demographic-insight-kicker">Geographic View</p>
+                        <h2 class="demographic-insight-title">Where Students Come From</h2>
+                        <p class="demographic-insight-copy" id="demographic-origin-map-copy">The map turns the same birth-location totals into geographic context, so you can see whether the current cohort is concentrated around one corridor or spread across the country.</p>
+                        <div class="demographic-chart-hints" id="demographic-origin-map-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Students Come From" aria-controls="demographic-origin-map-chart" aria-label="View student origin map in full screen" aria-pressed="false">Full screen</button>
+                </div>
+
+                <div class="demographic-chart-stage demographic-chart-stage-map">
+                    <div class="demographic-chart-canvas demographic-origin-map-canvas" id="demographic-origin-map-chart" role="img" aria-label="Student origin map of Zimbabwe"></div>
+                </div>
+                <div class="demographic-origin-map-footer">
+                    <p class="demographic-chart-note" id="demographic-origin-map-note">Bubble size reflects student count, and clicking a marker opens the exact location mix and share on the map.</p>
+                    <div class="demographic-origin-map-meta" id="demographic-origin-map-meta" aria-live="polite"></div>
+                </div>
+            </article>
+        </section>
     </section>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{{ gender_rows|json_script:"demographic-gender-data" }}
+{{ location_rows|json_script:"demographic-location-data" }}
+{{ location_mix_rows|json_script:"demographic-location-mix-data" }}
+{{ location_map_rows|json_script:"demographic-location-map-data" }}
+{{ location_map_meta|json_script:"demographic-location-map-meta-data" }}
+{{ programme_rows|json_script:"demographic-programme-data" }}
+{{ demographic_card_narratives|json_script:"demographic-card-narratives" }}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/demographic.js' %}?v=20260403-demographic-storyflow01"></script>
 {% endblock %}

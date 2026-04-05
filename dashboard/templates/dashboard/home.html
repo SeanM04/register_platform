@@ -4,33 +4,143 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260403-home-story05">
 {% endblock %}
 
 {% block content %}
-<section class="overview-layout">
-    <section class="metrics-panel" data-metrics-url="{% url 'dashboard:home-metrics' %}">
-        <div class="metrics-grid">
-            {% for card in summary_cards %}
-            <article class="metric-card{% if card.tone == 'danger' %} metric-card-danger{% endif %}" data-card>
-                <p class="metric-label">{{ card.label }}</p>
-                <p class="metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
-            </article>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="chart-grid">
-        {% for panel in chart_panels %}
-        <article class="chart-panel">
-            <h2 class="panel-title">{{ panel.title }}</h2>
-            <div class="chart-placeholder"></div>
+<section class="home-layout">
+    <section class="home-metrics" data-metrics-url="{% url 'dashboard:home-metrics' %}">
+        {% for card in summary_cards %}
+        <article class="home-metric home-metric-{{ card.tone }}">
+            <p class="home-metric-label">{{ card.label }}</p>
+            <p class="home-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+            <p class="home-metric-note">{{ card.note }}</p>
         </article>
         {% endfor %}
+    </section>
+
+    <section class="home-story-banner" id="home-story-banner" aria-live="polite"></section>
+
+    <section class="home-scope-row" aria-label="Active dashboard scope">
+        {% for pill in scope_pills %}
+        <span class="home-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
+        {% endfor %}
+    </section>
+
+    <section class="home-story-flow" aria-label="Landing dashboard storytelling flow">
+        <section class="home-flow-stage home-flow-stage-primary">
+            <div class="home-flow-header">
+                <p class="home-flow-kicker">Chapter 1</p>
+                <h2 class="home-flow-title">How Healthy The Visible Cohort Looks</h2>
+            </div>
+
+            <div class="home-stage-grid home-stage-grid-primary">
+                <article class="home-card home-card-wide">
+                    <div class="home-card-header">
+                        <div>
+                            <p class="home-card-kicker">Outcome Mix</p>
+                            <h2 class="home-card-title">Assessment Outcome Snapshot</h2>
+                            <p class="home-card-copy" id="home-outcomes-copy">Start with the overall assessment balance so the landing page answers whether the visible cohort is broadly passing, failing, or still awaiting marks.</p>
+                            <div class="home-chart-hints" id="home-outcomes-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="home-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Assessment Outcome Snapshot" aria-controls="home-outcomes-chart" aria-label="View Assessment Outcome Snapshot in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="home-chart-stage">
+                        <div class="home-chart-canvas" id="home-outcomes-chart" role="img" aria-label="Assessment outcomes chart"></div>
+                    </div>
+                    <p class="home-chart-note" id="home-outcomes-note">This view keeps passed, failed, and outstanding assessment signals visible before users jump into the specialist pages.</p>
+                </article>
+
+                <article class="home-card">
+                    <div class="home-card-header">
+                        <div>
+                            <p class="home-card-kicker">Risk Mix</p>
+                            <h2 class="home-card-title">Student Risk Distribution</h2>
+                            <p class="home-card-copy" id="home-risk-copy">Use this to see whether the visible cohort is mostly stable or already leaning into moderate, high, or critical watchlist bands.</p>
+                            <div class="home-chart-hints" id="home-risk-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="home-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Student Risk Distribution" aria-controls="home-risk-chart" aria-label="View Student Risk Distribution in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="home-chart-stage">
+                        <div class="home-chart-canvas" id="home-risk-chart" role="img" aria-label="Student risk distribution chart"></div>
+                    </div>
+                    <p class="home-chart-note" id="home-risk-note">The risk mix separates stable cohort volume from the students who are already building intervention pressure.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="home-flow-stage">
+            <div class="home-flow-header">
+                <p class="home-flow-kicker">Chapter 2</p>
+                <h2 class="home-flow-title">Where The Current Load Is Concentrating</h2>
+            </div>
+
+            <div class="home-stage-grid">
+                <article class="home-card">
+                    <div class="home-card-header">
+                        <div>
+                            <p class="home-card-kicker">Faculty Load</p>
+                            <h2 class="home-card-title">Visible Registrations By Faculty</h2>
+                            <p class="home-card-copy" id="home-faculty-copy">This view shows where the institution is carrying the heaviest visible registration load before pressure turns into a queue.</p>
+                            <div class="home-chart-hints" id="home-faculty-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="home-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Visible Registrations By Faculty" aria-controls="home-faculty-chart" aria-label="View Visible Registrations By Faculty in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="home-chart-stage">
+                        <div class="home-chart-canvas" id="home-faculty-chart" role="img" aria-label="Faculty registration load chart"></div>
+                    </div>
+                    <p class="home-chart-note" id="home-faculty-note">Faculty load gives managers a quick read on where staffing and support demand are most likely to accumulate.</p>
+                </article>
+
+                <article class="home-card">
+                    <div class="home-card-header">
+                        <div>
+                            <p class="home-card-kicker">Progress Status</p>
+                            <h2 class="home-card-title">Registration Decision Picture</h2>
+                            <p class="home-card-copy" id="home-progress-copy">This chart keeps proceed, retake, pending, and exit decisions in one view so users can judge academic momentum at a glance.</p>
+                            <div class="home-chart-hints" id="home-progress-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="home-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Registration Decision Picture" aria-controls="home-progress-chart" aria-label="View Registration Decision Picture in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="home-chart-stage">
+                        <div class="home-chart-canvas" id="home-progress-chart" role="img" aria-label="Registration decision chart"></div>
+                    </div>
+                    <p class="home-chart-note" id="home-progress-note">The decision view helps users see whether the visible cohort is mostly moving forward or building rework and exit pressure.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="home-flow-stage home-flow-stage-actions">
+            <div class="home-flow-header">
+                <p class="home-flow-kicker">Chapter 3</p>
+                <h2 class="home-flow-title">Where To Explore Next</h2>
+            </div>
+
+            <div class="home-action-grid">
+                {% for card in action_cards %}
+                <article class="home-action-card home-action-card-{{ card.tone }}">
+                    <p class="home-action-kicker">{{ card.kicker }}</p>
+                    <h3 class="home-action-title">{{ card.title }}</h3>
+                    <p class="home-action-copy">{{ card.copy }}</p>
+                    <a class="home-action-link" href="{{ card.action_url }}">{{ card.action_label }}</a>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
     </section>
 </section>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'dashboard/js/home.js' %}"></script>
+{{ outcome_rows|json_script:"home-outcome-data" }}
+{{ risk_distribution_rows|json_script:"home-risk-distribution-data" }}
+{{ faculty_load_rows|json_script:"home-faculty-load-data" }}
+{{ progress_rows|json_script:"home-progress-data" }}
+{{ overview_card_narratives|json_script:"home-card-narratives" }}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260403-home-story04"></script>
 {% endblock %}

@@ -1,8 +1,7 @@
 .demographic-layout {
     display: grid;
     gap: 0.8rem;
-    height: calc(100vh - 146px);
-    min-height: 0;
+    min-height: calc(100vh - 146px);
 }
 
 .demographic-metrics {
@@ -45,18 +44,433 @@
     line-height: 1;
 }
 
-.demographic-section-copy {
-    margin: 0.22rem 0 0;
-    max-width: 34rem;
-    color: var(--muted);
-    font-size: 0.8rem;
-    line-height: 1.4;
+.demographic-story-banner {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.95rem 1rem 1rem;
+    border-radius: 16px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.16), transparent 28%),
+        linear-gradient(135deg, #082340, #0d325d 52%, #184d80);
+    color: #ffffff;
+    box-shadow: 0 18px 34px rgba(8, 35, 64, 0.16);
 }
 
-.demographic-grid {
+.demographic-story-main {
+    display: grid;
+    gap: 0.28rem;
+}
+
+.demographic-story-kicker {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.demographic-story-title {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.35;
+}
+
+.demographic-story-copy {
+    margin: 0;
+    max-width: 56rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.8rem;
+    line-height: 1.55;
+}
+
+.demographic-story-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.72rem;
+}
+
+.demographic-story-flow {
+    display: grid;
+    gap: 1rem;
+}
+
+.demographic-flow-stage {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+.demographic-flow-stage-primary {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 32%),
+        linear-gradient(180deg, rgba(244, 250, 255, 0.99), rgba(235, 245, 252, 0.97));
+}
+
+.demographic-flow-stage-map {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
+}
+
+.demographic-flow-header {
+    display: grid;
+    gap: 0.12rem;
+    max-width: 58rem;
+}
+
+.demographic-flow-kicker {
+    margin: 0;
+    color: var(--sky);
+    font-size: 0.69rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.demographic-flow-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1.1rem;
+    line-height: 1.3;
+}
+
+.demographic-support-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.95fr);
+    gap: 0.85rem;
+}
+
+.demographic-story-pill {
+    display: grid;
+    gap: 0.24rem;
+    padding: 0.78rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+}
+
+.demographic-story-pill-label {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.demographic-story-pill-value {
+    margin: 0;
+    font-size: 0.96rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.demographic-story-pill-copy {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.76rem;
+    line-height: 1.45;
+}
+
+.demographic-deep-dive {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.8rem;
+    gap: 0.85rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+
+.demographic-insight-card {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem 1rem 1rem;
+    background: #f8fbff;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+}
+
+.demographic-insight-card-wide {
+    grid-column: 1 / -1;
+}
+
+.demographic-insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 0.85rem;
+}
+
+.demographic-insight-kicker {
+    margin: 0;
+    color: var(--sky);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.demographic-insight-title {
+    margin: 0.25rem 0 0;
+    color: var(--navy);
+    font-size: 1rem;
+}
+
+.demographic-insight-copy {
+    margin: 0.32rem 0 0;
+    color: var(--muted);
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.demographic-chart-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    margin-top: 0.52rem;
+}
+
+.demographic-chart-hint {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.56rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.demographic-chart-hint.is-inspect {
+    background: rgba(79, 176, 209, 0.12);
+    color: #0f4c5c;
+}
+
+.demographic-chart-hint.is-support {
+    background: rgba(148, 163, 184, 0.12);
+    color: #475569;
+}
+
+.demographic-chart-stage {
+    min-height: 0;
+    padding: 0.25rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 247, 252, 0.98));
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.demographic-chart-canvas {
+    min-height: 280px;
+    width: 100%;
+}
+
+.demographic-insight-card-wide .demographic-chart-canvas {
+    min-height: 320px;
+}
+
+.demographic-insight-card-gender .demographic-chart-stage {
+    padding: 0.6rem 0.6rem 0.45rem;
+}
+
+.demographic-insight-card-gender .demographic-chart-canvas,
+.demographic-insight-card-top-location .demographic-chart-canvas {
+    min-height: 360px;
+}
+
+.demographic-insight-card-location-mix .demographic-chart-canvas,
+.demographic-insight-card-programme .demographic-chart-canvas {
+    min-height: 360px;
+}
+
+.demographic-flow-stage-primary .demographic-insight-card-top-location .demographic-chart-canvas {
+    min-height: 420px;
+}
+
+.demographic-chart-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.55rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.5;
+}
+
+.demographic-action-text {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.demographic-ai-badge-group {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.demographic-ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    flex-shrink: 0;
+    padding: 0.22rem 0.52rem;
+    border: 1px solid rgba(79, 176, 209, 0.24);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
+    color: #0d325d;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.demographic-ai-context {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.demographic-ai-badge.is-stable {
+    border-color: rgba(79, 176, 209, 0.24);
+    background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
+    color: #0d325d;
+}
+
+.demographic-ai-badge.is-medium {
+    border-color: rgba(14, 116, 144, 0.28);
+    background: linear-gradient(180deg, rgba(227, 250, 255, 0.98), rgba(207, 241, 250, 0.98));
+    color: #0f4c5c;
+}
+
+.demographic-ai-badge.is-high {
+    border-color: rgba(249, 115, 22, 0.52);
+    background: linear-gradient(180deg, rgba(255, 237, 213, 0.99), rgba(254, 215, 170, 0.99));
+    color: #9a3412;
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.14);
+}
+
+.demographic-ai-badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: 50%;
+    background: rgba(79, 176, 209, 0.18);
+    color: #0d325d;
+}
+
+.demographic-ai-badge.is-medium .demographic-ai-badge-icon {
+    background: rgba(14, 165, 233, 0.16);
+    color: #0f4c5c;
+}
+
+.demographic-ai-badge.is-high .demographic-ai-badge-icon {
+    background: rgba(249, 115, 22, 0.22);
+    color: #9a3412;
+}
+
+.demographic-ai-badge.is-high + .demographic-ai-context {
+    color: #b45309;
+}
+
+.demographic-ai-badge-icon svg {
+    width: 0.68rem;
+    height: 0.68rem;
+    fill: currentColor;
+}
+
+.demographic-chart-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.demographic-chart-canvas.is-empty {
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.demographic-chart-expand,
+.demographic-chart-reset {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.demographic-chart-expand:hover,
+.demographic-chart-reset:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
+    transform: translateY(-1px);
+}
+
+.demographic-chart-expand:focus-visible,
+.demographic-chart-reset:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.demographic-chart-expand {
+    margin-left: auto;
+}
+
+.demographic-chart-reset.is-hidden {
+    display: none;
+}
+
+.demographic-insight-card:fullscreen,
+.demographic-insight-card.is-fullscreen {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.15rem 1.2rem;
+    background: #f8fbff;
+    overflow: auto;
+}
+
+.demographic-insight-card:fullscreen::backdrop,
+.demographic-insight-card.is-fullscreen::backdrop {
+    background: rgba(8, 35, 64, 0.72);
+}
+
+.demographic-insight-card:fullscreen .demographic-chart-stage,
+.demographic-insight-card.is-fullscreen .demographic-chart-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.demographic-insight-card:fullscreen .demographic-chart-canvas,
+.demographic-insight-card.is-fullscreen .demographic-chart-canvas {
+    height: clamp(420px, 70vh, 860px);
+    min-height: clamp(420px, 70vh, 860px);
 }
 
 .demographic-card {
@@ -64,56 +478,261 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     overflow: hidden;
-    display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     min-height: 0;
 }
 
+.demographic-table-card {
+    overflow: hidden;
+}
+
+.demographic-reference-card {
+    overflow: hidden;
+}
+
 .demographic-card-large {
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-column: 1 / -1;
 }
 
-.demographic-toolbar {
+.demographic-table-section {
     display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.demographic-reference-section {
+    display: grid;
+    min-height: 0;
+}
+
+.demographic-origin-map-card {
+    margin: 0;
+}
+
+.demographic-chart-stage-map {
+    padding: 0.6rem;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 252, 0.98));
+}
+
+.demographic-origin-map-canvas {
+    min-height: 560px;
+    overflow: hidden;
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.18), transparent 32%),
+        linear-gradient(180deg, #edf5fb, #dfeef8);
+}
+
+.demographic-origin-map-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 0.85rem;
+}
+
+.demographic-origin-map-meta {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 0.42rem;
-    align-items: end;
-    padding: 0.8rem 1rem 0.12rem;
+    gap: 0.55rem;
 }
 
-.demographic-search {
-    width: min(240px, 100%);
-    padding: 0.56rem 0.78rem;
-    border: 1px solid #dbe4f0;
+.demographic-origin-map-pill {
+    display: inline-grid;
+    gap: 0.12rem;
+    min-width: 7.5rem;
+    padding: 0.55rem 0.72rem;
+    border: 1px solid rgba(13, 50, 93, 0.08);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(8, 35, 64, 0.04), rgba(79, 176, 209, 0.08));
+}
+
+.demographic-origin-map-pill-label {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.demographic-origin-map-pill-value {
+    color: var(--navy);
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.demographic-origin-map-canvas .maplibregl-map,
+.demographic-origin-map-canvas .maplibregl-canvas,
+.demographic-origin-map-canvas .maplibregl-canvas-container {
+    border-radius: 14px;
+}
+
+.demographic-origin-map-canvas .maplibregl-ctrl-top-right {
+    top: 0.7rem;
+    right: 0.7rem;
+}
+
+.demographic-origin-map-canvas .maplibregl-ctrl-group {
+    overflow: hidden;
+    border: 1px solid rgba(8, 35, 64, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 12px 24px rgba(8, 35, 64, 0.12);
+}
+
+.demographic-origin-map-canvas .maplibregl-ctrl-group button {
+    width: 32px;
+    height: 32px;
+}
+
+.demographic-origin-map-canvas .maplibregl-ctrl-attrib {
+    border-radius: 10px 0 0 0;
+    background: rgba(255, 255, 255, 0.92);
+    color: #475569;
+    font-size: 0.68rem;
+}
+
+.demographic-origin-marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.demographic-origin-marker.is-label-left {
+    flex-direction: row-reverse;
+}
+
+.demographic-origin-marker-bubble {
+    position: relative;
+    display: inline-block;
+    width: var(--marker-size);
+    height: var(--marker-size);
+    border: 3px solid rgba(255, 255, 255, 0.98);
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--marker-start), var(--marker-end));
+    box-shadow: 0 12px 22px rgba(8, 35, 64, 0.2);
+}
+
+.demographic-origin-marker-bubble::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border: 1px solid rgba(255, 255, 255, 0.46);
+    border-radius: inherit;
+}
+
+.demographic-origin-marker-label {
+    display: grid;
+    gap: 0.06rem;
+    padding: 0.36rem 0.48rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: 10px;
-    outline: none;
-    font-size: 0.84rem;
-    background: #f8fbff;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 10px 22px rgba(8, 35, 64, 0.1);
+    backdrop-filter: blur(6px);
 }
 
-.demographic-search:focus {
-    border-color: rgba(79, 176, 209, 0.85);
-    box-shadow: 0 0 0 3px rgba(79, 176, 209, 0.12);
+.demographic-origin-marker-name,
+.demographic-origin-marker-value {
+    color: var(--navy);
+    line-height: 1.2;
+}
+
+.demographic-origin-marker-name {
+    font-size: 0.71rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.demographic-origin-marker-value {
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.demographic-origin-popup-shell .maplibregl-popup-content {
+    padding: 0;
+    border-radius: 14px;
+    box-shadow: 0 20px 34px rgba(8, 35, 64, 0.18);
+}
+
+.demographic-origin-popup-shell .maplibregl-popup-tip {
+    border-top-color: #ffffff;
+}
+
+.demographic-origin-popup {
+    display: grid;
+    gap: 0.55rem;
+    min-width: 200px;
+    padding: 0.8rem 0.88rem 0.84rem;
     background: #ffffff;
 }
 
-.demographic-search-button {
-    padding: 0.54rem 0.84rem;
-    border: 0;
-    border-radius: 10px;
-    background: var(--navy);
-    color: #ffffff;
-    cursor: pointer;
-    font-size: 0.82rem;
-    font-weight: 600;
-    box-shadow: 0 10px 18px rgba(8, 35, 64, 0.14);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+.demographic-origin-popup-kicker {
+    margin: 0;
+    color: var(--sky);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
-.demographic-search-button:hover {
-    background: #0d325d;
-    transform: translateY(-1px);
+.demographic-origin-popup-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+.demographic-origin-popup-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.34rem 0.9rem;
+    color: #475569;
+    font-size: 0.78rem;
+}
+
+.demographic-origin-popup-grid strong {
+    color: var(--navy);
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-align: right;
+}
+
+.demographic-table-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.demographic-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem 0.75rem;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.demographic-section-title {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--navy);
+}
+
+.demographic-section-copy {
+    margin: 0.24rem 0 0;
+    max-width: 42rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
 }
 
 .demographic-title {
@@ -127,6 +746,7 @@
     position: relative;
     overflow: auto;
     min-height: 0;
+    max-height: 58vh;
     scroll-behavior: smooth;
     scrollbar-gutter: stable both-edges;
     scrollbar-width: thin;
@@ -191,6 +811,7 @@
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
+    min-width: 980px;
 }
 
 .demographic-col-programme {
@@ -300,30 +921,101 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .demographic-grid {
+    .demographic-story-grid {
         grid-template-columns: 1fr;
+    }
+
+    .demographic-support-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .demographic-deep-dive {
+        grid-template-columns: 1fr;
+    }
+
+    .demographic-insight-card-wide,
+    .demographic-card-large {
+        grid-column: auto;
+    }
+
+    .demographic-origin-map-footer {
+        flex-direction: column;
+    }
+
+    .demographic-origin-map-meta {
+        justify-content: flex-start;
     }
 }
 
 @media (max-width: 720px) {
     .demographic-layout {
-        height: auto;
+        min-height: 0;
     }
 
     .demographic-metrics {
         grid-template-columns: 1fr;
     }
 
-    .demographic-toolbar {
+    .demographic-flow-stage {
+        padding: 0.9rem;
+    }
+
+    .demographic-deep-dive {
+        padding: 0;
+    }
+
+    .demographic-insight-card {
+        padding: 0.9rem;
+    }
+
+    .demographic-chart-canvas {
+        min-height: 240px;
+    }
+
+    .demographic-insight-card-wide .demographic-chart-canvas {
+        min-height: 280px;
+    }
+
+    .demographic-insight-card-gender .demographic-chart-canvas,
+    .demographic-insight-card-top-location .demographic-chart-canvas,
+    .demographic-insight-card-location-mix .demographic-chart-canvas,
+    .demographic-insight-card-programme .demographic-chart-canvas {
+        min-height: 340px;
+    }
+
+    .demographic-flow-stage-primary .demographic-insight-card-top-location .demographic-chart-canvas {
+        min-height: 360px;
+    }
+
+    .demographic-origin-map-canvas {
+        min-height: 420px;
+    }
+
+    .demographic-origin-marker-label {
+        display: none;
+    }
+
+    .demographic-insight-header,
+    .demographic-section-header {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .demographic-search {
-        width: 100%;
+    .demographic-chart-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .demographic-chart-expand {
+        margin-left: 0;
+        width: fit-content;
+    }
+
+    .demographic-table-grid {
+        grid-template-columns: 1fr;
     }
 
     .demographic-table-wrap {
-        max-height: 60vh;
+        max-height: 52vh;
     }
 }

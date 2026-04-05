@@ -4,81 +4,195 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}">
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'dashboard/js/programme.js' %}"></script>
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260404-programmes-story04">
 {% endblock %}
 
 {% block content %}
-<section class="programme-layout">
+<section class="programme-dashboard">
     <section class="programme-metrics" data-metrics-url="{% url 'dashboard:programme-metrics' %}">
         {% for card in summary_cards %}
-        <article class="programme-metric">
+        <article class="programme-metric programme-metric-{{ card.tone }}">
             <p class="programme-metric-label">{{ card.label }}</p>
             <p class="programme-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+            <p class="programme-metric-note">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>
 
-    <section class="programme-card">
-        <div class="programme-topbar">
-            <h1 class="panel-title">Programme Performance</h1>
+    <section class="programme-story-banner" id="programme-story-banner" aria-live="polite"></section>
 
-            <form class="programme-toolbar" method="get">
-                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
-                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
-                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
-                <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programmes" aria-label="Search programmes">
-                <button class="programme-search-button" type="submit">Search</button>
-            </form>
-        </div>
+    <section class="programme-scope-row" aria-label="Active programme scope">
+        {% for pill in scope_pills %}
+        <span class="programme-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
+        {% endfor %}
+    </section>
 
-        <div class="programme-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme table">
-            <table class="programme-table">
-                <colgroup>
-                    <col class="programme-col-code">
-                    <col class="programme-col-name">
-                    <col class="programme-col-faculty">
-                    <col class="programme-col-department">
-                    <col class="programme-col-students">
-                    <col class="programme-col-registrations">
-                    <col class="programme-col-average">
-                    <col class="programme-col-pass">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th class="programme-th-code">Code</th>
-                        <th>Programme</th>
-                        <th>Faculty</th>
-                        <th>Department</th>
-                        <th>Students</th>
-                        <th>Registrations</th>
-                        <th>Average Mark</th>
-                        <th class="programme-th-pass">Pass Rate</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in programme_rows %}
-                    <tr>
-                        <td class="programme-td-code">{{ row.code }}</td>
-                        <td>{{ row.name }}</td>
-                        <td>{{ row.faculty }}</td>
-                        <td>{{ row.department }}</td>
-                        <td>{{ row.students }}</td>
-                        <td>{{ row.registrations }}</td>
-                        <td>{{ row.average_mark }}</td>
-                        <td class="programme-td-pass">{{ row.pass_rate }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td class="programme-empty" colspan="8">No programmes matched the current filters.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <section class="programme-story-flow" aria-label="Programme storytelling flow">
+        <section class="programme-flow-stage programme-flow-stage-primary">
+            <div class="programme-flow-header">
+                <p class="programme-flow-kicker">Chapter 1</p>
+                <h2 class="programme-flow-title">Where The Programme Load Is Sitting</h2>
+            </div>
+
+            <div class="programme-stage-grid programme-stage-grid-primary">
+                <article class="programme-card programme-card-wide">
+                    <div class="programme-card-header">
+                        <div>
+                            <p class="programme-card-kicker">Programme Load</p>
+                            <h2 class="programme-card-title">Visible Registrations By Programme</h2>
+                            <p class="programme-card-copy" id="programme-load-copy">Start with the strongest load signal so the page answers which programmes currently carry the widest visible registration footprint.</p>
+                            <div class="programme-chart-hints" id="programme-load-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Visible Registrations By Programme" aria-controls="programme-load-chart" aria-label="View Visible Registrations By Programme in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="programme-chart-stage">
+                        <div class="programme-chart-canvas" id="programme-load-chart" role="img" aria-label="Visible registrations by programme chart"></div>
+                    </div>
+                    <p class="programme-chart-note" id="programme-load-note">This view keeps the flagship programmes visible before the page moves into quality and review pressure.</p>
+                </article>
+
+                <article class="programme-card">
+                    <div class="programme-card-header">
+                        <div>
+                            <p class="programme-card-kicker">Department Pressure</p>
+                            <h2 class="programme-card-title">Where Portfolio Load Concentrates</h2>
+                            <p class="programme-card-copy" id="programme-departments-copy">Use the department roll-up to see whether visible programme demand is isolated to one portfolio or already spread across multiple teams.</p>
+                            <div class="programme-chart-hints" id="programme-departments-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Portfolio Load Concentrates" aria-controls="programme-departments-chart" aria-label="View Where Portfolio Load Concentrates in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="programme-chart-stage">
+                        <div class="programme-chart-canvas" id="programme-departments-chart" role="img" aria-label="Department programme load chart"></div>
+                    </div>
+                    <p class="programme-chart-note" id="programme-departments-note">Department concentration helps managers judge which academic teams are carrying the broadest programme footprint.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="programme-flow-stage">
+            <div class="programme-flow-header">
+                <p class="programme-flow-kicker">Chapter 2</p>
+                <h2 class="programme-flow-title">Which Programmes Need Review First</h2>
+            </div>
+
+            <div class="programme-stage-grid">
+                <article class="programme-card">
+                    <div class="programme-card-header">
+                        <div>
+                            <p class="programme-card-kicker">Quality Watch</p>
+                            <h2 class="programme-card-title">Weakest Visible Pass Rates</h2>
+                            <p class="programme-card-copy" id="programme-quality-copy">This ranking makes it easy to spot the programmes whose visible pass rates are most likely to justify academic review.</p>
+                            <div class="programme-chart-hints" id="programme-quality-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Weakest Visible Pass Rates" aria-controls="programme-quality-chart" aria-label="View Weakest Visible Pass Rates in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="programme-chart-stage">
+                        <div class="programme-chart-canvas" id="programme-quality-chart" role="img" aria-label="Weakest visible pass rates chart"></div>
+                    </div>
+                    <p class="programme-chart-note" id="programme-quality-note">The weakest-pass chart keeps the underperforming programmes visible before users inspect the detailed register.</p>
+                </article>
+
+                <article class="programme-card">
+                    <div class="programme-card-header">
+                        <div>
+                            <p class="programme-card-kicker">Performance Map</p>
+                            <h2 class="programme-card-title">Scale Versus Pass Rate</h2>
+                            <p class="programme-card-copy" id="programme-performance-copy">Compare registrations against pass rate so the page reveals whether the largest programmes are also the healthiest ones.</p>
+                            <div class="programme-chart-hints" id="programme-performance-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Scale Versus Pass Rate" aria-controls="programme-performance-chart" aria-label="View Scale Versus Pass Rate in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="programme-chart-stage programme-chart-stage-performance">
+                        <div class="programme-chart-canvas" id="programme-performance-chart" role="img" aria-label="Scale versus pass rate chart"></div>
+                    </div>
+                    <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale and quality in one view, which is much harder to see in a flat programme table.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="programme-flow-stage programme-flow-stage-register">
+            <div class="programme-flow-header">
+                <p class="programme-flow-kicker">Chapter 3</p>
+                <h2 class="programme-flow-title">Programme Register</h2>
+            </div>
+
+            <article class="programme-card programme-card-register">
+                <div class="programme-register-header">
+                    <div>
+                        <p class="programme-card-kicker">Detailed Register</p>
+                        <h2 class="programme-card-title">Searchable Programme Reference</h2>
+                        <p class="programme-card-copy">Use the register when you need the exact row values behind the story cards and charts above.</p>
+                    </div>
+
+                    <form class="programme-toolbar" method="get">
+                        {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                        {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+                        {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                        <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programme register" aria-label="Search programme register">
+                        <button class="programme-search-button" type="submit">Search</button>
+                    </form>
+                </div>
+
+                <div class="programme-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme register table">
+                    <table class="programme-table">
+                        <colgroup>
+                            <col class="programme-col-code">
+                            <col class="programme-col-name">
+                            <col class="programme-col-faculty">
+                            <col class="programme-col-department">
+                            <col class="programme-col-students">
+                            <col class="programme-col-registrations">
+                            <col class="programme-col-average">
+                            <col class="programme-col-pass">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th class="programme-th-code">Code</th>
+                                <th>Programme</th>
+                                <th>Faculty</th>
+                                <th>Department</th>
+                                <th>Students</th>
+                                <th>Registrations</th>
+                                <th>Average Mark</th>
+                                <th class="programme-th-pass">Pass Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in programme_rows %}
+                            <tr>
+                                <td class="programme-td-code">{{ row.code }}</td>
+                                <td>{{ row.name }}</td>
+                                <td>{{ row.faculty }}</td>
+                                <td>{{ row.department }}</td>
+                                <td>{{ row.students }}</td>
+                                <td>{{ row.registrations }}</td>
+                                <td>{{ row.average_mark }}</td>
+                                <td class="programme-td-pass">{{ row.pass_rate }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td class="programme-empty" colspan="8">No programmes matched the current filters.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
     </section>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{{ top_load_rows|json_script:"programme-top-load-data" }}
+{{ department_rows|json_script:"programme-department-data" }}
+{{ low_pass_rows|json_script:"programme-low-pass-data" }}
+{{ performance_rows|json_script:"programme-performance-data" }}
+{{ programme_card_narratives|json_script:"programme-card-narratives" }}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260404-programmes-story03"></script>
 {% endblock %}

@@ -117,8 +117,20 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = get_env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOM
 SECURE_HSTS_PRELOAD = get_env_bool("DJANGO_SECURE_HSTS_PRELOAD", not DEBUG)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_REFERRER_POLICY = os.getenv("DJANGO_SECURE_REFERRER_POLICY", "same-origin")
+# The demographics MapLibre view and other approved third-party assets need an
+# origin referrer on cross-origin requests. This policy keeps same-origin URL
+# detail while only sending the origin externally.
+SECURE_REFERRER_POLICY = os.getenv("DJANGO_SECURE_REFERRER_POLICY", "strict-origin-when-cross-origin")
 X_FRAME_OPTIONS = os.getenv("DJANGO_X_FRAME_OPTIONS", "DENY")
+AI_INSIGHTS_ENABLED = get_env_bool("AI_INSIGHTS_ENABLED", get_env_bool("OPENAI_INSIGHTS_ENABLED", False))
+AI_INSIGHTS_PROVIDER = os.getenv("AI_INSIGHTS_PROVIDER", "auto").strip().lower()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("Google_API_KEY", "")
+GOOGLE_INSIGHTS_MODEL = os.getenv("GOOGLE_INSIGHTS_MODEL", "gemini-2.5-flash-lite")
+GOOGLE_INSIGHTS_TIMEOUT_SECONDS = get_env_int("GOOGLE_INSIGHTS_TIMEOUT_SECONDS", 6)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_INSIGHTS_ENABLED = get_env_bool("OPENAI_INSIGHTS_ENABLED", False)
+OPENAI_INSIGHTS_MODEL = os.getenv("OPENAI_INSIGHTS_MODEL", "gpt-5.4-mini")
+OPENAI_INSIGHTS_TIMEOUT_SECONDS = get_env_int("OPENAI_INSIGHTS_TIMEOUT_SECONDS", 6)
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard:home"

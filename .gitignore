@@ -60,3 +60,7 @@ pip_bootstrap.zip
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md

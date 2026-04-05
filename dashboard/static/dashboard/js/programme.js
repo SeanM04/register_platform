@@ -1,12 +1,9 @@
-const programmeSearchForm = document.querySelector(".programme-toolbar");
-const programmeSearchInput = document.querySelector(".programme-search");
-let programmeSearchTimer = null;
+import { initialiseProgrammePage } from "./programme/index.js?v=20260404-programmes-story01";
 
-if (programmeSearchForm && programmeSearchInput) {
-    programmeSearchInput.addEventListener("input", () => {
-        window.clearTimeout(programmeSearchTimer);
-        programmeSearchTimer = window.setTimeout(() => {
-            programmeSearchForm.requestSubmit();
-        }, 450);
-    });
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+        initialiseProgrammePage();
+    }, { once: true });
+} else {
+    initialiseProgrammePage();
 }

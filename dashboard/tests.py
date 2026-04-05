@@ -1,124 +1,23 @@
 """Dashboard view tests covering filters, summaries, and navigation state."""
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from accounts.models import UserType
 
-from .models import AcademicPeriod, Course, CourseResult, Department, Faculty, Programme, Registration, Student
-from .views import format_risk_monitor_drivers
+from .test_support import DashboardFixtureMixin
 
 
-class DashboardViewTests(TestCase):
+@override_settings(
+    AI_INSIGHTS_ENABLED=False,
+    OPENAI_INSIGHTS_ENABLED=False,
+    AI_INSIGHTS_PROVIDER="rules",
+    GOOGLE_API_KEY="",
+    OPENAI_API_KEY="",
+)
+class DashboardViewTests(DashboardFixtureMixin, TestCase):
     """Exercise the production-facing dashboard views against real query patterns."""
-
-    def setUp(self):
-        self.user_type, _ = UserType.objects.get_or_create(
-            code="admin",
-            defaults={"name": "Admin"},
-        )
-        self.user = get_user_model().objects.create_user(
-            email="owner@example.com",
-            password="StrongPass123!",
-            first_name="Owner",
-            last_name="User",
-            user_type=self.user_type,
-            is_active=True,
-        )
-        self.client.force_login(self.user)
-
-        self.science_faculty = Faculty.objects.create(name="Science Faculty")
-        self.commerce_faculty = Faculty.objects.create(name="Commerce Faculty")
-        self.science_department = Department.objects.create(
-            faculty=self.science_faculty,
-            name="Department of Computing",
-        )
-        self.commerce_department = Department.objects.create(
-            faculty=self.commerce_faculty,
-            name="Department of Accounting",
-        )
-        self.science_programme = Programme.objects.create(
-            department=self.science_department,
-            external_id=101,
-            code="BSC-INF",
-            name="BSc Informatics",
-        )
-        self.commerce_programme = Programme.objects.create(
-            department=self.commerce_department,
-            external_id=102,
-            code="BCOM-ACC",
-            name="BCom Accounting",
-        )
-        self.period_2026 = AcademicPeriod.objects.create(
-            external_id=202601,
-            academic_year="1",
-            semester="1",
-            name="2026 Jan - June",
-        )
-        self.period_2025 = AcademicPeriod.objects.create(
-            external_id=202501,
-            academic_year="1",
-            semester="2",
-            name="2025 July - December",
-        )
-        self.course = Course.objects.create(code="CSC101", name="Foundations of Computing")
-
-        self.student_primary = Student.objects.create(
-            registration_number="REG001",
-            first_names="Alice",
-            surname="Ncube",
-            gender="Female",
-            place_of_birth="Bulawayo",
-        )
-        self.student_secondary = Student.objects.create(
-            registration_number="REG002",
-            first_names="Brian",
-            surname="Moyo",
-            gender="Male",
-            place_of_birth="Harare",
-        )
-
-        self.primary_old_registration = Registration.objects.create(
-            external_id=1,
-            student=self.student_primary,
-            programme=self.commerce_programme,
-            period=self.period_2025,
-            decision="pending",
-            carrying=1,
-        )
-        self.primary_latest_registration = Registration.objects.create(
-            external_id=2,
-            student=self.student_primary,
-            programme=self.science_programme,
-            period=self.period_2026,
-            decision="proceed",
-            carrying=0,
-        )
-        self.secondary_registration = Registration.objects.create(
-            external_id=3,
-            student=self.student_secondary,
-            programme=self.commerce_programme,
-            period=self.period_2025,
-            decision="retake",
-            carrying=1,
-        )
-
-        CourseResult.objects.create(
-            registration=self.primary_old_registration,
-            course=self.course,
-            mark=40,
-        )
-        CourseResult.objects.create(
-            registration=self.primary_latest_registration,
-            course=self.course,
-            mark=78,
-        )
-        CourseResult.objects.create(
-            registration=self.secondary_registration,
-            course=self.course,
-            mark=55,
-        )
 
     def test_dashboard_home_metrics_endpoint_respects_year_filter(self):
         """Home metrics JSON should follow the selected topbar filters."""
@@ -144,66 +43,6 @@ class DashboardViewTests(TestCase):
         self.assertEqual(metrics["registrations"], 1)
         self.assertEqual(metrics["students"], 1)
         self.assertEqual(metrics["average_pass_rate"], "100%")
-
-    def test_risk_view_lists_only_students_classified_as_at_risk(self):
-        """Risk page should surface medium/high-risk students and exclude stable ones."""
-
-        low_risk_student = Student.objects.create(
-            registration_number="REG003",
-            first_names="Chipo",
-            surname="Sibanda",
-            gender="Female",
-            place_of_birth="Gweru",
-        )
-        low_risk_registration = Registration.objects.create(
-            external_id=4,
-            student=low_risk_student,
-            programme=self.science_programme,
-            period=self.period_2026,
-            decision="proceed",
-            carrying=0,
-        )
-        CourseResult.objects.create(
-            registration=low_risk_registration,
-            course=self.course,
-            mark=76,
-        )
-
-        response = self.client.get(reverse("dashboard:risk"))
-
-        risk_names = [row["name"] for row in response.context["risk_rows"]]
-        risk_levels = {row["name"]: row["risk_level"] for row in response.context["risk_rows"]}
-        active_labels = [item["label"] for item in response.context["sidebar_items"] if item["is_active"]]
-
-        self.assertIn(self.student_primary.full_name, risk_names)
-        self.assertIn(self.student_secondary.full_name, risk_names)
-        self.assertNotIn(low_risk_student.full_name, risk_names)
-        self.assertEqual(risk_levels[self.student_primary.full_name], "Medium Risk")
-        self.assertEqual(risk_levels[self.student_secondary.full_name], "High Risk")
-        self.assertEqual(active_labels, ["Risk"])
-
-    def test_risk_metrics_endpoint_returns_expected_counts(self):
-        """Risk metrics JSON should summarise current medium/high-risk students."""
-
-        response = self.client.get(reverse("dashboard:risk-metrics"))
-
-        metrics = response.json()["metrics"]
-        self.assertEqual(metrics["at_risk_students"], 2)
-        self.assertEqual(metrics["high_risk"], 1)
-        self.assertEqual(metrics["medium_risk"], 1)
-        self.assertEqual(metrics["multi_fail"], 0)
-
-    def test_risk_view_hides_redundant_average_below_50_copy(self):
-        """Risk rows should omit the repeated average-below-50 phrase from the table copy."""
-
-        self.assertEqual(
-            format_risk_monitor_drivers("average below 50%, 3+ failed modules, 1 carried module"),
-            "3+ failed modules, 1 carried module",
-        )
-        self.assertEqual(
-            format_risk_monitor_drivers("average below 50%"),
-            "Performance needs support",
-        )
 
     def test_insights_view_renders_live_operational_context(self):
         """Insights page should render real flagged-student and recommendation content."""

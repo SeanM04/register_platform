@@ -4,11 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}">
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'dashboard/js/risk.js' %}"></script>
+<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260403-risk-storyflow10">
 {% endblock %}
 
 {% block content %}
@@ -22,99 +18,218 @@
         {% endfor %}
     </section>
 
-    <section class="risk-card">
-        <div class="risk-topbar">
-            <h1 class="panel-title">Student Risk Monitor</h1>
+    <section class="risk-story-banner" id="risk-story-banner" aria-live="polite"></section>
 
-            <form class="risk-toolbar" method="get">
-                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
-                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
-                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
-                <input class="risk-search" type="search" name="q" value="{{ search_query }}" placeholder="Search at-risk students" aria-label="Search at-risk students">
-                <button class="risk-search-button" type="submit">Search</button>
-            </form>
-        </div>
+    <section class="risk-story-flow" aria-label="Risk storytelling flow">
+        <section class="risk-flow-stage risk-flow-stage-primary">
+            <div class="risk-flow-header">
+                <p class="risk-flow-kicker">Chapter 1</p>
+                <h2 class="risk-flow-title">How Big The Current Watchlist Is</h2>
+            </div>
 
-        <div class="risk-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="At-risk students table">
-            <table class="risk-table">
-                <colgroup>
-                    <col class="risk-col-student">
-                    <col class="risk-col-programme">
-                    <col class="risk-col-level">
-                    <col class="risk-col-average">
-                    <col class="risk-col-fails">
-                    <col class="risk-col-carrying">
-                    <col class="risk-col-decision">
-                    <col class="risk-col-status">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th class="risk-th-student">Student</th>
-                        <th>Programme</th>
-                        <th>Academic Level</th>
-                        <th>Average Mark</th>
-                        <th>Failed Modules</th>
-                        <th>Carrying</th>
-                        <th>Decision</th>
-                        <th class="risk-th-status">Risk Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in risk_rows %}
-                    <tr>
-                        <td class="risk-td-student">
-                            <a class="risk-student-link" href="{% url 'dashboard:student-detail' row.detail_slug %}" aria-label="View {{ row.name }} profile">
-                                <span class="risk-student-name">{{ row.name }}</span>
-                                <span class="risk-student-meta">{{ row.registration_number }}</span>
-                            </a>
-                        </td>
-                        <td>{{ row.programme }}</td>
-                        <td>{{ row.academic_level }}</td>
-                        <td>{{ row.average_mark }}</td>
-                        <td>{{ row.failed_courses }}</td>
-                        <td>{{ row.carrying }}</td>
-                        <td>{{ row.decision }}</td>
-                        <td class="risk-td-status">
-                            <span class="risk-status-badge risk-status-{{ row.risk_level_key }}">{{ row.risk_level }}</span>
-                            <span class="risk-status-copy">{{ row.risk_drivers_display }}</span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td class="risk-empty" colspan="8">No at-risk students matched the current filters.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            <article class="risk-insight-card risk-insight-card-wide">
+                <div class="risk-insight-header">
+                    <div>
+                        <p class="risk-insight-kicker">Risk Distribution</p>
+                        <h2 class="risk-insight-title">Watchlist Severity Mix</h2>
+                        <p class="risk-insight-copy" id="risk-distribution-copy">The first job on this page is to show whether the current risk picture is mostly early intervention work or already concentrated in high-priority cases.</p>
+                        <div class="risk-chart-hints" id="risk-distribution-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Watchlist Severity Mix" aria-controls="risk-distribution-chart" aria-label="View Watchlist Severity Mix in full screen" aria-pressed="false">Full screen</button>
+                </div>
 
-        <div class="risk-footer">
-            <p class="risk-results-meta">
-                Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_students }} at-risk students
-            </p>
+                <div class="risk-chart-stage">
+                    <div class="risk-chart-canvas" id="risk-distribution-chart" role="img" aria-label="Risk severity distribution chart"></div>
+                </div>
+                <p class="risk-chart-note" id="risk-distribution-note">The band chart gives the quickest read on how urgent the visible watchlist really is.</p>
+            </article>
+        </section>
 
-            <nav class="risk-pagination" aria-label="Risk table pages">
-                {% if page_obj.has_previous %}
-                <a class="risk-page-link risk-page-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Prev</a>
-                {% else %}
-                <span class="risk-page-link risk-page-arrow is-disabled">Prev</span>
-                {% endif %}
+        <section class="risk-flow-stage risk-flow-stage-support">
+            <div class="risk-flow-header">
+                <p class="risk-flow-kicker">Chapter 2</p>
+                <h2 class="risk-flow-title">What Is Driving The Risk</h2>
+            </div>
 
-                {% for page_number in page_numbers %}
-                    {% if page_number == page_obj.number %}
-                    <span class="risk-page-link is-current">{{ page_number }}</span>
-                    {% else %}
-                    <a class="risk-page-link" href="?page={{ page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">{{ page_number }}</a>
-                    {% endif %}
-                {% endfor %}
+            <div class="risk-support-grid">
+                <article class="risk-insight-card">
+                    <div class="risk-insight-header">
+                        <div>
+                            <p class="risk-insight-kicker">Risk Drivers</p>
+                            <h2 class="risk-insight-title">Shared Intervention Triggers</h2>
+                            <p class="risk-insight-copy" id="risk-drivers-copy">This chart reveals which watchlist drivers are most common across the flagged cohort, so support work starts from the strongest recurring pattern.</p>
+                            <div class="risk-chart-hints" id="risk-drivers-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Shared Intervention Triggers" aria-controls="risk-drivers-chart" aria-label="View Shared Intervention Triggers in full screen" aria-pressed="false">Full screen</button>
+                    </div>
 
-                {% if page_obj.has_next %}
-                <a class="risk-page-link risk-page-arrow" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Next</a>
-                {% else %}
-                <span class="risk-page-link risk-page-arrow is-disabled">Next</span>
-                {% endif %}
-            </nav>
-        </div>
+                    <div class="risk-chart-stage">
+                        <div class="risk-chart-canvas" id="risk-drivers-chart" role="img" aria-label="Risk driver ranking chart"></div>
+                    </div>
+                    <p class="risk-chart-note" id="risk-drivers-note">This ranking separates the most common watchlist trigger from the secondary supporting pressures.</p>
+                </article>
+
+                <article class="risk-insight-card">
+                    <div class="risk-insight-header">
+                        <div>
+                            <p class="risk-insight-kicker">Academic Levels</p>
+                            <h2 class="risk-insight-title">Where Pressure Builds</h2>
+                            <p class="risk-insight-copy" id="risk-levels-copy">The level split shows which academic levels carry the heaviest intervention load, and whether that pressure is moderate or already high risk.</p>
+                            <div class="risk-chart-hints" id="risk-levels-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Pressure Builds" aria-controls="risk-levels-chart" aria-label="View Where Pressure Builds in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="risk-chart-stage">
+                        <div class="risk-chart-canvas" id="risk-levels-chart" role="img" aria-label="Academic level risk concentration chart"></div>
+                    </div>
+                    <p class="risk-chart-note" id="risk-levels-note">The stacked level view keeps medium and high pressure in one line so intervention load is easy to compare.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="risk-flow-stage risk-flow-stage-programme">
+            <div class="risk-flow-header">
+                <p class="risk-flow-kicker">Chapter 3</p>
+                <h2 class="risk-flow-title">Where Support Should Concentrate</h2>
+            </div>
+
+            <article class="risk-insight-card risk-insight-card-wide">
+                <div class="risk-insight-header">
+                    <div>
+                        <p class="risk-insight-kicker">Programme Focus</p>
+                        <h2 class="risk-insight-title">Programmes Carrying The Largest Watchlist Load</h2>
+                        <p class="risk-insight-copy" id="risk-programmes-copy">Programme concentration matters because it turns abstract risk into an actual support queue that academic teams can act on.</p>
+                        <div class="risk-chart-hints" id="risk-programmes-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programmes Carrying The Largest Watchlist Load" aria-controls="risk-programmes-chart" aria-label="View Programme Watchlist Load in full screen" aria-pressed="false">Full screen</button>
+                </div>
+
+                <div class="risk-chart-stage">
+                    <div class="risk-chart-canvas" id="risk-programmes-chart" role="img" aria-label="Programme risk concentration chart"></div>
+                </div>
+                <p class="risk-chart-note" id="risk-programmes-note">This keeps programme concentration and severity mix together so the next intervention block can be planned from one view.</p>
+            </article>
+        </section>
+
+        <section class="risk-flow-stage risk-flow-stage-register">
+            <div class="risk-flow-header">
+                <p class="risk-flow-kicker">Chapter 4</p>
+                <h2 class="risk-flow-title">Which Students Need Attention Now</h2>
+            </div>
+
+            <article class="risk-register-card">
+                <div class="risk-register-header">
+                    <div class="risk-register-copy">
+                        <p class="risk-insight-kicker">Action Register</p>
+                        <h2 class="risk-register-title">Student Risk Monitor</h2>
+                        <p class="risk-register-subtitle">Use the register after the story panels to move from system-level pressure into named students, programmes, and intervention signals.</p>
+                    </div>
+
+                    <form class="risk-toolbar" method="get">
+                        {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                        {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+                        {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                        <input class="risk-search" type="search" name="q" value="{{ search_query }}" placeholder="Search at-risk students" aria-label="Search at-risk students">
+                        <button class="risk-search-button" type="submit">Search</button>
+                    </form>
+                </div>
+
+                <div class="risk-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="At-risk students table">
+                    <table class="risk-table">
+                        <colgroup>
+                            <col class="risk-col-student">
+                            <col class="risk-col-programme">
+                            <col class="risk-col-level">
+                            <col class="risk-col-average">
+                            <col class="risk-col-fails">
+                            <col class="risk-col-carrying">
+                            <col class="risk-col-decision">
+                            <col class="risk-col-status">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th class="risk-th-student">Student</th>
+                                <th>Programme</th>
+                                <th>Academic Level</th>
+                                <th>Average Mark</th>
+                                <th>Failed Modules</th>
+                                <th>Carrying</th>
+                                <th>Decision</th>
+                                <th class="risk-th-status">Risk Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in risk_rows %}
+                            <tr>
+                                <td class="risk-td-student">
+                                    <a class="risk-student-link" href="{% url 'dashboard:student-detail' row.detail_slug %}" aria-label="View {{ row.name }} profile">
+                                        <span class="risk-student-name">{{ row.name }}</span>
+                                        <span class="risk-student-meta">{{ row.registration_number }}</span>
+                                    </a>
+                                </td>
+                                <td>{{ row.programme }}</td>
+                                <td>{{ row.academic_level }}</td>
+                                <td>{{ row.average_mark }}</td>
+                                <td>{{ row.failed_courses }}</td>
+                                <td>{{ row.carrying }}</td>
+                                <td>{{ row.decision }}</td>
+                                <td class="risk-td-status">
+                                    <span class="risk-status-badge risk-status-{{ row.risk_level_key }}">{{ row.risk_level }}</span>
+                                    <span class="risk-status-copy">{{ row.risk_drivers_display }}</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td class="risk-empty" colspan="8">No at-risk students matched the current filters.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="risk-footer">
+                    <p class="risk-results-meta">
+                        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_students }} at-risk students
+                        {% if cohort_total_students %}
+                        across {{ cohort_total_students }} visible students
+                        {% endif %}
+                    </p>
+
+                    <nav class="risk-pagination" aria-label="Risk table pages">
+                        {% if page_obj.has_previous %}
+                        <a class="risk-page-link risk-page-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Prev</a>
+                        {% else %}
+                        <span class="risk-page-link risk-page-arrow is-disabled">Prev</span>
+                        {% endif %}
+
+                        {% for page_number in page_numbers %}
+                            {% if page_number == page_obj.number %}
+                            <span class="risk-page-link is-current">{{ page_number }}</span>
+                            {% else %}
+                            <a class="risk-page-link" href="?page={{ page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">{{ page_number }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <a class="risk-page-link risk-page-arrow" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Next</a>
+                        {% else %}
+                        <span class="risk-page-link risk-page-arrow is-disabled">Next</span>
+                        {% endif %}
+                    </nav>
+                </div>
+            </article>
+        </section>
     </section>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{{ risk_distribution_rows|json_script:"risk-distribution-data" }}
+{{ risk_driver_rows|json_script:"risk-driver-data" }}
+{{ risk_level_rows|json_script:"risk-level-data" }}
+{{ risk_programme_rows|json_script:"risk-programme-data" }}
+{{ risk_card_narratives|json_script:"risk-card-narratives" }}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/risk.js' %}?v=20260403-risk-storyflow10"></script>
 {% endblock %}

@@ -47,24 +47,6 @@ PROGRAMME_SUMMARY_CARD_SPECS = [
     {"key": "students", "label": "Students", "tone": "default"},
     {"key": "average_pass_rate", "label": "Average Pass Rate", "tone": "default"},
 ]
-DEMOGRAPHIC_SUMMARY_CARD_SPECS = [
-    {"key": "students", "label": "Students", "tone": "default"},
-    {"key": "male", "label": "Male", "tone": "default"},
-    {"key": "female", "label": "Female", "tone": "default"},
-    {"key": "birth_locations", "label": "Birth Locations", "tone": "default"},
-]
-ACADEMIC_LEVEL_SUMMARY_CARD_SPECS = [
-    {"key": "levels", "label": "Levels", "tone": "default"},
-    {"key": "registrations", "label": "Registrations", "tone": "default"},
-    {"key": "students", "label": "Students", "tone": "default"},
-    {"key": "average_pass_rate", "label": "Average Pass Rate", "tone": "default"},
-]
-RISK_SUMMARY_CARD_SPECS = [
-    {"key": "at_risk_students", "label": "At Risk Students", "tone": "danger"},
-    {"key": "high_risk", "label": "High Risk", "tone": "danger"},
-    {"key": "medium_risk", "label": "Medium Risk", "tone": "default"},
-    {"key": "multi_fail", "label": "2+ Failed Modules", "tone": "default"},
-]
 SYSTEM_MANAGEMENT_SUMMARY_CARD_SPECS = [
     {"key": "total_users", "label": "Users", "tone": "default"},
     {"key": "active_users", "label": "Active Accounts", "tone": "default"},
@@ -81,19 +63,11 @@ RETENTION_EXIT_DECISIONS = {
     "fail",
     "failed",
 }
-HIGH_RISK_DECISIONS = {
-    "retake",
-    "repeat",
-    "fail",
-    "failed",
-    "excluded",
-    "withdrawn",
-    "dropped",
-    "dropout",
-    "suspended",
-    "stopped",
-}
-RISK_PRIORITY = {"High Risk": 0, "Medium Risk": 1, "Low Risk": 2}
+GENDER_BUCKETS = (
+    ("male", "Male"),
+    ("female", "Female"),
+    ("unspecified", "Unspecified"),
+)
 
 
 def extract_period_year(period_name):
@@ -149,6 +123,17 @@ def format_academic_level_label(academic_year, semester):
     year_label = format_academic_year_label(academic_year)
     semester_label = format_semester_label(semester)
     return f"{year_label}, {semester_label}"
+
+
+def normalize_gender_key(gender):
+    """Normalize free-text gender values into stable dashboard buckets."""
+
+    text = str(gender or "").strip().lower()
+    if text == "male":
+        return "male"
+    if text == "female":
+        return "female"
+    return "unspecified"
 
 
 def build_filters(request):
@@ -347,258 +332,27 @@ def get_home_summary_values(request):
 
 
 def get_programmes_queryset(request, search_query=""):
-    """Return annotated programme rows for programme analytics pages."""
+    """Delegate programme queryset shaping to the feature package for compatibility."""
 
-    programme_filter = build_registration_filter_q(request, prefix="registrations__")
-    programmes = (
-        Programme.objects.select_related("department__faculty")
-        .filter(programme_filter)
-        .annotate(
-            registration_count=Count("registrations", filter=programme_filter, distinct=True),
-            student_count=Count("registrations__student", filter=programme_filter, distinct=True),
-            average_mark=Avg(
-                "registrations__course_results__mark",
-                filter=programme_filter & Q(registrations__course_results__mark__isnull=False),
-            ),
-            pass_count=Count(
-                "registrations__course_results",
-                filter=programme_filter & Q(registrations__course_results__mark__gte=50),
-                distinct=True,
-            ),
-            mark_count=Count(
-                "registrations__course_results",
-                filter=programme_filter & Q(registrations__course_results__mark__isnull=False),
-                distinct=True,
-            ),
-        )
-        .distinct()
-        .order_by("name")
-    )
+    from .programmes.services import get_programmes_queryset as feature_get_programmes_queryset
 
-    if search_query:
-        programmes = programmes.filter(
-            Q(name__icontains=search_query)
-            | Q(code__icontains=search_query)
-            | Q(department__name__icontains=search_query)
-            | Q(department__faculty__name__icontains=search_query)
-        )
-
-    return programmes
+    return feature_get_programmes_queryset(request, search_query)
 
 
 def build_programme_rows(programmes):
-    """Transform annotated programme queryset rows for template rendering."""
+    """Delegate programme row shaping to the feature package for compatibility."""
 
-    programme_rows = []
-    for programme in programmes:
-        pass_rate = round((programme.pass_count / programme.mark_count) * 100) if programme.mark_count else 0
-        programme_rows.append(
-            {
-                "code": programme.code,
-                "name": programme.name,
-                "faculty": programme.department.faculty.name if programme.department else "",
-                "department": programme.department.name if programme.department else "",
-                "students": programme.student_count,
-                "registrations": programme.registration_count,
-                "average_mark": round(programme.average_mark or 0),
-                "pass_rate": f"{pass_rate}%",
-            }
-        )
+    from .programmes.services import build_programme_rows as feature_build_programme_rows
 
-    return programme_rows
+    return feature_build_programme_rows(programmes)
 
 
 def get_programme_summary_values(request, search_query=""):
-    """Calculate programme summary metrics for asynchronous loading."""
+    """Delegate programme summary metrics to the feature package for compatibility."""
 
-    programme_rows = build_programme_rows(get_programmes_queryset(request, search_query))
+    from .programmes.services import get_programme_summary_values as feature_get_programme_summary_values
 
-    return {
-        "programmes": len(programme_rows),
-        "registrations": sum(row["registrations"] for row in programme_rows),
-        "students": sum(row["students"] for row in programme_rows),
-        "average_pass_rate": (
-            f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in programme_rows) / len(programme_rows))}%"
-            if programme_rows
-            else "0%"
-        ),
-    }
-
-
-def build_demographic_data(request, search_query=""):
-    """Build demographic tables and supporting counts from filtered registrations."""
-
-    registrations = get_filtered_registrations(request)
-    if search_query:
-        registrations = registrations.filter(
-            Q(student__first_names__icontains=search_query)
-            | Q(student__surname__icontains=search_query)
-            | Q(student__gender__icontains=search_query)
-            | Q(student__place_of_birth__icontains=search_query)
-            | Q(programme__name__icontains=search_query)
-        )
-
-    unique_students = {}
-    for registration in registrations:
-        unique_students[registration.student.registration_number] = {
-            "student": registration.student,
-            "programme": registration.programme,
-        }
-
-    student_values = list(unique_students.values())
-    total_students = len(student_values)
-    male_count = sum(1 for item in student_values if item["student"].gender.upper() == "MALE")
-    female_count = sum(1 for item in student_values if item["student"].gender.upper() == "FEMALE")
-    unspecified_count = total_students - male_count - female_count
-
-    gender_rows = [
-        {"label": "Male", "count": male_count, "share": f"{round((male_count / total_students) * 100) if total_students else 0}%"},
-        {"label": "Female", "count": female_count, "share": f"{round((female_count / total_students) * 100) if total_students else 0}%"},
-        {"label": "Unspecified", "count": unspecified_count, "share": f"{round((unspecified_count / total_students) * 100) if total_students else 0}%"},
-    ]
-
-    location_counts = {}
-    programme_gender_counts = {}
-    for item in student_values:
-        place = item["student"].place_of_birth.strip() or "Unspecified"
-        location_counts[place] = location_counts.get(place, 0) + 1
-
-        programme_name = item["programme"].name
-        if programme_name not in programme_gender_counts:
-            programme_gender_counts[programme_name] = {"male": 0, "female": 0, "unspecified": 0}
-
-        gender_key = item["student"].gender.strip().lower()
-        if gender_key == "male":
-            programme_gender_counts[programme_name]["male"] += 1
-        elif gender_key == "female":
-            programme_gender_counts[programme_name]["female"] += 1
-        else:
-            programme_gender_counts[programme_name]["unspecified"] += 1
-
-    location_rows = [
-        {"place": place, "count": count, "share": f"{round((count / total_students) * 100) if total_students else 0}%"}
-        for place, count in sorted(location_counts.items(), key=lambda item: (-item[1], item[0]))[:10]
-    ]
-
-    programme_rows = [
-        {
-            "programme": programme_name,
-            "male": counts["male"],
-            "female": counts["female"],
-            "unspecified": counts["unspecified"],
-            "total": counts["male"] + counts["female"] + counts["unspecified"],
-        }
-        for programme_name, counts in sorted(
-            programme_gender_counts.items(),
-            key=lambda item: (-(item[1]["male"] + item[1]["female"] + item[1]["unspecified"]), item[0]),
-        )[:12]
-    ]
-
-    return {
-        "total_students": total_students,
-        "male_count": male_count,
-        "female_count": female_count,
-        "location_counts": location_counts,
-        "gender_rows": gender_rows,
-        "location_rows": location_rows,
-        "programme_rows": programme_rows,
-    }
-
-
-def get_demographic_summary_values(request, search_query=""):
-    """Calculate demographic summary metrics for asynchronous loading."""
-
-    demographic_data = build_demographic_data(request, search_query)
-    return {
-        "students": demographic_data["total_students"],
-        "male": demographic_data["male_count"],
-        "female": demographic_data["female_count"],
-        "birth_locations": len(demographic_data["location_counts"]),
-    }
-
-
-def build_academic_level_rows(request, search_query=""):
-    """Build academic-level table rows from filtered registrations."""
-
-    registrations = get_filtered_registrations(request)
-    if search_query:
-        registrations = registrations.filter(
-            Q(period__academic_year__icontains=search_query)
-            | Q(period__semester__icontains=search_query)
-            | Q(programme__name__icontains=search_query)
-            | Q(programme__department__name__icontains=search_query)
-        )
-
-    level_map = {}
-    for registration in registrations:
-        year = registration.period.academic_year or "?"
-        semester = registration.period.semester or "?"
-        level_key = f"{year}.{semester}"
-
-        if level_key not in level_map:
-            level_map[level_key] = {
-                "level": format_academic_level_label(year, semester),
-                "sort_year": int(year) if str(year).isdigit() else 0,
-                "sort_semester": int(semester) if str(semester).isdigit() else 0,
-                "registrations": 0,
-                "students": set(),
-                "marks_total": 0,
-                "mark_count": 0,
-                "pass_count": 0,
-                "programme_counts": {},
-            }
-
-        level_map[level_key]["registrations"] += 1
-        level_map[level_key]["students"].add(registration.student_id)
-        programme_name = registration.programme.name
-        level_map[level_key]["programme_counts"][programme_name] = level_map[level_key]["programme_counts"].get(programme_name, 0) + 1
-
-        for result in registration.course_results.all():
-            if result.mark is None:
-                continue
-            level_map[level_key]["marks_total"] += float(result.mark)
-            level_map[level_key]["mark_count"] += 1
-            if result.mark >= 50:
-                level_map[level_key]["pass_count"] += 1
-
-    level_rows = []
-    for item in sorted(level_map.values(), key=lambda row: (row["sort_year"], row["sort_semester"])):
-        top_programme = ""
-        if item["programme_counts"]:
-            top_programme = max(item["programme_counts"].items(), key=lambda entry: entry[1])[0]
-
-        mark_count = item["mark_count"]
-        avg_mark = round(item["marks_total"] / mark_count) if mark_count else 0
-        pass_rate = round((item["pass_count"] / mark_count) * 100) if mark_count else 0
-
-        level_rows.append(
-            {
-                "level": item["level"],
-                "students": len(item["students"]),
-                "registrations": item["registrations"],
-                "average_mark": avg_mark,
-                "pass_rate": f"{pass_rate}%",
-                "top_programme": top_programme,
-            }
-        )
-
-    return level_rows
-
-
-def get_academic_level_summary_values(request, search_query=""):
-    """Calculate academic-level summary metrics for asynchronous loading."""
-
-    level_rows = build_academic_level_rows(request, search_query)
-    return {
-        "levels": len(level_rows),
-        "registrations": sum(row["registrations"] for row in level_rows),
-        "students": sum(row["students"] for row in level_rows),
-        "average_pass_rate": (
-            f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in level_rows) / len(level_rows))}%"
-            if level_rows
-            else "0%"
-        ),
-    }
+    return feature_get_programme_summary_values(request, search_query)
 
 
 def normalize_decision_label(decision):
@@ -620,405 +374,76 @@ def build_initials(name):
 
 
 def assess_student_risk(registrations):
-    """Score a student's filtered registrations and classify their current academic risk."""
+    """Delegate risk scoring to the feature package for compatibility."""
 
-    latest_registration = max(registrations, key=lambda registration: (registration.period.external_id, registration.id))
-    mark_values = []
-    failed_courses = 0
+    from .risk.services import assess_student_risk as feature_assess_student_risk
 
-    for registration in registrations:
-        for result in registration.course_results.all():
-            if result.mark is None:
-                continue
-            mark_value = float(result.mark)
-            mark_values.append(mark_value)
-            if mark_value < 50:
-                failed_courses += 1
-
-    average_mark = round(sum(mark_values) / len(mark_values)) if mark_values else None
-    carrying = max((registration.carrying or 0) for registration in registrations)
-    decision_label = normalize_decision_label(latest_registration.decision)
-    decision_key = decision_label.lower()
-
-    risk_score = 0
-    risk_drivers = []
-
-    if average_mark is not None:
-        if average_mark < 50:
-            risk_score += 3
-            risk_drivers.append("average below 50%")
-        elif average_mark < 60:
-            risk_score += 1
-            risk_drivers.append("average below 60%")
-
-    if failed_courses >= 3:
-        risk_score += 3
-        risk_drivers.append("3+ failed modules")
-    elif failed_courses == 2:
-        risk_score += 2
-        risk_drivers.append("2 failed modules")
-    elif failed_courses == 1:
-        risk_score += 1
-        risk_drivers.append("1 failed module")
-
-    if carrying >= 2:
-        risk_score += 2
-        risk_drivers.append(f"{carrying} carried modules")
-    elif carrying == 1:
-        risk_score += 1
-        risk_drivers.append("1 carried module")
-
-    if decision_key in HIGH_RISK_DECISIONS:
-        risk_score += 2
-        risk_drivers.append(f"{decision_label} decision")
-
-    if risk_score >= 4:
-        risk_level = "High Risk"
-    elif risk_score >= 2:
-        risk_level = "Medium Risk"
-    else:
-        risk_level = "Low Risk"
-
-    return {
-        "latest_registration": latest_registration,
-        "average_mark": average_mark,
-        "failed_courses": failed_courses,
-        "carrying": carrying,
-        "risk_score": risk_score,
-        "decision": decision_label,
-        "risk_level": risk_level,
-        "risk_level_key": risk_level.lower().replace(" ", "-"),
-        "risk_drivers": ", ".join(risk_drivers) if risk_drivers else "Performance currently stable",
-    }
+    return feature_assess_student_risk(registrations)
 
 
 def build_student_risk_profiles(request, search_query=""):
-    """Build per-student risk profiles from the currently filtered registration scope."""
+    """Delegate student risk profiling to the feature package for compatibility."""
 
-    registrations = get_filtered_registrations(request)
-    if search_query:
-        registrations = registrations.filter(
-            Q(student__first_names__icontains=search_query)
-            | Q(student__surname__icontains=search_query)
-            | Q(student__registration_number__icontains=search_query)
-            | Q(programme__name__icontains=search_query)
-            | Q(programme__department__name__icontains=search_query)
-            | Q(decision__icontains=search_query)
-        )
+    from .risk.services import build_student_risk_profiles as feature_build_student_risk_profiles
 
-    student_registrations = {}
-    for registration in registrations:
-        student_registrations.setdefault(registration.student_id, []).append(registration)
-
-    risk_rows = []
-    for grouped_registrations in student_registrations.values():
-        assessment = assess_student_risk(grouped_registrations)
-        if assessment["risk_level"] == "Low Risk":
-            continue
-
-        latest_registration = assessment["latest_registration"]
-        risk_rows.append(
-            {
-                "name": latest_registration.student.full_name,
-                "registration_number": latest_registration.student.registration_number,
-                "programme": latest_registration.programme.name,
-                "faculty": (
-                    latest_registration.programme.department.faculty.name
-                    if latest_registration.programme.department and latest_registration.programme.department.faculty
-                    else "Unassigned"
-                ),
-                "academic_level": format_academic_level_label(
-                    latest_registration.period.academic_year,
-                    latest_registration.period.semester,
-                ),
-                "average_mark": assessment["average_mark"] if assessment["average_mark"] is not None else "-",
-                "average_mark_sort": assessment["average_mark"] if assessment["average_mark"] is not None else 999,
-                "failed_courses": assessment["failed_courses"],
-                "carrying": assessment["carrying"],
-                "risk_score": assessment["risk_score"],
-                "decision": assessment["decision"],
-                "risk_level": assessment["risk_level"],
-                "risk_level_key": assessment["risk_level_key"],
-                "risk_drivers": assessment["risk_drivers"],
-                "detail_slug": latest_registration.student.registration_number.lower(),
-            }
-        )
-
-    return sorted(
-        risk_rows,
-        key=lambda row: (
-            RISK_PRIORITY[row["risk_level"]],
-            -row["failed_courses"],
-            row["average_mark_sort"],
-            row["name"],
-        ),
-    )
+    return feature_build_student_risk_profiles(request, search_query)
 
 
 def format_risk_monitor_drivers(risk_driver_text):
-    """Remove redundant phrases from the risk-monitor explanation shown on the table."""
+    """Delegate risk table driver cleanup to the feature package for compatibility."""
 
-    drivers = [driver.strip() for driver in str(risk_driver_text or "").split(",") if driver.strip()]
-    filtered_drivers = [driver for driver in drivers if driver.lower() != "average below 50%"]
+    from .risk.services import format_risk_monitor_drivers as feature_format_risk_monitor_drivers
 
-    if filtered_drivers:
-        return ", ".join(filtered_drivers)
-    if drivers:
-        return "Performance needs support"
-    return "Performance currently stable"
+    return feature_format_risk_monitor_drivers(risk_driver_text)
 
 
 def format_insight_flagged_meta(risk_driver_text, academic_level):
-    """Build concise flagged-student copy for the insights page."""
+    """Delegate insight-card risk meta formatting to the feature package for compatibility."""
 
-    cleaned_driver_text = format_risk_monitor_drivers(risk_driver_text)
-    lead_text = cleaned_driver_text.split(", ")[0] if cleaned_driver_text else "Performance needs support"
+    from .risk.services import format_insight_flagged_meta as feature_format_insight_flagged_meta
 
-    if academic_level:
-        return f"{lead_text} - {academic_level}"
-    return lead_text
+    return feature_format_insight_flagged_meta(risk_driver_text, academic_level)
 
 
 def build_risk_rows(request, search_query=""):
-    """Build risk-monitor rows for students who need academic intervention."""
+    """Delegate risk register row building to the feature package for compatibility."""
 
-    risk_rows = []
-    for row in build_student_risk_profiles(request, search_query):
-        if row["risk_level"] == "Low Risk":
-            continue
+    from .risk.services import build_risk_rows as feature_build_risk_rows
 
-        risk_rows.append(
-            {
-                **row,
-                "risk_drivers_display": format_risk_monitor_drivers(row["risk_drivers"]),
-            }
-        )
-
-    return risk_rows
+    return feature_build_risk_rows(request, search_query)
 
 
 def get_risk_summary_values(request, search_query=""):
-    """Calculate student-risk summary metrics for asynchronous hydration."""
+    """Delegate risk summary metrics to the feature package for compatibility."""
 
-    risk_rows = build_risk_rows(request, search_query)
-    return {
-        "at_risk_students": len(risk_rows),
-        "high_risk": sum(1 for row in risk_rows if row["risk_level"] == "High Risk"),
-        "medium_risk": sum(1 for row in risk_rows if row["risk_level"] == "Medium Risk"),
-        "multi_fail": sum(1 for row in risk_rows if row["failed_courses"] >= 2),
-    }
+    from .risk.services import get_risk_summary_values as feature_get_risk_summary_values
+
+    return feature_get_risk_summary_values(request, search_query)
 
 
 def build_insight_scope_pills(request):
     """Build small scope badges that summarize the active insights filter context."""
 
-    return [
-        {"label": "Live analysis", "variant": "live"},
-        {"label": request.GET.get("faculty", "").strip() or "All faculties", "variant": "scope"},
-        {"label": request.GET.get("period", "").strip() or "All periods", "variant": "scope"},
-        {"label": request.GET.get("year", "").strip() or "All years", "variant": "scope"},
-    ]
+    from .insights.services import build_insight_scope_pills as feature_build_insight_scope_pills
+
+    return feature_build_insight_scope_pills(request)
 
 
 def build_insights_dashboard_data(request):
     """Assemble the live operational signals and recommendation content for Insights."""
 
-    registrations = list(get_filtered_registrations(request))
-    total_registrations = len(registrations)
-    risk_profiles = build_student_risk_profiles(request)
-    at_risk_profiles = [row for row in risk_profiles if row["risk_level"] != "Low Risk"]
-    high_risk_profiles = [row for row in at_risk_profiles if row["risk_level"] == "High Risk"]
-    medium_risk_profiles = [row for row in at_risk_profiles if row["risk_level"] == "Medium Risk"]
-    total_students = len(risk_profiles)
+    from .insights.services import build_insights_dashboard_data as feature_build_insights_dashboard_data
 
-    retained_students = sum(
-        1 for row in risk_profiles if row["decision"].lower() not in RETENTION_EXIT_DECISIONS
-    )
-    retention_rate = round((retained_students / total_students) * 100) if total_students else 0
-
-    faculty_counts = {}
-    for registration in registrations:
-        faculty_name = (
-            registration.programme.department.faculty.name
-            if registration.programme.department and registration.programme.department.faculty
-            else "Unassigned"
-        )
-        faculty_counts[faculty_name] = faculty_counts.get(faculty_name, 0) + 1
-
-    sorted_faculties = sorted(faculty_counts.items(), key=lambda item: (-item[1], item[0]))
-    top_faculty_name, top_faculty_count = sorted_faculties[0] if sorted_faculties else ("No faculty data", 0)
-    faculty_load = round((top_faculty_count / total_registrations) * 100) if total_registrations else 0
-
-    summary_cards = [
-        {
-            "label": "At-Risk Students",
-            "value": f"{len(at_risk_profiles):,}",
-            "note": f"{len(high_risk_profiles)} high priority",
-            "tone": "danger",
-        },
-        {
-            "label": "Retention Rate",
-            "value": f"{retention_rate}%",
-            "note": f"{retained_students:,} students persisting",
-            "tone": "warning",
-        },
-        {
-            "label": "Faculty Load",
-            "value": f"{faculty_load}%",
-            "note": top_faculty_name,
-            "tone": "neutral",
-        },
-        {
-            "label": "Enrolled Total",
-            "value": f"{total_students:,}",
-            "note": f"{total_registrations:,} registrations in scope",
-            "tone": "success",
-        },
-    ]
-
-    flagged_students = []
-    for row in at_risk_profiles[:4]:
-        meta = format_insight_flagged_meta(row["risk_drivers"], row["academic_level"])
-        flagged_students.append(
-            {
-                "initials": build_initials(row["name"]),
-                "name": row["name"],
-                "meta": meta,
-                "risk_level": row["risk_level"],
-                "risk_key": row["risk_level_key"],
-                "detail_slug": row["detail_slug"],
-            }
-        )
-
-    faculty_load_rows = []
-    faculty_tones = ["cyan", "teal", "amber", "rose"]
-    for index, (name, count) in enumerate(sorted_faculties[:4]):
-        faculty_load_rows.append(
-            {
-                "label": name,
-                "value": round((count / total_registrations) * 100) if total_registrations else 0,
-                "tone": faculty_tones[index % len(faculty_tones)],
-            }
-        )
-
-    risk_distribution_rows = []
-    risk_bands = [
-        ("Critical (6+)", lambda score: score >= 6, "critical"),
-        ("High (4-5)", lambda score: 4 <= score <= 5, "high"),
-        ("Moderate (2-3)", lambda score: 2 <= score <= 3, "moderate"),
-        ("Low (0-1)", lambda score: score <= 1, "low"),
-    ]
-    for label, matcher, tone in risk_bands:
-        count = sum(1 for row in risk_profiles if matcher(row["risk_score"]))
-        risk_distribution_rows.append(
-            {
-                "label": label,
-                "count": count,
-                "percent": round((count / total_students) * 100) if total_students else 0,
-                "tone": tone,
-            }
-        )
-
-    sample_size_factor = min(14, total_students // 35)
-    high_signal_factor = min(10, len(high_risk_profiles) * 2)
-    concentration_factor = 8 if faculty_load >= 45 else 4
-    confidence_rows = [
-        {
-            "label": "Student flagging",
-            "value": min(96, 78 + sample_size_factor + high_signal_factor),
-        },
-        {
-            "label": "Retention outlook",
-            "value": min(95, 74 + sample_size_factor + (4 if retention_rate >= 80 else 1)),
-        },
-        {
-            "label": "Faculty balancing",
-            "value": min(93, 70 + sample_size_factor + concentration_factor),
-        },
-        {
-            "label": "Intervention targeting",
-            "value": min(97, 76 + sample_size_factor + (6 if at_risk_profiles else 0)),
-        },
-    ]
-
-    risk_by_programme = {}
-    for row in at_risk_profiles:
-        risk_by_programme[row["programme"]] = risk_by_programme.get(row["programme"], 0) + 1
-    top_risk_programme, top_risk_programme_count = max(
-        risk_by_programme.items(),
-        key=lambda item: item[1],
-        default=("the current watchlist", 0),
-    )
-
-    recommendations = [
-        {
-            "title": "Schedule advisor check-ins",
-            "description": (
-                f"{len(high_risk_profiles)} students are in the high-risk band. Prioritise outreach for those "
-                "carrying modules or sitting on retake decisions in the next intervention cycle."
-                if high_risk_profiles
-                else "No students are currently in the high-risk band. Maintain weekly review of flagged cases to keep the watchlist stable."
-            ),
-            "priority": "High priority" if high_risk_profiles else "Monitor",
-            "priority_key": "high" if high_risk_profiles else "neutral",
-            "action_label": "Open risk register",
-            "action_url": reverse("dashboard:risk"),
-        },
-        {
-            "title": f"Review {top_faculty_name} load",
-            "description": (
-                f"{top_faculty_name} currently holds {faculty_load}% of registrations in scope. Rebalance advising, classroom, and support capacity before the next enrolment spike."
-                if total_registrations
-                else "Registration data is not yet available for the selected scope. Confirm the filter context before taking a load-balancing decision."
-            ),
-            "priority": "High priority" if faculty_load >= 50 else "Medium priority",
-            "priority_key": "high" if faculty_load >= 50 else "medium",
-            "action_label": "Review programmes",
-            "action_url": reverse("dashboard:programme"),
-        },
-        {
-            "title": "Target progression support",
-            "description": (
-                f"{top_risk_programme_count} flagged students are concentrated in {top_risk_programme}. A focused support clinic around repeated failures could improve progression."
-                if top_risk_programme_count
-                else "Current filters show no flagged concentration by programme. Keep academic-level support general until new signals emerge."
-            ),
-            "priority": "Medium priority",
-            "priority_key": "medium",
-            "action_label": "Open academic levels",
-            "action_url": reverse("dashboard:academic-level"),
-        },
-    ]
-
-    return {
-        "summary_cards": summary_cards,
-        "scope_pills": build_insight_scope_pills(request),
-        "flagged_students": flagged_students,
-        "flagged_total": len(at_risk_profiles),
-        "recommendations": recommendations,
-        "faculty_load_rows": faculty_load_rows,
-        "risk_distribution_rows": risk_distribution_rows,
-        "confidence_rows": confidence_rows,
-    }
+    return feature_build_insights_dashboard_data(request)
 
 
 @login_required_except_domains()
 def dashboard_home(request):
-    """Render the main overview dashboard shown immediately after login."""
+    """Delegate home-page rendering to the overview feature package."""
 
-    context = build_layout_context(request, "dashboard")
-    context.update(
-        {
-            "page_title": "Overview Dashboard",
-            "summary_cards": build_summary_cards(HOME_SUMMARY_CARD_SPECS),
-            "chart_panels": [
-                {"title": "Pass vs Fail"},
-                {"title": "Risk Level Distribution"},
-                {"title": "Progress Status"},
-            ],
-        }
-    )
-    return render(request, "dashboard/home.html", context)
+    from .overview.views import dashboard_home as feature_dashboard_home
+
+    return feature_dashboard_home(request)
 
 
 @login_required_except_domains()
@@ -1181,112 +606,21 @@ def placeholder_section(request, section_name, title):
 
 
 @login_required_except_domains()
-def risk_view(request):
-    """Render the risk-monitor workspace for students who need academic intervention."""
-
-    search_query = request.GET.get("q", "").strip()
-    risk_rows = build_risk_rows(request, search_query)
-
-    paginator = Paginator(risk_rows, 20)
-    page_obj = paginator.get_page(request.GET.get("page"))
-    page_window_start = max(page_obj.number - 2, 1)
-    page_window_end = min(page_obj.number + 2, paginator.num_pages)
-
-    context = build_layout_context(request, "risk")
-    context.update(
-        {
-            "page_title": "Risk Dashboard",
-            "search_query": search_query,
-            "summary_cards": build_summary_cards(RISK_SUMMARY_CARD_SPECS),
-            "risk_rows": page_obj.object_list,
-            "page_obj": page_obj,
-            "page_numbers": range(page_window_start, page_window_end + 1),
-            "total_students": paginator.count,
-        }
-    )
-    return render(request, "dashboard/risk.html", context)
-
-
-@login_required_except_domains()
 def insights_view(request):
     """Render the institutional insights board with live flagged-student signals."""
 
-    insights_data = build_insights_dashboard_data(request)
+    from .insights.views import insights_view as feature_insights_view
 
-    context = build_layout_context(request, "insights")
-    context.update(
-        {
-            "page_title": "Insights Dashboard",
-            "insight_summary_cards": insights_data["summary_cards"],
-            "insight_scope_pills": insights_data["scope_pills"],
-            "flagged_students": insights_data["flagged_students"],
-            "flagged_total": insights_data["flagged_total"],
-            "recommendations": insights_data["recommendations"],
-            "faculty_load_rows": insights_data["faculty_load_rows"],
-            "risk_distribution_rows": insights_data["risk_distribution_rows"],
-            "confidence_rows": insights_data["confidence_rows"],
-        }
-    )
-    return render(request, "dashboard/insights.html", context)
+    return feature_insights_view(request)
 
 
 @login_required_except_domains()
 def programme_view(request):
-    """Render programme-level analytics, KPIs, and searchable programme rows."""
+    """Delegate the programmes page to the feature package for compatibility."""
 
-    search_query = request.GET.get("q", "").strip()
-    programme_rows = build_programme_rows(get_programmes_queryset(request, search_query))
+    from .programmes.views import programme_view as feature_programme_view
 
-    context = build_layout_context(request, "programmes")
-    context.update(
-        {
-            "page_title": "Programme Dashboard",
-            "search_query": search_query,
-            "summary_cards": build_summary_cards(PROGRAMME_SUMMARY_CARD_SPECS),
-            "programme_rows": programme_rows,
-        }
-    )
-    return render(request, "dashboard/programme.html", context)
-
-
-@login_required_except_domains()
-def demographic_view(request):
-    """Render gender and place-of-birth demographic summaries and tables."""
-
-    search_query = request.GET.get("q", "").strip()
-    demographic_data = build_demographic_data(request, search_query)
-
-    context = build_layout_context(request, "demographics")
-    context.update(
-        {
-            "page_title": "Demographic Dashboard",
-            "search_query": search_query,
-            "summary_cards": build_summary_cards(DEMOGRAPHIC_SUMMARY_CARD_SPECS),
-            "gender_rows": demographic_data["gender_rows"],
-            "location_rows": demographic_data["location_rows"],
-            "programme_rows": demographic_data["programme_rows"],
-        }
-    )
-    return render(request, "dashboard/demographic.html", context)
-
-
-@login_required_except_domains()
-def academic_level_view(request):
-    """Render analytics grouped by academic year and semester level."""
-
-    search_query = request.GET.get("q", "").strip()
-    level_rows = build_academic_level_rows(request, search_query)
-
-    context = build_layout_context(request, "academic-levels")
-    context.update(
-        {
-            "page_title": "Academic Level Dashboard",
-            "search_query": search_query,
-            "summary_cards": build_summary_cards(ACADEMIC_LEVEL_SUMMARY_CARD_SPECS),
-            "level_rows": level_rows,
-        }
-    )
-    return render(request, "dashboard/academic_level.html", context)
+    return feature_programme_view(request)
 
 
 @platform_admin_required
@@ -1385,42 +719,20 @@ def system_management_view(request):
 @ajax_login_required
 @require_GET
 def dashboard_home_metrics(request):
-    """Return overview dashboard metrics as JSON for asynchronous hydration."""
+    """Delegate home metric hydration to the overview feature package."""
 
-    return JsonResponse({"metrics": get_home_summary_values(request)})
+    from .overview.views import dashboard_home_metrics as feature_dashboard_home_metrics
+
+    return feature_dashboard_home_metrics(request)
 
 
 @ajax_login_required
 @require_GET
 def programme_metrics(request):
-    """Return programme dashboard summary metrics as JSON."""
+    """Delegate programme metrics JSON to the feature package for compatibility."""
 
-    search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_programme_summary_values(request, search_query)})
+    from .programmes.views import programme_metrics as feature_programme_metrics
 
-
-@ajax_login_required
-@require_GET
-def demographic_metrics(request):
-    """Return demographic dashboard summary metrics as JSON."""
-
-    search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_demographic_summary_values(request, search_query)})
+    return feature_programme_metrics(request)
 
 
-@ajax_login_required
-@require_GET
-def academic_level_metrics(request):
-    """Return academic-level dashboard summary metrics as JSON."""
-
-    search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_academic_level_summary_values(request, search_query)})
-
-
-@ajax_login_required
-@require_GET
-def risk_metrics(request):
-    """Return student-risk dashboard summary metrics as JSON."""
-
-    search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_risk_summary_values(request, search_query)})

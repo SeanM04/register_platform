@@ -1,17 +1,12 @@
 from django.urls import path
 
+from .academic_levels.views import academic_level_metrics, academic_level_view
+from .demographics.views import demographic_metrics, demographic_view
+from .insights.views import insights_view
+from .overview.views import dashboard_home, dashboard_home_metrics
+from .programmes.views import programme_metrics, programme_view
+from .risk.views import risk_metrics, risk_view
 from .views import (
-    academic_level_view,
-    academic_level_metrics,
-    dashboard_home,
-    dashboard_home_metrics,
-    demographic_view,
-    demographic_metrics,
-    insights_view,
-    programme_view,
-    programme_metrics,
-    risk_metrics,
-    risk_view,
     student_detail,
     student_list,
     system_management_view,

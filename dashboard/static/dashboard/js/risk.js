@@ -1,12 +1,9 @@
-const riskSearchForm = document.querySelector(".risk-toolbar");
-const riskSearchInput = document.querySelector(".risk-search");
-let riskSearchTimer = null;
+import { initialiseRiskPage } from "./risk/index.js?v=20260403-risk-storyflow10";
 
-if (riskSearchForm && riskSearchInput) {
-    riskSearchInput.addEventListener("input", () => {
-        window.clearTimeout(riskSearchTimer);
-        riskSearchTimer = window.setTimeout(() => {
-            riskSearchForm.requestSubmit();
-        }, 450);
-    });
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+        initialiseRiskPage();
+    }, { once: true });
+} else {
+    initialiseRiskPage();
 }

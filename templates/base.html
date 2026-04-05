@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ page_title|default:"Registrar Platform" }}{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'dashboard/images/favicon.svg' %}">
-    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v=20260403-filter-loader03">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -76,7 +76,23 @@
             </main>
         </div>
     </div>
-    <script src="{% static 'dashboard/js/base.js' %}"></script>
+
+    <div
+        class="filter-loading-overlay"
+        id="filter-loading-overlay"
+        hidden
+        aria-hidden="true"
+    >
+        <div class="filter-loading-card" role="status" aria-live="polite" aria-atomic="true">
+            <span class="filter-loading-spinner" aria-hidden="true"></span>
+            <div class="filter-loading-copy">
+                <p class="filter-loading-title">Applying filters</p>
+                <p class="filter-loading-text">Updating the dashboard with your selected scope.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'dashboard/js/base.js' %}?v=20260403-filter-loader03"></script>
     <script src="{% static 'dashboard/js/metrics.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>

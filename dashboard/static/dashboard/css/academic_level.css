@@ -1,8 +1,7 @@
 .level-layout {
     display: grid;
     gap: 0.8rem;
-    height: calc(100vh - 146px);
-    min-height: 0;
+    min-height: calc(100vh - 146px);
 }
 
 .level-metrics {
@@ -45,39 +44,721 @@
     line-height: 1;
 }
 
+.level-story-banner {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.95rem 1rem 1rem;
+    border-radius: 16px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.16), transparent 28%),
+        linear-gradient(135deg, #082340, #0d325d 52%, #184d80);
+    color: #ffffff;
+    box-shadow: 0 18px 34px rgba(8, 35, 64, 0.16);
+}
+
+.level-story-main {
+    display: grid;
+    gap: 0.28rem;
+}
+
+.level-story-kicker {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.level-story-title {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.35;
+}
+
+.level-story-copy {
+    margin: 0;
+    max-width: 56rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.8rem;
+    line-height: 1.55;
+}
+
+.level-story-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.72rem;
+}
+
+.level-story-pill {
+    display: grid;
+    gap: 0.24rem;
+    padding: 0.78rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+}
+
+.level-story-pill-label {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.level-story-pill-value {
+    margin: 0;
+    font-size: 0.96rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.level-story-pill-copy {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.76rem;
+    line-height: 1.45;
+}
+
 .level-card {
     background: var(--panel);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     overflow: hidden;
-    display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     min-height: 0;
 }
 
-.level-card-header {
-    padding: 0.85rem 1rem 0.22rem;
-}
-
-.level-card-copy {
-    margin: 0.22rem 0 0;
-    max-width: 30rem;
-    color: var(--muted);
-    font-size: 0.8rem;
-    line-height: 1.4;
+.level-table-card {
+    overflow: hidden;
 }
 
 .level-toolbar {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 0.42rem;
     align-items: end;
-    padding: 0 1rem 0.52rem;
+}
+
+.level-deep-dive {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+
+.level-insight-card {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem 1rem 1rem;
+    background: #f8fbff;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+}
+
+.level-insight-card-wide {
+    grid-column: 1 / -1;
+}
+
+.level-insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 0.85rem;
+}
+
+.level-insight-kicker {
+    margin: 0;
+    color: var(--sky);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.level-insight-title {
+    margin: 0.25rem 0 0;
+    color: var(--navy);
+    font-size: 1rem;
+}
+
+.level-insight-copy {
+    margin: 0.32rem 0 0;
+    color: var(--muted);
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.level-chart-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    margin-top: 0.52rem;
+}
+
+.level-chart-hint {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.56rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.level-chart-hint.is-inspect {
+    background: rgba(79, 176, 209, 0.12);
+    color: #0f4c5c;
+}
+
+.level-chart-hint.is-drill {
+    background: rgba(8, 35, 64, 0.09);
+    color: #082340;
+}
+
+.level-chart-hint.is-support {
+    background: rgba(148, 163, 184, 0.12);
+    color: #475569;
+}
+
+.level-insight-empty {
+    margin: 0;
+    padding: 1rem 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.level-chart-stage {
+    min-height: 0;
+    padding: 0.25rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 247, 252, 0.98));
+    border: 0;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.level-chart-canvas {
+    min-height: 280px;
+    width: 100%;
+}
+
+.level-insight-card-wide .level-chart-canvas {
+    min-height: 320px;
+}
+
+.level-insight-card-top-enrolment .level-chart-canvas {
+    min-height: 360px;
+}
+
+.level-insight-card-gender .level-chart-stage {
+    padding: 0.6rem 0.6rem 0.45rem;
+}
+
+.level-insight-card-gender .level-chart-canvas {
+    min-height: 360px;
+}
+
+.level-chart-context {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.7rem 0.85rem 0.35rem;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 249, 253, 0.96));
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.level-chart-context.is-hidden {
+    display: none;
+}
+
+.level-chart-context-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.level-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 0.9rem;
+    align-items: center;
+}
+
+.level-chart-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.level-chart-key-toggle {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.level-chart-key-toggle.is-inactive {
+    color: #94a3b8;
+    opacity: 0.78;
+}
+
+.level-chart-key-toggle.is-inactive .level-chart-swatch-bar,
+.level-chart-key-toggle.is-inactive .level-chart-swatch-bar-secondary {
+    background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+}
+
+.level-chart-key-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+.level-chart-swatch {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.level-chart-swatch-bar {
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 0.35rem;
+    background: linear-gradient(180deg, #d3e9f4, #4fb0d1);
+}
+
+.level-chart-swatch-bar-secondary {
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 0.35rem;
+    background: linear-gradient(180deg, #0d325d, #1f4f88);
+}
+
+.level-chart-swatch-line {
+    position: relative;
+    width: 1rem;
+    height: 0.8rem;
+}
+
+.level-chart-swatch-line::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    border-radius: 999px;
+    background: #082340;
+    transform: translateY(-50%);
+}
+
+.level-chart-swatch-line::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #082340;
+    transform: translate(-50%, -50%);
+}
+
+.level-insight-card-top-enrolment.is-detail .level-chart-stage {
+    padding: 0.45rem 0.55rem 0.35rem;
+}
+
+.level-insight-card-top-enrolment.is-detail .level-chart-context {
+    display: grid;
+}
+
+.level-insight-card-top-enrolment.is-detail .level-chart-canvas {
+    min-height: 430px;
+}
+
+.level-insight-card-top-enrolment.is-detail .level-chart-status {
+    max-width: 42rem;
+}
+
+.level-insight-card-pass-trend.is-detail .level-chart-stage {
+    padding: 0.45rem 0.55rem 0.35rem;
+}
+
+.level-insight-card-pass-trend.is-detail .level-chart-context {
+    display: grid;
+}
+
+.level-insight-card-pass-trend.is-detail .level-chart-canvas {
+    min-height: 430px;
+}
+
+.level-insight-card-pass-trend.is-detail .level-chart-status {
+    max-width: 42rem;
+}
+
+.level-chart-canvas.is-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    color: var(--muted);
+    font-size: 0.84rem;
+    text-align: center;
+}
+
+.level-chart-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.5;
+}
+
+.level-chart-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.level-chart-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.55rem;
+}
+
+.level-chart-status {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.5;
+}
+
+.level-chart-note,
+.level-chart-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.55rem;
+}
+
+.level-action-text {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.level-ai-badge-group {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.level-ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    flex-shrink: 0;
+    padding: 0.22rem 0.52rem;
+    border: 1px solid rgba(79, 176, 209, 0.24);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
+    color: #0d325d;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.level-ai-context {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.level-ai-badge.is-stable {
+    border-color: rgba(79, 176, 209, 0.24);
+    background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
+    color: #0d325d;
+}
+
+.level-ai-badge.is-medium {
+    border-color: rgba(14, 116, 144, 0.28);
+    background: linear-gradient(180deg, rgba(227, 250, 255, 0.98), rgba(207, 241, 250, 0.98));
+    color: #0f4c5c;
+}
+
+.level-ai-badge.is-high {
+    border-color: rgba(249, 115, 22, 0.52);
+    background: linear-gradient(180deg, rgba(255, 237, 213, 0.99), rgba(254, 215, 170, 0.99));
+    color: #9a3412;
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.14);
+}
+
+.level-ai-badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: 50%;
+    background: rgba(79, 176, 209, 0.18);
+    color: #0d325d;
+}
+
+.level-ai-badge.is-medium .level-ai-badge-icon {
+    background: rgba(14, 165, 233, 0.16);
+    color: #0f4c5c;
+}
+
+.level-ai-badge.is-high .level-ai-badge-icon {
+    background: rgba(249, 115, 22, 0.22);
+    color: #9a3412;
+}
+
+.level-ai-badge.is-high + .level-ai-context {
+    color: #b45309;
+}
+
+.level-ai-badge-icon svg {
+    width: 0.68rem;
+    height: 0.68rem;
+    fill: currentColor;
+}
+
+.level-chart-expand,
+.level-chart-reset {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.level-chart-expand:hover,
+.level-chart-reset:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
+    transform: translateY(-1px);
+}
+
+.level-chart-expand:focus-visible,
+.level-chart-reset:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.level-chart-expand {
+    margin-left: auto;
+}
+
+.level-chart-reset.is-hidden {
+    display: none;
+}
+
+.level-insight-card:fullscreen,
+.level-insight-card.is-fullscreen {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.15rem 1.2rem;
+    background: #f8fbff;
+    overflow: auto;
+}
+
+.level-insight-card:fullscreen::backdrop,
+.level-insight-card.is-fullscreen::backdrop {
+    background: rgba(8, 35, 64, 0.72);
+}
+
+.level-insight-card:fullscreen .level-chart-stage,
+.level-insight-card.is-fullscreen .level-chart-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.level-insight-card:fullscreen .level-chart-canvas,
+.level-insight-card.is-fullscreen .level-chart-canvas {
+    height: clamp(420px, 70vh, 860px);
+    min-height: clamp(420px, 70vh, 860px);
+}
+
+.level-bar-list,
+.level-gender-list,
+.level-programme-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.level-bar-row,
+.level-gender-row,
+.level-programme-row {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.level-bar-copy,
+.level-gender-top,
+.level-programme-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 0.75rem;
+}
+
+.level-bar-label,
+.level-gender-label,
+.level-programme-name {
+    margin: 0;
+    color: var(--navy);
+    font-size: 0.88rem;
+}
+
+.level-bar-meta,
+.level-gender-meta,
+.level-programme-meta {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
+.level-bar-pill,
+.level-gender-badge,
+.level-programme-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.4rem;
+    padding: 0.34rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(8, 35, 64, 0.08);
+    color: var(--navy);
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.level-bar-visual {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.level-bar-track,
+.level-gender-track {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 12px;
+    background: #dfe8f2;
+    border-radius: 999px;
+}
+
+.level-bar-fill,
+.level-gender-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+}
+
+.level-bar-fill {
+    background: linear-gradient(90deg, #082340, #4fb0d1);
+}
+
+.level-bar-track-programme {
+    background: #deedf3;
+}
+
+.level-bar-fill-programme {
+    background: linear-gradient(90deg, #0d325d, #2d8db6);
+}
+
+.level-gender-fill-male {
+    background: linear-gradient(90deg, #082340, #1f4f88);
+}
+
+.level-gender-fill-female {
+    background: linear-gradient(90deg, #2b7ea2, #4fb0d1);
+}
+
+.level-gender-fill-unspecified {
+    background: linear-gradient(90deg, #7b8ea6, #b0bdcb);
+}
+
+.level-bar-value {
+    min-width: 2.8rem;
+    text-align: right;
+    color: var(--navy);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.level-gender-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+}
+
+.level-table-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.level-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem 0.75rem;
     border-bottom: 1px solid #edf2f7;
+}
+
+.level-section-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 0.95rem;
+}
+
+.level-section-copy {
+    margin: 0.26rem 0 0;
+    color: var(--muted);
+    font-size: 0.79rem;
+    line-height: 1.45;
 }
 
 .level-search {
     width: min(240px, 100%);
+    min-width: 220px;
     padding: 0.56rem 0.78rem;
     border: 1px solid #dbe4f0;
     border-radius: 10px;
@@ -115,6 +796,7 @@
     position: relative;
     overflow: auto;
     min-height: 0;
+    max-height: 58vh;
     scroll-behavior: smooth;
     scrollbar-gutter: stable both-edges;
     scrollbar-width: thin;
@@ -286,8 +968,50 @@
     background: #fbfdff;
 }
 
+.level-table tbody tr.is-emphasized td {
+    background: #f2f9fd;
+    box-shadow:
+        inset 0 -1px 0 #d8e7f3,
+        inset 4px 0 0 #4fb0d1;
+}
+
+.level-table tbody tr.is-emphasized .level-td-programme {
+    background: linear-gradient(90deg, rgba(242, 249, 253, 0.98), #f2f9fd 22px);
+}
+
 .level-table tbody tr:last-child td {
     box-shadow: none;
+}
+
+.level-td-pass {
+    display: grid;
+    gap: 0.18rem;
+    justify-items: center;
+}
+
+.level-pass-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.5rem;
+    padding: 0.22rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(8, 35, 64, 0.08);
+    color: var(--navy);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.level-pass-pill.is-below-target {
+    background: rgba(245, 158, 11, 0.14);
+    color: #9a3412;
+}
+
+.level-pass-flag {
+    color: #b45309;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.3;
 }
 
 .level-empty {
@@ -300,11 +1024,23 @@
     .level-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .level-story-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .level-deep-dive {
+        grid-template-columns: 1fr;
+    }
+
+    .level-insight-card-wide {
+        grid-column: auto;
+    }
 }
 
 @media (max-width: 720px) {
     .level-layout {
-        height: auto;
+        min-height: 0;
     }
 
     .level-metrics {
@@ -320,7 +1056,103 @@
         width: 100%;
     }
 
+    .level-deep-dive {
+        padding: 0;
+    }
+
+    .level-insight-card {
+        padding: 0.9rem;
+    }
+
+    .level-chart-canvas {
+        min-height: 240px;
+    }
+
+    .level-insight-card-wide .level-chart-canvas {
+        min-height: 280px;
+    }
+
+    .level-insight-card-top-enrolment .level-chart-canvas {
+        min-height: 340px;
+    }
+
+    .level-insight-card-gender .level-chart-canvas {
+        min-height: 340px;
+    }
+
+    .level-chart-context {
+        padding: 0.65rem 0.75rem 0.3rem;
+    }
+
+    .level-insight-card-top-enrolment.is-detail .level-chart-canvas {
+        min-height: 360px;
+    }
+
+    .level-insight-card-pass-trend.is-detail .level-chart-canvas {
+        min-height: 360px;
+    }
+
+    .level-bar-copy,
+    .level-gender-top,
+    .level-programme-top,
+    .level-gender-stats {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .level-chart-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .level-chart-action-buttons {
+        justify-content: flex-start;
+    }
+
+    .level-chart-hints {
+        gap: 0.35rem;
+    }
+
+    .level-chart-hint,
+    .level-ai-context {
+        white-space: normal;
+    }
+
+    .level-insight-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .level-section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .level-toolbar {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .level-chart-expand {
+        margin-left: 0;
+        width: fit-content;
+    }
+
+    .level-search {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .level-bar-visual {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+    }
+
+    .level-bar-value {
+        text-align: left;
+    }
+
     .level-table-wrap {
-        max-height: 60vh;
+        max-height: 52vh;
     }
 }

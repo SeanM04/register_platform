@@ -4,162 +4,212 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260403-insights-story02">
 {% endblock %}
 
 {% block content %}
-<section class="insights-layout">
-    <section class="insights-board">
-        <div class="insights-hero">
-            <div class="insights-hero-copy">
-                <p class="insights-kicker">UniStudio Insights</p>
-                <h1 class="insights-title">Live institutional analysis</h1>
-                <p class="insights-copy">
-                    Monitor risk, retention, and faculty concentration through one executive insight surface.
-                </p>
+<section class="insight-layout">
+    <section class="insight-metrics">
+        {% for card in summary_cards %}
+        <article class="insight-metric insight-metric-{{ card.tone }}">
+            <p class="insight-metric-label">{{ card.label }}</p>
+            <p class="insight-metric-value">{{ card.value }}</p>
+            <p class="insight-metric-note">{{ card.note }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="insight-story-banner" id="insight-story-banner" aria-live="polite"></section>
+
+    <section class="insight-scope-row" aria-label="Active insight scope">
+        {% for pill in insight_scope_pills %}
+        <span class="insight-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
+        {% endfor %}
+    </section>
+
+    <section class="insight-story-flow" aria-label="Institutional insights storytelling flow">
+        <section class="insight-flow-stage insight-flow-stage-primary">
+            <div class="insight-flow-header">
+                <p class="insight-flow-kicker">Chapter 1</p>
+                <h2 class="insight-flow-title">How Much Institutional Pressure Is Visible</h2>
             </div>
 
-            <div class="insights-scope">
-                {% for pill in insight_scope_pills %}
-                <span class="insights-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
-                {% endfor %}
-            </div>
-        </div>
-
-        <section class="insights-summary-grid">
-            {% for card in insight_summary_cards %}
-            <article class="insights-summary-card insights-summary-{{ card.tone }}">
-                <p class="insights-summary-label">{{ card.label }}</p>
-                <p class="insights-summary-value">{{ card.value }}</p>
-                <p class="insights-summary-note">{{ card.note }}</p>
-            </article>
-            {% endfor %}
-        </section>
-
-        <section class="insights-main-grid">
-            <article class="insights-panel insights-panel-flagged">
-                <div class="insights-panel-header">
+            <article class="insight-card insight-card-wide">
+                <div class="insight-card-header">
                     <div>
-                        <h2>Flagged students</h2>
-                        <p>{{ flagged_total }} students currently need closer academic attention.</p>
+                        <p class="insight-card-kicker">Risk Snapshot</p>
+                        <h2 class="insight-card-title">Institutional Risk Distribution</h2>
+                        <p class="insight-card-copy" id="insight-distribution-copy">This chart gives the first executive read on whether the current cohort is broadly stable or already leaning into intervention demand.</p>
+                        <div class="insight-chart-hints" id="insight-distribution-hints" aria-label="Chart interaction hints"></div>
                     </div>
-                    <a class="insights-panel-link" href="{% url 'dashboard:risk' %}">Open risk register</a>
+                    <button class="insight-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Institutional Risk Distribution" aria-controls="insight-distribution-chart" aria-label="View Institutional Risk Distribution in full screen" aria-pressed="false">Full screen</button>
                 </div>
 
-                <div class="insights-flagged-list">
+                <div class="insight-chart-stage">
+                    <div class="insight-chart-canvas" id="insight-distribution-chart" role="img" aria-label="Institutional risk distribution chart"></div>
+                </div>
+                <p class="insight-chart-note" id="insight-distribution-note">The distribution view separates stable cohort volume from the active watchlist before you move into operational detail.</p>
+            </article>
+        </section>
+
+        <section class="insight-flow-stage">
+            <div class="insight-flow-header">
+                <p class="insight-flow-kicker">Chapter 2</p>
+                <h2 class="insight-flow-title">Where Capacity And Pressure Are Concentrating</h2>
+            </div>
+
+            <div class="insight-support-grid">
+                <article class="insight-card">
+                    <div class="insight-card-header">
+                        <div>
+                            <p class="insight-card-kicker">Faculty Load</p>
+                            <h2 class="insight-card-title">Registration Load By Faculty</h2>
+                            <p class="insight-card-copy" id="insight-faculty-load-copy">Use this to see where visible demand is pooling before it turns into an operational bottleneck.</p>
+                            <div class="insight-chart-hints" id="insight-faculty-load-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="insight-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Registration Load By Faculty" aria-controls="insight-faculty-load-chart" aria-label="View Registration Load By Faculty in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="insight-chart-stage">
+                        <div class="insight-chart-canvas" id="insight-faculty-load-chart" role="img" aria-label="Faculty registration load chart"></div>
+                    </div>
+                    <p class="insight-chart-note" id="insight-faculty-load-note">Load concentration helps explain where staffing and support queues may feel pressure first.</p>
+                </article>
+
+                <article class="insight-card">
+                    <div class="insight-card-header">
+                        <div>
+                            <p class="insight-card-kicker">Faculty Pressure</p>
+                            <h2 class="insight-card-title">Flagged Students By Faculty</h2>
+                            <p class="insight-card-copy" id="insight-faculty-pressure-copy">This split shows which faculties are carrying the heaviest intervention queue and whether that queue is mainly medium or high risk.</p>
+                            <div class="insight-chart-hints" id="insight-faculty-pressure-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="insight-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Flagged Students By Faculty" aria-controls="insight-faculty-pressure-chart" aria-label="View Flagged Students By Faculty in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="insight-chart-stage">
+                        <div class="insight-chart-canvas" id="insight-faculty-pressure-chart" role="img" aria-label="Faculty flagged-student pressure chart"></div>
+                    </div>
+                    <p class="insight-chart-note" id="insight-faculty-pressure-note">The pressure mix keeps high-risk and medium-risk load in one line so the next support queue is easier to prioritise.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="insight-flow-stage">
+            <div class="insight-flow-header">
+                <p class="insight-flow-kicker">Chapter 3</p>
+                <h2 class="insight-flow-title">What Is Driving The Intervention Queue</h2>
+            </div>
+
+            <article class="insight-card insight-card-wide">
+                <div class="insight-card-header">
+                    <div>
+                        <p class="insight-card-kicker">Recurring Drivers</p>
+                        <h2 class="insight-card-title">Shared Watchlist Triggers</h2>
+                        <p class="insight-card-copy" id="insight-drivers-copy">The strongest recurring trigger should guide where the next institutional support touchpoint starts.</p>
+                        <div class="insight-chart-hints" id="insight-drivers-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="insight-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Shared Watchlist Triggers" aria-controls="insight-drivers-chart" aria-label="View Shared Watchlist Triggers in full screen" aria-pressed="false">Full screen</button>
+                </div>
+
+                <div class="insight-chart-stage">
+                    <div class="insight-chart-canvas" id="insight-drivers-chart" role="img" aria-label="Shared watchlist drivers chart"></div>
+                </div>
+                <p class="insight-chart-note" id="insight-drivers-note">This ranking helps distinguish the lead intervention driver from secondary academic pressure signals.</p>
+            </article>
+
+            <div class="insight-action-grid">
+                <article class="insight-card">
+                    <div class="insight-card-header insight-card-header-stack">
+                        <div>
+                            <p class="insight-card-kicker">Action Plan</p>
+                            <h2 class="insight-card-title">Operational Recommendations</h2>
+                            <p class="insight-card-copy">These recommendations translate the live signals on this page into the next likely operational moves.</p>
+                        </div>
+                    </div>
+
+                    <div class="insight-recommendation-list">
+                        {% for recommendation in recommendations %}
+                        <article class="insight-recommendation-card">
+                            <div class="insight-recommendation-head">
+                                <h3>{{ recommendation.title }}</h3>
+                                <span class="insight-priority insight-priority-{{ recommendation.priority_key }}">{{ recommendation.priority }}</span>
+                            </div>
+                            <p class="insight-recommendation-copy">{{ recommendation.description }}</p>
+                            <a class="insight-recommendation-action" href="{{ recommendation.action_url }}">{{ recommendation.action_label }}</a>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="insight-card">
+                    <div class="insight-card-header insight-card-header-stack">
+                        <div>
+                            <p class="insight-card-kicker">Signal Confidence</p>
+                            <h2 class="insight-card-title">How Strong The Current Read Is</h2>
+                            <p class="insight-card-copy">These confidence bars show how reliable the current operational read is before you act on it.</p>
+                        </div>
+                    </div>
+
+                    <div class="insight-confidence-list">
+                        {% for row in confidence_rows %}
+                        <div class="insight-confidence-row">
+                            <div class="insight-confidence-meta">
+                                <span class="insight-confidence-label">{{ row.label }}</span>
+                                <span class="insight-confidence-value">{{ row.value }}%</span>
+                            </div>
+                            <div class="insight-confidence-track">
+                                <span class="insight-confidence-fill" style="width: {{ row.value }}%"></span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="insight-flow-stage insight-flow-stage-register">
+            <div class="insight-flow-header">
+                <p class="insight-flow-kicker">Chapter 4</p>
+                <h2 class="insight-flow-title">Which Students Need Attention Now</h2>
+            </div>
+
+            <article class="insight-card insight-card-wide">
+                <div class="insight-card-header">
+                    <div>
+                        <p class="insight-card-kicker">Flagged Queue</p>
+                        <h2 class="insight-card-title">Immediate Student Follow-Up</h2>
+                        <p class="insight-card-copy">{{ flagged_total }} students currently need closer academic attention in the visible scope.</p>
+                    </div>
+                    <a class="insight-recommendation-action" href="{% url 'dashboard:risk' %}">Open risk register</a>
+                </div>
+
+                <div class="insight-flagged-list">
                     {% for student in flagged_students %}
-                    <a class="insights-flagged-item" href="{% url 'dashboard:student-detail' student.detail_slug %}">
-                        <span class="insights-avatar insights-avatar-{{ student.risk_key }}">{{ student.initials }}</span>
-                        <span class="insights-flagged-body">
-                            <span class="insights-flagged-name">{{ student.name }}</span>
-                            <span class="insights-flagged-meta">{{ student.meta }}</span>
+                    <a class="insight-flagged-item" href="{% url 'dashboard:student-detail' student.detail_slug %}">
+                        <span class="insight-avatar insight-avatar-{{ student.risk_key }}">{{ student.initials }}</span>
+                        <span class="insight-flagged-body">
+                            <span class="insight-flagged-name">{{ student.name }}</span>
+                            <span class="insight-flagged-meta">{{ student.meta }}</span>
                         </span>
-                        <span class="insights-risk-badge insights-risk-badge-{{ student.risk_key }}">{{ student.risk_level }}</span>
+                        <span class="insight-risk-badge insight-risk-badge-{{ student.risk_key }}">{{ student.risk_level }}</span>
                     </a>
                     {% empty %}
-                    <div class="insights-empty-state">
-                        No students are currently flagged in the selected insight scope.
-                    </div>
-                    {% endfor %}
-                </div>
-            </article>
-
-            <article class="insights-panel insights-panel-recommendations">
-                <div class="insights-panel-header insights-panel-header-stack">
-                    <div class="insights-panel-title-row">
-                        <span class="insights-panel-dot" aria-hidden="true"></span>
-                        <h2>Operational recommendations</h2>
-                    </div>
-                    <p>Recommended actions derived from current risk, retention, and faculty concentration signals.</p>
-                </div>
-
-                <div class="insights-recommendation-list">
-                    {% for recommendation in recommendations %}
-                    <article class="insights-recommendation-card">
-                        <div class="insights-recommendation-head">
-                            <h3>{{ recommendation.title }}</h3>
-                            <span class="insights-priority insights-priority-{{ recommendation.priority_key }}">{{ recommendation.priority }}</span>
-                        </div>
-                        <p class="insights-recommendation-copy">{{ recommendation.description }}</p>
-                        <a class="insights-recommendation-action" href="{{ recommendation.action_url }}">{{ recommendation.action_label }}</a>
-                    </article>
-                    {% endfor %}
-                </div>
-            </article>
-        </section>
-
-        <section class="insights-bottom-grid">
-            <article class="insights-panel">
-                <div class="insights-panel-header insights-panel-header-stack">
-                    <div>
-                        <h2>Faculty load overview</h2>
-                        <p>Registration concentration across faculties in the current scope.</p>
-                    </div>
-                </div>
-
-                <div class="insights-meter-list">
-                    {% for row in faculty_load_rows %}
-                    <div class="insights-meter-row">
-                        <div class="insights-meter-meta">
-                            <span class="insights-meter-label">{{ row.label }}</span>
-                            <span class="insights-meter-value">{{ row.value }}%</span>
-                        </div>
-                        <div class="insights-meter-track">
-                            <span class="insights-meter-fill insights-meter-fill-{{ row.tone }}" style="width: {{ row.value }}%"></span>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="insights-empty-state">No faculty load data is available for the selected filters.</div>
-                    {% endfor %}
-                </div>
-            </article>
-
-            <article class="insights-panel">
-                <div class="insights-panel-header insights-panel-header-stack">
-                    <div>
-                        <h2>Dropout risk distribution</h2>
-                        <p>Student-risk signal strength across the current watchlist and stable cohort.</p>
-                    </div>
-                </div>
-
-                <div class="insights-meter-list">
-                    {% for row in risk_distribution_rows %}
-                    <div class="insights-meter-row">
-                        <div class="insights-meter-meta">
-                            <span class="insights-meter-label">{{ row.label }}</span>
-                            <span class="insights-meter-value">{{ row.count }}</span>
-                        </div>
-                        <div class="insights-meter-track">
-                            <span class="insights-meter-fill insights-meter-fill-{{ row.tone }}" style="width: {{ row.percent }}%"></span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </article>
-
-            <article class="insights-panel">
-                <div class="insights-panel-header insights-panel-header-stack">
-                    <div>
-                        <h2>Insight confidence</h2>
-                        <p>Confidence scores for the strongest operational recommendations on this page.</p>
-                    </div>
-                </div>
-
-                <div class="insights-meter-list">
-                    {% for row in confidence_rows %}
-                    <div class="insights-meter-row">
-                        <div class="insights-meter-meta">
-                            <span class="insights-meter-label">{{ row.label }}</span>
-                            <span class="insights-meter-value">{{ row.value }}%</span>
-                        </div>
-                        <div class="insights-meter-track">
-                            <span class="insights-meter-fill insights-meter-fill-cyan" style="width: {{ row.value }}%"></span>
-                        </div>
-                    </div>
+                    <div class="insight-empty-state">No students are currently flagged in the selected insight scope.</div>
                     {% endfor %}
                 </div>
             </article>
         </section>
     </section>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{{ risk_distribution_rows|json_script:"insight-distribution-data" }}
+{{ faculty_load_rows|json_script:"insight-faculty-load-data" }}
+{{ faculty_pressure_rows|json_script:"insight-faculty-pressure-data" }}
+{{ driver_rows|json_script:"insight-driver-data" }}
+{{ insight_card_narratives|json_script:"insight-card-narratives" }}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260403-insights-story02"></script>
 {% endblock %}

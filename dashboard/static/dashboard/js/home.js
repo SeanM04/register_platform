@@ -1,5 +1,3 @@
-document.querySelectorAll("[data-card]").forEach((card, index) => {
-    window.setTimeout(() => {
-        card.classList.add("is-ready");
-    }, 60 * (index + 1));
-});
+import { initialiseOverviewPage } from "./home/index.js?v=20260403-home-story04";
+
+initialiseOverviewPage();

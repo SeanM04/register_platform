@@ -110,10 +110,19 @@ Most analytics pages follow a common structure:
 
 - shared top filter bar
 - summary metric cards
-- primary data table or main content module
+- story banner plus focused chart chapters for the richer analytics pages
+- action register or primary data table lower on the page when operational follow-up is needed
 - server-rendered data with light JS enhancement
 
 Several metrics panels are hydrated asynchronously so the page shell can load quickly before expensive summaries resolve.
+
+The dashboard backend is also moving toward feature-owned packages inside `dashboard/` for the
+more complex analytics pages. Current examples:
+
+- `dashboard/academic_levels/`
+- `dashboard/demographics/`
+- `dashboard/risk/`
+- `dashboard/insights/`
 
 ## 7. Current Modules
 
@@ -148,6 +157,21 @@ The UI now uses clearer, university-friendly labels such as:
 
 instead of compressed technical labels like `1.1` or `4.2`.
 
+The risk page now also follows the same richer feature pattern as academic levels and
+demographics:
+
+- backend ownership in `dashboard/risk/`
+- page-scoped JS modules in `dashboard/static/dashboard/js/risk/`
+- ECharts-based storytelling sections ahead of the action register
+- safe AI-assisted overview narratives with deterministic fallbacks
+
+The insights page now follows that same feature-owned pattern as well:
+
+- backend ownership in `dashboard/insights/`
+- page-scoped JS modules in `dashboard/static/dashboard/js/insights/`
+- ECharts-based storytelling sections for executive cross-feature monitoring
+- safe AI-assisted overview narratives with deterministic fallbacks
+
 ## 9. Quality and Test Coverage
 
 The project includes automated tests for:
@@ -158,7 +182,7 @@ The project includes automated tests for:
 - protected AJAX endpoint access
 - dashboard filters
 - programme metrics
-- risk view behavior
+- risk view behavior and AI narrative fallbacks
 - insights content
 - system management access
 
@@ -166,6 +190,10 @@ Primary test modules:
 
 - `accounts/tests.py`
 - `dashboard/tests.py`
+- `dashboard/academic_levels/tests.py`
+- `dashboard/demographics/tests.py`
+- `dashboard/risk/tests.py`
+- `dashboard/insights/tests.py`
 
 ## 10. Production Notes
 

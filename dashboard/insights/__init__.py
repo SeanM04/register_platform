@@ -1,0 +1,1 @@
+"""Insights dashboard feature package."""
