@@ -6,8 +6,8 @@ import {
     echartsLib,
     formatCount,
     setChartFallback,
-} from "./shared.js?v=20260404-programmes-story01";
-import { initialisePerformanceNarrative } from "./narratives.js?v=20260404-programmes-story01";
+} from "./shared.js?v=20260405-programmes-progressive01";
+import { initialisePerformanceNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 const buildSymbolSize = (students, maxStudents) => {
     if (!maxStudents) {

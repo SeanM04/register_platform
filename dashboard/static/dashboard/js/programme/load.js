@@ -8,8 +8,8 @@ import {
     formatCount,
     setChartFallback,
     wrapAxisLabel,
-} from "./shared.js?v=20260404-programmes-story01";
-import { initialiseLoadNarrative } from "./narratives.js?v=20260404-programmes-story01";
+} from "./shared.js?v=20260405-programmes-progressive01";
+import { initialiseLoadNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 export const initialiseLoadSection = (context) => {
     initialiseLoadNarrative(context.elements, context.data.topLoadRows, context.data.cardNarratives, context.flags);

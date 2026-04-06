@@ -15,8 +15,18 @@ This package keeps the page maintainable by separating:
 
 - `services.py`: programme aggregation, ranked chart rows, and scope pills
 - `ai_insights.py`: safe rule-based and optional AI-assisted chart-card narratives
-- `presenters.py`: template context assembly
-- `views.py`: HTTP entrypoints for the page and metric hydration
+- `presenters.py`: lightweight shell-context assembly for first paint
+- `views.py`: HTTP entrypoints for the shell page, metric hydration, chart payload hydration, and optional narrative hydration
+
+### Progressive loading architecture
+
+The page now loads in three passes instead of blocking the first HTML response on every chart payload:
+
+1. the HTML shell renders immediately with the layout, summary-card placeholders, scope pills, and empty chart/register containers
+2. the browser requests `programme-payload` in the background and hydrates the story banner, charts, and register rows
+3. when AI narratives are enabled, the browser requests `programme-narratives` separately so slower provider calls do not hold back the operational data
+
+This keeps tab switches noticeably shorter because the browser can paint the new workspace before the heavier aggregation and optional AI work finishes.
 
 ### Important modelling choice
 
@@ -37,3 +47,10 @@ This page should answer three questions quickly:
 1. Which programmes currently carry the most visible load?
 2. Which programmes or departments need academic review first?
 3. Which detailed programme rows should the user inspect in the register next?
+
+### Next performance steps
+
+- add short-lived caching for `programme-payload` and `programme-narratives` by filter scope
+- precompute the largest dashboard aggregates for the most common faculty and period combinations
+- lazy-load the register rows only when the user reaches the register section
+- keep AI hydration optional and asynchronous so the page remains usable even when providers are slow

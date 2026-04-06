@@ -4,7 +4,7 @@ from .academic_levels.views import academic_level_metrics, academic_level_view
 from .demographics.views import demographic_metrics, demographic_view
 from .insights.views import insights_view
 from .overview.views import dashboard_home, dashboard_home_metrics
-from .programmes.views import programme_metrics, programme_view
+from .programmes.views import programme_metrics, programme_narratives, programme_payload, programme_view
 from .risk.views import risk_metrics, risk_view
 from .views import (
     student_detail,
@@ -21,6 +21,8 @@ urlpatterns = [
     path("students/<slug:slug>/", student_detail, name="student-detail"),
     path("programme/", programme_view, name="programme"),
     path("metrics/programme/", programme_metrics, name="programme-metrics"),
+    path("metrics/programme/payload/", programme_payload, name="programme-payload"),
+    path("metrics/programme/narratives/", programme_narratives, name="programme-narratives"),
     path("demographic/", demographic_view, name="demographic"),
     path("metrics/demographic/", demographic_metrics, name="demographic-metrics"),
     path("academic-level/", academic_level_view, name="academic-level"),

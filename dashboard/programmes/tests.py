@@ -18,21 +18,22 @@ from ..test_support import DashboardFixtureMixin
 class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
     """Exercise the story-first programmes dashboard against the shared fixture."""
 
-    def test_programme_view_renders_story_context(self):
-        """Programme page should expose summary cards, chart rows, and the register."""
+    def test_programme_view_renders_lightweight_shell_context(self):
+        """Programme page should render a fast shell without the heavy story payload."""
 
         response = self.client.get(reverse("dashboard:programme"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["summary_cards"]), 4)
-        self.assertTrue(response.context["top_load_rows"])
-        self.assertTrue(response.context["department_rows"])
-        self.assertTrue(response.context["low_pass_rows"])
-        self.assertTrue(response.context["performance_rows"])
-        self.assertTrue(response.context["programme_rows"])
+        self.assertTrue(response.context["scope_pills"])
+        self.assertNotIn("top_load_rows", response.context)
+        self.assertNotIn("department_rows", response.context)
+        self.assertNotIn("low_pass_rows", response.context)
+        self.assertNotIn("performance_rows", response.context)
+        self.assertNotIn("programme_rows", response.context)
 
-    def test_programme_view_respects_faculty_filter_for_story_rows(self):
-        """Programme story rows should respect the selected faculty scope."""
+    def test_programme_view_respects_faculty_filter_for_scope_pills(self):
+        """Programme shell should still expose the active filter scope."""
 
         response = self.client.get(
             reverse("dashboard:programme"),
@@ -40,10 +41,26 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["summary_cards"][0]["value"], 1)
-        self.assertEqual(len(response.context["top_load_rows"]), 1)
-        self.assertEqual(response.context["top_load_rows"][0]["faculty"], self.science_faculty.name)
         self.assertEqual(response.context["scope_pills"][0]["label"], "Filtered programmes")
+        self.assertIn(
+            {"label": f"Faculty: {self.science_faculty.name}", "variant": "scope"},
+            response.context["scope_pills"],
+        )
+
+    def test_programme_payload_endpoint_respects_faculty_filter(self):
+        """Programme payload JSON should still respect the selected faculty."""
+
+        response = self.client.get(
+            reverse("dashboard:programme-payload"),
+            {"faculty": self.science_faculty.name},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+
+        self.assertEqual(len(payload["programme_rows"]), 1)
+        self.assertEqual(payload["top_load_rows"][0]["faculty"], self.science_faculty.name)
+        self.assertEqual(payload["register_meta"]["visible_count"], 1)
 
     def test_programme_metrics_endpoint_respects_faculty_filter(self):
         """Programme metrics JSON should still respect the selected faculty."""
@@ -60,12 +77,15 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["students"], 1)
         self.assertEqual(metrics["average_pass_rate"], "100%")
 
-    def test_programme_view_supplies_rule_based_card_narratives_by_default(self):
-        """Programme chart cards should expose deterministic narratives when AI is off."""
+    def test_programme_narratives_endpoint_supplies_rule_based_copy_by_default(self):
+        """Programme chart narratives should expose deterministic copy when AI is off."""
 
-        response = self.client.get(reverse("dashboard:programme"))
+        response = self.client.get(
+            reverse("dashboard:programme-narratives"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
 
-        narratives = response.context["programme_card_narratives"]
+        narratives = response.json()["card_narratives"]
 
         self.assertEqual(narratives["source"], "rules")
         self.assertIn("load", narratives["cards"])
@@ -84,8 +104,8 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         OPENAI_API_KEY="test-key",
     )
     @patch("dashboard.programmes.ai_insights._request_programme_openai_narratives")
-    def test_programme_view_uses_ai_card_narratives_when_available(self, mock_request):
-        """Programme overview cards should prefer OpenAI copy when the provider succeeds."""
+    def test_programme_narratives_endpoint_uses_ai_copy_when_available(self, mock_request):
+        """Programme overview narratives should prefer OpenAI copy when the provider succeeds."""
 
         mock_request.return_value = """
         {
@@ -93,9 +113,12 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:programme"))
+        response = self.client.get(
+            reverse("dashboard:programme-narratives"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
 
-        narratives = response.context["programme_card_narratives"]
+        narratives = response.json()["card_narratives"]
 
         self.assertEqual(narratives["source"], "openai")
         self.assertEqual(narratives["cards"]["load"]["insight"], "AI load insight")
@@ -107,8 +130,8 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
 
     @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
     @patch("dashboard.programmes.ai_insights._request_programme_google_narratives")
-    def test_programme_view_can_use_google_card_narratives(self, mock_request):
-        """Programme overview cards should support Gemini-generated narratives."""
+    def test_programme_narratives_endpoint_can_use_google_card_narratives(self, mock_request):
+        """Programme overview narratives should support Gemini-generated copy."""
 
         mock_request.return_value = """
         {
@@ -126,9 +149,12 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:programme"))
+        response = self.client.get(
+            reverse("dashboard:programme-narratives"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
 
-        narratives = response.context["programme_card_narratives"]
+        narratives = response.json()["card_narratives"]
 
         self.assertEqual(narratives["source"], "google")
         self.assertEqual(narratives["cards"]["load"]["insight"], "Gemini load insight")

@@ -1,11 +1,17 @@
-import { createProgrammeContext } from "./context.js?v=20260404-programmes-story01";
-import { initialiseDepartmentSection } from "./departments.js?v=20260404-programmes-story01";
-import { initialiseFullscreenControls } from "./fullscreen.js?v=20260404-programmes-story01";
-import { initialiseLoadSection } from "./load.js?v=20260404-programmes-story01";
-import { renderStoryBanner } from "./narratives.js?v=20260404-programmes-story01";
-import { initialisePerformanceSection } from "./performance.js?v=20260404-programmes-story01";
-import { initialiseQualitySection } from "./quality.js?v=20260404-programmes-story01";
-import { initialiseRegisterInteractions } from "./register.js?v=20260404-programmes-story01";
+import { createProgrammeContext, updateProgrammeNarrativeContext } from "./context.js?v=20260405-programmes-progressive01";
+import { initialiseDepartmentSection } from "./departments.js?v=20260405-programmes-progressive01";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260405-programmes-progressive01";
+import { initialiseLoadSection } from "./load.js?v=20260405-programmes-progressive01";
+import {
+    initialiseDepartmentNarrative,
+    initialiseLoadNarrative,
+    initialisePerformanceNarrative,
+    initialiseQualityNarrative,
+    renderStoryBanner,
+} from "./narratives.js?v=20260405-programmes-progressive01";
+import { initialisePerformanceSection } from "./performance.js?v=20260405-programmes-progressive01";
+import { initialiseQualitySection } from "./quality.js?v=20260405-programmes-progressive01";
+import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260405-programmes-progressive01";
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
@@ -31,18 +37,119 @@ const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     });
 };
 
-export const initialiseProgrammePage = () => {
-    const context = createProgrammeContext();
+const buildRequestUrl = (endpoint) => {
+    const requestUrl = new URL(endpoint, window.location.origin);
+    const currentUrl = new URL(window.location.href);
 
-    if (!context.elements.storyBanner) {
+    currentUrl.searchParams.forEach((value, key) => {
+        requestUrl.searchParams.set(key, value);
+    });
+
+    return requestUrl;
+};
+
+const fetchJson = async (endpoint) => {
+    if (!endpoint) {
+        return null;
+    }
+
+    const response = await fetch(buildRequestUrl(endpoint), {
+        credentials: "same-origin",
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
+
+const hydrateNarratives = (context) => {
+    initialiseLoadNarrative(context.elements, context.data.topLoadRows, context.data.cardNarratives, context.flags);
+    initialiseDepartmentNarrative(context.elements, context.data.departmentRows, context.data.cardNarratives, context.flags);
+    initialiseQualityNarrative(context.elements, context.data.lowPassRows, context.data.cardNarratives, context.flags);
+    initialisePerformanceNarrative(context.elements, context.data.performanceRows, context.data.cardNarratives, context.flags);
+};
+
+const hydrateSummaryCards = (context, summaryCards = []) => {
+    if (!summaryCards.length) {
         return;
     }
+
+    summaryCards.forEach((card) => {
+        const metricValue = context.elements.metricValues.find((node) => node.dataset.metricKey === card.key);
+        const metricNote = context.elements.metricNotes.find((node) => node.dataset.metricKey === card.key);
+
+        if (metricValue) {
+            metricValue.textContent = card.value;
+            metricValue.classList.remove("is-loading");
+            metricValue.classList.add("is-loaded");
+        }
+
+        if (metricNote) {
+            metricNote.textContent = card.note;
+        }
+    });
+};
+
+const setProgrammeShellErrorState = (context) => {
+    if (context.elements.storyBanner) {
+        context.elements.storyBanner.innerHTML = `
+            <p class="programme-banner-kicker">Primary Takeaway</p>
+            <p class="programme-banner-loading">The page shell loaded, but the programme dataset could not be retrieved. Try refreshing this workspace.</p>
+        `.trim();
+        context.elements.storyBanner.hidden = false;
+    }
+
+    if (context.elements.registerMeta) {
+        context.elements.registerMeta.textContent = "Programme rows could not be loaded for the current scope.";
+    }
+};
+
+export const initialiseProgrammePage = async () => {
+    const shellContext = createProgrammeContext();
+    const root = shellContext.elements.root;
+
+    if (!root || !shellContext.elements.storyBanner) {
+        return;
+    }
+
+    let chartPayload = null;
+    try {
+        const payloadResponse = await fetchJson(root.dataset.payloadUrl);
+        chartPayload = {
+            topLoadRows: payloadResponse?.top_load_rows || [],
+            departmentRows: payloadResponse?.department_rows || [],
+            lowPassRows: payloadResponse?.low_pass_rows || [],
+            performanceRows: payloadResponse?.performance_rows || [],
+            programmeRows: payloadResponse?.programme_rows || [],
+            registerMeta: {
+                visibleCount: payloadResponse?.register_meta?.visible_count || 0,
+            },
+        };
+        hydrateSummaryCards(shellContext, payloadResponse?.summary_cards || []);
+    } catch (error) {
+        setProgrammeShellErrorState(shellContext);
+        renderProgrammeRegister(shellContext.elements.registerBody, shellContext.elements.registerMeta, [], {});
+        return;
+    }
+
+    const context = createProgrammeContext({ chartPayload });
 
     renderStoryBanner(
         context.elements.storyBanner,
         context.data.topLoadRows,
         context.data.departmentRows,
         context.data.lowPassRows,
+    );
+    renderProgrammeRegister(
+        context.elements.registerBody,
+        context.elements.registerMeta,
+        context.data.programmeRows,
+        context.data.registerMeta,
     );
 
     const controllers = [
@@ -61,4 +168,12 @@ export const initialiseProgrammePage = () => {
     initialiseChartResizeHandling(controllers, resizeCharts);
     initialiseRegisterInteractions(context.elements.searchForm, context.elements.searchInput);
     initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
+
+    fetchJson(root.dataset.narrativesUrl)
+        .then((payload) => {
+            const cardNarratives = payload?.card_narratives || {};
+            updateProgrammeNarrativeContext(context, cardNarratives);
+            hydrateNarratives(context);
+        })
+        .catch(() => {});
 };

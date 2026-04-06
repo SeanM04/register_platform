@@ -4,22 +4,29 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260404-programmes-story04">
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260405-programmes-progressive02">
 {% endblock %}
 
 {% block content %}
-<section class="programme-dashboard">
+<section
+    class="programme-dashboard"
+    data-payload-url="{% url 'dashboard:programme-payload' %}"
+    {% if programme_ai_narratives_enabled %}data-narratives-url="{% url 'dashboard:programme-narratives' %}"{% endif %}
+>
     <section class="programme-metrics" data-metrics-url="{% url 'dashboard:programme-metrics' %}">
         {% for card in summary_cards %}
-        <article class="programme-metric programme-metric-{{ card.tone }}">
+        <article class="programme-metric programme-metric-{{ card.tone }}" data-metric-card data-metric-key="{{ card.key }}">
             <p class="programme-metric-label">{{ card.label }}</p>
             <p class="programme-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
-            <p class="programme-metric-note">{{ card.note }}</p>
+            <p class="programme-metric-note" data-metric-note data-metric-key="{{ card.key }}">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>
 
-    <section class="programme-story-banner" id="programme-story-banner" aria-live="polite"></section>
+    <section class="programme-story-banner" id="programme-story-banner" aria-live="polite">
+        <p class="programme-banner-kicker">Primary Takeaway</p>
+        <p class="programme-banner-loading">Loading the programme story and visual payload...</p>
+    </section>
 
     <section class="programme-scope-row" aria-label="Active programme scope">
         {% for pill in scope_pills %}
@@ -47,7 +54,7 @@
                     </div>
 
                     <div class="programme-chart-stage">
-                        <div class="programme-chart-canvas" id="programme-load-chart" role="img" aria-label="Visible registrations by programme chart"></div>
+                        <div class="programme-chart-canvas is-empty" id="programme-load-chart" role="img" aria-label="Visible registrations by programme chart">Loading programme load chart...</div>
                     </div>
                     <p class="programme-chart-note" id="programme-load-note">This view keeps the flagship programmes visible before the page moves into quality and review pressure.</p>
                 </article>
@@ -64,7 +71,7 @@
                     </div>
 
                     <div class="programme-chart-stage">
-                        <div class="programme-chart-canvas" id="programme-departments-chart" role="img" aria-label="Department programme load chart"></div>
+                        <div class="programme-chart-canvas is-empty" id="programme-departments-chart" role="img" aria-label="Department programme load chart">Loading department concentration chart...</div>
                     </div>
                     <p class="programme-chart-note" id="programme-departments-note">Department concentration helps managers judge which academic teams are carrying the broadest programme footprint.</p>
                 </article>
@@ -90,7 +97,7 @@
                     </div>
 
                     <div class="programme-chart-stage">
-                        <div class="programme-chart-canvas" id="programme-quality-chart" role="img" aria-label="Weakest visible pass rates chart"></div>
+                        <div class="programme-chart-canvas is-empty" id="programme-quality-chart" role="img" aria-label="Weakest visible pass rates chart">Loading pass-rate review chart...</div>
                     </div>
                     <p class="programme-chart-note" id="programme-quality-note">The weakest-pass chart keeps the underperforming programmes visible before users inspect the detailed register.</p>
                 </article>
@@ -107,7 +114,7 @@
                     </div>
 
                     <div class="programme-chart-stage programme-chart-stage-performance">
-                        <div class="programme-chart-canvas" id="programme-performance-chart" role="img" aria-label="Scale versus pass rate chart"></div>
+                        <div class="programme-chart-canvas is-empty" id="programme-performance-chart" role="img" aria-label="Scale versus pass rate chart">Loading registrations versus pass-rate view...</div>
                     </div>
                     <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale and quality in one view, which is much harder to see in a flat programme table.</p>
                 </article>
@@ -161,26 +168,14 @@
                                 <th class="programme-th-pass">Pass Rate</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for row in programme_rows %}
+                        <tbody id="programme-register-body">
                             <tr>
-                                <td class="programme-td-code">{{ row.code }}</td>
-                                <td>{{ row.name }}</td>
-                                <td>{{ row.faculty }}</td>
-                                <td>{{ row.department }}</td>
-                                <td>{{ row.students }}</td>
-                                <td>{{ row.registrations }}</td>
-                                <td>{{ row.average_mark }}</td>
-                                <td class="programme-td-pass">{{ row.pass_rate }}</td>
+                                <td class="programme-empty" colspan="8">Loading programme register...</td>
                             </tr>
-                            {% empty %}
-                            <tr>
-                                <td class="programme-empty" colspan="8">No programmes matched the current filters.</td>
-                            </tr>
-                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                <p class="programme-register-meta" id="programme-register-meta">Loading visible programme rows...</p>
             </article>
         </section>
     </section>
@@ -188,11 +183,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{{ top_load_rows|json_script:"programme-top-load-data" }}
-{{ department_rows|json_script:"programme-department-data" }}
-{{ low_pass_rows|json_script:"programme-low-pass-data" }}
-{{ performance_rows|json_script:"programme-performance-data" }}
-{{ programme_card_narratives|json_script:"programme-card-narratives" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260404-programmes-story03"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260405-programmes-progressive01"></script>
 {% endblock %}

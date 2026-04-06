@@ -8,8 +8,8 @@ import {
     formatCount,
     setChartFallback,
     wrapAxisLabel,
-} from "./shared.js?v=20260404-programmes-story01";
-import { initialiseQualityNarrative } from "./narratives.js?v=20260404-programmes-story01";
+} from "./shared.js?v=20260405-programmes-progressive01";
+import { initialiseQualityNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 export const initialiseQualitySection = (context) => {
     initialiseQualityNarrative(context.elements, context.data.lowPassRows, context.data.cardNarratives, context.flags);

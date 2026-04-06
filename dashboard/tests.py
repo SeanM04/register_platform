@@ -70,14 +70,15 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(alice_rows[0]["decision"], "Proceed")
 
     def test_programme_view_respects_faculty_filter(self):
-        """Programme analytics should only include rows from the selected faculty."""
+        """Programme payload should only include rows from the selected faculty."""
 
         response = self.client.get(
-            reverse("dashboard:programme"),
+            reverse("dashboard:programme-payload"),
             {"faculty": self.science_faculty.name},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
 
-        programme_rows = response.context["programme_rows"]
+        programme_rows = response.json()["programme_rows"]
         self.assertEqual(len(programme_rows), 1)
         self.assertEqual(programme_rows[0]["faculty"], self.science_faculty.name)
         self.assertEqual(programme_rows[0]["name"], self.science_programme.name)

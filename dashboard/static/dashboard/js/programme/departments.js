@@ -8,8 +8,8 @@ import {
     formatCount,
     setChartFallback,
     wrapAxisLabel,
-} from "./shared.js?v=20260404-programmes-story01";
-import { initialiseDepartmentNarrative } from "./narratives.js?v=20260404-programmes-story01";
+} from "./shared.js?v=20260405-programmes-progressive01";
+import { initialiseDepartmentNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 export const initialiseDepartmentSection = (context) => {
     initialiseDepartmentNarrative(context.elements, context.data.departmentRows, context.data.cardNarratives, context.flags);

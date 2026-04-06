@@ -1,4 +1,4 @@
-import { escapeTooltipHtml, formatCount } from "./shared.js?v=20260404-programmes-story01";
+import { escapeTooltipHtml, formatCount } from "./shared.js?v=20260405-programmes-progressive01";
 
 const pickLeadRow = (rows, valueKey = "registrations") => {
     if (!rows.length) {
