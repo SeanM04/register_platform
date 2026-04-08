@@ -9,7 +9,12 @@
 {% endblock %}
 
 {% block content %}
-<section class="demographic-layout">
+<section
+    class="demographic-layout"
+    data-payload-url="{% url 'dashboard:demographic-payload' %}"
+    data-metrics-url="{% url 'dashboard:demographic-metrics' %}"
+    data-narratives-url="{% url 'dashboard:demographic-narratives' %}"
+>
     <section class="demographic-metrics" data-metrics-url="{% url 'dashboard:demographic-metrics' %}">
         {% for card in summary_cards %}
         <article class="demographic-metric">
@@ -147,13 +152,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{{ gender_rows|json_script:"demographic-gender-data" }}
-{{ location_rows|json_script:"demographic-location-data" }}
-{{ location_mix_rows|json_script:"demographic-location-mix-data" }}
-{{ location_map_rows|json_script:"demographic-location-map-data" }}
-{{ location_map_meta|json_script:"demographic-location-map-meta-data" }}
-{{ programme_rows|json_script:"demographic-programme-data" }}
-{{ demographic_card_narratives|json_script:"demographic-card-narratives" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
 <script type="module" src="{% static 'dashboard/js/demographic.js' %}?v=20260403-demographic-storyflow01"></script>

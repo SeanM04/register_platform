@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .academic_levels.views import academic_level_metrics, academic_level_view
-from .demographics.views import demographic_metrics, demographic_view
+from .demographics.views import demographic_metrics, demographic_narratives, demographic_payload, demographic_view
 from .insights.views import insights_view
 from .overview.views import dashboard_home, dashboard_home_metrics
 from .programmes.views import programme_metrics, programme_narratives, programme_payload, programme_view
@@ -25,6 +25,8 @@ urlpatterns = [
     path("metrics/programme/narratives/", programme_narratives, name="programme-narratives"),
     path("demographic/", demographic_view, name="demographic"),
     path("metrics/demographic/", demographic_metrics, name="demographic-metrics"),
+    path("metrics/demographic/payload/", demographic_payload, name="demographic-payload"),
+    path("metrics/demographic/narratives/", demographic_narratives, name="demographic-narratives"),
     path("academic-level/", academic_level_view, name="academic-level"),
     path("metrics/academic-level/", academic_level_metrics, name="academic-level-metrics"),
     path("risk/", risk_view, name="risk"),

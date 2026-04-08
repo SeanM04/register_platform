@@ -1,11 +1,62 @@
-import { createDemographicContext } from "./context.js";
+/* eslint-env browser */
+/* global URL, window, fetch, document, ResizeObserver */
+
+import { createDemographicContext, updateDemographicContext } from "./context.js";
 import { initialiseFullscreenControls } from "./fullscreen.js";
 import { initialiseGenderSection } from "./gender.js";
 import { initialiseLocationSection } from "./locations.js";
 import { initialiseLocationMixSection } from "./location_mix.js";
 import { initialiseOriginMapSection } from "./origin_map.js";
 import { initialiseProgrammeMixSection } from "./programme_mix.js";
-import { renderStoryBanner } from "./narratives.js";
+import {
+    initialiseGenderNarrative,
+    initialiseLocationNarrative,
+    initialiseLocationMixNarrative,
+    initialiseOriginMapNarrative,
+    initialiseProgrammeNarrative,
+    renderStoryBanner,
+} from "./narratives.js";
+
+const buildRequestUrl = (endpoint) => {
+    const requestUrl = new URL(endpoint, window.location.origin);
+    const currentUrl = new URL(window.location.href);
+
+    currentUrl.searchParams.forEach((value, key) => {
+        requestUrl.searchParams.set(key, value);
+    });
+
+    return requestUrl;
+};
+
+const fetchJson = async (endpoint) => {
+    if (!endpoint) {
+        return null;
+    }
+
+    const response = await fetch(buildRequestUrl(endpoint), {
+        credentials: "same-origin",
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
+
+const demographicRoot = document.querySelector(".demographic-layout");
+const payloadPromise = demographicRoot
+    ? fetchJson(demographicRoot.dataset.payloadUrl).catch(() => null)
+    : Promise.resolve(null);
+const metricsPromise = demographicRoot
+    ? fetchJson(demographicRoot.dataset.metricsUrl).catch(() => null)
+    : Promise.resolve(null);
+const narrativesPromise = demographicRoot
+    ? fetchJson(demographicRoot.dataset.narrativesUrl).catch(() => null)
+    : Promise.resolve(null);
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
@@ -31,11 +82,70 @@ const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     });
 };
 
-export const initialiseDemographicPage = () => {
-    const context = createDemographicContext();
-    const { data, elements } = context;
+const hydrateSummaryCards = (context, summaryCards = []) => {
+    if (!summaryCards.length) {
+        return;
+    }
 
-    renderStoryBanner(elements.storyBanner, data.genderRows, data.locationRows, data.programmeRows);
+    summaryCards.forEach((card) => {
+        const metricValue = context.elements.metricValues.find(
+            (node) => node.dataset.metricKey === card.key,
+        );
+
+        if (metricValue) {
+            metricValue.textContent = card.value;
+            metricValue.classList.remove("is-loading");
+            metricValue.classList.add("is-loaded");
+        }
+    });
+};
+
+const hydrateNarratives = (context) => {
+    initialiseGenderNarrative(context.elements, context.data.genderRows, context.data.cardNarratives, context.flags);
+    initialiseLocationNarrative(context.elements, context.data.locationRows, context.data.cardNarratives, context.flags);
+    initialiseLocationMixNarrative(context.elements, context.data.locationMixRows, context.data.cardNarratives, context.flags);
+    initialiseProgrammeNarrative(context.elements, context.data.programmeRows, context.data.cardNarratives, context.flags);
+    initialiseOriginMapNarrative(context.elements, context.data.locationMapRows, context.data.locationMapMeta, context.data.cardNarratives, context.flags);
+};
+
+const setDemographicShellErrorState = (context) => {
+    if (context.elements.storyBanner) {
+        context.elements.storyBanner.innerHTML = `
+            <p class="demographic-banner-kicker">Primary Takeaway</p>
+            <p class="demographic-banner-loading">The page shell loaded, but the demographic dataset could not be retrieved. Try refreshing this workspace.</p>
+        `.trim();
+        context.elements.storyBanner.hidden = false;
+    }
+};
+
+export const initialiseDemographicPage = async () => {
+    const shellContext = createDemographicContext();
+    const root = document.querySelector(".demographic-layout");
+
+    if (!root || !shellContext.elements.storyBanner) {
+        return;
+    }
+
+    let chartPayload = null;
+    let cardNarratives = null;
+    const payloadResponse = await payloadPromise;
+    if (!payloadResponse) {
+        setDemographicShellErrorState(shellContext);
+        return;
+    }
+
+    chartPayload = {
+        genderRows: payloadResponse?.gender_rows || [],
+        locationRows: payloadResponse?.location_rows || [],
+        locationMixRows: payloadResponse?.location_mix_rows || [],
+        locationMapRows: payloadResponse?.location_map_rows || [],
+        locationMapMeta: payloadResponse?.location_map_meta || {},
+        programmeRows: payloadResponse?.programme_rows || [],
+    };
+
+    const context = updateDemographicContext(shellContext, { chartPayload });
+
+    renderStoryBanner(context.elements.storyBanner, context.data.genderRows, context.data.locationRows, context.data.programmeRows);
 
     const controllers = [
         initialiseGenderSection(context),
@@ -51,5 +161,17 @@ export const initialiseDemographicPage = () => {
     };
 
     initialiseChartResizeHandling(controllers, resizeCharts);
-    initialiseFullscreenControls(elements.fullscreenButtons, resizeCharts);
+    initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
+
+    metricsPromise
+        .then((metricsResponse) => hydrateSummaryCards(context, metricsResponse?.metrics ? Object.keys(metricsResponse.metrics).map((key) => ({ key, value: metricsResponse.metrics[key] })) : []))
+        .catch(() => {});
+
+    narrativesPromise
+        .then((payload) => {
+            cardNarratives = payload?.card_narratives || {};
+            updateDemographicContext(context, { cardNarratives });
+            hydrateNarratives(context);
+        })
+        .catch(() => {});
 };

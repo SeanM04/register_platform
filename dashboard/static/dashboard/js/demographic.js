@@ -3,13 +3,13 @@ import { initialiseDemographicPage } from "./demographic/index.js";
 const MAX_LIBRARY_WAIT_MS = 2200;
 let hasInitialised = false;
 
-const bootstrapDemographicPage = () => {
+const bootstrapDemographicPage = async () => {
     if (hasInitialised) {
         return;
     }
 
     hasInitialised = true;
-    initialiseDemographicPage();
+    await initialiseDemographicPage();
 };
 
 const areLibrariesReady = () => Boolean(window.echarts && window.maplibregl);

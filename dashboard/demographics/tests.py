@@ -24,12 +24,33 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
 
         response = self.client.get(reverse("dashboard:demographic"))
 
-        gender_rows = response.context["gender_rows"]
-        location_rows = response.context["location_rows"]
-        location_mix_rows = response.context["location_mix_rows"]
-        location_map_rows = response.context["location_map_rows"]
-        location_map_meta = response.context["location_map_meta"]
-        programme_rows = response.context["programme_rows"]
+        # Check that the shell renders correctly
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["summary_cards"]), 4)
+        self.assertEqual(response.context["summary_cards"][0]["key"], "students")
+        self.assertEqual(response.context["summary_cards"][0]["value"], "--")
+        self.assertNotIn("gender_rows", response.context)
+        self.assertNotIn("location_rows", response.context)
+        self.assertNotIn("location_mix_rows", response.context)
+        self.assertNotIn("location_map_rows", response.context)
+        self.assertNotIn("location_map_meta", response.context)
+        self.assertNotIn("programme_rows", response.context)
+        self.assertNotIn("demographic_card_narratives", response.context)
+
+    def test_demographic_payload_endpoint_supplies_data(self):
+        """Demographic payload endpoint should return the heavy data for async loading."""
+
+        response = self.client.get(reverse("dashboard:demographic-payload"))
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        gender_rows = data["gender_rows"]
+        location_rows = data["location_rows"]
+        location_mix_rows = data["location_mix_rows"]
+        location_map_rows = data["location_map_rows"]
+        location_map_meta = data["location_map_meta"]
+        programme_rows = data["programme_rows"]
 
         self.assertEqual(gender_rows[0]["label"], "Male")
         self.assertEqual(gender_rows[0]["count"], 1)
@@ -70,39 +91,20 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(programme_rows[1]["female"], 1)
         self.assertEqual(programme_rows[1]["total"], 1)
 
-    def test_demographic_view_supplies_rule_based_card_narratives_by_default(self):
-        """Demographics overview cards should expose deterministic narratives when AI is off."""
-
-        response = self.client.get(reverse("dashboard:demographic"))
-
-        narratives = response.context["demographic_card_narratives"]
-
-        self.assertEqual(narratives["source"], "rules")
-        self.assertIn("gender", narratives["cards"])
-        self.assertIn("location", narratives["cards"])
-        self.assertIn("location_mix", narratives["cards"])
-        self.assertIn("programme", narratives["cards"])
-        self.assertIn("origin_map", narratives["cards"])
-        self.assertTrue(narratives["cards"]["gender"]["insight"])
-        self.assertTrue(narratives["cards"]["gender"]["action"])
-        self.assertEqual(narratives["cards"]["gender"]["severity"], "stable")
-        self.assertEqual(narratives["cards"]["gender"]["confidence"], "low")
-        self.assertEqual(narratives["cards"]["origin_map"]["severity"], "stable")
-        self.assertEqual(narratives["cards"]["origin_map"]["confidence"], "low")
-
-    def test_demographic_view_respects_faculty_filter(self):
-        """Demographic rows should reflect the active faculty filter."""
+    def test_demographic_payload_endpoint_respects_faculty_filter(self):
+        """Demographic payload should reflect the active faculty filter."""
 
         response = self.client.get(
-            reverse("dashboard:demographic"),
+            reverse("dashboard:demographic-payload"),
             {"faculty": self.science_faculty.name},
         )
 
-        gender_rows = response.context["gender_rows"]
-        location_rows = response.context["location_rows"]
-        location_mix_rows = response.context["location_mix_rows"]
-        location_map_rows = response.context["location_map_rows"]
-        programme_rows = response.context["programme_rows"]
+        data = response.json()
+        gender_rows = data["gender_rows"]
+        location_rows = data["location_rows"]
+        location_mix_rows = data["location_mix_rows"]
+        location_map_rows = data["location_map_rows"]
+        programme_rows = data["programme_rows"]
 
         self.assertEqual(gender_rows[0]["count"], 0)
         self.assertEqual(gender_rows[1]["count"], 1)
@@ -118,8 +120,6 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(programme_rows[0]["programme"], self.science_programme.name)
         self.assertEqual(programme_rows[0]["female"], 1)
         self.assertEqual(programme_rows[0]["total"], 1)
-
-    def test_demographic_metrics_endpoint_respects_search_and_filters(self):
         """Demographic metrics should summarise the currently visible cohort."""
 
         response = self.client.get(
@@ -133,6 +133,27 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["female"], 1)
         self.assertEqual(metrics["birth_locations"], 1)
 
+    def test_demographic_narratives_endpoint_supplies_rule_based_narratives(self):
+        """Demographics narratives endpoint should expose deterministic narratives when AI is off."""
+
+        response = self.client.get(reverse("dashboard:demographic-narratives"))
+
+        self.assertEqual(response.status_code, 200)
+        narratives = response.json()["card_narratives"]
+
+        self.assertEqual(narratives["source"], "rules")
+        self.assertIn("gender", narratives["cards"])
+        self.assertIn("location", narratives["cards"])
+        self.assertIn("location_mix", narratives["cards"])
+        self.assertIn("programme", narratives["cards"])
+        self.assertIn("origin_map", narratives["cards"])
+        self.assertTrue(narratives["cards"]["gender"]["insight"])
+        self.assertTrue(narratives["cards"]["gender"]["action"])
+        self.assertEqual(narratives["cards"]["gender"]["severity"], "stable")
+        self.assertEqual(narratives["cards"]["gender"]["confidence"], "low")
+        self.assertEqual(narratives["cards"]["origin_map"]["severity"], "stable")
+        self.assertEqual(narratives["cards"]["origin_map"]["confidence"], "low")
+
     @override_settings(
         AI_INSIGHTS_ENABLED=True,
         AI_INSIGHTS_PROVIDER="openai",
@@ -140,8 +161,8 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         OPENAI_API_KEY="test-key",
     )
     @patch("dashboard.demographics.ai_insights._request_demographic_openai_narratives")
-    def test_demographic_view_uses_ai_card_narratives_when_available(self, mock_request):
-        """Demographics overview cards should prefer OpenAI copy when the provider succeeds."""
+    def test_demographic_narratives_endpoint_uses_ai_when_available(self, mock_request):
+        """Demographics narratives endpoint should prefer OpenAI copy when the provider succeeds."""
 
         mock_request.return_value = """
         {
@@ -149,9 +170,9 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:demographic"))
+        response = self.client.get(reverse("dashboard:demographic-narratives"))
 
-        narratives = response.context["demographic_card_narratives"]
+        narratives = response.json()["card_narratives"]
 
         self.assertEqual(narratives["source"], "openai")
         self.assertEqual(narratives["cards"]["gender"]["insight"], "AI gender insight")
@@ -164,8 +185,8 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
 
     @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
     @patch("dashboard.demographics.ai_insights._request_demographic_google_narratives")
-    def test_demographic_view_can_use_google_card_narratives(self, mock_request):
-        """Demographics overview cards should support Gemini-generated narratives."""
+    def test_demographic_narratives_endpoint_can_use_google(self, mock_request):
+        """Demographics narratives endpoint should support Gemini-generated narratives."""
 
         mock_request.return_value = """
         {
@@ -183,9 +204,9 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:demographic"))
+        response = self.client.get(reverse("dashboard:demographic-narratives"))
 
-        narratives = response.context["demographic_card_narratives"]
+        narratives = response.json()["card_narratives"]
 
         self.assertEqual(narratives["source"], "google")
         self.assertEqual(narratives["cards"]["gender"]["insight"], "Gemini gender insight")
