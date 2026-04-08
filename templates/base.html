@@ -63,7 +63,7 @@
             <aside class="sidebar">
                 <nav class="sidebar-nav" aria-label="Dashboard sections">
                     {% for item in sidebar_items %}
-                    <a class="sidebar-link{% if item.is_active %} is-active{% endif %}" href="{% url item.url_name %}">
+                    <a class="sidebar-link{% if item.is_active %} is-active{% endif %}" href="{{ item.url }}">
                         {{ item.label }}
                     </a>
                     {% endfor %}

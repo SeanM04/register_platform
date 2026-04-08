@@ -37,6 +37,8 @@ HOME_SUMMARY_CARD_SPECS = [
     {"key": "pass_rate", "label": "Pass Rate", "tone": "default"},
     {"key": "completion_rate", "label": "Completion Rate", "tone": "danger"},
     {"key": "on_time_graduation", "label": "On-Time Graduation", "tone": "default"},
+    {"key": "first_year_retention", "label": "First Year Retention", "tone": "default"},
+    {"key": "students_satisfaction", "label": "Students Satisfaction", "tone": "default"},
     {"key": "average_mark", "label": "Average Mark", "tone": "default"},
     {"key": "first_semester", "label": "First Semester", "tone": "default"},
     {"key": "at_risk", "label": "At Risk", "tone": "default"},
@@ -82,7 +84,15 @@ def format_period_label(period_name):
 
     if not period_name:
         return ""
-    text = re.sub(r"\b20\d{2}\b", "", period_name, flags=re.IGNORECASE)
+    
+    # Extract year and remove it completely
+    year_match = re.search(r"(20\d{2})", period_name)
+    if year_match:
+        text = period_name.replace(year_match.group(0), "").strip()
+    else:
+        text = period_name
+    
+    # Clean up remaining text
     text = re.sub(r"\s+", " ", text.replace("-", " - ")).strip(" -")
     return text.title()
 
@@ -145,7 +155,19 @@ def build_filters(request):
 
     periods = list(AcademicPeriod.objects.order_by("name").values("name"))
     years = sorted({extract_period_year(period["name"]) for period in periods if extract_period_year(period["name"])}, reverse=True)
-    period_options = sorted({format_period_label(period["name"]) for period in periods if format_period_label(period["name"])})
+    
+    # Filter periods by selected year and create options with display labels
+    if selected_year:
+        filtered_periods = [period for period in periods if extract_period_year(period["name"]) == selected_year]
+        period_options = []
+        for period in filtered_periods:
+            display_label = format_period_label(period["name"])
+            if display_label:
+                period_options.append(display_label)
+        period_options = sorted(period_options)
+    else:
+        period_options = sorted({format_period_label(period["name"]) for period in periods if format_period_label(period["name"])})
+    
     faculty_options = list(Faculty.objects.order_by("name").values_list("name", flat=True))
 
     return {
@@ -163,11 +185,25 @@ def build_filters(request):
 def build_layout_context(request, active_key):
     """Build shared sidebar and filter context for dashboard templates."""
 
+    # Get current filter parameters
+    filter_params = {}
+    for param in ['year', 'period', 'faculty']:
+        value = request.GET.get(param, "").strip()
+        if value:
+            filter_params[param] = value
+
     items = []
     for item in SIDEBAR_ITEMS:
+        # Build URL with filter parameters
+        url = reverse(item["url_name"])
+        if filter_params:
+            query_string = '&'.join([f"{key}={value}" for key, value in filter_params.items()])
+            url = f"{url}?{query_string}"
+        
         items.append(
             {
                 **item,
+                "url": url,
                 "is_active": item["key"] == active_key,
             }
         )
@@ -268,7 +304,16 @@ def build_registration_filter_q(request, prefix=""):
     if selected_year:
         filters &= Q(**{f"{prefix}period__name__icontains": selected_year})
     if selected_period:
-        filters &= Q(**{f"{prefix}period__name__icontains": selected_period})
+        # Find all periods that match the selected display label
+        periods = AcademicPeriod.objects.all()
+        matching_period_names = []
+        for period in periods:
+            if format_period_label(period.name) == selected_period:
+                matching_period_names.append(period.name)
+        
+        if matching_period_names:
+            period_filter = Q(**{f"{prefix}period__name__in": matching_period_names})
+            filters &= period_filter
     if selected_faculty:
         filters &= Q(**{f"{prefix}programme__department__faculty__name": selected_faculty})
 

@@ -192,7 +192,6 @@ export const renderStoryBanner = (element, outcomeRows, riskRows, facultyRows, p
     ].filter(Boolean);
 
     element.innerHTML = `
-        <p class="home-banner-kicker">Primary Takeaway</p>
         <h1 class="home-banner-title">${escapeTooltipHtml(title)}</h1>
         <p class="home-banner-copy">${escapeTooltipHtml(`${copyParts.join(", ")}.`)}</p>
         <div class="home-banner-grid">
@@ -232,8 +231,6 @@ export const initialiseOutcomeNarrative = (elements, rows, cardNarratives = {}, 
 
     setElementText(elements.outcomesCopy, narrative.insight);
     setHintMarkup(elements.outcomesHints, [
-        "Hover slices for counts",
-        "Assessment outcomes come from module results",
     ]);
     setActionText(elements.outcomesNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
@@ -267,8 +264,6 @@ export const initialiseRiskNarrative = (elements, rows, cardNarratives = {}, fla
 
     setElementText(elements.riskCopy, narrative.insight);
     setHintMarkup(elements.riskHints, [
-        "Hover bars for counts",
-        "Risk bands combine marks, fails, carrying, and decisions",
     ]);
     setActionText(elements.riskNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
@@ -297,8 +292,6 @@ export const initialiseFacultyNarrative = (elements, rows, cardNarratives = {}, 
 
     setElementText(elements.facultyCopy, narrative.insight);
     setHintMarkup(elements.facultyHints, [
-        "Hover bars for share",
-        "Compare where visible demand is pooling first",
     ]);
     setActionText(elements.facultyNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
@@ -326,8 +319,6 @@ export const initialiseProgressNarrative = (elements, rows, cardNarratives = {},
 
     setElementText(elements.progressCopy, narrative.insight);
     setHintMarkup(elements.progressHints, [
-        "Hover columns for counts",
-        "Decision labels come directly from registration records",
     ]);
     setActionText(elements.progressNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,

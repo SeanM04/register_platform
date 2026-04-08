@@ -30,9 +30,12 @@
     <section class="home-story-flow" aria-label="Landing dashboard storytelling flow">
         <section class="home-flow-stage home-flow-stage-primary">
             <div class="home-flow-header">
-                <p class="home-flow-kicker">Chapter 1</p>
-                <h2 class="home-flow-title">How Healthy The Visible Cohort Looks</h2>
+                <button class="home-flow-toggle" type="button" data-toggle="cohort-risk" aria-expanded="false" aria-controls="cohort-risk-content">
+                    <span class="home-flow-toggle-icon">+</span>
+                    <h2 class="home-flow-title">Cohort Risk Profile</h2>
+                </button>
             </div>
+            <div class="home-flow-content collapsed" id="cohort-risk-content">
 
             <div class="home-stage-grid home-stage-grid-primary">
                 <article class="home-card home-card-wide">
@@ -69,21 +72,25 @@
                     <p class="home-chart-note" id="home-risk-note">The risk mix separates stable cohort volume from the students who are already building intervention pressure.</p>
                 </article>
             </div>
+            </div>
         </section>
 
         <section class="home-flow-stage">
             <div class="home-flow-header">
-                <p class="home-flow-kicker">Chapter 2</p>
-                <h2 class="home-flow-title">Where The Current Load Is Concentrating</h2>
+                <button class="home-flow-toggle" type="button" data-toggle="load-concentration" aria-expanded="false" aria-controls="load-concentration-content">
+                    <span class="home-flow-toggle-icon">+</span>
+                    <h2 class="home-flow-title">Load Concentration Profile</h2>
+                </button>
             </div>
+            <div class="home-flow-content collapsed" id="load-concentration-content">
 
             <div class="home-stage-grid">
                 <article class="home-card">
                     <div class="home-card-header">
                         <div>
-                            <p class="home-card-kicker">Faculty Load</p>
+                            <p class="home-card-kicker">Faculty</p>
                             <h2 class="home-card-title">Visible Registrations By Faculty</h2>
-                            <p class="home-card-copy" id="home-faculty-copy">This view shows where the institution is carrying the heaviest visible registration load before pressure turns into a queue.</p>
+                            <p class="home-card-copy" id="home-faculty-copy">Shows where registration load concentrates before pressure builds.</p>
                             <div class="home-chart-hints" id="home-faculty-hints" aria-label="Chart interaction hints"></div>
                         </div>
                         <button class="home-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Visible Registrations By Faculty" aria-controls="home-faculty-chart" aria-label="View Visible Registrations By Faculty in full screen" aria-pressed="false">Full screen</button>
@@ -112,13 +119,17 @@
                     <p class="home-chart-note" id="home-progress-note">The decision view helps users see whether the visible cohort is mostly moving forward or building rework and exit pressure.</p>
                 </article>
             </div>
+            </div>
         </section>
 
         <section class="home-flow-stage home-flow-stage-actions">
             <div class="home-flow-header">
-                <p class="home-flow-kicker">Chapter 3</p>
-                <h2 class="home-flow-title">Where To Explore Next</h2>
+                <button class="home-flow-toggle" type="button" data-toggle="insights" aria-expanded="false" aria-controls="insights-content">
+                    <span class="home-flow-toggle-icon">+</span>
+                    <h2 class="home-flow-title">Insights</h2>
+                </button>
             </div>
+            <div class="home-flow-content collapsed" id="insights-content">
 
             <div class="home-action-grid">
                 {% for card in action_cards %}
@@ -129,6 +140,7 @@
                     <a class="home-action-link" href="{{ card.action_url }}">{{ card.action_label }}</a>
                 </article>
                 {% endfor %}
+            </div>
             </div>
         </section>
     </section>

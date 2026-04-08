@@ -40,7 +40,7 @@ export const initialiseOutcomeSection = (context) => {
                 ...buildTooltipBase("item"),
                 formatter: (params) => buildTooltipMarkup(params.name, [
                     { label: "Results", value: formatCount(params.value) },
-                    { label: "Share", value: `${params.percent}%` },
+                    { label: "Share", value: `${Math.round(params.percent)}%` },
                 ]),
             },
             legend: {
@@ -57,7 +57,7 @@ export const initialiseOutcomeSection = (context) => {
             series: [
                 {
                     type: "pie",
-                    radius: ["46%", "72%"],
+                    radius: "65%",
                     center: ["50%", "44%"],
                     minAngle: 8,
                     avoidLabelOverlap: true,
@@ -66,10 +66,7 @@ export const initialiseOutcomeSection = (context) => {
                         borderWidth: 4,
                     },
                     label: {
-                        color: HOME_COLORS.ink,
-                        fontWeight: 700,
-                        fontSize: 12,
-                        formatter: ({ name, percent }) => `${name}\n${percent}%`,
+                        show: false,
                     },
                     labelLine: {
                         length: 12,

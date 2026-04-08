@@ -103,7 +103,6 @@ export const initialiseRiskDistributionSection = (context) => {
                         value: row.count,
                         itemStyle: {
                             color: RISK_COLORS[row.key] || HOME_COLORS.sky,
-                            borderRadius: [14, 14, 0, 0],
                         },
                     })),
                     barMaxWidth: 54,
