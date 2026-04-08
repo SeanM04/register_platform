@@ -38,6 +38,7 @@ def demographic_payload(request):
     demographic_data = build_demographic_data(request, search_query)
     return JsonResponse(
         {
+            "metrics": demographic_data["summary_metrics"],
             "gender_rows": demographic_data["gender_rows"],
             "location_rows": demographic_data["location_rows"],
             "location_mix_rows": demographic_data["location_mix_rows"],

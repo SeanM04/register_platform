@@ -9,7 +9,7 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseProgressNarrative } from "./narratives.js?v=20260403-home-story04";
+import { initialiseProgressNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const PROGRESS_COLORS = {
     proceed: buildGradient("#276f80", "#5bc192"),
@@ -19,6 +19,9 @@ const PROGRESS_COLORS = {
     other: buildGradient(HOME_COLORS.navy, HOME_COLORS.sky),
 };
 
+/**
+ * Build the registration-decision chart and sync its narrative surfaces.
+ */
 export const initialiseProgressSection = (context) => {
     const rows = context.data.progressRows || [];
     const { progressChart } = context.elements;

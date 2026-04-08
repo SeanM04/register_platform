@@ -12,7 +12,7 @@ const bootstrapDemographicPage = async () => {
     await initialiseDemographicPage();
 };
 
-const areLibrariesReady = () => Boolean(window.echarts && window.maplibregl);
+const areLibrariesReady = () => Boolean(window.echarts);
 
 const waitForLibrariesThenInitialise = (startedAt = Date.now()) => {
     if (areLibrariesReady() || Date.now() - startedAt >= MAX_LIBRARY_WAIT_MS) {

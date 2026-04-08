@@ -116,11 +116,21 @@ Most analytics pages follow a common structure:
 
 Several metrics panels are hydrated asynchronously so the page shell can load quickly before expensive summaries resolve.
 
+The landing dashboard now follows that async pattern explicitly:
+
+- a lightweight shell from `dashboard/overview/views.py`
+- a separate payload endpoint for the heavier chart datasets
+- a separate narratives endpoint for optional AI-assisted chart copy
+- page-scoped browser modules in `dashboard/static/dashboard/js/home/`
+- shared topbar and filter layout styling in `templates/base.html` and
+  `dashboard/static/dashboard/css/base.css`
+
 The dashboard backend is also moving toward feature-owned packages inside `dashboard/` for the
 more complex analytics pages. Current examples:
 
 - `dashboard/academic_levels/`
 - `dashboard/demographics/`
+- `dashboard/overview/`
 - `dashboard/risk/`
 - `dashboard/insights/`
 
@@ -192,6 +202,7 @@ Primary test modules:
 - `dashboard/tests.py`
 - `dashboard/academic_levels/tests.py`
 - `dashboard/demographics/tests.py`
+- `dashboard/overview/tests.py`
 - `dashboard/risk/tests.py`
 - `dashboard/insights/tests.py`
 
@@ -206,3 +217,6 @@ The project is configured for production-oriented deployment with:
 - PostgreSQL as the primary database
 
 Deployment details are documented in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+The landing dashboard's async shell and narrative flow are documented in
+[DASHBOARD_HOME.md](DASHBOARD_HOME.md).

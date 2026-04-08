@@ -50,7 +50,13 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         location_mix_rows = data["location_mix_rows"]
         location_map_rows = data["location_map_rows"]
         location_map_meta = data["location_map_meta"]
+        metrics = data["metrics"]
         programme_rows = data["programme_rows"]
+
+        self.assertEqual(metrics["students"], 2)
+        self.assertEqual(metrics["male"], 1)
+        self.assertEqual(metrics["female"], 1)
+        self.assertEqual(metrics["birth_locations"], 2)
 
         self.assertEqual(gender_rows[0]["label"], "Male")
         self.assertEqual(gender_rows[0]["count"], 1)
@@ -104,7 +110,13 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         location_rows = data["location_rows"]
         location_mix_rows = data["location_mix_rows"]
         location_map_rows = data["location_map_rows"]
+        metrics = data["metrics"]
         programme_rows = data["programme_rows"]
+
+        self.assertEqual(metrics["students"], 1)
+        self.assertEqual(metrics["male"], 0)
+        self.assertEqual(metrics["female"], 1)
+        self.assertEqual(metrics["birth_locations"], 1)
 
         self.assertEqual(gender_rows[0]["count"], 0)
         self.assertEqual(gender_rows[1]["count"], 1)

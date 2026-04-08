@@ -4,38 +4,50 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260403-home-story05">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260408-home-ai02">
 {% endblock %}
 
 {% block content %}
-<section class="home-layout">
-    <section class="home-metrics" data-metrics-url="{% url 'dashboard:home-metrics' %}">
+<section
+    class="home-layout"
+    data-payload-url="{% url 'dashboard:home-payload' %}"
+    data-narratives-url="{% url 'dashboard:home-narratives' %}"
+    data-ai-narratives-enabled="{{ overview_ai_narratives_enabled|yesno:'true,false' }}"
+>
+    <section class="home-metrics">
         {% for card in summary_cards %}
-        <article class="home-metric home-metric-{{ card.tone }}">
+        <article class="home-metric home-metric-{{ card.tone }}" data-metric-card data-metric-key="{{ card.key }}">
             <p class="home-metric-label">{{ card.label }}</p>
             <p class="home-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
-            <p class="home-metric-note">{{ card.note }}</p>
+            <p class="home-metric-note" data-metric-note data-metric-key="{{ card.key }}">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>
 
     <section class="home-story-banner" id="home-story-banner" aria-live="polite"></section>
 
-    <section class="home-scope-row" aria-label="Active dashboard scope">
-        {% for pill in scope_pills %}
-        <span class="home-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
-        {% endfor %}
-    </section>
-
     <section class="home-story-flow" aria-label="Landing dashboard storytelling flow">
         <section class="home-flow-stage home-flow-stage-primary">
             <div class="home-flow-header">
-                <button class="home-flow-toggle" type="button" data-toggle="cohort-risk" aria-expanded="false" aria-controls="cohort-risk-content">
-                    <span class="home-flow-toggle-icon">+</span>
+                <div class="home-flow-heading">
+                    <p class="home-flow-kicker">Chapter 1</p>
                     <h2 class="home-flow-title">Cohort Risk Profile</h2>
+                    <div class="home-flow-summary" id="home-chapter-one-summary" aria-live="polite"></div>
+                </div>
+                <button
+                    class="home-flow-toggle"
+                    type="button"
+                    data-toggle="cohort-risk"
+                    data-section-title="Cohort Risk Profile"
+                    aria-expanded="true"
+                    aria-controls="cohort-risk-content"
+                    aria-label="Collapse Cohort Risk Profile section"
+                >
+                    <span class="home-flow-toggle-label">Collapse</span>
+                    <span class="home-flow-toggle-icon">-</span>
                 </button>
             </div>
-            <div class="home-flow-content collapsed" id="cohort-risk-content">
+            <div class="home-flow-content" id="cohort-risk-content">
 
             <div class="home-stage-grid home-stage-grid-primary">
                 <article class="home-card home-card-wide">
@@ -43,6 +55,7 @@
                         <div>
                             <p class="home-card-kicker">Outcome Mix</p>
                             <h2 class="home-card-title">Assessment Outcome Snapshot</h2>
+                            <div class="home-card-ai-state" id="home-outcomes-ai-state" aria-live="polite" hidden></div>
                             <p class="home-card-copy" id="home-outcomes-copy">Start with the overall assessment balance so the landing page answers whether the visible cohort is broadly passing, failing, or still awaiting marks.</p>
                             <div class="home-chart-hints" id="home-outcomes-hints" aria-label="Chart interaction hints"></div>
                         </div>
@@ -60,6 +73,7 @@
                         <div>
                             <p class="home-card-kicker">Risk Mix</p>
                             <h2 class="home-card-title">Student Risk Distribution</h2>
+                            <div class="home-card-ai-state" id="home-risk-ai-state" aria-live="polite" hidden></div>
                             <p class="home-card-copy" id="home-risk-copy">Use this to see whether the visible cohort is mostly stable or already leaning into moderate, high, or critical watchlist bands.</p>
                             <div class="home-chart-hints" id="home-risk-hints" aria-label="Chart interaction hints"></div>
                         </div>
@@ -77,12 +91,25 @@
 
         <section class="home-flow-stage">
             <div class="home-flow-header">
-                <button class="home-flow-toggle" type="button" data-toggle="load-concentration" aria-expanded="false" aria-controls="load-concentration-content">
-                    <span class="home-flow-toggle-icon">+</span>
+                <div class="home-flow-heading">
+                    <p class="home-flow-kicker">Chapter 2</p>
                     <h2 class="home-flow-title">Load Concentration Profile</h2>
+                    <div class="home-flow-summary" id="home-chapter-two-summary" aria-live="polite"></div>
+                </div>
+                <button
+                    class="home-flow-toggle"
+                    type="button"
+                    data-toggle="load-concentration"
+                    data-section-title="Load Concentration Profile"
+                    aria-expanded="true"
+                    aria-controls="load-concentration-content"
+                    aria-label="Collapse Load Concentration Profile section"
+                >
+                    <span class="home-flow-toggle-label">Collapse</span>
+                    <span class="home-flow-toggle-icon">-</span>
                 </button>
             </div>
-            <div class="home-flow-content collapsed" id="load-concentration-content">
+            <div class="home-flow-content" id="load-concentration-content">
 
             <div class="home-stage-grid">
                 <article class="home-card">
@@ -90,6 +117,7 @@
                         <div>
                             <p class="home-card-kicker">Faculty</p>
                             <h2 class="home-card-title">Visible Registrations By Faculty</h2>
+                            <div class="home-card-ai-state" id="home-faculty-ai-state" aria-live="polite" hidden></div>
                             <p class="home-card-copy" id="home-faculty-copy">Shows where registration load concentrates before pressure builds.</p>
                             <div class="home-chart-hints" id="home-faculty-hints" aria-label="Chart interaction hints"></div>
                         </div>
@@ -107,6 +135,7 @@
                         <div>
                             <p class="home-card-kicker">Progress Status</p>
                             <h2 class="home-card-title">Registration Decision Picture</h2>
+                            <div class="home-card-ai-state" id="home-progress-ai-state" aria-live="polite" hidden></div>
                             <p class="home-card-copy" id="home-progress-copy">This chart keeps proceed, retake, pending, and exit decisions in one view so users can judge academic momentum at a glance.</p>
                             <div class="home-chart-hints" id="home-progress-hints" aria-label="Chart interaction hints"></div>
                         </div>
@@ -124,14 +153,26 @@
 
         <section class="home-flow-stage home-flow-stage-actions">
             <div class="home-flow-header">
-                <button class="home-flow-toggle" type="button" data-toggle="insights" aria-expanded="false" aria-controls="insights-content">
-                    <span class="home-flow-toggle-icon">+</span>
-                    <h2 class="home-flow-title">Insights</h2>
+                <div class="home-flow-heading">
+                    <p class="home-flow-kicker">Chapter 3</p>
+                    <h2 class="home-flow-title">Next Actions</h2>
+                </div>
+                <button
+                    class="home-flow-toggle"
+                    type="button"
+                    data-toggle="insights"
+                    data-section-title="Next Actions"
+                    aria-expanded="true"
+                    aria-controls="insights-content"
+                    aria-label="Collapse Next Actions section"
+                >
+                    <span class="home-flow-toggle-label">Collapse</span>
+                    <span class="home-flow-toggle-icon">-</span>
                 </button>
             </div>
-            <div class="home-flow-content collapsed" id="insights-content">
+            <div class="home-flow-content" id="insights-content">
 
-            <div class="home-action-grid">
+            <div class="home-action-grid" id="home-action-grid">
                 {% for card in action_cards %}
                 <article class="home-action-card home-action-card-{{ card.tone }}">
                     <p class="home-action-kicker">{{ card.kicker }}</p>
@@ -148,11 +189,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{{ outcome_rows|json_script:"home-outcome-data" }}
-{{ risk_distribution_rows|json_script:"home-risk-distribution-data" }}
-{{ faculty_load_rows|json_script:"home-faculty-load-data" }}
-{{ progress_rows|json_script:"home-progress-data" }}
-{{ overview_card_narratives|json_script:"home-card-narratives" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260403-home-story04"></script>
+<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260408-home-ai02"></script>
 {% endblock %}

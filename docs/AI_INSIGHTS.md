@@ -318,3 +318,34 @@ Important note for the landing page:
 - AI is only used for the four chart-card overview narratives
 - the top hero banner and “Where To Explore Next” route cards remain deterministic
 - no browser-side AI request is made during chart interaction
+
+## 15. Landing Dashboard Notes
+
+This section supersedes the older landing-page implementation notes above where the
+current code has moved on.
+
+The home dashboard now uses an async shell flow:
+
+- `dashboard_home()` renders the lightweight shell
+- `dashboard_home_payload()` returns the heavier chart and action-card data
+- `dashboard_home_narratives()` returns the optional AI or rule-based narratives
+
+Frontend ownership now spans:
+
+- `dashboard/templates/dashboard/home.html`
+  Exposes the async payload and narratives URLs through `data-*` attributes
+- `dashboard/static/dashboard/js/home/index.js`
+  Fetches the shell payload and optional narrative payload after first paint
+- `dashboard/static/dashboard/js/home/narratives.js`
+  Applies AI loading badges, final AI badges, and deterministic guidance states
+
+Current landing-page behavior:
+
+- AI is still only used for the four chart-card overview narratives
+- the hero banner and route cards remain deterministic
+- the browser fetches the narrative payload asynchronously after the shell and chart
+  payload are available
+- the broad `All / All / All` scope now uses a compact fact pack so provider requests
+  stay smaller and more reliable
+- successful landing-page AI narratives are cached per fact pack before the page
+  falls back to deterministic guidance copy

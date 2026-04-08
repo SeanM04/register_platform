@@ -1,87 +1,69 @@
 """Service-layer logic for the story-first landing dashboard."""
 
 from collections import Counter
+from urllib.parse import urlencode
 
-from django.db.models import Avg
+from django.core.cache import cache
 from django.urls import reverse
 
-from ..models import CourseResult
-from ..risk.services import build_student_risk_profiles
+from ..risk.services import build_student_risk_profiles_from_registrations
 from ..views import RETENTION_EXIT_DECISIONS, get_filtered_registrations, normalize_decision_label, normalize_gender_key
 from .constants import OVERVIEW_SUMMARY_CARD_SPECS, PROGRESS_STATUS_CONFIG, RISK_BAND_CONFIG
+
+OVERVIEW_CACHE_TTL_SECONDS = 30
+
+
+def _is_first_semester_value(value):
+    """Return whether a raw semester value should count as first semester."""
+
+    semester_text = str(value or "").strip().lower()
+    if not semester_text:
+        return False
+
+    return (
+        semester_text == "1"
+        or semester_text.startswith("1")
+        or semester_text.startswith("first")
+        or "semester 1" in semester_text
+        or "first year" in semester_text
+    )
 
 
 def _calculate_first_year_retention(registrations):
     """Calculate First Year Retention rate based on student progression."""
-    
-    # Debug: Show what semester values actually exist
-    semester_values = []
-    for registration in registrations:
-        if registration.period and registration.period.semester:
-            semester_values.append(str(registration.period.semester))
-    
-    unique_semesters = list(set(semester_values))
-    print(f"DEBUG: Semester values in data: {unique_semesters}")
-    print(f"DEBUG: Total registrations: {len(registrations)}")
-    
-    # Get students in their first year (semester 1 registrations)
+
     first_year_students = set()
+    returning_students = set()
+
     for registration in registrations:
-        semester_value = registration.period.semester
-        
-        # Handle various semester representations - check for first semester
-        if semester_value is not None:
-            semester_str = str(semester_value).strip().lower()
-            # Match first semester variations: "1", "first", "semester 1", "first year", etc.
-            if (semester_str == "1" or 
-                semester_str.startswith("1") or 
-                semester_str.startswith("first") or 
-                "semester 1" in semester_str or
-                "first year" in semester_str):
-                first_year_students.add(registration.student_id)
-    
-    print(f"DEBUG: Found {len(first_year_students)} first-year students")
-    
+        semester_value = registration.period.semester if registration.period else ""
+        if _is_first_semester_value(semester_value):
+            first_year_students.add(registration.student_id)
+            continue
+
+        if str(semester_value or "").strip():
+            returning_students.add(registration.student_id)
+
     if not first_year_students:
         return "0%"
-    
-    # Count how many of these first year students have subsequent registrations
-    retained_students = 0
-    for student_id in first_year_students:
-        student_registrations = [r for r in registrations if r.student_id == student_id]
-        # Check if student has registrations beyond first semester
-        has_subsequent = any(
-            r.period.semester is not None and 
-            str(r.period.semester).strip().lower() not in ["1", ""] and
-            not str(r.period.semester).strip().lower().startswith("1") and
-            not "first" in str(r.period.semester).strip().lower()
-            for r in student_registrations
-        )
-        if has_subsequent:
-            retained_students += 1
-    
-    retention_rate = _pct(retained_students, len(first_year_students))
+
+    retention_rate = _pct(len(first_year_students & returning_students), len(first_year_students))
     return f"{retention_rate}%"
 
 
 def _calculate_students_satisfaction(marked_results):
     """Calculate Students Satisfaction based on performance metrics."""
-    
-    if not marked_results.exists():
+
+    if not marked_results["marked_count"]:
         return "0%"
-    
-    # Calculate satisfaction based on:
-    # - Percentage of students with marks above 60%
-    # - Average mark performance
-    total_results = marked_results.count()
-    high_performers = marked_results.filter(mark__gte=60).count()
-    average_mark = marked_results.aggregate(value=Avg("mark"))["value"] or 0
-    
-    # Weight the satisfaction score
+
+    total_results = marked_results["marked_count"]
+    high_performers = marked_results["high_performer_count"]
+    average_mark = marked_results["average_mark"] or 0
+
     performance_score = _pct(high_performers, total_results)
     average_score = min(100, round((average_mark / 100) * 100))
-    
-    # Combine both metrics (70% weight to performance, 30% to average)
+
     satisfaction_score = round((performance_score * 0.7) + (average_score * 0.3))
     return f"{satisfaction_score}%"
 
@@ -98,13 +80,41 @@ def _format_count(value):
     return f"{int(value or 0):,}"
 
 
-def _get_results_queryset(registrations):
-    """Return course results tied to the currently filtered registrations."""
+def _build_result_summary(registrations):
+    """Collapse prefetched course results into a reusable overview summary."""
 
-    registration_ids = [registration.id for registration in registrations]
-    if not registration_ids:
-        return CourseResult.objects.none()
-    return CourseResult.objects.filter(registration_id__in=registration_ids)
+    summary = {
+        "total_count": 0,
+        "marked_count": 0,
+        "pass_count": 0,
+        "fail_count": 0,
+        "awaiting_count": 0,
+        "high_performer_count": 0,
+        "average_mark": 0,
+    }
+    total_mark_sum = 0
+
+    for registration in registrations:
+        for result in registration.course_results.all():
+            summary["total_count"] += 1
+            if result.mark is None:
+                summary["awaiting_count"] += 1
+                continue
+
+            mark_value = float(result.mark)
+            summary["marked_count"] += 1
+            total_mark_sum += mark_value
+            if mark_value >= 50:
+                summary["pass_count"] += 1
+            else:
+                summary["fail_count"] += 1
+            if mark_value >= 60:
+                summary["high_performer_count"] += 1
+
+    if summary["marked_count"]:
+        summary["average_mark"] = total_mark_sum / summary["marked_count"]
+
+    return summary
 
 
 def _get_registration_faculty_name(registration):
@@ -144,28 +154,26 @@ def build_overview_scope_pills(request):
     return pills
 
 
-def _build_summary_values(registrations, marked_results, risk_profiles):
+def _build_summary_values(registrations, result_summary, risk_profiles):
     """Calculate the headline KPI values shown on the landing page."""
 
     total_registered = len(registrations)
     total_students = len({registration.student_id for registration in registrations})
-    result_count = marked_results.count()
-    pass_count = marked_results.filter(mark__gte=50).count()
-    average_mark = marked_results.aggregate(value=Avg("mark"))["value"]
+    result_count = result_summary["marked_count"]
+    pass_count = result_summary["pass_count"]
+    average_mark = result_summary["average_mark"]
     proceed_count = sum(1 for registration in registrations if str(registration.decision or "").strip().lower().startswith("proceed"))
     on_time_count = sum(
         1
         for registration in registrations
         if str(registration.decision or "").strip().lower() == "proceed" and (registration.carrying == 0)
     )
-    first_semester_count = sum(1 for registration in registrations if str(registration.period.semester or "").strip() == "1")
+    first_semester_count = sum(
+        1 for registration in registrations if _is_first_semester_value(registration.period.semester if registration.period else "")
+    )
     at_risk_count = sum(1 for row in risk_profiles if row["risk_level"] != "Low Risk")
-    
-    # Calculate First Year Retention
     first_year_retention = _calculate_first_year_retention(registrations)
-    
-    # Calculate Students Satisfaction (using average marks as proxy)
-    students_satisfaction = _calculate_students_satisfaction(marked_results)
+    students_satisfaction = _calculate_students_satisfaction(result_summary)
 
     return {
         "enrolled": total_students,
@@ -181,13 +189,12 @@ def _build_summary_values(registrations, marked_results, risk_profiles):
     }
 
 
-def _build_summary_cards(summary_values, faculty_load_rows, marked_results, risk_profiles):
+def _build_summary_cards(summary_values, faculty_load_rows, result_summary, risk_profiles):
     """Build the executive summary cards shown at the top of the landing page."""
 
     high_risk_count = sum(1 for row in risk_profiles if row["risk_level"] == "High Risk")
     medium_risk_count = sum(1 for row in risk_profiles if row["risk_level"] == "Medium Risk")
-    pass_count = marked_results.filter(mark__gte=50).count()
-    result_count = marked_results.count()
+    result_count = result_summary["marked_count"]
     lead_faculty = faculty_load_rows[0] if faculty_load_rows else None
 
     notes = {
@@ -229,7 +236,7 @@ def _build_summary_cards(summary_values, faculty_load_rows, marked_results, risk
         "at_risk": (
             f"{high_risk_count} high and {medium_risk_count} medium priority."
             if summary_values["at_risk"]
-            else "No are currently in medium or high-risk bands."
+            else "No students are currently in medium or high-risk bands."
         ),
     }
 
@@ -257,29 +264,29 @@ def _build_summary_cards(summary_values, faculty_load_rows, marked_results, risk
     return cards
 
 
-def _build_outcome_rows(results):
+def _build_outcome_rows(result_summary):
     """Aggregate visible assessment outcomes for the first landing-page chart."""
 
-    total_results = results.count()
+    total_results = result_summary["total_count"]
     rows = [
         {
             "key": "passed",
             "label": "Passed",
-            "count": results.filter(mark__gte=50).count(),
+            "count": result_summary["pass_count"],
             "percent": 0,
             "tone": "success",
         },
         {
             "key": "failed",
             "label": "Failed",
-            "count": results.filter(mark__lt=50).count(),
+            "count": result_summary["fail_count"],
             "percent": 0,
             "tone": "danger",
         },
         {
             "key": "awaiting",
             "label": "Awaiting Mark",
-            "count": results.filter(mark__isnull=True).count(),
+            "count": result_summary["awaiting_count"],
             "percent": 0,
             "tone": "neutral",
         },
@@ -543,31 +550,48 @@ def _build_action_cards(risk_profiles, faculty_load_rows, gender_rows, location_
 def get_home_summary_values(request):
     """Return the headline metric values for the landing-page cards."""
 
-    registrations = list(get_filtered_registrations(request))
-    results = _get_results_queryset(registrations).exclude(mark__isnull=True)
-    risk_profiles = build_student_risk_profiles(request)
-    return _build_summary_values(registrations, results, risk_profiles)
+    return get_cached_overview_dashboard_data(request)["summary_metrics"]
 
 
 def build_overview_dashboard_data(request):
     """Assemble the real landing-page signals shown immediately after login."""
 
     registrations = list(get_filtered_registrations(request))
-    results = _get_results_queryset(registrations)
-    marked_results = results.exclude(mark__isnull=True)
-    risk_profiles = build_student_risk_profiles(request)
+    result_summary = _build_result_summary(registrations)
+    risk_profiles = build_student_risk_profiles_from_registrations(registrations)
     faculty_load_rows = _build_faculty_load_rows(registrations)
     students = _build_student_snapshot(registrations)
     gender_rows = _build_gender_rows(students)
     location_rows = _build_birth_location_rows(students)
-    summary_values = _build_summary_values(registrations, marked_results, risk_profiles)
+    summary_values = _build_summary_values(registrations, result_summary, risk_profiles)
 
     return {
-        "summary_cards": _build_summary_cards(summary_values, faculty_load_rows, marked_results, risk_profiles),
+        "summary_metrics": summary_values,
+        "summary_cards": _build_summary_cards(summary_values, faculty_load_rows, result_summary, risk_profiles),
         "scope_pills": build_overview_scope_pills(request),
-        "outcome_rows": _build_outcome_rows(results),
+        "outcome_rows": _build_outcome_rows(result_summary),
         "risk_distribution_rows": _build_risk_distribution_rows(risk_profiles),
         "faculty_load_rows": faculty_load_rows,
         "progress_rows": _build_progress_rows(registrations),
         "action_cards": _build_action_cards(risk_profiles, faculty_load_rows, gender_rows, location_rows),
     }
+
+
+def _build_overview_cache_key(request):
+    """Create a stable cache key for the current overview filter scope."""
+
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:overview:{query_string or 'all'}"
+
+
+def get_cached_overview_dashboard_data(request):
+    """Return cached overview analytics for the current filter scope."""
+
+    cache_key = _build_overview_cache_key(request)
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None:
+        return cached_payload
+
+    overview_data = build_overview_dashboard_data(request)
+    cache.set(cache_key, overview_data, OVERVIEW_CACHE_TTL_SECONDS)
+    return overview_data

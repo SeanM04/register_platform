@@ -4,13 +4,13 @@ OVERVIEW_ACTIVE_KEY = "dashboard"
 OVERVIEW_PAGE_TITLE = "Overview Dashboard"
 
 OVERVIEW_SUMMARY_CARD_SPECS = [
-    {"key": "enrolled", "label": "enrolled students", "tone": "neutral"},
+    {"key": "enrolled", "label": "Enrolled Students", "tone": "neutral"},
     {"key": "registered", "label": "Registrations", "tone": "neutral"},
     {"key": "pass_rate", "label": "Pass Rate", "tone": "success"},
     {"key": "completion_rate", "label": "Completion Rate", "tone": "neutral"},
     {"key": "on_time_graduation", "label": "On-Time Graduation", "tone": "neutral"},
     {"key": "first_year_retention", "label": "First Year Retention", "tone": "success"},
-    {"key": "students_satisfaction", "label": "Students Satisfaction", "tone": "success"},
+    {"key": "students_satisfaction", "label": "Student Satisfaction", "tone": "success"},
     {"key": "at_risk", "label": "At-Risk Students", "tone": "danger"},
 ]
 

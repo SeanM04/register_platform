@@ -9,8 +9,11 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseFacultyNarrative } from "./narratives.js?v=20260403-home-story04";
+import { initialiseFacultyNarrative } from "./narratives.js?v=20260408-home-ai02";
 
+/**
+ * Build the faculty-load chart and sync its narrative surfaces.
+ */
 export const initialiseFacultyLoadSection = (context) => {
     const rows = context.data.facultyLoadRows || [];
     const { facultyChart } = context.elements;

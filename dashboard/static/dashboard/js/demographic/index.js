@@ -51,12 +51,74 @@ const demographicRoot = document.querySelector(".demographic-layout");
 const payloadPromise = demographicRoot
     ? fetchJson(demographicRoot.dataset.payloadUrl).catch(() => null)
     : Promise.resolve(null);
-const metricsPromise = demographicRoot
-    ? fetchJson(demographicRoot.dataset.metricsUrl).catch(() => null)
-    : Promise.resolve(null);
-const narrativesPromise = demographicRoot
-    ? fetchJson(demographicRoot.dataset.narrativesUrl).catch(() => null)
-    : Promise.resolve(null);
+const MAP_LIBRARY_WAIT_MS = 2400;
+
+const scheduleBackgroundTask = (callback, timeout = 1200, fallbackDelay = 48) => {
+    if (window.requestIdleCallback) {
+        window.requestIdleCallback(() => {
+            callback();
+        }, { timeout });
+        return;
+    }
+
+    window.setTimeout(callback, fallbackDelay);
+};
+
+const waitForMapLibrary = (callback, startedAt = Date.now()) => {
+    if (window.maplibregl || Date.now() - startedAt >= MAP_LIBRARY_WAIT_MS) {
+        callback();
+        return;
+    }
+
+    window.setTimeout(() => {
+        waitForMapLibrary(callback, startedAt);
+    }, 60);
+};
+
+const initialiseDeferredOriginMapSection = (context, controllers, resizeCharts) => {
+    const originMapTarget = context.elements.originMapChart;
+    if (!originMapTarget) {
+        return;
+    }
+
+    let hasQueuedInitialisation = false;
+    const start = () => {
+        if (hasQueuedInitialisation) {
+            return;
+        }
+
+        hasQueuedInitialisation = true;
+        waitForMapLibrary(() => {
+            controllers.push(initialiseOriginMapSection(context));
+            resizeCharts();
+        });
+    };
+
+    if (!window.IntersectionObserver) {
+        window.setTimeout(start, 600);
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) {
+            return;
+        }
+
+        observer.disconnect();
+        start();
+    }, { rootMargin: "240px 0px" });
+
+    observer.observe(originMapTarget);
+    window.setTimeout(() => {
+        observer.disconnect();
+        start();
+    }, 1800);
+};
+
+const buildMetricCards = (metrics = {}) => Object.keys(metrics).map((key) => ({
+    key,
+    value: metrics[key],
+}));
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
@@ -100,6 +162,22 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
     });
 };
 
+const loadNarrativesInBackground = (context) => {
+    if (!demographicRoot?.dataset.narrativesUrl) {
+        return;
+    }
+
+    scheduleBackgroundTask(() => {
+        fetchJson(demographicRoot.dataset.narrativesUrl)
+            .then((payload) => {
+                const cardNarratives = payload?.card_narratives || {};
+                updateDemographicContext(context, { cardNarratives });
+                hydrateNarratives(context);
+            })
+            .catch(() => {});
+    }, 1600, 120);
+};
+
 const hydrateNarratives = (context) => {
     initialiseGenderNarrative(context.elements, context.data.genderRows, context.data.cardNarratives, context.flags);
     initialiseLocationNarrative(context.elements, context.data.locationRows, context.data.cardNarratives, context.flags);
@@ -127,7 +205,6 @@ export const initialiseDemographicPage = async () => {
     }
 
     let chartPayload = null;
-    let cardNarratives = null;
     const payloadResponse = await payloadPromise;
     if (!payloadResponse) {
         setDemographicShellErrorState(shellContext);
@@ -144,6 +221,7 @@ export const initialiseDemographicPage = async () => {
     };
 
     const context = updateDemographicContext(shellContext, { chartPayload });
+    hydrateSummaryCards(context, buildMetricCards(payloadResponse?.metrics || {}));
 
     renderStoryBanner(context.elements.storyBanner, context.data.genderRows, context.data.locationRows, context.data.programmeRows);
 
@@ -152,7 +230,6 @@ export const initialiseDemographicPage = async () => {
         initialiseLocationSection(context),
         initialiseLocationMixSection(context),
         initialiseProgrammeMixSection(context),
-        initialiseOriginMapSection(context),
     ];
     const resizeCharts = () => {
         controllers.forEach((controller) => {
@@ -162,16 +239,6 @@ export const initialiseDemographicPage = async () => {
 
     initialiseChartResizeHandling(controllers, resizeCharts);
     initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
-
-    metricsPromise
-        .then((metricsResponse) => hydrateSummaryCards(context, metricsResponse?.metrics ? Object.keys(metricsResponse.metrics).map((key) => ({ key, value: metricsResponse.metrics[key] })) : []))
-        .catch(() => {});
-
-    narrativesPromise
-        .then((payload) => {
-            cardNarratives = payload?.card_narratives || {};
-            updateDemographicContext(context, { cardNarratives });
-            hydrateNarratives(context);
-        })
-        .catch(() => {});
+    initialiseDeferredOriginMapSection(context, controllers, resizeCharts);
+    loadNarrativesInBackground(context);
 };

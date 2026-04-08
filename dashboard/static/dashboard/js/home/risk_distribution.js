@@ -9,7 +9,7 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseRiskNarrative } from "./narratives.js?v=20260403-home-story04";
+import { initialiseRiskNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const RISK_COLORS = {
     critical: buildGradient("#d1535d", "#e88473"),
@@ -18,6 +18,9 @@ const RISK_COLORS = {
     stable: buildGradient("#4fae82", "#79d6af"),
 };
 
+/**
+ * Build the risk-distribution chart and sync its narrative surfaces.
+ */
 export const initialiseRiskDistributionSection = (context) => {
     const rows = context.data.riskDistributionRows || [];
     const { riskChart } = context.elements;

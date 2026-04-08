@@ -9,6 +9,8 @@
     --border: #cfcfcf;
     --shadow: 0 8px 16px rgba(17, 24, 39, 0.16);
     --radius: 16px;
+    --sidebar-width: 160px;
+    --topbar-height: 106px;
 }
 
 * {
@@ -39,8 +41,8 @@ input {
 
 .app-shell {
     min-height: 100vh;
-    padding-left: 160px;
-    padding-top: 64px;
+    padding-left: var(--sidebar-width);
+    padding-top: calc(var(--topbar-height) + 12px);
 }
 
 .filter-loading-overlay {
@@ -132,21 +134,22 @@ body.is-filter-loading .topbar-filters {
     right: 0;
     z-index: 1000;
     display: grid;
-    grid-template-columns: 180px minmax(0, 1fr) 140px;
-    gap: 0.8rem;
-    align-items: flex-start;
-    padding: 0.8rem 1.2rem 1.5rem 0.8rem !important;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 0;
-    height: 80px;
+    grid-template-columns: 212px minmax(0, 1fr) 176px;
+    gap: 1.05rem;
+    align-items: center;
+    padding: 0.78rem 1.25rem 0.82rem 0.95rem !important;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 250, 253, 0.98));
+    border: 1px solid rgba(184, 200, 217, 0.88);
+    border-radius: 0 0 18px 18px;
+    box-shadow: 0 12px 26px rgba(8, 35, 64, 0.08);
+    height: var(--topbar-height);
 }
 
 .topbar-admin {
-    grid-template-columns: 180px minmax(0, 1fr) 140px;
-    gap: 0.8rem;
-    padding: 0.8rem 1rem 1.5rem 1rem;
-    height: 80px;
+    grid-template-columns: 206px minmax(0, 1fr) 162px;
+    gap: 0.95rem;
 }
 
 .brand-block {
@@ -154,23 +157,26 @@ body.is-filter-loading .topbar-filters {
     align-items: center;
     justify-content: flex-start;
     width: auto;
-    min-height: 36px;
+    min-height: 38px;
     flex-shrink: 0;
-    padding-left: 0;
 }
 
 .brand-logo-image {
     display: block;
-    width: 150px;
+    width: 228px;
     height: auto;
     max-width: 100%;
 }
 
 .topbar-filters {
-    display: flex;
-    gap: 0.5rem;
-    align-items: flex-start;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(96px, 0.7fr) minmax(132px, 1fr) minmax(220px, 1.5fr);
+    gap: 1rem;
+    align-items: end;
+    justify-content: stretch;
+    width: 100%;
+    max-width: 56rem;
+    margin: 0 auto;
 }
 
 .topbar-meta {
@@ -198,46 +204,61 @@ body.is-filter-loading .topbar-filters {
 .filter-box {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
-    align-items: flex-start;
-    justify-content: flex-start;
+    gap: 0.42rem;
 }
 
 .filter-label {
-    font-weight: 600;
-    color: var(--muted);
-    margin-bottom: 0.1rem;
     display: block;
-    font-size: 15px;
+    margin: 0;
+    color: #526277;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
 }
 
 .filter-select {
     width: 100%;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--panel);
-    font-size: 15px;
-    font-weight: 500;
+    min-height: 42px;
+    padding: 0 0.95rem;
+    border: 1px solid rgba(184, 200, 217, 0.9);
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(246, 250, 253, 0.98));
+    box-shadow: 0 10px 22px rgba(8, 35, 64, 0.05);
+    font-size: 0.92rem;
+    font-weight: 600;
     color: var(--ink);
-    max-height: 28px;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.filter-select:hover {
+    border-color: rgba(79, 176, 209, 0.58);
+    transform: translateY(-1px);
+}
+
+.filter-select:focus-visible {
+    outline: none;
+    border-color: rgba(79, 176, 209, 0.8);
+    box-shadow: 0 0 0 4px rgba(79, 176, 209, 0.14), 0 10px 22px rgba(8, 35, 64, 0.08);
 }
 
 .brand-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.5rem;
-    padding-right: 0;
+    gap: 0.85rem;
+    min-width: 0;
 }
 
 .topbar-admin .brand-block {
     width: auto;
-    min-height: 30px;
+    min-height: 34px;
 }
 
 .topbar-admin .brand-logo-image {
-    width: 210px;
+    width: 214px;
 }
 
 .topbar-admin .topbar-kicker {
@@ -249,18 +270,18 @@ body.is-filter-loading .topbar-filters {
 }
 
 .topbar-admin .school-seal {
-    width: 44px;
-    height: 44px;
+    width: 50px;
+    height: 50px;
 }
 
 .topbar-admin .logout-button {
-    min-width: 70px;
-    padding: 0.4rem 0.7rem;
+    min-width: 82px;
+    padding: 0.58rem 0.92rem;
 }
 
 .school-seal {
-    width: 36px;
-    height: 36px;
+    width: 54px;
+    height: 54px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -283,16 +304,17 @@ body.is-filter-loading .topbar-filters {
 }
 
 .logout-button {
-    padding: 0.2rem 0.4rem;
+    min-width: 92px;
+    padding: 0.62rem 1rem;
     border: 1px solid var(--navy);
-    border-radius: 6px;
+    border-radius: 12px;
     background: var(--navy);
     color: #ffffff;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 0.84rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
-    max-height: 24px;
+    box-shadow: 0 10px 18px rgba(8, 35, 64, 0.16);
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .logout-button:hover {
@@ -310,20 +332,20 @@ body.is-filter-loading .topbar-filters {
 .workspace {
     display: block;
     padding: 1rem 1.5rem 1.5rem;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - var(--topbar-height));
 }
 
 .workspace-admin {
     gap: 1.25rem;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - var(--topbar-height));
 }
 
 .sidebar {
     position: fixed;
-    top: 80px;
+    top: var(--topbar-height);
     left: 0;
     bottom: 0;
-    width: 160px;
+    width: var(--sidebar-width);
     padding: 0.8rem 1rem;
     background: var(--navy);
     border-radius: 0 14px 14px 0;
@@ -363,7 +385,7 @@ body.is-filter-loading .topbar-filters {
 
 .page-content {
     padding: 1rem 1.5rem 1.5rem 0;
-    margin-top: 16px;
+    margin-top: 0;
     min-width: 0;
 }
 
@@ -394,17 +416,28 @@ body.is-filter-loading .topbar-filters {
 }
 
 @media (max-width: 1100px) {
+    .app-shell {
+        padding-left: 0;
+        padding-top: 0;
+    }
+
     .topbar {
+        position: static;
         grid-template-columns: 1fr;
+        gap: 1rem;
+        height: auto;
+        border-radius: 0;
+        padding: 1rem !important;
     }
 
     .topbar-filters {
         grid-template-columns: 1fr;
         gap: 1rem;
+        max-width: none;
     }
 
     .workspace {
-        grid-template-columns: 1fr;
+        padding-top: 1rem;
     }
 
     .sidebar {
@@ -412,6 +445,7 @@ body.is-filter-loading .topbar-filters {
         max-height: none;
         min-height: auto;
         border-radius: 0;
+        width: auto;
     }
 
     .page-content {
@@ -425,6 +459,6 @@ body.is-filter-loading .topbar-filters {
     }
 
     .brand-logo-image {
-        width: 230px;
+        width: 198px;
     }
 }

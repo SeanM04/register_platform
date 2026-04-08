@@ -120,19 +120,8 @@ def assess_student_risk(registrations):
     }
 
 
-def build_student_risk_profiles(request, search_query=""):
-    """Build per-student risk profiles from the currently filtered registration scope."""
-
-    registrations = get_filtered_registrations(request)
-    if search_query:
-        registrations = registrations.filter(
-            Q(student__first_names__icontains=search_query)
-            | Q(student__surname__icontains=search_query)
-            | Q(student__registration_number__icontains=search_query)
-            | Q(programme__name__icontains=search_query)
-            | Q(programme__department__name__icontains=search_query)
-            | Q(decision__icontains=search_query)
-        )
+def build_student_risk_profiles_from_registrations(registrations):
+    """Build per-student risk profiles from an already-filtered registration iterable."""
 
     student_registrations = {}
     for registration in registrations:
@@ -183,6 +172,23 @@ def build_student_risk_profiles(request, search_query=""):
             row["name"],
         ),
     )
+
+
+def build_student_risk_profiles(request, search_query=""):
+    """Build per-student risk profiles from the currently filtered registration scope."""
+
+    registrations = get_filtered_registrations(request)
+    if search_query:
+        registrations = registrations.filter(
+            Q(student__first_names__icontains=search_query)
+            | Q(student__surname__icontains=search_query)
+            | Q(student__registration_number__icontains=search_query)
+            | Q(programme__name__icontains=search_query)
+            | Q(programme__department__name__icontains=search_query)
+            | Q(decision__icontains=search_query)
+        )
+
+    return build_student_risk_profiles_from_registrations(list(registrations))
 
 
 def format_risk_monitor_drivers(risk_driver_text):
