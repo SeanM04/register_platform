@@ -19,11 +19,20 @@ from dashboard.models import (
 
 
 def parse_date(value):
-    """Convert an ISO-style CSV date string into a ``date`` object."""
+    """Convert CSV date string into a ``date`` object (supports multiple formats)."""
 
     if not value:
         return None
-    return datetime.strptime(value, "%Y-%m-%d").date()
+
+    value = value.strip()
+
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unsupported date format: {value}")
 
 
 def parse_decimal(value):

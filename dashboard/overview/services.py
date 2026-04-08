@@ -11,6 +11,81 @@ from ..views import RETENTION_EXIT_DECISIONS, get_filtered_registrations, normal
 from .constants import OVERVIEW_SUMMARY_CARD_SPECS, PROGRESS_STATUS_CONFIG, RISK_BAND_CONFIG
 
 
+def _calculate_first_year_retention(registrations):
+    """Calculate First Year Retention rate based on student progression."""
+    
+    # Debug: Show what semester values actually exist
+    semester_values = []
+    for registration in registrations:
+        if registration.period and registration.period.semester:
+            semester_values.append(str(registration.period.semester))
+    
+    unique_semesters = list(set(semester_values))
+    print(f"DEBUG: Semester values in data: {unique_semesters}")
+    print(f"DEBUG: Total registrations: {len(registrations)}")
+    
+    # Get students in their first year (semester 1 registrations)
+    first_year_students = set()
+    for registration in registrations:
+        semester_value = registration.period.semester
+        
+        # Handle various semester representations - check for first semester
+        if semester_value is not None:
+            semester_str = str(semester_value).strip().lower()
+            # Match first semester variations: "1", "first", "semester 1", "first year", etc.
+            if (semester_str == "1" or 
+                semester_str.startswith("1") or 
+                semester_str.startswith("first") or 
+                "semester 1" in semester_str or
+                "first year" in semester_str):
+                first_year_students.add(registration.student_id)
+    
+    print(f"DEBUG: Found {len(first_year_students)} first-year students")
+    
+    if not first_year_students:
+        return "0%"
+    
+    # Count how many of these first year students have subsequent registrations
+    retained_students = 0
+    for student_id in first_year_students:
+        student_registrations = [r for r in registrations if r.student_id == student_id]
+        # Check if student has registrations beyond first semester
+        has_subsequent = any(
+            r.period.semester is not None and 
+            str(r.period.semester).strip().lower() not in ["1", ""] and
+            not str(r.period.semester).strip().lower().startswith("1") and
+            not "first" in str(r.period.semester).strip().lower()
+            for r in student_registrations
+        )
+        if has_subsequent:
+            retained_students += 1
+    
+    retention_rate = _pct(retained_students, len(first_year_students))
+    return f"{retention_rate}%"
+
+
+def _calculate_students_satisfaction(marked_results):
+    """Calculate Students Satisfaction based on performance metrics."""
+    
+    if not marked_results.exists():
+        return "0%"
+    
+    # Calculate satisfaction based on:
+    # - Percentage of students with marks above 60%
+    # - Average mark performance
+    total_results = marked_results.count()
+    high_performers = marked_results.filter(mark__gte=60).count()
+    average_mark = marked_results.aggregate(value=Avg("mark"))["value"] or 0
+    
+    # Weight the satisfaction score
+    performance_score = _pct(high_performers, total_results)
+    average_score = min(100, round((average_mark / 100) * 100))
+    
+    # Combine both metrics (70% weight to performance, 30% to average)
+    satisfaction_score = round((performance_score * 0.7) + (average_score * 0.3))
+    return f"{satisfaction_score}%"
+
+
 def _pct(count, total):
     """Return a rounded percentage while safely handling empty totals."""
 
@@ -77,14 +152,20 @@ def _build_summary_values(registrations, marked_results, risk_profiles):
     result_count = marked_results.count()
     pass_count = marked_results.filter(mark__gte=50).count()
     average_mark = marked_results.aggregate(value=Avg("mark"))["value"]
-    proceed_count = sum(1 for registration in registrations if str(registration.decision or "").strip().lower() == "proceed")
+    proceed_count = sum(1 for registration in registrations if str(registration.decision or "").strip().lower().startswith("proceed"))
     on_time_count = sum(
         1
         for registration in registrations
-        if str(registration.decision or "").strip().lower() == "proceed" and not (registration.carrying or 0)
+        if str(registration.decision or "").strip().lower() == "proceed" and (registration.carrying == 0)
     )
     first_semester_count = sum(1 for registration in registrations if str(registration.period.semester or "").strip() == "1")
     at_risk_count = sum(1 for row in risk_profiles if row["risk_level"] != "Low Risk")
+    
+    # Calculate First Year Retention
+    first_year_retention = _calculate_first_year_retention(registrations)
+    
+    # Calculate Students Satisfaction (using average marks as proxy)
+    students_satisfaction = _calculate_students_satisfaction(marked_results)
 
     return {
         "enrolled": total_students,
@@ -92,6 +173,8 @@ def _build_summary_values(registrations, marked_results, risk_profiles):
         "pass_rate": f"{round((pass_count / result_count) * 100)}%" if result_count else "0%",
         "completion_rate": proceed_count,
         "on_time_graduation": on_time_count,
+        "first_year_retention": first_year_retention,
+        "students_satisfaction": students_satisfaction,
         "average_mark": round(average_mark or 0),
         "first_semester": first_semester_count,
         "at_risk": at_risk_count,
@@ -108,21 +191,45 @@ def _build_summary_cards(summary_values, faculty_load_rows, marked_results, risk
     lead_faculty = faculty_load_rows[0] if faculty_load_rows else None
 
     notes = {
-        "enrolled": f"Across {_format_count(summary_values['registered'])} active registrations in scope.",
+        "enrolled": (
+            f"Unique students in current scope."
+            if summary_values['enrolled']
+            else "Student data will appear once registrations are available."
+        ),
         "registered": (
-            f"{lead_faculty['label']} carries {lead_faculty['share_pct']}% of the visible load."
-            if lead_faculty
-            else "Registration load will appear once records are available."
+            f"Total course registrations."
+            if summary_values['registered']
+            else "Registration data will appear once records are available."
         ),
         "pass_rate": (
-            f"{_format_count(pass_count)} of {_format_count(result_count)} marked results are currently passing."
+            f"Of marked results, passed."
             if result_count
             else "Marked assessment results are not available yet."
         ),
+        "completion_rate": (
+            f"Completed their academic period."
+            if summary_values['completion_rate']
+            else "Completion data will be available once academic decisions are finalized."
+        ),
+        "on_time_graduation": (
+            f"Progressing without delays."
+            if summary_values['on_time_graduation']
+            else "On-time graduation data will appear as students complete their programmes."
+        ),
+        "first_year_retention": (
+            f"First-year student progression rate."
+            if summary_values['first_year_retention'] != "0%"
+            else "First-year retention data requires multiple semesters of student records."
+        ),
+        "students_satisfaction": (
+            f"Based on academic performance."
+            if summary_values['students_satisfaction'] != "0%"
+            else "Student satisfaction requires sufficient assessment results for analysis."
+        ),
         "at_risk": (
-            f"{_format_count(high_risk_count)} high priority and {_format_count(medium_risk_count)} medium priority students."
+            f"{high_risk_count} high and {medium_risk_count} medium priority."
             if summary_values["at_risk"]
-            else "No students are currently in the medium or high-risk bands."
+            else "No are currently in medium or high-risk bands."
         ),
     }
 

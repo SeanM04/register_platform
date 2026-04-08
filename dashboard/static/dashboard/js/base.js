@@ -101,6 +101,26 @@ sidebarLinks.forEach((link) => {
 
 window.addEventListener("pageshow", () => {
     clearFilterLoadingState();
+    
+    // Re-initialize charts after filter changes
+    if (window.performance && window.performance.navigation.type === 1) {
+        // Page was loaded via back/forward or refresh
+        const charts = document.querySelectorAll('[role="img"][aria-label*="chart"]');
+        charts.forEach(chart => {
+            // Clear and re-render charts
+            const chartId = chart.id;
+            if (chartId && window.echarts && window.echarts.dispose) {
+                window.echarts.dispose(chartId);
+            }
+        });
+        
+        // Trigger chart re-initialization if home page functions exist
+        if (typeof initialiseOverviewPage === 'function') {
+            setTimeout(() => {
+                initialiseOverviewPage();
+            }, 100);
+        }
+    }
 });
 
 scrollRegions.forEach((region) => {

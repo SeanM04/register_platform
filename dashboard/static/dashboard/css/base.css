@@ -39,6 +39,8 @@ input {
 
 .app-shell {
     min-height: 100vh;
+    padding-left: 160px;
+    padding-top: 64px;
 }
 
 .filter-loading-overlay {
@@ -124,41 +126,51 @@ body.is-filter-loading .topbar-filters {
 }
 
 .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     display: grid;
-    grid-template-columns: 212px minmax(0, 1fr) 172px;
-    gap: 1.1rem;
-    align-items: center;
-    padding: 0.75rem 1.25rem;
+    grid-template-columns: 180px minmax(0, 1fr) 140px;
+    gap: 0.8rem;
+    align-items: flex-start;
+    padding: 0.8rem 1.2rem 1.5rem 0.8rem !important;
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 0 0 var(--radius) var(--radius);
+    border-radius: 0;
+    height: 80px;
 }
 
 .topbar-admin {
-    grid-template-columns: 200px minmax(0, 1fr) 156px;
-    gap: 0.9rem;
-    padding: 0.6rem 1.05rem;
+    grid-template-columns: 180px minmax(0, 1fr) 140px;
+    gap: 0.8rem;
+    padding: 0.8rem 1rem 1.5rem 1rem;
+    height: 80px;
 }
 
 .brand-block {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     width: auto;
-    min-height: 38px;
+    min-height: 36px;
     flex-shrink: 0;
+    padding-left: 0;
 }
 
 .brand-logo-image {
     display: block;
-    width: 236px;
+    width: 150px;
     height: auto;
     max-width: 100%;
 }
 
 .topbar-filters {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    justify-content: center;
 }
 
 .topbar-meta {
@@ -170,7 +182,7 @@ body.is-filter-loading .topbar-filters {
 .topbar-kicker {
     margin: 0;
     color: var(--muted);
-    font-size: 0.74rem;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -179,50 +191,53 @@ body.is-filter-loading .topbar-filters {
 .topbar-heading {
     margin: 0;
     color: var(--navy);
-    font-size: 1.08rem;
+    font-size: 13px;
     font-weight: 700;
 }
 
 .filter-box {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.1rem;
+    align-items: flex-start;
+    justify-content: flex-start;
 }
 
 .filter-label {
-    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.1rem;
+    display: block;
+    font-size: 15px;
 }
 
 .filter-select {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 100%;
-    min-height: 48px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
     background: var(--panel);
-    border-radius: 0 0 12px 12px;
-    border: 0;
-    box-shadow: var(--shadow);
-    font-size: 0.95rem;
-    padding: 0 1rem;
-    appearance: none;
-    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    max-height: 28px;
 }
 
 .brand-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 1rem;
+    gap: 0.5rem;
+    padding-right: 0;
 }
 
 .topbar-admin .brand-block {
     width: auto;
-    min-height: 34px;
+    min-height: 30px;
 }
 
 .topbar-admin .brand-logo-image {
-    width: 218px;
+    width: 210px;
 }
 
 .topbar-admin .topbar-kicker {
@@ -234,18 +249,18 @@ body.is-filter-loading .topbar-filters {
 }
 
 .topbar-admin .school-seal {
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
 }
 
 .topbar-admin .logout-button {
-    min-width: 86px;
-    padding: 0.58rem 0.92rem;
+    min-width: 70px;
+    padding: 0.4rem 0.7rem;
 }
 
 .school-seal {
-    width: 62px;
-    height: 62px;
+    width: 36px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -268,17 +283,16 @@ body.is-filter-loading .topbar-filters {
 }
 
 .logout-button {
-    min-width: 92px;
-    padding: 0.65rem 1rem;
+    padding: 0.2rem 0.4rem;
     border: 1px solid var(--navy);
-    border-radius: 12px;
+    border-radius: 6px;
     background: var(--navy);
     color: #ffffff;
-    font-size: 0.82rem;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 10px 18px rgba(8, 35, 64, 0.16);
-    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.2s ease;
+    max-height: 24px;
 }
 
 .logout-button:hover {
@@ -294,47 +308,47 @@ body.is-filter-loading .topbar-filters {
 }
 
 .workspace {
-    display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
-    gap: 1.5rem;
-    align-items: start;
-    min-height: calc(100vh - 110px);
+    display: block;
+    padding: 1rem 1.5rem 1.5rem;
+    min-height: calc(100vh - 80px);
 }
 
 .workspace-admin {
     gap: 1.25rem;
-    min-height: calc(100vh - 96px);
+    min-height: calc(100vh - 80px);
 }
 
 .sidebar {
-    position: sticky;
-    top: 1rem;
-    max-height: calc(100vh - 2rem);
-    min-height: calc(100vh - 126px);
-    padding: 1rem 1.3rem;
+    position: fixed;
+    top: 80px;
+    left: 0;
+    bottom: 0;
+    width: 160px;
+    padding: 0.8rem 1rem;
     background: var(--navy);
     border-radius: 0 14px 14px 0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow-y: auto;
+    z-index: 999;
 }
 
 .sidebar-nav {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    margin-top: 0.5rem;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
 }
 
 .sidebar-link {
     display: block;
-    padding: 0.82rem 1rem;
-    border-radius: 12px;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
     color: #ffffff;
-    font-size: 0.88rem;
+    font-size: 11px;
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
 .sidebar-link.is-active {
@@ -344,11 +358,12 @@ body.is-filter-loading .topbar-filters {
 .sidebar-footer {
     margin: 0;
     color: #2f91d4;
-    font-size: 0.72rem;
+    font-size: 10px;
 }
 
 .page-content {
     padding: 1rem 1.5rem 1.5rem 0;
+    margin-top: 16px;
     min-width: 0;
 }
 
@@ -410,6 +425,6 @@ body.is-filter-loading .topbar-filters {
     }
 
     .brand-logo-image {
-        width: 198px;
+        width: 230px;
     }
 }
