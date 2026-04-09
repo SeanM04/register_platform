@@ -258,12 +258,21 @@
     gap: 0.9rem;
     transition: max-height 0.3s ease, opacity 0.3s ease;
     overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .home-flow-content.collapsed {
     max-height: 0;
     opacity: 0;
     pointer-events: none;
+}
+
+.home-flow-content.expanded {
+    max-height: 2000px;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .home-flow-kicker {

@@ -96,6 +96,15 @@ export const initialiseFacultyLoadSection = (context) => {
                         itemStyle: {
                             color: buildGradient(HOME_COLORS.navy, HOME_COLORS.sky, "horizontal"),
                         },
+                        drilldown: {
+                            name: row.label,
+                            items: [
+                                { label: "Registrations", value: formatCount(row.registrations) },
+                                { label: "Percentage", value: `${row.share_pct || 0}%` },
+                                { label: "Faculty", value: row.label },
+                                { label: "Total Registrations", value: formatCount(row.total || 0) }
+                            ]
+                        }
                     })),
                     barMaxWidth: 28,
                     label: {
@@ -110,6 +119,14 @@ export const initialiseFacultyLoadSection = (context) => {
             ],
         }
     );
+
+    // Add drill-down click handler
+    chart.on('click', function(params) {
+        if (params.data && params.data.drilldown) {
+            const drilldown = params.data.drilldown;
+            showDrillDownModal(drilldown.name, drilldown.items);
+        }
+    });
 
     return {
         getChart: () => chart,

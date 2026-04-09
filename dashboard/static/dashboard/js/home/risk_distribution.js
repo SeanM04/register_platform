@@ -107,8 +107,17 @@ export const initialiseRiskDistributionSection = (context) => {
                         itemStyle: {
                             color: RISK_COLORS[row.key] || HOME_COLORS.sky,
                         },
+                        drilldown: {
+                            name: row.label,
+                            items: [
+                                { label: "Students", value: formatCount(row.count) },
+                                { label: "Percentage", value: `${row.percent || 0}%` },
+                                { label: "Risk Level", value: row.label },
+                                { label: "Total Cohort", value: formatCount(row.total || 0) }
+                            ]
+                        }
                     })),
-                    barMaxWidth: 54,
+                    barMaxWidth: 28,
                     label: {
                         show: true,
                         position: "top",
@@ -121,6 +130,14 @@ export const initialiseRiskDistributionSection = (context) => {
             ],
         }
     );
+
+    // Add drill-down click handler
+    chart.on('click', function(params) {
+        if (params.data && params.data.drilldown) {
+            const drilldown = params.data.drilldown;
+            showDrillDownModal(drilldown.name, drilldown.items);
+        }
+    });
 
     return {
         getChart: () => chart,

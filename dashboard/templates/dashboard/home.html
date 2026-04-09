@@ -30,21 +30,19 @@
         <section class="home-flow-stage home-flow-stage-primary">
             <div class="home-flow-header">
                 <div class="home-flow-heading">
-                    <p class="home-flow-kicker">Chapter 1</p>
                     <h2 class="home-flow-title">Cohort Risk Profile</h2>
-                    <div class="home-flow-summary" id="home-chapter-one-summary" aria-live="polite"></div>
                 </div>
                 <button
                     class="home-flow-toggle"
                     type="button"
                     data-toggle="cohort-risk"
                     data-section-title="Cohort Risk Profile"
-                    aria-expanded="true"
+                    aria-expanded="false"
                     aria-controls="cohort-risk-content"
-                    aria-label="Collapse Cohort Risk Profile section"
+                    aria-label="Expand Cohort Risk Profile section"
                 >
-                    <span class="home-flow-toggle-label">Collapse</span>
-                    <span class="home-flow-toggle-icon">-</span>
+                    <span class="home-flow-toggle-label">Expand</span>
+                    <span class="home-flow-toggle-icon">+</span>
                 </button>
             </div>
             <div class="home-flow-content" id="cohort-risk-content">
@@ -92,21 +90,19 @@
         <section class="home-flow-stage">
             <div class="home-flow-header">
                 <div class="home-flow-heading">
-                    <p class="home-flow-kicker">Chapter 2</p>
-                    <h2 class="home-flow-title">Load Concentration Profile</h2>
-                    <div class="home-flow-summary" id="home-chapter-two-summary" aria-live="polite"></div>
+                    <h2 class="home-flow-title">Concentration Profile</h2>
                 </div>
                 <button
                     class="home-flow-toggle"
                     type="button"
                     data-toggle="load-concentration"
-                    data-section-title="Load Concentration Profile"
-                    aria-expanded="true"
+                    data-section-title="Concentration Profile"
+                    aria-expanded="false"
                     aria-controls="load-concentration-content"
-                    aria-label="Collapse Load Concentration Profile section"
+                    aria-label="Expand Concentration Profile section"
                 >
-                    <span class="home-flow-toggle-label">Collapse</span>
-                    <span class="home-flow-toggle-icon">-</span>
+                    <span class="home-flow-toggle-label">Expand</span>
+                    <span class="home-flow-toggle-icon">+</span>
                 </button>
             </div>
             <div class="home-flow-content" id="load-concentration-content">
@@ -154,20 +150,19 @@
         <section class="home-flow-stage home-flow-stage-actions">
             <div class="home-flow-header">
                 <div class="home-flow-heading">
-                    <p class="home-flow-kicker">Chapter 3</p>
-                    <h2 class="home-flow-title">Next Actions</h2>
+                    <h2 class="home-flow-title">Insights</h2>
                 </div>
                 <button
                     class="home-flow-toggle"
                     type="button"
                     data-toggle="insights"
-                    data-section-title="Next Actions"
-                    aria-expanded="true"
+                    data-section-title="Insights"
+                    aria-expanded="false"
                     aria-controls="insights-content"
-                    aria-label="Collapse Next Actions section"
+                    aria-label="Expand Insights section"
                 >
-                    <span class="home-flow-toggle-label">Collapse</span>
-                    <span class="home-flow-toggle-icon">-</span>
+                    <span class="home-flow-toggle-label">Expand</span>
+                    <span class="home-flow-toggle-icon">+</span>
                 </button>
             </div>
             <div class="home-flow-content" id="insights-content">
@@ -190,5 +185,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260408-home-ai02"></script>
+<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260409-drill-down-01"></script>
 {% endblock %}

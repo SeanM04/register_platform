@@ -81,11 +81,28 @@ export const initialiseOutcomeSection = (context) => {
                         itemStyle: {
                             color: OUTCOME_COLORS[row.key] || HOME_COLORS.sky,
                         },
+                        drilldown: {
+                            name: row.label,
+                            items: [
+                                { label: "Results", value: formatCount(row.count) },
+                                { label: "Percentage", value: `${Math.round((row.count / rows.reduce((sum, r) => sum + r.count, 0)) * 100)}%` },
+                                { label: "Status", value: row.label },
+                                { label: "Total Results", value: formatCount(rows.reduce((sum, r) => sum + r.count, 0)) }
+                            ]
+                        }
                     })),
                 },
             ],
         }
     );
+
+    // Add drill-down click handler
+    chart.on('click', function(params) {
+        if (params.data && params.data.drilldown) {
+            const drilldown = params.data.drilldown;
+            showDrillDownModal(drilldown.name, drilldown.items);
+        }
+    });
 
     return {
         getChart: () => chart,

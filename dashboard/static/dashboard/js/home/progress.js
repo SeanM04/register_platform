@@ -106,8 +106,17 @@ export const initialiseProgressSection = (context) => {
                         itemStyle: {
                             color: PROGRESS_COLORS[row.key] || HOME_COLORS.sky,
                         },
+                        drilldown: {
+                            name: row.label,
+                            items: [
+                                { label: "Registrations", value: formatCount(row.count) },
+                                { label: "Percentage", value: `${row.share_pct || 0}%` },
+                                { label: "Status", value: row.label },
+                                { label: "Total Decisions", value: formatCount(row.total || 0) }
+                            ]
+                        }
                     })),
-                    barMaxWidth: 58,
+                    barMaxWidth: 28,
                     label: {
                         show: true,
                         position: "top",
@@ -120,6 +129,14 @@ export const initialiseProgressSection = (context) => {
             ],
         }
     );
+
+    // Add drill-down click handler
+    chart.on('click', function(params) {
+        if (params.data && params.data.drilldown) {
+            const drilldown = params.data.drilldown;
+            showDrillDownModal(drilldown.name, drilldown.items);
+        }
+    });
 
     return {
         getChart: () => chart,
