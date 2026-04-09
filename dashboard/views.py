@@ -354,7 +354,19 @@ def get_home_summary_values(request):
     result_count = filtered_results.count()
     completion_rate = registrations.filter(decision__iexact="PROCEED").count()
     avg_mark = filtered_results.aggregate(value=Avg("mark"))["value"]
-    first_year_retention = registrations.filter(period__semester="1").count()
+    
+    # Calculate first year retention using the new dynamic method
+    from .overview.services import _calculate_first_year_retention
+    first_year_retention = _calculate_first_year_retention(registrations)
+    
+    # Handle special cases for retention display
+    if first_year_retention == "No data available":
+        retention_display = "No data available"
+    elif first_year_retention == "0%":
+        retention_display = "Retention cannot be calculated for selected filters"
+    else:
+        retention_display = first_year_retention
+    
     on_time_graduation = registrations.filter(decision__iexact="PROCEED", carrying=0).count()
     at_risk_count = (
         filtered_results.filter(mark__lt=50)
@@ -371,18 +383,9 @@ def get_home_summary_values(request):
         "completion_rate": completion_rate,
         "on_time_graduation": on_time_graduation,
         "average_mark": round(avg_mark or 0),
-        "first_semester": first_year_retention,
+        "first_year_retention": retention_display,
         "at_risk": at_risk_count,
     }
-
-
-def get_programmes_queryset(request, search_query=""):
-    """Delegate programme queryset shaping to the feature package for compatibility."""
-
-    from .programmes.services import get_programmes_queryset as feature_get_programmes_queryset
-
-    return feature_get_programmes_queryset(request, search_query)
-
 
 def build_programme_rows(programmes):
     """Delegate programme row shaping to the feature package for compatibility."""

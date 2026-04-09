@@ -123,6 +123,21 @@ const initialiseCollapsibleSections = () => {
         toggle.addEventListener("click", () => {
             const isExpanded = toggle.getAttribute("aria-expanded") === "true";
 
+            if (!isExpanded) {
+                // If expanding this section, collapse all other sections first
+                toggles.forEach((otherToggle) => {
+                    if (otherToggle !== toggle) {
+                        const otherContentId = otherToggle.getAttribute("aria-controls");
+                        const otherContent = document.getElementById(otherContentId);
+                        
+                        if (otherContent && otherToggle.getAttribute("aria-expanded") === "true") {
+                            syncToggleState(otherToggle, otherContent, false, true);
+                        }
+                    }
+                });
+            }
+
+            // Then toggle this section
             syncToggleState(toggle, content, !isExpanded, true);
         });
     });

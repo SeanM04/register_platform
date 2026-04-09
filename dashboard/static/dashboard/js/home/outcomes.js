@@ -85,9 +85,9 @@ export const initialiseOutcomeSection = (context) => {
                             name: row.label,
                             items: [
                                 { label: "Results", value: formatCount(row.count) },
-                                { label: "Percentage", value: `${Math.round((row.count / rows.reduce((sum, r) => sum + r.count, 0)) * 100)}%` },
+                                { label: "Percentage", value: `${row.percent}%` },
                                 { label: "Status", value: row.label },
-                                { label: "Total Results", value: formatCount(rows.reduce((sum, r) => sum + r.count, 0)) }
+                                { label: "Total Marked Results", value: formatCount(rows.filter(r => r.key !== 'awaiting').reduce((sum, r) => sum + r.count, 0)) }
                             ]
                         }
                     })),

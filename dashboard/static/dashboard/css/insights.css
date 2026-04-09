@@ -157,7 +157,7 @@
     display: inline-flex;
     align-items: center;
     padding: 0.32rem 0.72rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(148, 163, 184, 0.12);
     color: #475569;
     font-size: 0.76rem;
@@ -174,7 +174,7 @@
     width: 10px;
     height: 10px;
     margin-right: 0.48rem;
-    border-radius: 50%;
+    border-radius: 12px;
     background: #4fb0d1;
     box-shadow: 0 0 0 6px rgba(79, 176, 209, 0.14);
 }
@@ -295,7 +295,7 @@
     display: inline-flex;
     align-items: center;
     padding: 0.24rem 0.56rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(148, 163, 184, 0.12);
     color: #475569;
     font-size: 0.68rem;
@@ -359,7 +359,7 @@
     gap: 0.34rem;
     padding: 0.22rem 0.52rem;
     border: 1px solid rgba(79, 176, 209, 0.24);
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
     color: #0d325d;
     font-size: 0.66rem;
@@ -375,7 +375,7 @@
     justify-content: center;
     width: 1rem;
     height: 1rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(13, 50, 93, 0.12);
     color: currentColor;
 }
@@ -430,7 +430,7 @@
     min-height: 40px;
     padding: 0.5rem 0.8rem;
     border: 1px solid #b8c8d9;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #ffffff;
     color: var(--navy);
     font-size: 0.76rem;
@@ -490,7 +490,7 @@
     justify-content: center;
     min-height: 34px;
     padding: 0.4rem 0.72rem;
-    border-radius: 999px;
+    border-radius: 12px;
     font-size: 0.76rem;
     font-weight: 700;
     white-space: nowrap;
@@ -539,7 +539,7 @@
 
 .insight-confidence-track {
     height: 10px;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #edf2f7;
     overflow: hidden;
 }
@@ -570,7 +570,7 @@
 .insight-avatar {
     width: 50px;
     height: 50px;
-    border-radius: 50%;
+    border-radius: 12px;
     display: inline-flex;
     align-items: center;
     justify-content: center;

@@ -46,7 +46,7 @@
     width: min(240px, 100%);
     padding: 0.56rem 0.78rem;
     border: 1px solid #dbe4f0;
-    border-radius: 10px;
+    border-radius: 12px;
     outline: none;
     font-size: 0.84rem;
     background: #f8fbff;
@@ -62,7 +62,7 @@
 .search-button {
     padding: 0.54rem 0.84rem;
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--navy);
     color: #ffffff;
     cursor: pointer;
@@ -99,7 +99,7 @@
 
 .table-wrap::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, #b8c5d3, #94a3b8);
     background-clip: padding-box;
 }
@@ -270,6 +270,17 @@
     text-decoration: none;
     color: inherit;
     text-align: center;
+    border-radius: 12px;
+    padding: 0.42rem 0.6rem;
+    background: #eef2f7;
+    border: 1px solid #d7e9f6;
+    color: var(--navy-soft);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .student-link-name {
@@ -289,7 +300,7 @@
     justify-content: center;
     min-width: 2.65rem;
     padding: 0.18rem 0.46rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #eef6fc;
     border: 1px solid #d7e9f6;
     color: var(--navy-soft);

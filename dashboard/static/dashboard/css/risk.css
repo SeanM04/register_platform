@@ -234,7 +234,7 @@
     display: inline-flex;
     align-items: center;
     padding: 0.24rem 0.56rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(148, 163, 184, 0.12);
     color: #475569;
     font-size: 0.68rem;
@@ -304,7 +304,7 @@
     flex-shrink: 0;
     padding: 0.22rem 0.52rem;
     border: 1px solid rgba(79, 176, 209, 0.24);
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
     color: #0d325d;
     font-size: 0.66rem;
@@ -347,7 +347,7 @@
     justify-content: center;
     width: 0.95rem;
     height: 0.95rem;
-    border-radius: 50%;
+    border-radius: 12px;
     background: rgba(79, 176, 209, 0.18);
     color: #0d325d;
 }
@@ -385,7 +385,7 @@
     flex-shrink: 0;
     padding: 0.5rem 0.8rem;
     border: 1px solid #b8c8d9;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #ffffff;
     color: var(--navy);
     font-size: 0.76rem;
@@ -523,12 +523,12 @@
 
 .risk-table-wrap::-webkit-scrollbar-track {
     background: #e5edf5;
-    border-radius: 999px;
+    border-radius: 12px;
 }
 
 .risk-table-wrap::-webkit-scrollbar-thumb {
     background: #9eb4c8;
-    border-radius: 999px;
+    border-radius: 12px;
 }
 
 .risk-table-wrap::-webkit-scrollbar-thumb:hover {
@@ -638,7 +638,7 @@
     display: inline-flex;
     align-items: center;
     padding: 0.24rem 0.58rem;
-    border-radius: 999px;
+    border-radius: 12px;
     font-size: 0.68rem;
     font-weight: 800;
     text-transform: uppercase;
@@ -695,7 +695,7 @@
     justify-content: center;
     min-width: 2.15rem;
     padding: 0.48rem 0.72rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #ffffff;
     color: #163a63;
     font-size: 0.76rem;

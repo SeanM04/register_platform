@@ -213,7 +213,7 @@
     justify-content: center;
     padding: 0.42rem 0.72rem;
     border: 1px solid rgba(13, 50, 93, 0.12);
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.9);
     box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
     cursor: pointer;
@@ -241,7 +241,7 @@
     height: 20px;
     background: rgba(13, 50, 93, 0.06);
     border: 1px solid rgba(13, 50, 93, 0.12);
-    border-radius: 999px;
+    border-radius: 12px;
     font-size: 11px;
     font-weight: 700;
     color: #123b68;
@@ -364,7 +364,7 @@
 
 .home-chart-hint {
     padding: 0.24rem 0.56rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(13, 50, 93, 0.06);
     color: #4d6178;
     font-size: 0.68rem;
@@ -380,7 +380,7 @@
     flex-shrink: 0;
     padding: 0.5rem 0.8rem;
     border: 1px solid #b8c8d9;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #ffffff;
     color: var(--navy);
     font-size: 0.76rem;
@@ -450,7 +450,7 @@
     flex-shrink: 0;
     padding: 0.22rem 0.52rem;
     border: 1px solid rgba(79, 176, 209, 0.24);
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, rgba(233, 247, 252, 0.98), rgba(219, 239, 248, 0.98));
     color: #0d325d;
     font-size: 0.66rem;
@@ -511,7 +511,7 @@
     justify-content: center;
     width: 0.95rem;
     height: 0.95rem;
-    border-radius: 50%;
+    border-radius: 12px;
     background: rgba(79, 176, 209, 0.18);
     color: #0d325d;
 }
@@ -629,13 +629,14 @@
     width: fit-content;
     margin-top: 0.1rem;
     padding: 0.5rem 0.8rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(13, 50, 93, 0.08);
     color: #123b68;
     font-size: 0.76rem;
     font-weight: 700;
     text-decoration: none;
-    transition: transform 0.16s ease, background-color 0.16s ease;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .home-action-link:hover {

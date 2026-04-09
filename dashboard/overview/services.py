@@ -30,25 +30,223 @@ def _is_first_semester_value(value):
 
 
 def _calculate_first_year_retention(registrations):
-    """Calculate First Year Retention rate based on student progression."""
+    """Calculate First Year Retention rate based on student progression across semesters."""
 
-    first_year_students = set()
-    returning_students = set()
+    # Basic debug to see if function is called
+    print(f"DEBUG: _calculate_first_year_retention called with {len(registrations)} registrations")
+    
+    if not registrations:
+        print("DEBUG: No registrations provided")
+        return "No data available"
 
+    # Group registrations by student to track their progression
+    student_records = {}
+    academic_years_found = set()
+    semesters_found = set()
+    period_details = []
+    
     for registration in registrations:
-        semester_value = registration.period.semester if registration.period else ""
-        if _is_first_semester_value(semester_value):
-            first_year_students.add(registration.student_id)
-            continue
+        student_id = registration.student_id
+        
+        # Use stored academic year and semester from AcademicPeriod model
+        academic_year = None
+        semester = None
+        
+        if registration.period:
+            # Use the stored academic_year and semester fields from AcademicPeriod
+            try:
+                academic_year = int(registration.period.academic_year) if registration.period.academic_year else None
+                semester = int(registration.period.semester) if registration.period.semester else None
+            except (ValueError, TypeError):
+                academic_year = None
+                semester = None
+        
+        period_name = registration.period.name.lower() if registration.period else ""
+        
+        # Track what years and semesters we're finding
+        if academic_year is not None:
+            academic_years_found.add(academic_year)
+        if semester is not None:
+            semesters_found.add(semester)
+        
+        # Collect period details for debugging
+        period_details.append({
+            'period_name': period_name,
+            'stored_academic_year': registration.period.academic_year if registration.period else None,
+            'stored_semester': registration.period.semester if registration.period else None,
+            'extracted_academic_year': academic_year,
+            'extracted_semester': semester,
+            'student_id': student_id
+        })
+        
+        # Store student's academic record
+        if student_id not in student_records:
+            student_records[student_id] = {
+                'faculty': _get_registration_faculty_name(registration),
+                'records': []
+            }
+        
+        student_records[student_id]['records'].append({
+            'academic_year': academic_year,
+            'semester': semester,
+            'period_name': period_name
+        })
 
-        if str(semester_value or "").strip():
-            returning_students.add(registration.student_id)
+    # Debug: Log comprehensive information
+    print(f"DEBUG: Academic years found: {sorted(academic_years_found)}")
+    print(f"DEBUG: Semesters found: {sorted(semesters_found)}")
+    print(f"DEBUG: Total students processed: {len(student_records)}")
+    print(f"DEBUG: Total registrations processed: {len(period_details)}")
+    
+    # Show sample period details
+    print(f"DEBUG: Sample period details:")
+    for i, detail in enumerate(period_details[:5]):  # Show first 5
+        print(f"  {i+1}. Period: '{detail['period_name']}' -> Stored: Year {detail['stored_academic_year']}, Sem {detail['stored_semester']} -> Extracted: Year {detail['extracted_academic_year']}, Sem {detail['extracted_semester']} (Student {detail['student_id']})")
+    
+    # Count students by academic year and semester
+    year_semester_counts = {}
+    for student_id, data in student_records.items():
+        for record in data['records']:
+            if record['academic_year'] is not None and record['semester'] is not None:
+                key = (record['academic_year'], record['semester'])
+                year_semester_counts[key] = year_semester_counts.get(key, 0) + 1
+    
+    print(f"DEBUG: Students by Year/Semester:")
+    for (year, semester), count in sorted(year_semester_counts.items()):
+        print(f"  Year {year}, Semester {semester}: {count} students")
+
+    # CORRECT APPROACH: First-year students are those without previous registrations
+    # These are the new students who enroll as Academic Year 1, Semester 1 in each period
+    
+    # Get all student IDs from the filtered registrations
+    filtered_student_ids = set(student_records.keys())
+    
+    # Check each student's complete registration history to determine if they're first-year
+    first_year_students = []
+    
+    for student_id in filtered_student_ids:
+        # Get all registrations for this student (not just filtered ones)
+        from dashboard.models import Registration
+        all_student_regs = Registration.objects.filter(student_id=student_id).order_by('created_at')
+        
+        # Check if this student's first registration is within the filtered periods
+        first_reg = all_student_regs.first()
+        if first_reg and first_reg.period_id in [reg.period_id for reg in registrations if reg.student_id == student_id]:
+            # This student's first registration is in the filtered data - they are first-year students
+            first_year_students.append({
+                'student_id': student_id,
+                'faculty': student_records[student_id]['faculty'],
+                'records': student_records[student_id]['records']
+            })
+
+    print(f"DEBUG: First-year students (new enrollments in filtered periods) found: {len(first_year_students)}")
 
     if not first_year_students:
-        return "0%"
+        print("DEBUG: No first-year students found in filtered data")
+        return "No data available"
 
-    retention_rate = _pct(len(first_year_students & returning_students), len(first_year_students))
+    # Check progression for each first-year student
+    progressed_students = 0
+    for student in first_year_students:
+        # A student progresses if they have more than 1 registration total
+        # This means they continued beyond their first period
+        
+        from dashboard.models import Registration
+        total_registrations = Registration.objects.filter(student_id=student['student_id']).count()
+        
+        if total_registrations > 1:
+            progressed_students += 1
+
+    print(f"DEBUG: Progressed students: {progressed_students} out of {len(first_year_students)}")
+
+    # Calculate retention rate
+    retention_rate = _pct(progressed_students, len(first_year_students))
     return f"{retention_rate}%"
+
+
+def _extract_academic_year(period):
+    """Extract academic year from period name."""
+    if not period or not period.name:
+        return None
+    
+    period_name = str(period.name).lower()
+    
+    # For period names like "September 2023 - December 2023"
+    # Extract the first year as the academic year
+    import re
+    
+    # Look for year patterns in the period name
+    year_matches = re.findall(r'\b(20[0-9]{2})\b', period_name)
+    if year_matches:
+        # Use the first year found as the academic year
+        year = int(year_matches[0])
+        
+        # Map calendar years to academic years based on your data (years 1-5)
+        # Updated mapping based on your 2020 = Academic Year 1
+        if year == 2020:
+            return 1  # 2020 is academic year 1
+        elif year == 2021:
+            return 2  # 2021 is academic year 2
+        elif year == 2022:
+            return 3  # 2022 is academic year 3
+        elif year == 2023:
+            return 4  # 2023 is academic year 4
+        elif year == 2024:
+            return 5  # 2024 is academic year 5
+        elif year == 2025:
+            return 6  # 2025 is academic year 6
+        else:
+            # For other years, calculate relative to 2020
+            return year - 2019
+    
+    return None
+
+
+def _extract_semester(period):
+    """Extract semester from period name."""
+    if not period or not period.name:
+        return None
+    
+    period_name = str(period.name).lower()
+    
+    # Handle both CSV format (AUGUST 2025 - DECEMBER 2025) and filter format (August-December)
+    
+    # August-December patterns (Semester 2 - second half of academic year)
+    if ('august' in period_name and 'december' in period_name) or \
+       ('september' in period_name and 'december' in period_name):
+        return 2  # August-December or September-December is Semester 2
+    
+    # March-July patterns (Semester 1 - first half of academic year)
+    elif ('march' in period_name and 'july' in period_name) or \
+         ('may' in period_name and 'july' in period_name):
+        return 1  # March-July or May-July is Semester 1
+    
+    # May-August patterns (Semester 1)
+    elif 'may' in period_name and 'august' in period_name:
+        return 1  # May-August is Semester 1
+    
+    # October-March patterns (Semester 2)
+    elif 'october' in period_name and 'march' in period_name:
+        return 2  # October-March is Semester 2
+    
+    # January-April patterns (could be Semester 1)
+    elif 'january' in period_name and 'april' in period_name:
+        return 1  # January-April could be Semester 1
+    
+    # Fallback to original logic for other patterns
+    import re
+    semester_match = re.search(r'(?:semester|sem)\s*([0-9]+)', period_name)
+    if semester_match:
+        return int(semester_match.group(1))
+    
+    if 'first' in period_name or '1st' in period_name:
+        return 1
+    elif 'second' in period_name or '2nd' in period_name:
+        return 2
+    elif 'third' in period_name or '3rd' in period_name:
+        return 3
+    
+    return None
 
 
 def _calculate_students_satisfaction(marked_results):
@@ -94,22 +292,49 @@ def _build_result_summary(registrations):
     }
     total_mark_sum = 0
 
+    # Calculate student-level outcomes instead of course-level
+    student_outcomes = {}  # Track each student's overall outcome
+    
     for registration in registrations:
-        for result in registration.course_results.all():
-            summary["total_count"] += 1
-            if result.mark is None:
-                summary["awaiting_count"] += 1
-                continue
-
-            mark_value = float(result.mark)
-            summary["marked_count"] += 1
-            total_mark_sum += mark_value
-            if mark_value >= 50:
-                summary["pass_count"] += 1
-            else:
-                summary["fail_count"] += 1
-            if mark_value >= 60:
-                summary["high_performer_count"] += 1
+        student_id = registration.student_id
+        if student_id in student_outcomes:
+            continue  # Already processed this student
+            
+        student_results = list(registration.course_results.all())
+        if not student_results:
+            continue  # No results for this student
+            
+        summary["total_count"] += 1
+        
+        # Calculate student's average mark across all courses
+        marked_results = [r for r in student_results if r.mark is not None]
+        awaiting_results = [r for r in student_results if r.mark is None]
+        
+        if not marked_results and awaiting_results:
+            # Student has results but none marked yet
+            summary["awaiting_count"] += 1
+            student_outcomes[student_id] = "awaiting"
+            continue
+            
+        if not marked_results:
+            # No marked results for this student
+            continue
+            
+        # Calculate student's average mark
+        student_avg = sum(float(r.mark) for r in marked_results) / len(marked_results)
+        total_mark_sum += student_avg
+        summary["marked_count"] += 1
+        
+        # Determine student outcome based on average
+        if student_avg >= 50:
+            summary["pass_count"] += 1
+            student_outcomes[student_id] = "passed"
+        else:
+            summary["fail_count"] += 1
+            student_outcomes[student_id] = "failed"
+            
+        if student_avg >= 60:
+            summary["high_performer_count"] += 1
 
     if summary["marked_count"]:
         summary["average_mark"] = total_mark_sum / summary["marked_count"]
@@ -267,7 +492,8 @@ def _build_summary_cards(summary_values, faculty_load_rows, result_summary, risk
 def _build_outcome_rows(result_summary):
     """Aggregate visible assessment outcomes for the first landing-page chart."""
 
-    total_results = result_summary["total_count"]
+    # Use marked_count for denominator to match pass rate KPI calculation
+    marked_results = result_summary["marked_count"]
     rows = [
         {
             "key": "passed",
@@ -292,9 +518,18 @@ def _build_outcome_rows(result_summary):
         },
     ]
 
+    # Calculate percentages based on marked results for consistency with KPI
+    marked_rows = [row for row in rows if row["key"] in ["passed", "failed"]]
+    for row in marked_rows:
+        row["percent"] = _pct(row["count"], marked_results)
+    
+    # For awaiting marks, calculate percentage of total results
+    awaiting_row = next((row for row in rows if row["key"] == "awaiting"), None)
+    if awaiting_row and awaiting_row["count"] > 0:
+        awaiting_row["percent"] = _pct(awaiting_row["count"], result_summary["total_count"])
+    
+    # Filter out rows with zero count
     filtered_rows = [row for row in rows if row["count"] > 0]
-    for row in filtered_rows:
-        row["percent"] = _pct(row["count"], total_results)
     return filtered_rows
 
 

@@ -151,7 +151,7 @@
     display: inline-flex;
     align-items: center;
     padding: 0.48rem 1rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(8, 35, 64, 0.06);
     color: #46617f;
     font-size: 0.82rem;
@@ -274,7 +274,7 @@
     display: inline-flex;
     align-items: center;
     padding: 0.42rem 0.9rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(8, 35, 64, 0.06);
     color: #46617f;
     font-size: 0.8rem;
@@ -291,7 +291,7 @@
     flex-shrink: 0;
     padding: 0.68rem 1.1rem;
     border: 1px solid rgba(29, 84, 138, 0.28);
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.94);
     color: #103767;
     cursor: pointer;
@@ -352,7 +352,7 @@
     align-items: center;
     gap: 0.35rem;
     padding: 0.36rem 0.7rem;
-    border-radius: 999px;
+    border-radius: 12px;
     font-size: 0.78rem;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -446,7 +446,7 @@
 
 .programme-table-wrap::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, #b8c5d3, #94a3b8);
     background-clip: padding-box;
 }
