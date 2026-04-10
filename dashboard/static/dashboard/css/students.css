@@ -158,7 +158,7 @@
 }
 
 .students-col-program {
-    width: 19rem;
+    width: 14rem;
 }
 
 .students-col-average {
@@ -170,7 +170,7 @@
 }
 
 .students-col-gender {
-    width: 9rem;
+    width: 8rem;
 }
 
 .students-table thead {
@@ -199,11 +199,22 @@
     background-clip: padding-box;
 }
 
-.students-th-name,
-.students-td-name {
+.students-table .students-th-name,
+.students-table .students-td-name {
     position: sticky;
     left: 0;
     background-clip: padding-box;
+    text-align: left !important;
+}
+
+.students-table .students-th-department,
+.students-table .students-td-department {
+    text-align: left !important;
+}
+
+.students-table .students-th-program,
+.students-table .students-td-program {
+    text-align: left !important;
 }
 
 .students-td-name,
