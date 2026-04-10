@@ -33,7 +33,6 @@ export const renderStoryBanner = (storyBanner, rows, genderData, programmeData) 
     if (!rows.length) {
         storyBanner.innerHTML = `
             <div class="level-story-main">
-                <p class="level-story-kicker">What To Notice</p>
                 <h2 class="level-story-title">No academic-level story is available for the current filters.</h2>
                 <p class="level-story-copy">Adjust the current search or filters to bring the pass, cohort, and enrolment narrative back into view.</p>
             </div>
@@ -87,7 +86,6 @@ export const renderStoryBanner = (storyBanner, rows, genderData, programmeData) 
 
     storyBanner.innerHTML = `
         <div class="level-story-main">
-            <p class="level-story-kicker">What To Notice</p>
             <h2 class="level-story-title">${escapeTooltipHtml(headline)}</h2>
             <p class="level-story-copy">${escapeTooltipHtml(headlineCopy)}</p>
         </div>
@@ -130,27 +128,21 @@ export const setHintMarkup = (element, hints) => {
 };
 
 export const setGenderHints = (element) => {
-    setHintMarkup(element, [
-        { label: "Hover or tap for details", kind: "inspect" },
-    ]);
+    setHintMarkup(element, []);
 };
 
 export const setTopProgrammeHints = (element, isDetail) => {
     setHintMarkup(element, isDetail ? [
-        { label: "Hover or tap bars for values", kind: "inspect" },
         { label: "Use Back to top 5 to compare", kind: "support" },
     ] : [
-        { label: "Hover or tap for details", kind: "inspect" },
         { label: "Click a slice to drill down", kind: "drill" },
     ]);
 };
 
 export const setPassTrendHints = (element, isDetail) => {
     setHintMarkup(element, isDetail ? [
-        { label: "Hover or tap bars for values", kind: "inspect" },
         { label: "Use Find in table for exact totals", kind: "support" },
     ] : [
-        { label: "Hover or tap for details", kind: "inspect" },
         { label: "Click a point or label to drill down", kind: "drill" },
     ]);
 };
@@ -271,14 +263,8 @@ export const buildGenderNarrative = (rows) => {
     const weakestPass = byPassRate[byPassRate.length - 1];
     const passGap = Math.abs((strongestPass?.pass_rate_value || 0) - (weakestPass?.pass_rate_value || 0));
 
-    const insight = trailingRow
-        ? representationGap <= 5
-            ? `${leadRow.label} and ${trailingRow.label} representation is close to balanced, with ${leadRow.label} slightly ahead at ${leadRow.student_share}.`
-            : `${leadRow.label} currently leads the cohort at ${leadRow.student_share}, ${representationGap} points ahead of ${trailingRow.label}.`
-        : `${leadRow.label} accounts for ${leadRow.student_share} of the visible cohort in the current filter view.`;
-    const action = trailingRow && strongestPass && weakestPass && strongestPass.label !== weakestPass.label && passGap >= 5
-        ? `Action: Compare ${weakestPass.label} against ${strongestPass.label} in the tooltip first to see whether the pass-rate gap needs intervention.`
-        : "Action: Use the tooltip to confirm whether pass rate and average mark stay aligned across the visible gender groups.";
+    const insight = "";
+    const action = "";
 
     return { insight, action };
 };
@@ -298,10 +284,8 @@ export const buildTopProgrammeOverviewNarrative = (rows) => {
     const topShare = totalRegistrations ? Math.round((topRow.registrations / totalRegistrations) * 100) : 0;
     const programmeName = formatStoryProgrammeName(topRow.programme);
 
-    const insight = topShare >= 25
-        ? `${programmeName} carries ${topShare}% of the top-five enrolment load, so the current intake is concentrated in a small number of programmes.`
-        : `${programmeName} leads the top-five view, but enrolment is still relatively spread across the biggest programmes.`;
-    const action = `Action: Click ${programmeName} first to see which academic levels are carrying most of that programme's current load.`;
+    const insight = "";
+    const action = "";
 
     return { insight, action };
 };
@@ -322,10 +306,8 @@ export const buildTopProgrammeDetailNarrative = (programme) => {
     )[0];
     const programmeName = formatStoryProgrammeName(programme.programme);
 
-    const insight = highestLoadLevel.level === weakestPassLevel.level
-        ? `${programmeName} is heaviest in ${highestLoadLevel.level}, and that same level is also its weakest pass-conversion point at ${weakestPassLevel.pass_rate}.`
-        : `${programmeName} is heaviest in ${highestLoadLevel.level}, while ${weakestPassLevel.level} is the weakest pass-conversion point at ${weakestPassLevel.pass_rate}.`;
-    const action = `Action: Review ${weakestPassLevel.level} first, then use Back to compare that pressure point against the other top-enrolment programmes.`;
+    const insight = "";
+    const action = "";
 
     return { insight, action };
 };
@@ -342,12 +324,8 @@ export const buildPassOverviewNarrative = (rows) => {
     const belowTargetRows = rows.filter((row) => Number(row.pass_rate_value || 0) < PASS_RATE_TARGET);
     const focusRow = belowTargetRows[0] || weakest;
 
-    const insight = belowTargetRows.length
-        ? `${weakest.level} is the clearest pass-rate pressure point at ${weakest.pass_rate}, and ${belowTargetRows.length} level${belowTargetRows.length === 1 ? "" : "s"} still sit below the ${PASS_RATE_TARGET}% target.`
-        : `All visible levels are above the ${PASS_RATE_TARGET}% target, with ${strongest.level} currently leading the pass trend at ${strongest.pass_rate}.`;
-    const action = belowTargetRows.length
-        ? `Action: Click ${focusRow.level} first to see which programmes are holding that level below target.`
-        : `Action: Click ${weakest.level} first if you want to inspect the softest point in an otherwise healthy pass trend.`;
+    const insight = "";
+    const action = "";
 
     return { insight, action };
 };
@@ -373,10 +351,8 @@ export const buildPassDetailNarrative = (levelRow) => {
     const highestLoadName = formatStoryProgrammeName(highestLoadProgramme.programme);
     const weakestName = formatStoryProgrammeName(weakestProgramme.programme);
 
-    const insight = highestLoadProgramme.programme === weakestProgramme.programme
-        ? `${highestLoadName} carries the heaviest load in ${levelRow.level}, and it is also the weakest outcome point at ${weakestProgramme.pass_rate}.`
-        : `${highestLoadName} carries the heaviest load in ${levelRow.level}, while ${weakestName} has the weakest pass-rate outcome at ${weakestProgramme.pass_rate}.`;
-    const action = `Action: Hover ${weakestName} first for the full values, then use Find in table to confirm the level totals below.`;
+    const insight = "";
+    const action = "";
 
     return { insight, action };
 };

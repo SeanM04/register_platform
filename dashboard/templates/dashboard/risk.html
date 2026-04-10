@@ -23,9 +23,23 @@
     <section class="risk-story-flow" aria-label="Risk storytelling flow">
         <section class="risk-flow-stage risk-flow-stage-primary">
             <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 1</p>
-                <h2 class="risk-flow-title">How Big The Current Watchlist Is</h2>
+                <div class="risk-flow-heading">
+                    <h2 class="risk-flow-title">Risk Distribution</h2>
+                </div>
+                <button
+                    class="risk-flow-toggle"
+                    type="button"
+                    data-toggle="risk-distribution"
+                    data-section-title="Risk Distribution"
+                    aria-expanded="false"
+                    aria-controls="risk-distribution-content"
+                    aria-label="Expand Risk Distribution section"
+                >
+                    <span class="risk-flow-toggle-label">Expand</span>
+                    <span class="risk-flow-toggle-icon">+</span>
+                </button>
             </div>
+            <div class="risk-flow-content" id="risk-distribution-content">
 
             <article class="risk-insight-card risk-insight-card-wide">
                 <div class="risk-insight-header">
@@ -33,8 +47,7 @@
                         <p class="risk-insight-kicker">Risk Distribution</p>
                         <h2 class="risk-insight-title">Watchlist Severity Mix</h2>
                         <p class="risk-insight-copy" id="risk-distribution-copy">The first job on this page is to show whether the current risk picture is mostly early intervention work or already concentrated in high-priority cases.</p>
-                        <div class="risk-chart-hints" id="risk-distribution-hints" aria-label="Chart interaction hints"></div>
-                    </div>
+                                            </div>
                     <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Watchlist Severity Mix" aria-controls="risk-distribution-chart" aria-label="View Watchlist Severity Mix in full screen" aria-pressed="false">Full screen</button>
                 </div>
 
@@ -43,13 +56,28 @@
                 </div>
                 <p class="risk-chart-note" id="risk-distribution-note">The band chart gives the quickest read on how urgent the visible watchlist really is.</p>
             </article>
+            </div>
         </section>
 
         <section class="risk-flow-stage risk-flow-stage-support">
             <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 2</p>
-                <h2 class="risk-flow-title">What Is Driving The Risk</h2>
+                <div class="risk-flow-heading">
+                    <h2 class="risk-flow-title">Risk Drivers</h2>
+                </div>
+                <button
+                    class="risk-flow-toggle"
+                    type="button"
+                    data-toggle="risk-drivers"
+                    data-section-title="Risk Drivers"
+                    aria-expanded="false"
+                    aria-controls="risk-drivers-content"
+                    aria-label="Expand Risk Drivers section"
+                >
+                    <span class="risk-flow-toggle-label">Expand</span>
+                    <span class="risk-flow-toggle-icon">+</span>
+                </button>
             </div>
+            <div class="risk-flow-content" id="risk-drivers-content">
 
             <div class="risk-support-grid">
                 <article class="risk-insight-card">
@@ -58,8 +86,7 @@
                             <p class="risk-insight-kicker">Risk Drivers</p>
                             <h2 class="risk-insight-title">Shared Intervention Triggers</h2>
                             <p class="risk-insight-copy" id="risk-drivers-copy">This chart reveals which watchlist drivers are most common across the flagged cohort, so support work starts from the strongest recurring pattern.</p>
-                            <div class="risk-chart-hints" id="risk-drivers-hints" aria-label="Chart interaction hints"></div>
-                        </div>
+                                                    </div>
                         <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Shared Intervention Triggers" aria-controls="risk-drivers-chart" aria-label="View Shared Intervention Triggers in full screen" aria-pressed="false">Full screen</button>
                     </div>
 
@@ -75,9 +102,8 @@
                             <p class="risk-insight-kicker">Academic Levels</p>
                             <h2 class="risk-insight-title">Where Pressure Builds</h2>
                             <p class="risk-insight-copy" id="risk-levels-copy">The level split shows which academic levels carry the heaviest intervention load, and whether that pressure is moderate or already high risk.</p>
-                            <div class="risk-chart-hints" id="risk-levels-hints" aria-label="Chart interaction hints"></div>
-                        </div>
-                        <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Pressure Builds" aria-controls="risk-levels-chart" aria-label="View Where Pressure Builds in full screen" aria-pressed="false">Full screen</button>
+                                                    </div>
+                        <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Pressure Builds" aria-controls="risk-levels-chart" aria-label="View Where Pressure Builds in full screen" aria-pressed="false">Full screen">Full screen</button>
                     </div>
 
                     <div class="risk-chart-stage">
@@ -86,13 +112,28 @@
                     <p class="risk-chart-note" id="risk-levels-note">The stacked level view keeps medium and high pressure in one line so intervention load is easy to compare.</p>
                 </article>
             </div>
+            </div>
         </section>
 
         <section class="risk-flow-stage risk-flow-stage-programme">
             <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 3</p>
-                <h2 class="risk-flow-title">Where Support Should Concentrate</h2>
+                <div class="risk-flow-heading">
+                    <h2 class="risk-flow-title">Programme Focus</h2>
+                </div>
+                <button
+                    class="risk-flow-toggle"
+                    type="button"
+                    data-toggle="programme-focus"
+                    data-section-title="Programme Focus"
+                    aria-expanded="false"
+                    aria-controls="programme-focus-content"
+                    aria-label="Expand Programme Focus section"
+                >
+                    <span class="risk-flow-toggle-label">Expand</span>
+                    <span class="risk-flow-toggle-icon">+</span>
+                </button>
             </div>
+            <div class="risk-flow-content" id="programme-focus-content">
 
             <article class="risk-insight-card risk-insight-card-wide">
                 <div class="risk-insight-header">
@@ -100,8 +141,7 @@
                         <p class="risk-insight-kicker">Programme Focus</p>
                         <h2 class="risk-insight-title">Programmes Carrying The Largest Watchlist Load</h2>
                         <p class="risk-insight-copy" id="risk-programmes-copy">Programme concentration matters because it turns abstract risk into an actual support queue that academic teams can act on.</p>
-                        <div class="risk-chart-hints" id="risk-programmes-hints" aria-label="Chart interaction hints"></div>
-                    </div>
+                                            </div>
                     <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programmes Carrying The Largest Watchlist Load" aria-controls="risk-programmes-chart" aria-label="View Programme Watchlist Load in full screen" aria-pressed="false">Full screen</button>
                 </div>
 
@@ -110,13 +150,28 @@
                 </div>
                 <p class="risk-chart-note" id="risk-programmes-note">This keeps programme concentration and severity mix together so the next intervention block can be planned from one view.</p>
             </article>
+            </div>
         </section>
 
         <section class="risk-flow-stage risk-flow-stage-register">
             <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 4</p>
-                <h2 class="risk-flow-title">Which Students Need Attention Now</h2>
+                <div class="risk-flow-heading">
+                    <h2 class="risk-flow-title">Action Register</h2>
+                </div>
+                <button
+                    class="risk-flow-toggle"
+                    type="button"
+                    data-toggle="action-register"
+                    data-section-title="Action Register"
+                    aria-expanded="false"
+                    aria-controls="action-register-content"
+                    aria-label="Expand Action Register section"
+                >
+                    <span class="risk-flow-toggle-label">Expand</span>
+                    <span class="risk-flow-toggle-icon">+</span>
+                </button>
             </div>
+            <div class="risk-flow-content" id="action-register-content">
 
             <article class="risk-register-card">
                 <div class="risk-register-header">
@@ -219,6 +274,7 @@
                     </nav>
                 </div>
             </article>
+            </div>
         </section>
     </section>
 </section>

@@ -132,7 +132,6 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
     if (!totalVisible) {
         storyBanner.innerHTML = `
             <div class="risk-story-main">
-                <p class="risk-story-kicker">Primary Takeaway</p>
                 <h2 class="risk-story-title">No risk story is available for the current filters.</h2>
                 <p class="risk-story-copy">Adjust the current filters to bring the cohort watchlist and its intervention priorities back into view.</p>
             </div>
@@ -175,7 +174,6 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
 
     storyBanner.innerHTML = `
         <div class="risk-story-main">
-            <p class="risk-story-kicker">Primary Takeaway</p>
             <h2 class="risk-story-title">${escapeTooltipHtml(headline)}</h2>
             <p class="risk-story-copy">${escapeTooltipHtml(headlineCopy)}</p>
         </div>

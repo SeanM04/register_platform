@@ -80,13 +80,12 @@ const buildDriversOption = (rows) => ({
         {
             type: "bar",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.count,
                 raw: row,
                 itemStyle: {
                     color: buildGradient("#0b4c6d", "#5fb7dc"),
-                    borderRadius: [0, 10, 10, 0],
                 },
             })),
             label: {

@@ -98,13 +98,12 @@ const buildLevelSeries = (rows, selectedState) => {
             type: "bar",
             stack: "risk-level",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
                     color: buildGradient("#082340", "#1c4e80"),
-                    borderRadius: buildHighRiskBorderRadius(row, selectedState),
                 },
             })),
             label: buildTotalLabel(selectedState, HIGH_RISK),
@@ -117,13 +116,12 @@ const buildLevelSeries = (rows, selectedState) => {
             type: "bar",
             stack: "risk-level",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
                     color: buildGradient("#1f78b4", "#67c3e5"),
-                    borderRadius: buildMediumRiskBorderRadius(row, selectedState),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),

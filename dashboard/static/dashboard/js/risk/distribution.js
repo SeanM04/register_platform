@@ -74,7 +74,7 @@ const buildDistributionOption = (rows, width) => ({
     series: [
         {
             type: "bar",
-            barWidth: width < 720 ? "50%" : "58%",
+            barMaxWidth: 28,
             data: rows.map((row) => {
                 const [startColor, endColor] = TONE_GRADIENTS[row.tone] || TONE_GRADIENTS.moderate;
                 return {
@@ -82,7 +82,6 @@ const buildDistributionOption = (rows, width) => ({
                     raw: row,
                     itemStyle: {
                         color: buildGradient(startColor, endColor, "vertical"),
-                        borderRadius: [12, 12, 0, 0],
                     },
                 };
             }),
