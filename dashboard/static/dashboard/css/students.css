@@ -270,27 +270,16 @@
 }
 
 .student-link {
-    display: inline-grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    justify-items: center;
-    gap: 0.42rem;
-    width: 100%;
-    max-width: 11.5rem;
-    margin: 0 auto;
+    display: inline-block;
+    width: auto;
+    max-width: 8rem;
     text-decoration: none;
     color: inherit;
-    text-align: center;
-    border-radius: 12px;
-    padding: 0.42rem 0.6rem;
+    text-align: left;
+    border-radius: 4px;
+    padding: 0.24rem 0.4rem;
     background: #eef2f7;
     border: 1px solid #d7e9f6;
-    color: var(--navy-soft);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    line-height: 1;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -305,39 +294,16 @@
     transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
-.student-link-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.65rem;
-    padding: 0.18rem 0.46rem;
-    border-radius: 12px;
-    background: #eef6fc;
-    border: 1px solid #d7e9f6;
-    color: var(--navy-soft);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    line-height: 1;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.student-link-badge::after {
-    content: " >";
-}
-
 .student-link:hover .student-link-name,
 .student-link:focus-visible .student-link-name {
     color: var(--navy-soft);
     text-decoration-color: rgba(79, 176, 209, 0.72);
 }
 
-.student-link:hover .student-link-badge,
-.student-link:focus-visible .student-link-badge {
+.student-link:hover,
+.student-link:focus-visible {
     background: #e3f2fb;
     border-color: #c5dff1;
-    color: var(--navy);
 }
 
 .student-link:focus-visible {

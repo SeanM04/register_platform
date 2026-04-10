@@ -358,6 +358,154 @@
     box-shadow: none;
 }
 
+/* Year Dropdown Tabs */
+.year-dropdown-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+}
+
+.year-dropdown {
+    position: relative;
+    border: 1px solid #d7e7f6;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.year-dropdown.is-active {
+    border-color: var(--sky);
+    box-shadow: 0 0 0 2px rgba(79, 176, 209, 0.1);
+}
+
+.year-dropdown.semester-selected {
+    border-color: var(--sky);
+    background: rgba(79, 176, 209, 0.05);
+}
+
+.year-dropdown.semester-selected .year-dropdown-label {
+    color: var(--sky);
+    font-weight: 800;
+}
+
+.year-dropdown.semester-selected .year-dropdown-arrow {
+    color: var(--sky);
+}
+
+.year-dropdown.dropdown-disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.year-dropdown.dropdown-disabled .year-dropdown-toggle {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.year-dropdown.dropdown-disabled .year-dropdown-arrow {
+    color: var(--sky);
+    transform: none;
+}
+
+.year-dropdown-toggle {
+    width: 100%;
+    padding: 0.5rem 0.8rem;
+    border: none;
+    background: transparent;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.year-dropdown-toggle:hover {
+    background: #f8fbff;
+}
+
+.year-dropdown-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.year-dropdown-arrow {
+    font-size: 0.9rem;
+    font-weight: 400;
+    transition: transform 0.2s ease;
+}
+
+.year-dropdown[aria-expanded="true"] .year-dropdown-arrow {
+    transform: rotate(45deg);
+}
+
+.year-dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background: #ffffff;
+    border: 1px solid #d7e7f6;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    margin-top: 0.5rem;
+}
+
+.year-dropdown[aria-expanded="true"] .year-dropdown-content,
+.year-dropdown-content.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.year-dropdown-option {
+    display: block;
+    padding: 0.4rem 0.8rem;
+    color: var(--navy);
+    text-decoration: none;
+    font-size: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s ease;
+}
+
+.year-dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.year-dropdown-option:hover {
+    background: #f8fbff;
+}
+
+.year-dropdown-option.is-active {
+    background: rgba(79, 176, 209, 0.08);
+    color: var(--sky);
+    font-weight: 700;
+}
+
+.year-dropdown-option-label {
+    display: block;
+    font-weight: 600;
+}
+
+.year-dropdown-option-meta {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+
+.year-dropdown-option.is-active .year-dropdown-option-meta {
+    color: var(--sky);
+}
+
 @media (max-width: 1100px) {
     .profile-card {
         grid-template-columns: 1fr;
@@ -366,4 +514,30 @@
     .profile-grid {
         grid-template-columns: 1fr;
     }
+    
+    .year-dropdown-tabs {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.6rem;
+    }
+    
+    .year-dropdown-toggle {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Empty Results Styling */
+.empty-results {
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-results-content {
+    color: var(--navy);
+    font-style: italic;
+}
+
+.empty-results-content p {
+    margin: 0;
+    font-size: 0.9rem;
 }

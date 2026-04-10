@@ -99,12 +99,22 @@
             </aside>
         </section>
 
-        <nav class="year-tabs" aria-label="Academic terms">
-            {% for tab in student.term_tabs %}
-            <a class="year-tab{% if tab.is_active %} is-active{% endif %}" href="?term={{ tab.id }}&year={{ filters.selected_year }}&period={{ filters.selected_period }}&faculty={{ filters.selected_faculty }}">
-                <span class="year-tab-label">{{ tab.label }}</span>
-                <span class="year-tab-meta">{{ tab.period_name }}</span>
-            </a>
+        <nav class="year-dropdown-tabs" aria-label="Academic years">
+            {% for year_tab in student.year_dropdown_tabs %}
+            <div class="year-dropdown{% if year_tab.is_active %} is-active{% endif %}{% if year_tab.semester_selected %} semester-selected{% endif %}">
+                <button class="year-dropdown-toggle" type="button" aria-expanded="false" aria-controls="year-{{ year_tab.year }}-dropdown">
+                    <span class="year-dropdown-label">{{ year_tab.year_label }}</span>
+                    <span class="year-dropdown-arrow">+</span>
+                </button>
+                <div class="year-dropdown-content" id="year-{{ year_tab.year }}-dropdown">
+                    {% for semester in year_tab.semesters %}
+                    <a class="year-dropdown-option{% if semester.is_active %} is-active{% endif %}" 
+                       href="?term={{ semester.id }}&year={{ student.selected_filters.year }}&period={{ student.selected_filters.period }}&faculty={{ student.selected_filters.faculty }}">
+                        <span class="year-dropdown-option-label">{{ semester.label }} - {{ semester.period_name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
             {% endfor %}
         </nav>
 
@@ -119,21 +129,37 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th class="results-th-code">Code</th>
-                            <th class="results-th-course">Course</th>
+                            <th class="results-th-code">Course Code</th>
+                            <th class="results-th-course">Course Name</th>
                             <th>Period</th>
                             <th class="results-th-mark">Mark</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for result in student.results %}
-                        <tr>
-                            <td class="results-td-code">{{ result.code }}</td>
-                            <td class="results-td-course">{{ result.course }}</td>
-                            <td>{{ result.period }}</td>
-                            <td class="results-td-mark">{{ result.mark }}</td>
-                        </tr>
-                        {% endfor %}
+                        <!-- DEBUG: Template data verification -->
+<!-- DEBUG: student.results count: {{ student.results|length }} -->
+<!-- DEBUG: show_empty_content: {{ show_empty_content }} -->
+<!-- DEBUG: no_data_message: {{ no_data_message }} -->
+
+{% if student.results %}
+                            <!-- DEBUG: Entering results loop -->
+                            {% for result in student.results %}
+                            <tr>
+                                <td class="results-td-code">{{ result.code }}</td>
+                                <td class="results-td-course">{{ result.course }}</td>
+                                <td>{{ result.period }}</td>
+                                <td class="results-td-mark">{{ result.mark }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="empty-results">
+                                    <div class="empty-results-content">
+                                        <p>{{ no_data_message|default:"No courses found for this student." }}</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

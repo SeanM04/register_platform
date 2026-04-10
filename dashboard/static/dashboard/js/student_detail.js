@@ -1,4 +1,37 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // DEBUG: Verify template data reached frontend
+    console.log('DEBUG: Frontend initialization');
+    console.log('DEBUG: Checking for debug comments...');
+    
+    // Look for debug comments in HTML
+    const debugComments = document.querySelectorAll('body');
+    if (debugComments.length > 0) {
+        const bodyHTML = document.body.innerHTML;
+        if (bodyHTML.includes('DEBUG: student.results count:')) {
+            console.log('DEBUG: Template debug comments found');
+            const countMatch = bodyHTML.match(/DEBUG: student\.results count: (\d+)/);
+            if (countMatch) {
+                console.log(`DEBUG: Results count from template: ${countMatch[1]}`);
+            }
+        }
+    }
+    
+    // Check for course results table
+    const resultsTable = document.querySelector('.results-table');
+    if (resultsTable) {
+        const resultRows = resultsTable.querySelectorAll('tbody tr:not(.empty-results)');
+        console.log(`DEBUG: Found ${resultRows.length} course rows in table`);
+        
+        const emptyRow = resultsTable.querySelector('.empty-results');
+        if (emptyRow) {
+            console.log('DEBUG: Empty results row found');
+            const emptyMessage = emptyRow.querySelector('p')?.textContent;
+            console.log(`DEBUG: Empty message: ${emptyMessage}`);
+        }
+    } else {
+        console.log('DEBUG: No results table found');
+    }
+    
     // Get all filter elements
     const yearFilter = document.getElementById('year-filter');
     const periodFilter = document.getElementById('period-filter');
@@ -6,6 +39,108 @@ document.addEventListener('DOMContentLoaded', function() {
     const yearTabs = document.querySelectorAll('.year-tab');
     const gradeValue = document.querySelector('.grade-value');
     const tableWrap = document.querySelector('.table-wrap');
+    
+    // Initialize dropdown tabs functionality
+    function initializeDropdownTabs() {
+        const dropdowns = document.querySelectorAll('.year-dropdown');
+        
+        dropdowns.forEach((dropdown, index) => {
+            const toggle = dropdown.querySelector('.year-dropdown-toggle');
+            const content = dropdown.querySelector('.year-dropdown-content');
+            
+            if (toggle && content) {
+                // Set initial state
+                const isActive = dropdown.classList.contains('is-active');
+                toggle.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+                if (isActive) {
+                    content.classList.add('show');
+                }
+                
+                // Handle semester selection
+                const semesterOptions = content.querySelectorAll('.year-dropdown-option');
+                semesterOptions.forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Update year tab label with year and semester
+                        const semesterInfo = option.querySelector('.year-dropdown-option-label').textContent;
+                        const yearLabel = dropdown.querySelector('.year-dropdown-label').textContent;
+                        
+                        // Extract just the "Year X" part from current label
+                        const yearOnly = yearLabel.match(/Year \d+/)[0];
+                        
+                        // Extract semester number from "Semester 1 - March - July"
+                        const semesterNumber = semesterInfo.match(/Semester \d+/)[0];
+                        
+                        // Create new label: "Year 1 - Semester 2"
+                        const newLabel = `${yearOnly} - ${semesterNumber}`;
+                        
+                        dropdown.querySelector('.year-dropdown-label').textContent = newLabel;
+                        
+                        // Immediately close and hide dropdown
+                        toggle.setAttribute('aria-expanded', 'false');
+                        content.classList.remove('show');
+                        
+                        // Mark as selected
+                        dropdown.classList.add('semester-selected');
+                        
+                        // Navigate to the semester URL immediately
+                        window.location.href = option.href;
+                    });
+                });
+                
+                // Toggle dropdown
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                    
+                    // Close all other dropdowns
+                    dropdowns.forEach(otherDropdown => {
+                        if (otherDropdown !== dropdown) {
+                            const otherToggle = otherDropdown.querySelector('.year-dropdown-toggle');
+                            const otherContent = otherDropdown.querySelector('.year-dropdown-content');
+                            otherToggle.setAttribute('aria-expanded', 'false');
+                            otherContent.classList.remove('show');
+                        }
+                    });
+                    
+                    // Toggle current dropdown
+                    toggle.setAttribute('aria-expanded', !isExpanded);
+                    if (!isExpanded) {
+                        content.classList.add('show');
+                    } else {
+                        content.classList.remove('show');
+                    }
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target)) {
+                        toggle.setAttribute('aria-expanded', 'false');
+                        content.classList.remove('show');
+                    }
+                });
+                
+                // Handle keyboard navigation
+                toggle.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggle.click();
+                    } else if (e.key === 'Escape') {
+                        toggle.setAttribute('aria-expanded', 'false');
+                        content.classList.remove('show');
+                        toggle.focus();
+                    }
+                });
+            }
+        });
+    }
+    
+    // Call the initialization function
+    initializeDropdownTabs();
     
     // Function to update URL with current filter values
     function updateUrl(tabId = null) {

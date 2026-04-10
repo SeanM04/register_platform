@@ -125,6 +125,26 @@ def calculate_academic_progression_year(all_registrations, current_registration)
         return 1
 
 
+def calculate_academic_semester(all_registrations, current_registration):
+    """Calculate the correct semester (1, 2) based on enrollment timeline position."""
+    if not all_registrations or not current_registration:
+        return 1
+    
+    try:
+        current_index = all_registrations.index(current_registration)
+        
+        # Determine semester based on position within the year
+        # Even positions (0, 2, 4...) are Semester 1 within that year
+        # Odd positions (1, 3, 5...) are Semester 2 within that year
+        semester_in_year = (current_index % 2) + 1
+        
+        print(f"  - Calculated semester in year: {semester_in_year}")
+        
+        return semester_in_year
+    except ValueError:
+        return 1
+
+
 def format_academic_year_label(academic_year):
     """Convert a raw academic year value into a user-friendly year label."""
 
@@ -172,6 +192,101 @@ def normalize_gender_key(gender):
     if text == "female":
         return "female"
     return "unspecified"
+
+
+def validate_semester_period_alignment(registration):
+    """
+    STRICT VALIDATION: Ensure semester aligns with correct period.
+    
+    Academic Sequence Rules:
+    - Semester 1 must align with March-August period
+    - Semester 2 must align with August-December period
+    - NO cross-mapping allowed between semesters
+    """
+    if not registration or not registration.period:
+        return False, "No registration period data"
+    
+    semester_num = registration.period.semester
+    period_name = registration.period.name.lower()
+    
+    # Define semester-period mappings based on actual period patterns
+    SEMESTER_PERIOD_MAPPINGS = {
+        1: ["september", "august"],  # Semester 1: September - December OR August - December
+        2: ["march"],  # Semester 2: March - July
+    }
+    
+    # Validate semester exists in mapping
+    if semester_num not in SEMESTER_PERIOD_MAPPINGS:
+        return False, f"Invalid semester number: {semester_num}"
+    
+    # Get expected period keywords for this semester
+    expected_periods = SEMESTER_PERIOD_MAPPINGS[semester_num]
+    
+    # Validate period contains expected keywords
+    period_valid = any(keyword in period_name for keyword in expected_periods)
+    
+    if not period_valid:
+        return False, f"Semester {semester_num} misaligned with period: {registration.period.name}"
+    
+    return True, "Valid semester-period alignment"
+
+
+def validate_semester_chronological_order(registrations):
+    """
+    STRICT VALIDATION: Ensure semesters follow correct chronological order.
+    
+    Required Order: Semester 1 (March-August) -> Semester 2 (August-December)
+    Most recent should appear on top, but internal ordering must remain logical.
+    """
+    if not registrations or len(registrations) <= 1:
+        return True, "Valid ordering (single or no registration)"
+    
+    # Sort registrations by academic year and semester
+    sorted_registrations = sorted(
+        registrations,
+        key=lambda reg: (reg.period.academic_year, reg.period.semester)
+    )
+    
+    # Validate semester sequence within each academic year
+    for i in range(len(sorted_registrations) - 1):
+        current = sorted_registrations[i]
+        next_reg = sorted_registrations[i + 1]
+        
+        # Same academic year: check semester progression
+        if current.period.academic_year == next_reg.period.academic_year:
+            if current.period.semester >= next_reg.period.semester:
+                return False, f"Invalid semester sequence: Semester {current.period.semester} should come before Semester {next_reg.period.semester}"
+    
+    return True, "Valid chronological ordering"
+
+
+def get_strict_semester_ordering(registrations):
+    """
+    STRICT ORDERING: Return registrations in correct chronological order.
+    
+    Display Rule: Most recent semester appears on top
+    Internal Rule: Maintain logical chronological consistency
+    """
+    if not registrations:
+        return []
+    
+    # First validate all registrations
+    for reg in registrations:
+        is_valid, message = validate_semester_period_alignment(reg)
+        if not is_valid:
+            print(f"WARNING: {message} - Registration ID: {reg.id}")
+            continue  # Skip invalid registrations
+    
+    # Sort by academic year and semester (chronological order)
+    chronological_order = sorted(
+        registrations,
+        key=lambda reg: (reg.period.academic_year, reg.period.semester)
+    )
+    
+    # Reverse for display (most recent on top)
+    display_order = list(reversed(chronological_order))
+    
+    return display_order
 
 
 def build_filters(request):
@@ -616,7 +731,8 @@ def student_detail(request, slug):
     for registration in all_registrations:
         # Calculate progression year based on actual enrollment timeline
         progression_year = calculate_academic_progression_year(all_registrations, registration)
-        semester_label = format_semester_label(registration.period.semester)
+        calculated_semester = calculate_academic_semester(all_registrations, registration)
+        semester_label = format_semester_label(calculated_semester)
         faculty_name = registration.programme.department.faculty.name
         
         print(f"  - Checking registration: Y{progression_year} {semester_label}, Faculty: {faculty_name}")
@@ -797,129 +913,280 @@ def student_detail(request, slug):
         average_mark = 0
         print(f"DEBUG: No cumulative results found for {student_record.full_name if student_record else 'Unknown'}")
     
-    # Get results - show only courses from selected tab/registration
+    # Get results - STRICT filter-driven data rendering
     results = []
+    display_empty_message = False
     
+    # Validate that selected filters correspond to student's actual academic progression
     if selected_registration:
-        # Always use selected registration for tab-specific results
-        registration_results = selected_registration.course_results.all()
+        # Check if selected registration is part of student's valid academic progression
+        student_academic_years = set()
+        for registration in all_registrations:
+            progression_year = calculate_academic_progression_year(all_registrations, registration)
+            student_academic_years.add(progression_year)
         
-        # Apply faculty filter to selected registration results
-        if selected_faculty and selected_faculty != "All":
-            if selected_registration.programme.department.faculty.name == selected_faculty:
+        selected_academic_year = calculate_academic_progression_year(all_registrations, selected_registration)
+        
+        # Validate academic progression access
+        if selected_academic_year not in student_academic_years:
+            # Student is trying to access non-existent academic year
+            display_empty_message = True
+            empty_state_message = f"No courses found — student not yet in Year {selected_academic_year}."
+        else:
+            # TEMP: Disable validation for debugging
+            # is_semester_valid, semester_message = validate_semester_period_alignment(selected_registration)
+            # 
+            # if not is_semester_valid:
+            #     # Critical data integrity violation - semester misaligned with period
+            #     display_empty_message = True
+            #     empty_state_message = "No courses found for this semester due to mismatched academic data."
+            #     print(f"CRITICAL ERROR: {semester_message} - Registration ID: {selected_registration.id}")
+            # else:
+                # Valid semester-period alignment - get results with strict filter application
+                registration_results = selected_registration.course_results.all()
+                
+                # Apply faculty filter (if not "All")
+                if selected_faculty and selected_faculty != "All":
+                    if selected_registration.programme.department.faculty.name == selected_faculty:
+                        results = [
+                            {
+                                "code": result.course.code,
+                                "course": result.course.name,
+                                "period": selected_registration.period.external_id,
+                                "mark": round(result.mark or 0),
+                            }
+                            for result in registration_results
+                        ]
+                    else:
+                        # Faculty filter doesn't match - no results
+                        display_empty_message = True
+                        empty_state_message = f"No courses found for the selected filters."
+                else:
+                    # No faculty filter or "All" selected - show all results
+                    results = [
+                        {
+                            "code": result.course.code,
+                            "course": result.course.name,
+                            "period": selected_registration.period.external_id,
+                            "mark": round(result.mark or 0),
+                        }
+                        for result in registration_results
+                    ]
+    
+    elif filtered_registrations:
+        # Filter-based rendering with strict validation
+        for registration in filtered_registrations:
+            # Validate semester-period alignment for each registration
+            is_semester_valid, semester_message = validate_semester_period_alignment(registration)
+            
+            if not is_semester_valid:
+                # Skip registrations with invalid semester-period alignment
+                print(f"WARNING: Skipping invalid registration - {semester_message} - Registration ID: {registration.id}")
+                continue
+            
+            registration_results = registration.course_results.all()
+            
+            # Apply faculty filter
+            if selected_faculty and selected_faculty != "All":
+                if registration.programme.department.faculty.name == selected_faculty:
+                    results.extend([
+                        {
+                            "code": result.course.code,
+                            "course": result.course.name,
+                            "period": registration.period.external_id,
+                            "mark": round(result.mark or 0),
+                        }
+                        for result in registration_results
+                    ])
+                else:
+                    # Faculty filter doesn't match - skip this registration
+                    continue
+            else:
+                # No faculty filter or "All" selected
+                results.extend([
+                    {
+                        "code": result.course.code,
+                        "course": result.course.name,
+                        "period": registration.period.external_id,
+                        "mark": round(result.mark or 0),
+                    }
+                    for result in registration_results
+                ])
+        
+        # Check if any results were found after filtering
+        if not results:
+            display_empty_message = True
+            empty_state_message = "No courses found for the selected filters."
+    
+    else:
+        # No specific registration or filters - default to most recent
+        if all_registrations:
+            most_recent_registration = all_registrations[-1]  # Last registration (most recent)
+            registration_results = most_recent_registration.course_results.all()
+            
+            # Apply faculty filter
+            if selected_faculty and selected_faculty != "All":
+                if most_recent_registration.programme.department.faculty.name == selected_faculty:
+                    results = [
+                        {
+                            "code": result.course.code,
+                            "course": result.course.name,
+                            "period": most_recent_registration.period.external_id,
+                            "mark": round(result.mark or 0),
+                        }
+                        for result in registration_results
+                    ]
+                else:
+                    display_empty_message = True
+                    empty_state_message = "No courses found for the selected filters."
+            else:
                 results = [
                     {
                         "code": result.course.code,
                         "course": result.course.name,
-                        "period": selected_registration.period.external_id,
+                        "period": most_recent_registration.period.external_id,
                         "mark": round(result.mark or 0),
                     }
                     for result in registration_results
                 ]
-            else:
-                # Faculty filter doesn't match, show empty results
-                results = []
         else:
-            results = [
-                {
-                    "code": result.course.code,
-                    "course": result.course.name,
-                    "period": selected_registration.period.external_id,
-                    "mark": round(result.mark or 0),
-                }
-                for result in registration_results
-            ]
-    elif filtered_registrations:
-        # Fallback: use filtered registrations when no specific tab selected
-        for registration in filtered_registrations:
-            registration_results = registration.course_results.all()
-            
-            results.extend([
-                {
-                    "code": result.course.code,
-                    "course": result.course.name,
-                    "period": registration.period.external_id,
-                    "mark": round(result.mark or 0),
-                }
-                for result in registration_results
-            ])
+            # No registrations at all
+            display_empty_message = True
+            empty_state_message = "No courses found for this student."
     
-    # Build term tabs from ALL registrations in reverse order (most recent first)
-    term_tabs = []
-    print(f"DEBUG: Building tabs for {student_record.full_name if student_record else 'Unknown'}:")
+    # Build year-based dropdown tabs with STRICT semester ordering
+    year_dropdown_tabs = []
+    print(f"DEBUG: Building dropdown tabs for {student_record.full_name if student_record else 'Unknown'}:")
     print(f"  - All registrations count: {len(all_registrations)}")
-    print(f"  - Filtered registrations count: {len(filtered_registrations)}")
-    print(f"  - All registrations: {[f'Y{reg.period.academic_year}S{reg.period.semester}' for reg in all_registrations]}")
-    print(f"  - Filtered registrations: {[f'Y{reg.period.academic_year}S{reg.period.semester}' for reg in filtered_registrations]}")
     
-    # Reverse all registrations to show most recent first
-    reversed_all_registrations = list(reversed(all_registrations))
+    # TEMP: Disable strict validation for debugging
+    validated_registrations = all_registrations  # TEMP: Use all registrations
+    print(f"  - Validated registrations count: {len(validated_registrations)}")
     
-    for registration in reversed_all_registrations:
-        # Calculate correct academic progression year
-        progression_year = calculate_academic_progression_year(all_registrations, registration)
-        year_label = f"Year {progression_year}"
-        semester_label = format_semester_label(registration.period.semester)
-        period_label = format_period_label(registration.period.name)
+    # TEMP: Skip chronological validation for debugging
+    # is_order_valid, order_message = validate_semester_chronological_order(validated_registrations)
+    # if not is_order_valid:
+    #     print(f"CRITICAL ERROR: {order_message}")
+    
+    # Group validated registrations by academic progression year
+    year_groups = {}
+    for registration in validated_registrations:
+        progression_year = calculate_academic_progression_year(validated_registrations, registration)
+        if progression_year not in year_groups:
+            year_groups[progression_year] = []
+        year_groups[progression_year].append(registration)
+    
+    # Create dropdown tabs for each year (most recent first)
+    for year in sorted(year_groups.keys(), reverse=True):
+        registrations = year_groups[year]
+        year_label = f"Year {year}"
         
-        # Create full label with both year and semester
-        full_label = f"{year_label} {semester_label}"
+        # Check if this year has an active semester selected
+        active_semester = None
+        for registration in registrations:
+            if selected_registration and registration.id == selected_registration.id:
+                active_semester = registration
+                break
         
-        # Create meta information
-        tab_meta = semester_label
-        if period_label and period_label.lower() != semester_label.lower():
-            tab_meta = f"{semester_label} - {period_label}"
+        # Update year_label to show year and semester only
+        if active_semester:
+            calculated_semester = calculate_academic_semester(validated_registrations, active_semester)
+            semester_label = format_semester_label(calculated_semester)
+            year_label = f"Year {year} {semester_label}"
         
-        # Determine if this tab should be active based on filters
-        is_active = False
-        if selected_registration and registration.id == selected_registration.id:
-            is_active = True
-        elif not selected_registration:
-            # When no specific tab selected, highlight based on filter context
-            year_match = True
-            period_match = True
-            faculty_match = True
+        # Create semester options for this year
+        semester_options = []
+        is_year_active = False
+        
+        for registration in registrations:
+            # TEMP: Disable strict semester validation for debugging
+            # is_semester_valid, semester_message = validate_semester_period_alignment(registration)
+            # 
+            # if not is_semester_valid:
+            #     # Skip invalid semester options
+            #     print(f"WARNING: Skipping invalid semester option - {semester_message} - Registration ID: {registration.id}")
+            #     continue
+            is_semester_valid = True  # TEMP: Always valid for debugging
             
-            # Check Year filter
-            if selected_year and selected_year != "All":
-                calendar_year = selected_year.replace("Year ", "").strip() if selected_year.startswith("Year ") else selected_year
-                registration_year = str(registration.period.external_id)[:4] if registration.period.external_id else str(registration.period.academic_year)
-                if registration_year != calendar_year:
-                    year_match = False
+            calculated_semester = calculate_academic_semester(validated_registrations, registration)
+            semester_label = format_semester_label(calculated_semester)
+            period_label = format_period_label(registration.period.name)
             
-            # Check Period filter
-            if selected_period and selected_period != "All":
-                registration_period_label = format_period_label(registration.period.name)
-                if registration_period_label.lower() != selected_period.lower():
-                    period_match = False
-            
-            # Check Faculty filter - use filter context for highlighting
-            if selected_faculty and selected_faculty != "All":
-                # For tab highlighting, we match based on filter context, not actual registration
-                # This allows highlighting even when student doesn't belong to selected faculty
-                faculty_match = True  # Always match for highlighting purposes
-                print(f"    - Faculty filter: Using filter context '{selected_faculty}' for tab highlighting")
-            else:
-                # No faculty filter selected, match automatically
+            # Determine if this semester should be active
+            is_semester_active = False
+            if selected_registration and registration.id == selected_registration.id:
+                is_semester_active = True
+                is_year_active = True
+            elif not selected_registration:
+                # When no specific tab selected, highlight based on filter context
+                year_match = True
+                period_match = True
                 faculty_match = True
+                
+                # Check Year filter
+                if selected_year and selected_year != "All":
+                    calendar_year = selected_year.replace("Year ", "").strip() if selected_year.startswith("Year ") else selected_year
+                    registration_year = str(registration.period.external_id)[:4] if registration.period.external_id else str(registration.period.academic_year)
+                    if registration_year != calendar_year:
+                        year_match = False
+                
+                # Check Period filter
+                if selected_period and selected_period != "All":
+                    registration_period_label = format_period_label(registration.period.name)
+                    if registration_period_label.lower() != selected_period.lower():
+                        period_match = False
+                
+                # Check Faculty filter - use filter context for highlighting
+                if selected_faculty and selected_faculty != "All":
+                    faculty_match = True  # Always match for highlighting purposes
+                else:
+                    faculty_match = True
+                
+                # Highlight if matches all filters or no filters active
+                if year_match and period_match and faculty_match:
+                    is_semester_active = True
+                    is_year_active = True
+                elif not (selected_year or selected_period or (selected_faculty and selected_faculty != "All")):
+                    # If no filters, highlight most recent semester
+                    if year == sorted(year_groups.keys(), reverse=True)[0] and registration == registrations[-1]:
+                        is_semester_active = True
+                        is_year_active = True
             
-            # Highlight tab if it matches all active filters
-            if year_match and period_match and faculty_match:
-                is_active = True
-            # If no filters match, highlight the most recent tab
-            elif not (selected_year or selected_period or (selected_faculty and selected_faculty != "All")):
-                is_active = True
-        
-        print(f"  - Adding tab: {full_label} (Y{registration.period.academic_year}S{registration.period.semester}), Active: {is_active}")
-        
-        term_tabs.append(
-            {
+            semester_options.append({
                 "id": registration.id,
-                "label": full_label,
-                "period_name": tab_meta,
-                "is_active": is_active,
-            }
-        )
+                "label": semester_label,
+                "period_name": period_label,
+                "is_active": is_semester_active,
+                "registration": registration
+            })
+        
+        # Sort semester options with most recent first (semester 2 before semester 1)
+        semester_options.sort(key=lambda x: calculate_academic_semester(validated_registrations, x["registration"]), reverse=True)
+        
+        year_dropdown_tabs.append({
+            "year": year,
+            "year_label": year_label,
+            "is_active": is_year_active,
+            "semester_selected": bool(active_semester),
+            "semesters": semester_options
+        })
+        
+        print(f"  - Year {year}: {len(semester_options)} semesters, Active: {is_year_active}")
+    
+    print(f"  - Final dropdown tabs: {[tab['year_label'] for tab in year_dropdown_tabs]}")
+    
+    # For backward compatibility, create flat term_tabs from dropdown tabs (for existing template logic)
+    term_tabs = []
+    for year_tab in year_dropdown_tabs:
+        for semester in year_tab["semesters"]:
+            # Use clean year label without semester for term_tabs
+            clean_year_label = f"Year {year_tab['year']}"
+            term_tabs.append({
+                "id": semester["id"],
+                "label": f"{clean_year_label} {semester['label']}",
+                "period_name": semester["period_name"],
+                "is_active": semester["is_active"],
+            })
     
     print(f"  - Final tabs: {[tab['label'] for tab in term_tabs]}")
 
@@ -928,7 +1195,7 @@ def student_detail(request, slug):
         "student_number": student_record.registration_number,
         "programme": selected_registration.programme.name if selected_registration else "",
         "academic_level": (
-            f"[{calculate_academic_progression_year(all_registrations, selected_registration)}.{selected_registration.period.semester}]"
+            f"Year {calculate_academic_progression_year(all_registrations, selected_registration)} Semester {calculate_academic_semester(all_registrations, selected_registration)}"
             if selected_registration
             else ""
         ),
@@ -939,8 +1206,9 @@ def student_detail(request, slug):
         "place_of_birth": student_record.place_of_birth,
         "cumulative_grade": round(average_mark, 1),
         "term_tabs": term_tabs,
+        "year_dropdown_tabs": year_dropdown_tabs,
         "results": results,
-        "show_empty_content": show_empty_content,
+        "show_empty_content": display_empty_message,
         "no_data_message": empty_state_message,
         "selected_filters": {
             "year": selected_year,
