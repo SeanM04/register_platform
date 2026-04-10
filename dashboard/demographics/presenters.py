@@ -51,6 +51,9 @@ def build_demographic_page_context(request, demographic_data):
             "location_map_rows": demographic_data["location_map_rows"],
             "location_map_meta": demographic_data["location_map_meta"],
             "programme_rows": demographic_data["programme_rows"],
+            "programme_gender_rows": demographic_data["programme_gender_rows"],
+            "year_distribution_rows": demographic_data["year_distribution_rows"],
+            "age_distribution_rows": demographic_data["age_distribution_rows"],
             "demographic_card_narratives": get_demographic_card_narratives(demographic_data),
         }
     )

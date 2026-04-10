@@ -2,6 +2,7 @@ import { createProgrammeContext, updateProgrammeNarrativeContext } from "./conte
 import { initialiseDepartmentSection } from "./departments.js?v=20260405-programmes-progressive01";
 import { initialiseFullscreenControls } from "./fullscreen.js?v=20260405-programmes-progressive01";
 import { initialiseLoadSection } from "./load.js?v=20260405-programmes-progressive01";
+import { initialiseAccordion } from "./accordion.js?v=20260405-programmes-progressive01";
 import {
     initialiseDepartmentNarrative,
     initialiseLoadNarrative,
@@ -98,7 +99,6 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
 const setProgrammeShellErrorState = (context) => {
     if (context.elements.storyBanner) {
         context.elements.storyBanner.innerHTML = `
-            <p class="programme-banner-kicker">Primary Takeaway</p>
             <p class="programme-banner-loading">The page shell loaded, but the programme dataset could not be retrieved. Try refreshing this workspace.</p>
         `.trim();
         context.elements.storyBanner.hidden = false;
@@ -138,6 +138,8 @@ export const initialiseProgrammePage = async () => {
     }
 
     const context = createProgrammeContext({ chartPayload });
+
+    initialiseAccordion();
 
     renderStoryBanner(
         context.elements.storyBanner,

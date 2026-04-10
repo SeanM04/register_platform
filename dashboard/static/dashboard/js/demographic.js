@@ -1,4 +1,5 @@
 import { initialiseDemographicPage } from "./demographic/index.js";
+import { initialiseAccordion } from "./demographic/accordion.js";
 
 const MAX_LIBRARY_WAIT_MS = 2200;
 let hasInitialised = false;
@@ -9,6 +10,7 @@ const bootstrapDemographicPage = async () => {
     }
 
     hasInitialised = true;
+    initialiseAccordion();
     await initialiseDemographicPage();
 };
 

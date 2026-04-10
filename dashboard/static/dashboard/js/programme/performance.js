@@ -56,6 +56,7 @@ export const initialisePerformanceSection = (context) => {
                 const row = params.data.row;
                 return buildTooltipMarkup(row.name, [
                     { label: "Registrations", value: formatCount(row.registrations) },
+                    { label: "Share", value: row.share },
                     { label: "Students", value: formatCount(row.students) },
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Average mark", value: formatCount(row.average_mark) },
@@ -122,6 +123,15 @@ export const initialisePerformanceSection = (context) => {
                     itemStyle: {
                         color: PROGRAMME_COLORS.navy,
                     },
+                },
+                label: {
+                    show: true,
+                    position: "top",
+                    color: PROGRAMME_COLORS.ink,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    formatter: (params) => params.data.row.share,
+                    distance: 5,
                 },
             },
         ],

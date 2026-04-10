@@ -56,12 +56,6 @@ const buildProgrammeMixSeries = (rows, visibleSeriesDefinitions) => {
         stack: "cohort",
         barWidth: 18,
         itemStyle: {
-            borderRadius: [
-                index === 0 ? 999 : 0,
-                index === visibleSeriesDefinitions.length - 1 ? 999 : 0,
-                index === visibleSeriesDefinitions.length - 1 ? 999 : 0,
-                index === 0 ? 999 : 0,
-            ],
             color: definition.color(),
             borderWidth: 0,
             borderColor: "transparent",

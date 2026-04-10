@@ -50,6 +50,7 @@ export const initialiseLoadSection = (context) => {
                 const row = sortedRows[params.dataIndex];
                 return buildTooltipMarkup(row.name, [
                     { label: "Registrations", value: formatCount(row.registrations) },
+                    { label: "Share", value: row.share },
                     { label: "Students", value: formatCount(row.students) },
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Department", value: row.department },
@@ -97,9 +98,12 @@ export const initialiseLoadSection = (context) => {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    formatter: ({ value }) => formatCount(value),
+                    fontSize: 9,
+                    fontWeight: 700,
+                    formatter: (params) => {
+                        const row = sortedRows[params.dataIndex];
+                        return `${row.share} (${row.pass_rate})`;
+                    },
                 },
                 itemStyle: {
                     borderRadius: [0, 12, 12, 0],

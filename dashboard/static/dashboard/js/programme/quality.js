@@ -100,9 +100,12 @@ export const initialiseQualitySection = (context) => {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    formatter: ({ value }) => `${value}%`,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    formatter: (params) => {
+                        const row = sortedRows[params.dataIndex];
+                        return `${row.pass_rate} (${formatCount(row.registrations)})`;
+                    },
                 },
                 itemStyle: {
                     borderRadius: [0, 12, 12, 0],

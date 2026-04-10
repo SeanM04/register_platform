@@ -183,7 +183,6 @@ export const renderStoryBanner = (element, topLoadRows, departmentRows, lowPassR
     ].filter(Boolean);
 
     element.innerHTML = `
-        <p class="programme-banner-kicker">Primary Takeaway</p>
         <h1 class="programme-banner-title">${escapeTooltipHtml(title)}</h1>
         <p class="programme-banner-copy">${escapeTooltipHtml(`${copyParts.join(", ")}.`)}</p>
         <div class="programme-banner-grid">

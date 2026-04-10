@@ -226,7 +226,6 @@ export const renderStoryBanner = (storyBanner, genderRows, locationRows, program
 
     storyBanner.innerHTML = `
         <div class="demographic-story-main">
-            <p class="demographic-story-kicker">Primary Takeaway</p>
             <h2 class="demographic-story-title">${escapeTooltipHtml(headline)}</h2>
             <p class="demographic-story-copy">${escapeTooltipHtml(headlineCopy)}</p>
         </div>
@@ -272,9 +271,7 @@ export const initialiseGenderNarrative = (elements, rows, cardNarratives = {}, f
     const narrative = getOverviewCardNarrative(cardNarratives, "gender", buildGenderOverviewNarrative(rows));
 
     setElementText(elements.genderCopy, narrative.insight);
-    setHintMarkup(elements.genderHints, [
-        { label: "Hover or tap for details", kind: "inspect" },
-    ]);
+    setHintMarkup(elements.genderHints, []);
     setActionText(elements.genderNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -303,11 +300,7 @@ export const initialiseLocationNarrative = (elements, rows, cardNarratives = {},
     const narrative = getOverviewCardNarrative(cardNarratives, "location", buildLocationOverviewNarrative(rows));
 
     setElementText(elements.locationCopy, narrative.insight);
-    setHintMarkup(elements.locationHints, [
-        { label: "Hover or tap columns for values", kind: "inspect" },
-        { label: "Click a column to see gender split", kind: "support" },
-        { label: "Compare share and count together", kind: "support" },
-    ]);
+    setHintMarkup(elements.locationHints, []);
     setActionText(elements.locationNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -340,10 +333,7 @@ export const initialiseLocationMixNarrative = (elements, rows, cardNarratives = 
     const narrative = getOverviewCardNarrative(cardNarratives, "location_mix", buildLocationMixOverviewNarrative(rows));
 
     setElementText(elements.locationMixCopy, narrative.insight);
-    setHintMarkup(elements.locationMixHints, [
-        { label: "Hover or tap cells for details", kind: "inspect" },
-        { label: "Darker cells mean larger cohorts", kind: "support" },
-    ]);
+    setHintMarkup(elements.locationMixHints, []);
     setActionText(elements.locationMixNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -376,12 +366,7 @@ export const initialiseOriginMapNarrative = (elements, rows, mapMeta = {}, cardN
     const narrative = getOverviewCardNarrative(cardNarratives, "origin_map", buildOriginMapOverviewNarrative(rows, mapMeta));
 
     setElementText(elements.originMapCopy, narrative.insight);
-    setHintMarkup(elements.originMapHints, [
-        { label: "Click markers for details", kind: "inspect" },
-        { label: "Bubble size shows student count", kind: "support" },
-        { label: "Pan and zoom the map", kind: "support" },
-        { label: "Markers use approximate birth-location anchors", kind: "support" },
-    ]);
+    setHintMarkup(elements.originMapHints, []);
     setActionText(elements.originMapNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -413,11 +398,105 @@ export const initialiseProgrammeNarrative = (elements, rows, cardNarratives = {}
     const narrative = getOverviewCardNarrative(cardNarratives, "programme", buildProgrammeOverviewNarrative(rows));
 
     setElementText(elements.programmeCopy, narrative.insight);
-    setHintMarkup(elements.programmeHints, [
-        { label: "Hover or tap stacks for details", kind: "inspect" },
-        { label: "Compare segment balance across programmes", kind: "support" },
-    ]);
+    setHintMarkup(elements.programmeHints, []);
     setActionText(elements.programmeNote, narrative.action, {
+        showAiBadge: flags.overviewNarrativesAreAi,
+        source: flags.overviewNarrativeSource,
+        severity: narrative.severity,
+        confidence: narrative.confidence,
+    });
+};
+
+export const buildProgrammeGenderOverviewNarrative = (rows) => {
+    const leadRow = rows[0] || null;
+    const totalProgrammes = rows.length;
+    const balancedProgrammes = rows.filter(row => {
+        const malePct = parseInt(row.male_share) || 0;
+        const femalePct = parseInt(row.female_share) || 0;
+        return Math.abs(malePct - femalePct) <= 20; // Within 20% is considered balanced
+    }).length;
+
+    return {
+        insight: leadRow
+            ? `${leadRow.programme} leads with ${leadRow.total} students (${leadRow.male_share} male, ${leadRow.female_share} female). Across ${totalProgrammes} programmes, ${balancedProgrammes} show relatively balanced gender distribution.`
+            : "No programme gender data is available for the current filter selection.",
+        action: leadRow
+            ? "The stacked view makes gender balance patterns visible across programmes, helping identify both balanced and skewed distributions."
+            : "Adjust the current filters to bring programme gender distribution data back into view.",
+    };
+};
+
+export const initialiseProgrammeGenderNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
+    const narrative = getOverviewCardNarrative(cardNarratives, "programme_gender", buildProgrammeGenderOverviewNarrative(rows));
+
+    setElementText(elements.programmeGenderCopy, narrative.insight);
+    setHintMarkup(elements.programmeGenderHints, []);
+    setActionText(elements.programmeGenderNote, narrative.action, {
+        showAiBadge: flags.overviewNarrativesAreAi,
+        source: flags.overviewNarrativeSource,
+        severity: narrative.severity,
+        confidence: narrative.confidence,
+    });
+};
+
+export const buildYearDistributionOverviewNarrative = (rows) => {
+    const leadRow = rows[0] || null;
+    const totalYears = rows.length;
+    const balancedYears = rows.filter(row => {
+        const malePct = parseInt(row.male_share) || 0;
+        const femalePct = parseInt(row.female_share) || 0;
+        return Math.abs(malePct - femalePct) <= 20;
+    }).length;
+
+    return {
+        insight: leadRow
+            ? `${leadRow.year} has the highest enrollment with ${leadRow.total} students (${leadRow.male_share} male, ${leadRow.female_share} female). Across ${totalYears} academic years, ${balancedYears} show relatively balanced gender distribution.`
+            : "No academic year gender data is available for the current filter selection.",
+        action: leadRow
+            ? "The stacked view makes gender balance patterns visible across academic years, helping identify both balanced and skewed distributions."
+            : "Adjust the current filters to bring academic year gender distribution data back into view.",
+    };
+};
+
+export const initialiseYearDistributionNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
+    const narrative = getOverviewCardNarrative(cardNarratives, "year_distribution", buildYearDistributionOverviewNarrative(rows));
+
+    setElementText(elements.yearDistributionCopy, narrative.insight);
+    setHintMarkup(elements.yearDistributionHints, []);
+    setActionText(elements.yearDistributionNote, narrative.action, {
+        showAiBadge: flags.overviewNarrativesAreAi,
+        source: flags.overviewNarrativeSource,
+        severity: narrative.severity,
+        confidence: narrative.confidence,
+    });
+};
+
+export const buildAgeDistributionOverviewNarrative = (rows) => {
+    const leadRow = rows[0] || null;
+    const totalAgeGroups = rows.length;
+    const totalStudents = rows.reduce((sum, row) => sum + (row.total || 0), 0);
+    const balancedAgeGroups = rows.filter(row => {
+        const malePct = parseInt(row.male_share) || 0;
+        const femalePct = parseInt(row.female_share) || 0;
+        return Math.abs(malePct - femalePct) <= 20;
+    }).length;
+
+    return {
+        insight: leadRow
+            ? `${leadRow.age_group} represents the largest age group with ${leadRow.total} students (${leadRow.male_share} male, ${leadRow.female_share} female). Across ${totalAgeGroups} age groups, ${balancedAgeGroups} show relatively balanced gender distribution.`
+            : "No age distribution data is available for the current filter selection.",
+        action: leadRow
+            ? "The stacked view makes gender balance patterns visible across age groups, helping identify both balanced and skewed distributions."
+            : "Adjust the current filters to bring age distribution data back into view.",
+    };
+};
+
+export const initialiseAgeDistributionNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
+    const narrative = getOverviewCardNarrative(cardNarratives, "age_distribution", buildAgeDistributionOverviewNarrative(rows));
+
+    setElementText(elements.ageDistributionCopy, narrative.insight);
+    setHintMarkup(elements.ageDistributionHints, []);
+    setActionText(elements.ageDistributionNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
         severity: narrative.severity,

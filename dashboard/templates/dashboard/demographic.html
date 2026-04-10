@@ -26,13 +26,18 @@
     <section class="demographic-story-banner" id="demographic-story-banner" aria-live="polite"></section>
 
     <section class="demographic-story-flow" aria-label="Demographic storytelling flow">
-        <section class="demographic-flow-stage demographic-flow-stage-primary">
-            <div class="demographic-flow-header">
-                <p class="demographic-flow-kicker">Chapter 1</p>
-                <h2 class="demographic-flow-title">Where The Cohort Concentrates</h2>
-            </div>
+        <div class="demographic-accordion">
+            <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item is-open" data-accordion-section="cohort-concentration">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Cohort Concentration</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="true" aria-controls="cohort-concentration-content">
+                        <span class="demographic-accordion-toggle-text">Collapse</span>
+                        <span class="demographic-accordion-toggle-icon">−</span>
+                    </button>
+                </div>
 
-            <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-top-location">
+                <div class="demographic-accordion-content" id="cohort-concentration-content">
+                    <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-top-location">
                 <div class="demographic-insight-header">
                     <div>
                         <p class="demographic-insight-kicker">Birth Locations</p>
@@ -51,15 +56,99 @@
                     <button class="demographic-chart-reset is-hidden" id="demographic-location-reset" type="button">Back to locations</button>
                 </div>
             </article>
-        </section>
+                </div>
+            </section>
 
-        <section class="demographic-flow-stage demographic-flow-stage-support">
-            <div class="demographic-flow-header">
-                <p class="demographic-flow-kicker">Chapter 2</p>
-                <h2 class="demographic-flow-title">Who Drives The Concentration</h2>
+            <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="gender-distribution-programme">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Gender Distribution by Programme</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="gender-distribution-programme-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="demographic-accordion-content is-hidden" id="gender-distribution-programme-content">
+                    <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-programme-gender">
+                <div class="demographic-insight-header">
+                    <div>
+                        <p class="demographic-insight-kicker">Programme Gender</p>
+                        <h2 class="demographic-insight-title">Gender Distribution by Programme</h2>
+                        <p class="demographic-insight-copy" id="demographic-programme-gender-copy">The ranked bars show gender distribution across programmes, making it easy to compare gender balance at a glance.</p>
+                        <div class="demographic-chart-hints" id="demographic-programme-gender-hints" aria-label="Chart interaction hints"></div>
+                    </div>
+                    <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Gender Distribution by Programme" aria-controls="demographic-programme-gender-chart" aria-label="View Gender Distribution by Programme in full screen" aria-pressed="false">Full screen</button>
+                </div>
+
+                <div class="demographic-chart-stage">
+                    <div class="demographic-chart-canvas" id="demographic-programme-gender-chart" role="img" aria-label="Gender distribution by programme chart"></div>
+                </div>
+                <div class="demographic-chart-actions">
+                    <p class="demographic-chart-note" id="demographic-programme-gender-note">This view shows gender distribution across programmes, helping identify gender balance patterns.</p>
+                </div>
+            </article>
+                </div>
+            </section>
+
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="distribution-analysis">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Distribution Analysis</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="distribution-analysis-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="demographic-accordion-content is-hidden" id="distribution-analysis-content">
+                    <div class="demographic-support-grid">
+                <article class="demographic-insight-card demographic-insight-card-year-distribution">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Academic Year</p>
+                            <h2 class="demographic-insight-title">Year Distribution</h2>
+                            <p class="demographic-insight-copy" id="demographic-year-distribution-copy">The ranked bars show gender distribution across academic years, making it easy to compare balance at different study stages.</p>
+                            <div class="demographic-chart-hints" id="demographic-year-distribution-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Year Distribution" aria-controls="demographic-year-distribution-chart" aria-label="View Year Distribution in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="demographic-year-distribution-chart" role="img" aria-label="Gender distribution by academic year chart"></div>
+                    </div>
+                    <p class="demographic-chart-note" id="demographic-year-distribution-note">This view shows gender balance patterns across different academic years.</p>
+                </article>
+
+                <article class="demographic-insight-card demographic-insight-card-age-distribution">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Age Analysis</p>
+                            <h2 class="demographic-insight-title">Age Distribution</h2>
+                            <p class="demographic-insight-copy" id="demographic-age-distribution-copy">The ranked bars show age distribution across the cohort, making it easy to see demographic age patterns.</p>
+                            <div class="demographic-chart-hints" id="demographic-age-distribution-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Age Distribution" aria-controls="demographic-age-distribution-chart" aria-label="View Age Distribution in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="demographic-age-distribution-chart" role="img" aria-label="Age distribution chart"></div>
+                    </div>
+                    <p class="demographic-chart-note" id="demographic-age-distribution-note">This view shows the age distribution patterns across the student cohort.</p>
+                </article>
             </div>
+                </div>
+            </section>
 
-            <div class="demographic-support-grid">
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="concentration-drivers">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Concentration drivers</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="concentration-drivers-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="demographic-accordion-content is-hidden" id="concentration-drivers-content">
+                    <div class="demographic-support-grid">
                 <article class="demographic-insight-card demographic-insight-card-location-mix">
                     <div class="demographic-insight-header">
                         <div>
@@ -94,15 +183,19 @@
                     <p class="demographic-chart-note" id="demographic-gender-note">The tooltip keeps the exact student count and share close while the donut shows the split at a glance.</p>
                 </article>
             </div>
-        </section>
+                </div>
+            </section>
 
-        <section class="demographic-flow-stage demographic-flow-stage-programme">
-            <div class="demographic-flow-header">
-                <p class="demographic-flow-kicker">Chapter 3</p>
-                <h2 class="demographic-flow-title">How Representation Shifts By Programme</h2>
-            </div>
+            <section class="demographic-flow-stage demographic-flow-stage-programme demographic-accordion-item" data-accordion-section="representation-shifts">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Representation Shifts By Programme</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="representation-shifts-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                    </button>
+                </div>
 
-            <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-programme">
+                <div class="demographic-accordion-content is-hidden" id="representation-shifts-content">
+                    <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-programme">
                 <div class="demographic-insight-header">
                     <div>
                         <p class="demographic-insight-kicker">Programme Mix</p>
@@ -118,15 +211,19 @@
                 </div>
                 <p class="demographic-chart-note" id="demographic-programme-note">The stacked view makes the strongest programme cohort and its internal gender balance visible without leaving the page.</p>
             </article>
-        </section>
+                </div>
+            </section>
 
-        <section class="demographic-flow-stage demographic-flow-stage-map">
-            <div class="demographic-flow-header">
-                <p class="demographic-flow-kicker">Chapter 4</p>
-                <h2 class="demographic-flow-title">Where The Story Lands On The Map</h2>
-            </div>
+            <section class="demographic-flow-stage demographic-flow-stage-map demographic-accordion-item" data-accordion-section="locations-map">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Locations on the Map</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="locations-map-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                    </button>
+                </div>
 
-            <article class="demographic-insight-card demographic-origin-map-card">
+                <div class="demographic-accordion-content is-hidden" id="locations-map-content">
+                    <article class="demographic-insight-card demographic-origin-map-card">
                 <div class="demographic-insight-header">
                     <div>
                         <p class="demographic-insight-kicker">Geographic View</p>
@@ -145,9 +242,21 @@
                     <div class="demographic-origin-map-meta" id="demographic-origin-map-meta" aria-live="polite"></div>
                 </div>
             </article>
-        </section>
+                </div>
+            </section>
+        </div>
     </section>
 </section>
+
+<script type="application/json" id="demographic-programme-gender-data">
+    {{ programme_gender_rows|safe }}
+</script>
+<script type="application/json" id="demographic-year-distribution-data">
+    {{ year_distribution_rows|safe }}
+</script>
+<script type="application/json" id="demographic-age-distribution-data">
+    {{ age_distribution_rows|safe }}
+</script>
 {% endblock %}
 
 {% block extra_js %}

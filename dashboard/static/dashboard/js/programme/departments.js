@@ -97,9 +97,12 @@ export const initialiseDepartmentSection = (context) => {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    formatter: ({ value }) => formatCount(value),
+                    fontSize: 9,
+                    fontWeight: 700,
+                    formatter: (params) => {
+                        const row = sortedRows[params.dataIndex];
+                        return `${row.programme_count} programmes`;
+                    },
                 },
                 itemStyle: {
                     borderRadius: [0, 12, 12, 0],

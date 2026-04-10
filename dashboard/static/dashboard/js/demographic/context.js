@@ -13,6 +13,9 @@ export const createDemographicContext = (payload = {}) => {
             locationMapRows: chartPayload.locationMapRows || parseJsonScript("demographic-location-map-data", []),
             locationMapMeta: chartPayload.locationMapMeta || parseJsonScript("demographic-location-map-meta-data", {}),
             programmeRows: chartPayload.programmeRows || parseJsonScript("demographic-programme-data", []),
+            programmeGenderRows: chartPayload.programmeGenderRows || parseJsonScript("demographic-programme-gender-data", []),
+            yearDistributionRows: chartPayload.yearDistributionRows || parseJsonScript("demographic-year-distribution-data", []),
+            ageDistributionRows: chartPayload.ageDistributionRows || parseJsonScript("demographic-age-distribution-data", []),
             cardNarratives,
         },
         flags: {
@@ -39,6 +42,15 @@ export const createDemographicContext = (payload = {}) => {
             programmeCopy: document.getElementById("demographic-programme-copy"),
             programmeHints: document.getElementById("demographic-programme-hints"),
             programmeNote: document.getElementById("demographic-programme-note"),
+            programmeGenderCopy: document.getElementById("demographic-programme-gender-copy"),
+            programmeGenderHints: document.getElementById("demographic-programme-gender-hints"),
+            programmeGenderNote: document.getElementById("demographic-programme-gender-note"),
+            yearDistributionCopy: document.getElementById("demographic-year-distribution-copy"),
+            yearDistributionHints: document.getElementById("demographic-year-distribution-hints"),
+            yearDistributionNote: document.getElementById("demographic-year-distribution-note"),
+            ageDistributionCopy: document.getElementById("demographic-age-distribution-copy"),
+            ageDistributionHints: document.getElementById("demographic-age-distribution-hints"),
+            ageDistributionNote: document.getElementById("demographic-age-distribution-note"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
         },
@@ -55,6 +67,9 @@ export const updateDemographicContext = (context, payload = {}) => {
     context.data.locationMapRows = chartPayload.locationMapRows || context.data.locationMapRows;
     context.data.locationMapMeta = chartPayload.locationMapMeta || context.data.locationMapMeta;
     context.data.programmeRows = chartPayload.programmeRows || context.data.programmeRows;
+    context.data.programmeGenderRows = chartPayload.programmeGenderRows || context.data.programmeGenderRows;
+    context.data.yearDistributionRows = chartPayload.yearDistributionRows || context.data.yearDistributionRows;
+    context.data.ageDistributionRows = chartPayload.ageDistributionRows || context.data.ageDistributionRows;
     context.data.cardNarratives = cardNarratives;
 
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();

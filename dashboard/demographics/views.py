@@ -45,6 +45,9 @@ def demographic_payload(request):
             "location_map_rows": demographic_data["location_map_rows"],
             "location_map_meta": demographic_data["location_map_meta"],
             "programme_rows": demographic_data["programme_rows"],
+            "programme_gender_rows": demographic_data.get("programme_gender_rows", []),
+            "year_distribution_rows": demographic_data.get("year_distribution_rows", []),
+            "age_distribution_rows": demographic_data.get("age_distribution_rows", []),
             "register_meta": {
                 "visible_count": len(demographic_data["programme_rows"]),
             },

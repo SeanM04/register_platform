@@ -8,12 +8,18 @@ import { initialiseLocationSection } from "./locations.js";
 import { initialiseLocationMixSection } from "./location_mix.js";
 import { initialiseOriginMapSection } from "./origin_map.js";
 import { initialiseProgrammeMixSection } from "./programme_mix.js";
+import { initialiseProgrammeGenderSection } from "./programme_gender.js";
+import { initialiseYearDistributionSection } from "./level_gender.js";
+import { initialiseAgeDistributionSection } from "./age_distribution.js";
 import {
     initialiseGenderNarrative,
     initialiseLocationNarrative,
     initialiseLocationMixNarrative,
     initialiseOriginMapNarrative,
     initialiseProgrammeNarrative,
+    initialiseProgrammeGenderNarrative,
+    initialiseYearDistributionNarrative,
+    initialiseAgeDistributionNarrative,
     renderStoryBanner,
 } from "./narratives.js";
 
@@ -183,13 +189,15 @@ const hydrateNarratives = (context) => {
     initialiseLocationNarrative(context.elements, context.data.locationRows, context.data.cardNarratives, context.flags);
     initialiseLocationMixNarrative(context.elements, context.data.locationMixRows, context.data.cardNarratives, context.flags);
     initialiseProgrammeNarrative(context.elements, context.data.programmeRows, context.data.cardNarratives, context.flags);
+    initialiseProgrammeGenderNarrative(context.elements, context.data.programmeGenderRows, context.data.cardNarratives, context.flags);
+    initialiseYearDistributionNarrative(context.elements, context.data.yearDistributionRows, context.data.cardNarratives, context.flags);
+    initialiseAgeDistributionNarrative(context.elements, context.data.ageDistributionRows, context.data.cardNarratives, context.flags);
     initialiseOriginMapNarrative(context.elements, context.data.locationMapRows, context.data.locationMapMeta, context.data.cardNarratives, context.flags);
 };
 
 const setDemographicShellErrorState = (context) => {
     if (context.elements.storyBanner) {
         context.elements.storyBanner.innerHTML = `
-            <p class="demographic-banner-kicker">Primary Takeaway</p>
             <p class="demographic-banner-loading">The page shell loaded, but the demographic dataset could not be retrieved. Try refreshing this workspace.</p>
         `.trim();
         context.elements.storyBanner.hidden = false;
@@ -218,6 +226,9 @@ export const initialiseDemographicPage = async () => {
         locationMapRows: payloadResponse?.location_map_rows || [],
         locationMapMeta: payloadResponse?.location_map_meta || {},
         programmeRows: payloadResponse?.programme_rows || [],
+        programmeGenderRows: payloadResponse?.programme_gender_rows || [],
+        yearDistributionRows: payloadResponse?.year_distribution_rows || [],
+        ageDistributionRows: payloadResponse?.age_distribution_rows || [],
     };
 
     const context = updateDemographicContext(shellContext, { chartPayload });
@@ -230,6 +241,9 @@ export const initialiseDemographicPage = async () => {
         initialiseLocationSection(context),
         initialiseLocationMixSection(context),
         initialiseProgrammeMixSection(context),
+        initialiseProgrammeGenderSection(context),
+        initialiseYearDistributionSection(context),
+        initialiseAgeDistributionSection(context),
     ];
     const resizeCharts = () => {
         controllers.forEach((controller) => {

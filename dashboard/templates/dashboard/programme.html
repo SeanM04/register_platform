@@ -24,22 +24,22 @@
     </section>
 
     <section class="programme-story-banner" id="programme-story-banner" aria-live="polite">
-        <p class="programme-banner-kicker">Primary Takeaway</p>
         <p class="programme-banner-loading">Loading the programme story and visual payload...</p>
     </section>
 
-    <section class="programme-scope-row" aria-label="Active programme scope">
-        {% for pill in scope_pills %}
-        <span class="programme-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
-        {% endfor %}
-    </section>
-
+    
     <section class="programme-story-flow" aria-label="Programme storytelling flow">
-        <section class="programme-flow-stage programme-flow-stage-primary">
-            <div class="programme-flow-header">
-                <p class="programme-flow-kicker">Chapter 1</p>
-                <h2 class="programme-flow-title">Where The Programme Load Is Sitting</h2>
-            </div>
+        <div class="programme-accordion">
+            <section class="programme-flow-stage programme-flow-stage-primary programme-accordion-item is-open" data-accordion-section="programme-load-status">
+                <div class="programme-flow-header">
+                    <h2 class="programme-flow-title">Programme Load Status</h2>
+                    <button class="programme-accordion-toggle" type="button" aria-expanded="true" aria-controls="programme-load-status-content">
+                        <span class="programme-accordion-toggle-text">Collapse</span>
+                        <span class="programme-accordion-toggle-icon">−</span>
+                    </button>
+                </div>
+
+                <div class="programme-accordion-content" id="programme-load-status-content">
 
             <div class="programme-stage-grid programme-stage-grid-primary">
                 <article class="programme-card programme-card-wide">
@@ -63,11 +63,11 @@
                     <div class="programme-card-header">
                         <div>
                             <p class="programme-card-kicker">Department Pressure</p>
-                            <h2 class="programme-card-title">Where Portfolio Load Concentrates</h2>
+                            <h2 class="programme-card-title">Portfolio Load Concentration</h2>
                             <p class="programme-card-copy" id="programme-departments-copy">Use the department roll-up to see whether visible programme demand is isolated to one portfolio or already spread across multiple teams.</p>
                             <div class="programme-chart-hints" id="programme-departments-hints" aria-label="Chart interaction hints"></div>
                         </div>
-                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Portfolio Load Concentrates" aria-controls="programme-departments-chart" aria-label="View Where Portfolio Load Concentrates in full screen" aria-pressed="false">Full screen</button>
+                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Portfolio Load Concentration" aria-controls="programme-departments-chart" aria-label="View Portfolio Load Concentration in full screen" aria-pressed="false">Full screen</button>
                     </div>
 
                     <div class="programme-chart-stage">
@@ -76,13 +76,19 @@
                     <p class="programme-chart-note" id="programme-departments-note">Department concentration helps managers judge which academic teams are carrying the broadest programme footprint.</p>
                 </article>
             </div>
-        </section>
+                </div>
+            </section>
 
-        <section class="programme-flow-stage">
-            <div class="programme-flow-header">
-                <p class="programme-flow-kicker">Chapter 2</p>
-                <h2 class="programme-flow-title">Which Programmes Need Review First</h2>
-            </div>
+            <section class="programme-flow-stage programme-accordion-item" data-accordion-section="priority-programmes">
+                <div class="programme-flow-header">
+                    <h2 class="programme-flow-title">Priority Programmes</h2>
+                    <button class="programme-accordion-toggle" type="button" aria-expanded="false" aria-controls="priority-programmes-content">
+                        <span class="programme-accordion-toggle-text">Expand</span>
+                        <span class="programme-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="programme-accordion-content is-hidden" id="priority-programmes-content">
 
             <div class="programme-stage-grid">
                 <article class="programme-card">
@@ -119,13 +125,19 @@
                     <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale and quality in one view, which is much harder to see in a flat programme table.</p>
                 </article>
             </div>
-        </section>
+                </div>
+            </section>
 
-        <section class="programme-flow-stage programme-flow-stage-register">
-            <div class="programme-flow-header">
-                <p class="programme-flow-kicker">Chapter 3</p>
-                <h2 class="programme-flow-title">Programme Register</h2>
-            </div>
+            <section class="programme-flow-stage programme-flow-stage-register programme-accordion-item" data-accordion-section="programme-register">
+                <div class="programme-flow-header">
+                    <h2 class="programme-flow-title">Programme Register</h2>
+                    <button class="programme-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-register-content">
+                        <span class="programme-accordion-toggle-text">Expand</span>
+                        <span class="programme-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="programme-accordion-content is-hidden" id="programme-register-content">
 
             <article class="programme-card programme-card-register">
                 <div class="programme-register-header">
@@ -177,7 +189,9 @@
                 </div>
                 <p class="programme-register-meta" id="programme-register-meta">Loading visible programme rows...</p>
             </article>
-        </section>
+                </div>
+            </section>
+        </div>
     </section>
 </section>
 {% endblock %}

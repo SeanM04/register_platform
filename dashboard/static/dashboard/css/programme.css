@@ -568,6 +568,68 @@
     line-height: 1.5;
 }
 
+/* Accordion Styles */
+.programme-accordion {
+    display: grid;
+    gap: 1rem;
+}
+
+.programme-accordion-item {
+    padding: 1.1rem;
+    background:
+        radial-gradient(circle at top right, rgba(105, 193, 223, 0.16), transparent 32%),
+        linear-gradient(180deg, #f8fbff 0%, #fefefe 100%);
+    border: 1px solid #d7e7f6;
+    border-radius: 30px;
+}
+
+.programme-flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.programme-accordion-toggle {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid rgba(29, 84, 138, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #103767;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.programme-accordion-toggle:hover {
+    background: #ffffff;
+    border-color: rgba(72, 169, 215, 0.6);
+    transform: translateY(-1px);
+}
+
+.programme-accordion-toggle:focus-visible {
+    outline: 2px solid rgba(72, 169, 215, 0.45);
+    outline-offset: 2px;
+}
+
+.programme-accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.programme-accordion-content.is-hidden {
+    display: none;
+}
+
+.programme-accordion-content:not(.is-hidden) {
+    display: block;
+    max-height: 5000px;
+    transition: max-height 0.3s ease-in;
+}
+
 @media (max-width: 1200px) {
     .programme-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
