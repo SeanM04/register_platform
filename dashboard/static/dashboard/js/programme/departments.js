@@ -105,7 +105,7 @@ export const initialiseDepartmentSection = (context) => {
                     },
                 },
                 itemStyle: {
-                    borderRadius: [0, 12, 12, 0],
+                    borderRadius: 0,
                     color: buildGradient(PROGRAMME_COLORS.teal, PROGRAMME_COLORS.mint, "horizontal"),
                 },
             },

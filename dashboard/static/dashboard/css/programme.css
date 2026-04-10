@@ -195,7 +195,7 @@
 .programme-flow-title {
     margin: 0;
     color: #0d2848;
-    font-size: 1.15rem;
+    font-size: 1rem;
     line-height: 1.25;
 }
 
@@ -505,6 +505,16 @@
     word-break: break-word;
 }
 
+/* Left-align Programme, Faculty, and Department columns */
+.programme-table th:nth-child(2),
+.programme-table td:nth-child(2),
+.programme-table th:nth-child(3),
+.programme-table td:nth-child(3),
+.programme-table th:nth-child(4),
+.programme-table td:nth-child(4) {
+    text-align: left;
+}
+
 .programme-table th {
     position: sticky;
     top: 0;
@@ -571,33 +581,33 @@
 /* Accordion Styles */
 .programme-accordion {
     display: grid;
-    gap: 1rem;
+    gap: 0.6rem;
 }
 
 .programme-accordion-item {
-    padding: 1.1rem;
+    padding: 0.5rem 0.85rem;
     background:
         radial-gradient(circle at top right, rgba(105, 193, 223, 0.16), transparent 32%),
         linear-gradient(180deg, #f8fbff 0%, #fefefe 100%);
     border: 1px solid #d7e7f6;
-    border-radius: 30px;
+    border-radius: 18px;
 }
 
 .programme-flow-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.6rem;
 }
 
 .programme-accordion-toggle {
     flex-shrink: 0;
-    padding: 0.5rem 0.8rem;
+    padding: 0.35rem 0.65rem;
     border: 1px solid rgba(29, 84, 138, 0.28);
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.94);
     color: #103767;
-    font-size: 0.76rem;
+    font-size: 0.7rem;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
@@ -612,6 +622,11 @@
 .programme-accordion-toggle:focus-visible {
     outline: 2px solid rgba(72, 169, 215, 0.45);
     outline-offset: 2px;
+}
+
+.programme-accordion-toggle-icon {
+    font-size: 1rem;
+    font-weight: 800;
 }
 
 .programme-accordion-content {

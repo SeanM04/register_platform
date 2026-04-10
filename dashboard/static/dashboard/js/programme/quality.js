@@ -108,7 +108,7 @@ export const initialiseQualitySection = (context) => {
                     },
                 },
                 itemStyle: {
-                    borderRadius: [0, 12, 12, 0],
+                    borderRadius: 0,
                     color: buildGradient(PROGRAMME_COLORS.rose, PROGRAMME_COLORS.amber, "horizontal"),
                 },
             },
