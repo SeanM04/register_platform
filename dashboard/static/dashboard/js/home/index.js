@@ -1,5 +1,5 @@
-import { createHomeContext, updateHomeContext } from "./context.js?v=20260408-home-ai02";
-import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260408-home-ai02";
+import { createHomeContext, updateHomeContext } from "./context.js?v=20260411-home-drilldown01";
+import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260411-home-drilldown01";
 import { initialiseFullscreenControls } from "./fullscreen.js?v=20260403-home-story04";
 import {
     initialiseFacultyNarrative,
@@ -9,10 +9,10 @@ import {
     initialiseProgressNarrative,
     initialiseRiskNarrative,
     renderStoryBanner,
-} from "./narratives.js?v=20260408-home-ai02";
-import { initialiseOutcomeSection } from "./outcomes.js?v=20260408-home-ai02";
-import { initialiseProgressSection } from "./progress.js?v=20260408-home-ai02";
-import { initialiseRiskDistributionSection } from "./risk_distribution.js?v=20260408-home-ai02";
+} from "./narratives.js?v=20260411-home-top-pillless01";
+import { initialiseOutcomeSection } from "./outcomes.js?v=20260411-home-drilldown01";
+import { initialiseProgressSection } from "./progress.js?v=20260411-home-drilldown01";
+import { initialiseRiskDistributionSection } from "./risk_distribution.js?v=20260411-home-drilldown01";
 import { escapeTooltipHtml } from "./shared.js?v=20260403-home-story04";
 
 /**
@@ -55,9 +55,7 @@ const homeRoot = document.querySelector(".home-layout");
 const payloadPromise = homeRoot
     ? fetchJson(homeRoot.dataset.payloadUrl).catch(() => null)
     : Promise.resolve(null);
-const narrativesPromise = homeRoot?.dataset.aiNarrativesEnabled === "true" && homeRoot?.dataset.narrativesUrl
-    ? fetchJson(homeRoot.dataset.narrativesUrl).catch(() => null)
-    : Promise.resolve(null);
+let narrativesPromise = null;
 
 /**
  * Resize chart instances when the viewport or their container dimensions change.
@@ -137,6 +135,33 @@ const renderActionCards = (context, actionCards = []) => {
     `).join("").trim();
 };
 
+const renderNarrativeDiagnostics = (context) => {
+    const diagnostics = context.data.narrativeDiagnostics || {};
+    const statusElement = context.elements.narrativeStatus;
+
+    if (!statusElement) {
+        return;
+    }
+
+    const message = String(diagnostics.message || "").trim();
+    if (!message) {
+        statusElement.hidden = true;
+        statusElement.textContent = "";
+        statusElement.className = "home-narrative-status";
+        return;
+    }
+
+    statusElement.hidden = false;
+    statusElement.textContent = message;
+    statusElement.className = `home-narrative-status is-${diagnostics.status || "rules"}`;
+
+    if (diagnostics.fallback_detail) {
+        statusElement.title = diagnostics.fallback_detail;
+    } else {
+        statusElement.removeAttribute("title");
+    }
+};
+
 /**
  * Apply chapter summaries and card-level narrative copy from the current context.
  */
@@ -173,17 +198,29 @@ const loadNarratives = (context) => {
         return;
     }
 
+    if (!narrativesPromise) {
+        narrativesPromise = fetchJson(homeRoot.dataset.narrativesUrl).catch(() => null);
+    }
+
     narrativesPromise
         .then((payload) => {
             const cardNarratives = payload?.card_narratives;
             updateHomeContext(context, {
                 cardNarratives: cardNarratives || context.data.cardNarratives,
+                narrativeDiagnostics: payload?.diagnostics || context.data.narrativeDiagnostics,
                 narrativeFetchCompleted: true,
             });
-            hydrateNarratives(context);
-        })
-        .catch(() => {
-            updateHomeContext(context, { narrativeFetchCompleted: true });
+            if (homeRoot) {
+                const diagnostics = context.data.narrativeDiagnostics || {};
+                homeRoot.dataset.narrativeSource = diagnostics.returned_source || "";
+                homeRoot.dataset.narrativeStatus = diagnostics.status || "";
+                homeRoot.dataset.narrativeProvider = diagnostics.provider_attempted || diagnostics.configured_provider || "";
+                homeRoot.dataset.narrativeFallbackReason = diagnostics.fallback_reason || "";
+            }
+            if (window.console?.info && payload?.diagnostics) {
+                window.console.info("[Home narratives diagnostics]", payload.diagnostics);
+            }
+            renderNarrativeDiagnostics(context);
             hydrateNarratives(context);
         });
 };
@@ -238,6 +275,7 @@ export const initialiseOverviewPage = async () => {
         context.data.facultyLoadRows,
         context.data.progressRows,
     );
+    renderNarrativeDiagnostics(context);
     hydrateNarratives(context);
 
     const controllers = [

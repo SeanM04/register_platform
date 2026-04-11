@@ -1,0 +1,219 @@
+:is(
+    .home-ai-badge-group,
+    .demographic-ai-badge-group,
+    .programme-ai-badge-group,
+    .risk-ai-badge-group,
+    .level-ai-badge-group,
+    .insight-ai-badge-group
+) {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-right: 0.56rem;
+}
+
+:is(
+    .home-ai-badge,
+    .demographic-ai-badge,
+    .programme-ai-badge,
+    .risk-ai-badge,
+    .level-ai-badge,
+    .insight-ai-badge
+) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    flex-shrink: 0;
+    padding: 0.24rem 0.62rem 0.24rem 0.3rem;
+    border: 1px solid rgba(251, 146, 60, 0.52);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+    color: #c45b12;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.92),
+        0 2px 6px rgba(194, 91, 19, 0.08);
+}
+
+:is(
+    .home-ai-badge,
+    .demographic-ai-badge,
+    .programme-ai-badge,
+    .risk-ai-badge,
+    .level-ai-badge,
+    .insight-ai-badge
+):is(.is-stable, .is-medium, .is-high, .is-guidance) {
+    border-color: rgba(251, 146, 60, 0.52);
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+    color: #c45b12;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.92),
+        0 2px 6px rgba(194, 91, 19, 0.08);
+}
+
+:is(
+    .home-ai-badge,
+    .demographic-ai-badge,
+    .programme-ai-badge,
+    .risk-ai-badge,
+    .level-ai-badge,
+    .insight-ai-badge
+).is-loading {
+    border-color: rgba(251, 146, 60, 0.46);
+    background: linear-gradient(180deg, #fff8ef 0%, #ffeedb 100%);
+    color: #c45b12;
+    animation: platform-ai-pill-pulse 1.8s ease-in-out infinite;
+}
+
+:is(
+    .home-ai-badge-icon,
+    .demographic-ai-badge-icon,
+    .programme-ai-badge-icon,
+    .risk-ai-badge-icon,
+    .level-ai-badge-icon,
+    .insight-ai-badge-icon
+) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.92rem;
+    height: 0.92rem;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    color: #fff7ed;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+:is(
+    .home-ai-badge,
+    .demographic-ai-badge,
+    .programme-ai-badge,
+    .risk-ai-badge,
+    .level-ai-badge,
+    .insight-ai-badge
+):is(.is-stable, .is-medium, .is-high, .is-guidance, .is-loading)
+    :is(
+        .home-ai-badge-icon,
+        .demographic-ai-badge-icon,
+        .programme-ai-badge-icon,
+        .risk-ai-badge-icon,
+        .level-ai-badge-icon,
+        .insight-ai-badge-icon
+    ) {
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    color: #fff7ed;
+}
+
+:is(
+    .home-ai-badge-icon,
+    .demographic-ai-badge-icon,
+    .programme-ai-badge-icon,
+    .risk-ai-badge-icon,
+    .level-ai-badge-icon,
+    .insight-ai-badge-icon
+) svg {
+    width: 0.56rem;
+    height: 0.56rem;
+    fill: currentColor;
+}
+
+:is(
+    .home-ai-context,
+    .demographic-ai-context,
+    .programme-ai-context,
+    .risk-ai-context,
+    .level-ai-context,
+    .insight-ai-context
+) {
+    display: inline-flex;
+    align-items: center;
+    color: #c45b12;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+:is(
+    .home-ai-context,
+    .demographic-ai-context,
+    .programme-ai-context,
+    .risk-ai-context,
+    .level-ai-context,
+    .insight-ai-context
+).is-loading,
+:is(
+    .home-ai-badge,
+    .demographic-ai-badge,
+    .programme-ai-badge,
+    .risk-ai-badge,
+    .level-ai-badge,
+    .insight-ai-badge
+).is-high
+    + :is(
+        .home-ai-context,
+        .demographic-ai-context,
+        .programme-ai-context,
+        .risk-ai-context,
+        .level-ai-context,
+        .insight-ai-context
+    ) {
+    color: #c45b12;
+}
+
+@keyframes platform-ai-pill-pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    50% {
+        opacity: 0.86;
+        transform: translateY(-1px);
+    }
+}
+
+@media (max-width: 720px) {
+    :is(
+        .home-ai-badge-group,
+        .demographic-ai-badge-group,
+        .programme-ai-badge-group,
+        .risk-ai-badge-group,
+        .level-ai-badge-group,
+        .insight-ai-badge-group
+    ) {
+        gap: 0.34rem;
+        margin-right: 0.48rem;
+    }
+
+    :is(
+        .home-ai-badge,
+        .demographic-ai-badge,
+        .programme-ai-badge,
+        .risk-ai-badge,
+        .level-ai-badge,
+        .insight-ai-badge
+    ) {
+        padding: 0.22rem 0.56rem 0.22rem 0.28rem;
+        font-size: 0.64rem;
+    }
+
+    :is(
+        .home-ai-context,
+        .demographic-ai-context,
+        .programme-ai-context,
+        .risk-ai-context,
+        .level-ai-context,
+        .insight-ai-context
+    ) {
+        font-size: 0.7rem;
+    }
+}

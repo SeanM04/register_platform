@@ -45,6 +45,7 @@ export const initialisePerformanceSection = (context) => {
         animationDuration: 650,
         animationDurationUpdate: 250,
         grid: {
+            containLabel: true,
             left: 64,
             right: 26,
             top: 22,

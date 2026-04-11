@@ -8,6 +8,7 @@ import {
     formatCount,
     setChartFallback,
 } from "./shared.js?v=20260403-home-story04";
+import { openOverviewDrillDown } from "./drilldown.js?v=20260411-home-drilldown01";
 import { initialiseOutcomeNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const OUTCOME_COLORS = {
@@ -81,26 +82,21 @@ export const initialiseOutcomeSection = (context) => {
                         itemStyle: {
                             color: OUTCOME_COLORS[row.key] || HOME_COLORS.sky,
                         },
-                        drilldown: {
-                            name: row.label,
-                            items: [
-                                { label: "Results", value: formatCount(row.count) },
-                                { label: "Percentage", value: `${row.percent}%` },
-                                { label: "Status", value: row.label },
-                                { label: "Total Marked Results", value: formatCount(rows.filter(r => r.key !== 'awaiting').reduce((sum, r) => sum + r.count, 0)) }
-                            ]
-                        }
+                        drilldownKey: row.key,
                     })),
                 },
             ],
         }
     );
 
-    // Add drill-down click handler
-    chart.on('click', function(params) {
-        if (params.data && params.data.drilldown) {
-            const drilldown = params.data.drilldown;
-            showDrillDownModal(drilldown.name, drilldown.items);
+    chart.on("click", (params) => {
+        const bucketKey = params.data?.drilldownKey;
+        if (bucketKey) {
+            openOverviewDrillDown(context, {
+                chartKey: "outcomes",
+                bucketKey,
+                label: params.name,
+            });
         }
     });
 

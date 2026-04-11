@@ -56,6 +56,35 @@
     box-shadow: 0 18px 34px rgba(8, 35, 64, 0.16);
 }
 
+.level-narrative-status {
+    margin: -0.2rem 0 0;
+    padding: 0.62rem 0.88rem;
+    border-radius: 12px;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    background: rgba(255, 255, 255, 0.82);
+    color: #4d6178;
+    font-size: 0.74rem;
+    line-height: 1.5;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.level-narrative-status[hidden] {
+    display: none;
+}
+
+.level-narrative-status.is-ai {
+    border-color: rgba(91, 191, 147, 0.32);
+    background: rgba(235, 249, 242, 0.92);
+    color: #226247;
+}
+
+.level-narrative-status.is-fallback,
+.level-narrative-status.is-rules {
+    border-color: rgba(239, 178, 91, 0.34);
+    background: rgba(255, 248, 239, 0.94);
+    color: #8a5312;
+}
+
 .level-story-main {
     display: grid;
     gap: 0.28rem;

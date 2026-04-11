@@ -9,6 +9,8 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
+import { cancelOverviewDrillDownRequests } from "./drilldown.js?v=20260411-home-drilldown01";
+import { showDrillDownModal } from "./drilldown_modal.js?v=20260411-home-drilldown01";
 import { initialiseFacultyNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 /**
@@ -120,9 +122,9 @@ export const initialiseFacultyLoadSection = (context) => {
         }
     );
 
-    // Add drill-down click handler
-    chart.on('click', function(params) {
+    chart.on("click", (params) => {
         if (params.data && params.data.drilldown) {
+            cancelOverviewDrillDownRequests();
             const drilldown = params.data.drilldown;
             showDrillDownModal(drilldown.name, drilldown.items);
         }

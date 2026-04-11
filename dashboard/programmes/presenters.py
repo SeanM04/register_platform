@@ -37,11 +37,16 @@ def _programme_ai_narratives_enabled():
 def build_programme_shell_context(request, search_query=""):
     """Build a lightweight first-paint context for the programme dashboard page."""
 
+    sort_key = request.GET.get("sort", "").strip()
+    sort_direction = request.GET.get("direction", "asc").strip().lower()
+
     context = build_layout_context(request, PROGRAMMES_ACTIVE_KEY)
     context.update(
         {
             "page_title": PROGRAMMES_PAGE_TITLE,
             "search_query": search_query,
+            "sort_key": sort_key,
+            "sort_direction": sort_direction,
             "summary_cards": [
                 {
                     "key": spec["key"],

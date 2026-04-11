@@ -3,7 +3,7 @@ import re
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, CharField, Count, FloatField, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -463,7 +463,7 @@ def build_registration_filter_q(request, prefix=""):
     return filters
 
 
-def get_filtered_registrations(request):
+def get_filtered_registrations(request, include_course_results=True):
     """Return registrations filtered by the active year, period, and faculty."""
 
     registrations = (
@@ -472,9 +472,10 @@ def get_filtered_registrations(request):
             "programme__department__faculty",
             "period",
         )
-        .prefetch_related("course_results")
         .order_by("student__surname", "student__first_names")
     )
+    if include_course_results:
+        registrations = registrations.prefetch_related("course_results")
 
     return registrations.filter(build_registration_filter_q(request))
 
@@ -495,7 +496,12 @@ def get_home_summary_values(request):
     total_students = registrations.values("student_id").distinct().count()
     pass_count = filtered_results.filter(mark__gte=50).count()
     result_count = filtered_results.count()
-    completion_rate = registrations.filter(decision__iexact="PROCEED").count()
+    proceed_count = registrations.filter(decision__iexact="PROCEED").count()
+    completion_rate = (
+        f"{round((proceed_count / total_registered) * 100)}%"
+        if total_registered
+        else "0%"
+    )
     avg_mark = filtered_results.aggregate(value=Avg("mark"))["value"]
     
     # Calculate first year retention using the new dynamic method
@@ -637,58 +643,111 @@ def dashboard_home(request):
     return feature_dashboard_home(request)
 
 
+def build_student_directory_search_q(search_query):
+    """Build the reusable search filter for the students directory."""
+
+    if not search_query:
+        return Q()
+
+    return (
+        Q(student__first_names__icontains=search_query)
+        | Q(student__surname__icontains=search_query)
+        | Q(student__registration_number__icontains=search_query)
+        | Q(programme__name__icontains=search_query)
+        | Q(programme__department__name__icontains=search_query)
+    )
+
+
 @login_required_except_domains()
 def student_list(request):
     """Render the paginated student directory with shared dashboard filters."""
 
     search_query = request.GET.get("q", "").strip()
-    filtered_registrations = get_filtered_registrations(request)
-    registrations = filtered_registrations
-    if search_query:
-        registrations = registrations.filter(
-            Q(student__first_names__icontains=search_query)
-            | Q(student__surname__icontains=search_query)
-            | Q(student__registration_number__icontains=search_query)
-            | Q(programme__name__icontains=search_query)
-            | Q(programme__department__name__icontains=search_query)
-        )
+    filtered_registrations = get_filtered_registrations(request, include_course_results=False)
+    registrations = filtered_registrations.filter(build_student_directory_search_q(search_query))
 
-    average_marks = dict(
-        get_filtered_results(filtered_registrations)
+    latest_registration = registrations.filter(student_id=OuterRef("pk")).order_by("-period__external_id", "-id")
+    average_mark = (
+        CourseResult.objects.filter(
+            build_registration_filter_q(request, prefix="registration__"),
+            registration__student_id=OuterRef("pk"),
+        )
+        .exclude(mark__isnull=True)
         .values("registration__student_id")
         .annotate(value=Avg("mark"))
-        .values_list("registration__student_id", "value")
+        .values("value")[:1]
     )
-    latest_registrations = list(
-        registrations.order_by("student_id", "-period__external_id", "-id").distinct("student_id")
+    matching_student_ids = registrations.order_by().values("student_id").distinct()
+
+    sort_key = request.GET.get("sort", "name")
+    sort_direction = request.GET.get("direction", "asc")
+    if sort_direction not in ("asc", "desc"):
+        sort_direction = "asc"
+
+    sort_column_map = {
+        "name": ["surname", "first_names", "registration_number"],
+        "department": ["latest_department", "surname", "first_names"],
+        "programme": ["latest_programme", "surname", "first_names"],
+        "average_mark": ["scoped_average_mark", "surname", "first_names"],
+        "decision": ["latest_decision", "surname", "first_names"],
+        "gender": ["gender", "surname", "first_names"],
+    }
+    if sort_key not in sort_column_map:
+        sort_key = "name"
+    sort_fields = sort_column_map[sort_key]
+    order_prefix = "-" if sort_direction == "desc" else ""
+    ordered_fields = [f"{order_prefix}{field}" for field in sort_fields]
+
+    students_queryset = (
+        Student.objects.filter(pk__in=Subquery(matching_student_ids))
+        .annotate(
+            latest_department=Subquery(
+                latest_registration.values("programme__department__name")[:1],
+                output_field=CharField(),
+            ),
+            latest_programme=Subquery(
+                latest_registration.values("programme__name")[:1],
+                output_field=CharField(),
+            ),
+            latest_decision=Subquery(
+                latest_registration.values("decision")[:1],
+                output_field=CharField(),
+            ),
+            scoped_average_mark=Subquery(
+                average_mark,
+                output_field=FloatField(),
+            ),
+        )
+        .order_by(*ordered_fields)
     )
 
-    student_rows = [
-        {
-            "name": registration.student.full_name,
-            "department": registration.programme.department.name if registration.programme.department else "",
-            "program": registration.programme.name,
-            "average_mark": round(average_marks.get(registration.student_id) or 0),
-            "decision": registration.decision.title(),
-            "gender": registration.student.gender.title(),
-            "detail_slug": registration.student.registration_number.lower(),
-        }
-        for registration in latest_registrations
-    ]
-
-    paginator = Paginator(student_rows, 20)
+    paginator = Paginator(students_queryset, 20)
     page_obj = paginator.get_page(request.GET.get("page"))
     page_window_start = max(page_obj.number - 2, 1)
     page_window_end = min(page_obj.number + 2, paginator.num_pages)
+    student_rows = [
+        {
+            "name": student.full_name,
+            "department": student.latest_department or "",
+            "programme": student.latest_programme or "",
+            "average_mark": round(student.scoped_average_mark or 0),
+            "decision": str(student.latest_decision or "").title(),
+            "gender": student.gender.title(),
+            "detail_slug": student.registration_number.lower(),
+        }
+        for student in page_obj.object_list
+    ]
 
     context = build_layout_context(request, "students")
     context.update(
         {
             "page_title": "Students Dashboard",
-            "students": page_obj.object_list,
+            "students": student_rows,
             "page_obj": page_obj,
             "page_numbers": range(page_window_start, page_window_end + 1),
             "search_query": search_query,
+            "sort_key": sort_key,
+            "sort_direction": sort_direction,
             "total_students": paginator.count,
         }
     )

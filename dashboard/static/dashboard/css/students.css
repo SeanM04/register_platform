@@ -157,7 +157,7 @@
     width: 14rem;
 }
 
-.students-col-program {
+.students-col-programme {
     width: 14rem;
 }
 
@@ -199,6 +199,46 @@
     background-clip: padding-box;
 }
 
+.students-th-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: inherit;
+    text-decoration: none;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.students-th-link::after {
+    content: "↕";
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.65);
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.students-th-link.is-sorted {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.students-th-link.is-sorted.asc::after {
+    content: "↑";
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.students-th-link.is-sorted.desc::after {
+    content: "↓";
+    color: #ffffff;
+    transform: translateY(1px);
+}
+
+.students-th-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
 .students-table .students-th-name,
 .students-table .students-td-name {
     position: sticky;
@@ -212,8 +252,8 @@
     text-align: left !important;
 }
 
-.students-table .students-th-program,
-.students-table .students-td-program {
+.students-table .students-th-programme,
+.students-table .students-td-programme {
     text-align: left !important;
 }
 
@@ -270,9 +310,10 @@
 }
 
 .student-link {
-    display: inline-block;
-    width: auto;
-    max-width: 8rem;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     text-decoration: none;
     color: inherit;
     text-align: left;

@@ -1,5 +1,6 @@
 """Academic-level feature tests."""
 
+import urllib.error
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -82,8 +83,12 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         response = self.client.get(reverse("dashboard:academic-level"))
 
         narratives = response.context["academic_level_card_narratives"]
+        diagnostics = response.context["academic_level_narrative_diagnostics"]
 
         self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "rules")
+        self.assertEqual(diagnostics["fallback_reason"], "provider_rules_configured")
         self.assertIn("gender", narratives["cards"])
         self.assertIn("top_enrolment", narratives["cards"])
         self.assertIn("pass_trend", narratives["cards"])
@@ -115,8 +120,12 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         response = self.client.get(reverse("dashboard:academic-level"))
 
         narratives = response.context["academic_level_card_narratives"]
+        diagnostics = response.context["academic_level_narrative_diagnostics"]
 
         self.assertEqual(narratives["source"], "openai")
+        self.assertEqual(diagnostics["returned_source"], "openai")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "openai")
         self.assertEqual(narratives["cards"]["gender"]["insight"], "AI gender insight")
         self.assertEqual(narratives["cards"]["top_enrolment"]["action"], "AI enrolment action")
         self.assertEqual(narratives["cards"]["pass_trend"]["insight"], "AI pass insight")
@@ -151,8 +160,12 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         response = self.client.get(reverse("dashboard:academic-level"))
 
         narratives = response.context["academic_level_card_narratives"]
+        diagnostics = response.context["academic_level_narrative_diagnostics"]
 
         self.assertEqual(narratives["source"], "google")
+        self.assertEqual(diagnostics["returned_source"], "google")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
         self.assertEqual(narratives["cards"]["gender"]["insight"], "Gemini gender insight")
         self.assertEqual(narratives["cards"]["top_enrolment"]["action"], "Gemini enrolment action")
         self.assertEqual(narratives["cards"]["pass_trend"]["insight"], "Gemini pass insight")
@@ -162,3 +175,27 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(narratives["cards"]["top_enrolment"]["confidence"], "low")
         self.assertEqual(narratives["cards"]["pass_trend"]["severity"], "high")
         self.assertEqual(narratives["cards"]["pass_trend"]["confidence"], "low")
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.academic_levels.ai_insights._request_academic_level_google_narratives")
+    def test_academic_level_view_reports_rate_limit_diagnostics_for_google_429(self, mock_request):
+        """Academic-level diagnostics should explain when Gemini rejects the request with a quota/rate-limit response."""
+
+        mock_request.side_effect = urllib.error.HTTPError(
+            "https://example.com",
+            429,
+            "Too Many Requests",
+            None,
+            None,
+        )
+
+        response = self.client.get(reverse("dashboard:academic-level"))
+
+        diagnostics = response.context["academic_level_narrative_diagnostics"]
+        narratives = response.context["academic_level_card_narratives"]
+
+        self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_rate_limited")
+        self.assertIn("quota or request limits", diagnostics["message"])

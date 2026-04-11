@@ -3,7 +3,13 @@ from django.urls import path
 from .academic_levels.views import academic_level_metrics, academic_level_view
 from .demographics.views import demographic_metrics, demographic_narratives, demographic_payload, demographic_view
 from .insights.views import insights_view
-from .overview.views import dashboard_home, dashboard_home_metrics, dashboard_home_narratives, dashboard_home_payload
+from .overview.views import (
+    dashboard_home,
+    dashboard_home_drilldown,
+    dashboard_home_metrics,
+    dashboard_home_narratives,
+    dashboard_home_payload,
+)
 from .programmes.views import programme_metrics, programme_narratives, programme_payload, programme_view
 from .risk.views import risk_metrics, risk_view
 from .views import (
@@ -19,6 +25,7 @@ urlpatterns = [
     path("metrics/overview/", dashboard_home_metrics, name="home-metrics"),
     path("metrics/overview/payload/", dashboard_home_payload, name="home-payload"),
     path("metrics/overview/narratives/", dashboard_home_narratives, name="home-narratives"),
+    path("metrics/overview/drilldown/", dashboard_home_drilldown, name="home-drilldown"),
     path("students/", student_list, name="students"),
     path("students/<slug:slug>/", student_detail, name="student-detail"),
     path("programme/", programme_view, name="programme"),

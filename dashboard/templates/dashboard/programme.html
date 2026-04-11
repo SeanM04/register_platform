@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260405-programmes-progressive02">
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260411-programme-axis06">
 {% endblock %}
 
 {% block content %}
@@ -26,6 +26,7 @@
     <section class="programme-story-banner" id="programme-story-banner" aria-live="polite">
         <p class="programme-banner-loading">Loading the programme story and visual payload...</p>
     </section>
+    <p class="programme-narrative-status" id="programme-narrative-status" hidden></p>
 
     
     <section class="programme-story-flow" aria-label="Programme storytelling flow">
@@ -151,6 +152,8 @@
                         {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
                         {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
                         {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                        {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}">{% endif %}
+                        {% if sort_direction %}<input type="hidden" name="direction" value="{{ sort_direction }}">{% endif %}
                         <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programme register" aria-label="Search programme register">
                         <button class="programme-search-button" type="submit">Search</button>
                     </form>
@@ -170,14 +173,54 @@
                         </colgroup>
                         <thead>
                             <tr>
-                                <th class="programme-th-code">Code</th>
-                                <th>Programme</th>
-                                <th>Faculty</th>
-                                <th>Department</th>
-                                <th>Students</th>
-                                <th>Registrations</th>
-                                <th>Average Mark</th>
-                                <th class="programme-th-pass">Pass Rate</th>
+                                <th class="programme-th-code">
+                                    <a class="programme-th-link{% if sort_key == 'code' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=code&direction={% if sort_key == 'code' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Code
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="programme-th-link{% if sort_key == 'name' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=name&direction={% if sort_key == 'name' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Programme
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="programme-th-link{% if sort_key == 'faculty' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=faculty&direction={% if sort_key == 'faculty' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Faculty
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="programme-th-link{% if sort_key == 'department' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=department&direction={% if sort_key == 'department' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Department
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="programme-th-link{% if sort_key == 'students' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=students&direction={% if sort_key == 'students' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Students
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="programme-th-link{% if sort_key == 'registrations' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=registrations&direction={% if sort_key == 'registrations' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Registrations
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="programme-th-link{% if sort_key == 'average_mark' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=average_mark&direction={% if sort_key == 'average_mark' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Average Mark
+                                    </a>
+                                </th>
+                                <th class="programme-th-pass">
+                                    <a class="programme-th-link{% if sort_key == 'pass_rate' %} is-sorted is-{{ sort_direction }}{% endif %}"
+                                       href="?sort=pass_rate&direction={% if sort_key == 'pass_rate' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
+                                        Pass Rate
+                                    </a>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="programme-register-body">
@@ -198,5 +241,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260405-programmes-progressive01"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260411-programme-axis06"></script>
 {% endblock %}

@@ -1,14 +1,17 @@
 """Tests for the story-first landing dashboard."""
 
 import json
+import urllib.error
 from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from ..models import Registration
 from ..test_support import DashboardFixtureMixin
 from .ai_insights import build_overview_fact_pack
+from .services import _calculate_first_year_retention
 
 
 @override_settings(
@@ -41,8 +44,8 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
         self.assertNotIn("faculty_load_rows", response.context)
         self.assertNotIn("progress_rows", response.context)
         self.assertNotIn("overview_card_narratives", response.context)
-        self.assertContains(response, 'id="home-chapter-one-summary"', html=False)
-        self.assertContains(response, 'id="home-chapter-two-summary"', html=False)
+        self.assertNotContains(response, 'id="home-chapter-one-summary"', html=False)
+        self.assertNotContains(response, 'id="home-chapter-two-summary"', html=False)
 
     def test_overview_payload_endpoint_supplies_story_data(self):
         """The landing-page payload endpoint should return the heavy chart and action data."""
@@ -62,11 +65,161 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(len(summary_cards), 8)
         self.assertEqual(summary_cards[0]["key"], "enrolled")
         self.assertEqual(summary_cards[0]["value"], 2)
+        completion_card = next(card for card in summary_cards if card["key"] == "completion_rate")
+        self.assertEqual(completion_card["value"], "33%")
         self.assertTrue(outcome_rows)
         self.assertTrue(risk_distribution_rows)
         self.assertTrue(faculty_load_rows)
         self.assertTrue(progress_rows)
         self.assertEqual(len(action_cards), 4)
+
+    def test_overview_drilldown_endpoint_returns_student_rows_for_outcome_slices(self):
+        """Outcome drill-downs should return a student table instead of a summary-only popup."""
+
+        response = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "outcomes", "bucket": "failed"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertEqual(data["title"], "Failed Students")
+        self.assertEqual(
+            [column["key"] for column in data["columns"]],
+            [
+                "name",
+                "registration_number",
+                "programme",
+            ],
+        )
+        self.assertEqual(len(data["rows"]), 1)
+        self.assertEqual(data["rows"][0]["name"], self.student_primary.full_name)
+        self.assertEqual(data["rows"][0]["registration_number"], self.student_primary.registration_number)
+        self.assertEqual(
+            data["rows"][0]["detail_url"],
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+        )
+
+    def test_overview_drilldown_endpoint_returns_pagination_metadata(self):
+        response = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "outcomes", "bucket": "failed"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertEqual(data["page"], 1)
+        self.assertEqual(data["page_size"], 100)
+        self.assertEqual(data["page_count"], 1)
+        self.assertEqual(data["total_count"], 1)
+
+    def test_overview_drilldown_endpoint_returns_student_rows_for_risk_bars(self):
+        """Risk drill-downs should return the matching student cohort rows for the clicked bar."""
+
+        payload = self.client.get(reverse("dashboard:home-payload")).json()
+        selected_band = next(row for row in payload["risk_distribution_rows"] if row["count"] > 0)
+
+        response = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "risk_distribution", "bucket": selected_band["key"]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertEqual(data["title"], f"{selected_band['label']} Students")
+        self.assertEqual(
+            [column["key"] for column in data["columns"]],
+            [
+                "name",
+                "registration_number",
+                "programme",
+            ],
+        )
+        self.assertTrue(data["rows"])
+        self.assertIn("detail_url", data["rows"][0])
+        self.assertNotIn("risk_score", data["rows"][0])
+        self.assertNotIn("risk_level", data["rows"][0])
+
+    def test_overview_drilldown_rows_only_return_minimal_fields(self):
+        """Drill-down rows should only include the minimal fields needed for the table."""
+
+        payload = self.client.get(reverse("dashboard:home-payload")).json()
+        selected_band = next(row for row in payload["risk_distribution_rows"] if row["count"] > 0)
+
+        response = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "risk_distribution", "bucket": selected_band["key"]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data["rows"])
+        for row in data["rows"]:
+            self.assertEqual(
+                set(row.keys()),
+                {"name", "registration_number", "programme", "detail_url"},
+            )
+
+    def test_overview_drilldown_payload_is_cached(self):
+        """The overview drilldown payload should be cached by filter scope, chart, bucket, page, and size."""
+
+        from django.test import RequestFactory
+        from .services import _build_overview_drilldown_cache_key, build_overview_drilldown_data
+
+        cache.clear()
+        request = RequestFactory().get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "outcomes", "bucket": "failed"},
+        )
+
+        data = build_overview_drilldown_data(request, "outcomes", "failed")
+        self.assertTrue(data["rows"])
+
+        cache_key = _build_overview_drilldown_cache_key(request, "outcomes", "failed", 1, 100)
+        self.assertIsNotNone(cache.get(cache_key))
+
+    def test_overview_drilldown_caches_can_be_cleared(self):
+        """Individual drilldown caches should be deletable without affecting other levels."""
+
+        from django.test import RequestFactory
+        from .services import _build_overview_drilldown_cache_key, build_overview_drilldown_data
+
+        cache.clear()
+        request = RequestFactory().get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "outcomes", "bucket": "failed"},
+        )
+
+        _ = build_overview_drilldown_data(request, "outcomes", "failed")
+        cache_key = _build_overview_drilldown_cache_key(request, "outcomes", "failed", 1, 100)
+        self.assertIsNotNone(cache.get(cache_key))
+
+        cache.delete(cache_key)
+        self.assertIsNone(cache.get(cache_key))
+
+    def test_overview_drilldown_endpoint_rejects_unknown_chart_requests(self):
+        """Invalid drill-down requests should fail fast with a clear client error."""
+
+        response = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "unknown", "bucket": "anything"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json())
+
+    @patch("builtins.print")
+    def test_overview_payload_endpoint_does_not_emit_debug_output(self, mock_print):
+        """The landing-page payload should stay quiet and avoid debug terminal noise."""
+
+        response = self.client.get(reverse("dashboard:home-payload"))
+
+        self.assertEqual(response.status_code, 200)
+        mock_print.assert_not_called()
 
     def test_overview_payload_endpoint_respects_faculty_filter_for_story_rows(self):
         """Landing-page payload and metrics should respect the selected faculty scope."""
@@ -98,9 +251,14 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
         response = self.client.get(reverse("dashboard:home-narratives"))
 
         self.assertEqual(response.status_code, 200)
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "rules")
+        self.assertEqual(diagnostics["fallback_reason"], "provider_rules_configured")
         self.assertIn("outcomes", narratives["cards"])
         self.assertIn("risk", narratives["cards"])
         self.assertIn("faculty", narratives["cards"])
@@ -122,6 +280,16 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
         self.assertNotIn("rows", fact_pack["progress"])
         self.assertLess(len(serialized_fact_pack), 1300)
 
+    def test_first_year_retention_uses_a_single_batched_history_lookup(self):
+        """Retention calculation should avoid per-student history queries for the home dashboard."""
+
+        registrations = list(Registration.objects.all())
+
+        with self.assertNumQueries(1):
+            retention = _calculate_first_year_retention(registrations)
+
+        self.assertEqual(retention, "50%")
+
     @override_settings(
         AI_INSIGHTS_ENABLED=True,
         AI_INSIGHTS_PROVIDER="openai",
@@ -140,9 +308,14 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
 
         response = self.client.get(reverse("dashboard:home-narratives"))
 
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "openai")
+        self.assertEqual(diagnostics["returned_source"], "openai")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "openai")
         self.assertEqual(narratives["cards"]["outcomes"]["insight"], "AI outcomes insight")
         self.assertEqual(narratives["cards"]["risk"]["action"], "AI risk action")
         self.assertEqual(narratives["cards"]["faculty"]["insight"], "AI faculty insight")
@@ -225,12 +398,59 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
 
         response = self.client.get(reverse("dashboard:home-narratives"))
 
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "google")
+        self.assertEqual(diagnostics["returned_source"], "google")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
         self.assertEqual(narratives["cards"]["outcomes"]["insight"], "Gemini outcomes insight")
         self.assertEqual(narratives["cards"]["risk"]["action"], "Gemini risk action")
         self.assertEqual(narratives["cards"]["faculty"]["insight"], "Gemini faculty insight")
         self.assertEqual(narratives["cards"]["progress"]["action"], "Gemini progress action")
         self.assertIn(narratives["cards"]["outcomes"]["severity"], {"stable", "medium", "high"})
         self.assertIn(narratives["cards"]["faculty"]["confidence"], {"low", "medium", "high"})
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.overview.ai_insights._request_overview_google_narratives")
+    def test_overview_narratives_endpoint_reports_structured_fallback_diagnostics_when_google_fails(self, mock_request):
+        """Overview narratives should expose a stable fallback reason when Gemini cannot be reached."""
+
+        mock_request.side_effect = OSError("WinError 10013 network blocked")
+
+        response = self.client.get(reverse("dashboard:home-narratives"))
+
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
+
+        self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_os_error")
+        self.assertIn("Google Gemini", diagnostics["message"])
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.overview.ai_insights._request_overview_google_narratives")
+    def test_overview_narratives_endpoint_reports_rate_limit_diagnostics_for_google_429(self, mock_request):
+        """Overview narratives should explain when Gemini rejects the request with a quota/rate-limit response."""
+
+        mock_request.side_effect = urllib.error.HTTPError(
+            "https://example.com",
+            429,
+            "Too Many Requests",
+            None,
+            None,
+        )
+
+        response = self.client.get(reverse("dashboard:home-narratives"))
+
+        diagnostics = response.json()["diagnostics"]
+
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_rate_limited")
+        self.assertIn("quota or request limits", diagnostics["message"])

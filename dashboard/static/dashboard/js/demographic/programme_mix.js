@@ -4,6 +4,7 @@ import {
     buildHiddenAxisPointerStyle,
     buildTooltipBase,
     buildTooltipMarkup,
+    formatChartLabel,
     initialiseChart,
 } from "./shared.js";
 import { initialiseProgrammeNarrative } from "./narratives.js";
@@ -78,8 +79,10 @@ const buildProgrammeMixSeries = (rows, visibleSeriesDefinitions) => {
     }));
 };
 
-const buildProgrammeMixChartOption = (rows) => {
+const buildProgrammeMixChartOption = (rows, chartWidth = 0) => {
     const visibleSeriesDefinitions = getVisibleSeriesDefinitions(rows);
+    const isCompact = chartWidth > 0 ? chartWidth < 1080 : false;
+    const isNarrow = chartWidth > 0 ? chartWidth < 860 : false;
 
     return {
         ...buildAnimationConfig(rows),
@@ -114,7 +117,7 @@ const buildProgrammeMixChartOption = (rows) => {
         },
         yAxis: {
             type: "category",
-            data: rows.map((row) => row.programme),
+            data: rows.map((row) => row.programme_code || row.programme),
             axisPointer: buildHiddenAxisPointerStyle(),
             axisTick: { show: false },
             axisLine: { show: false },
@@ -123,6 +126,7 @@ const buildProgrammeMixChartOption = (rows) => {
                 fontWeight: 600,
                 width: 160,
                 overflow: "truncate",
+                formatter: (value) => formatChartLabel(value, isNarrow ? 12 : isCompact ? 14 : 16),
             },
         },
         series: buildProgrammeMixSeries(rows, visibleSeriesDefinitions),
@@ -136,7 +140,7 @@ export const initialiseProgrammeMixSection = (context) => {
     const chart = initialiseChart(
         "demographic-programme-chart",
         programmeRows,
-        buildProgrammeMixChartOption,
+        (rows) => buildProgrammeMixChartOption(rows, 0),
         "No programme demographic data matched the current filters.",
         (rows) => rows.some((row) => Number(row.total || 0) > 0),
     );

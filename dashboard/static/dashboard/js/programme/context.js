@@ -5,13 +5,14 @@ const normalizeNarrativeFlags = (cardNarratives) => {
 
     return {
         narrativeSource,
-        narrativesAreAi: Boolean(narrativeSource && narrativeSource !== "rules"),
+        narrativesAreAi: ["openai", "google"].includes(narrativeSource),
     };
 };
 
 export const createProgrammeContext = (payload = {}) => {
     const chartPayload = payload.chartPayload || {};
     const cardNarratives = payload.cardNarratives || parseJsonScript("programme-card-narratives", {});
+    const narrativeDiagnostics = payload.narrativeDiagnostics || {};
 
     return {
         data: {
@@ -22,11 +23,13 @@ export const createProgrammeContext = (payload = {}) => {
             programmeRows: chartPayload.programmeRows || [],
             registerMeta: chartPayload.registerMeta || {},
             cardNarratives,
+            narrativeDiagnostics,
         },
         flags: normalizeNarrativeFlags(cardNarratives),
         elements: {
             root: document.querySelector(".programme-dashboard"),
             storyBanner: document.getElementById("programme-story-banner"),
+            narrativeStatus: document.getElementById("programme-narrative-status"),
             metricCards: Array.from(document.querySelectorAll("[data-metric-card]")),
             metricNotes: Array.from(document.querySelectorAll("[data-metric-note]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
@@ -55,8 +58,9 @@ export const createProgrammeContext = (payload = {}) => {
     };
 };
 
-export const updateProgrammeNarrativeContext = (context, cardNarratives = {}) => {
+export const updateProgrammeNarrativeContext = (context, cardNarratives = {}, narrativeDiagnostics = {}) => {
     context.data.cardNarratives = cardNarratives;
+    context.data.narrativeDiagnostics = narrativeDiagnostics;
     context.flags = normalizeNarrativeFlags(cardNarratives);
     return context;
 };

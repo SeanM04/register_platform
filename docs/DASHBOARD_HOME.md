@@ -99,7 +99,48 @@ Important implementation details:
 - successful AI responses are cached per normalized fact pack
 - provider failures fall back safely to deterministic guidance copy
 
-## 7. Shared Filter Bar
+## 7. Chart Drill-Downs
+
+Users can click on chart slices or bars to drill into filtered student lists.
+
+Drill-down requests are handled by:
+- `dashboard_home_drilldown()` endpoint in `dashboard/overview/views.py`
+- `build_overview_drilldown_data()` in `dashboard/overview/services.py`
+- Client-side drill-down modal in `dashboard/static/dashboard/js/home/drilldown.js` and `drilldown_modal.js`
+
+### Drilldown Performance Optimization
+
+The drill-down feature includes three key performance optimizations:
+
+#### 1. Minimal Payload
+- Only three columns returned: `Student`, `Student Number`, `Programme`
+- Extra metadata stripped from response to reduce JSON size
+- Outcome and risk drill-downs use identical lightweight row format
+
+#### 2. Server-Side Pagination
+- Default: 100 rows per page
+- Maximum: 100 rows per page (MAX_DRILLDOWN_PAGE_SIZE)
+- Query applies `OFFSET` and `LIMIT` at the database level
+- Frontend requests specific pages on user navigation
+
+#### 3. Short-Lived Caching
+- Cache TTL: 30 seconds (OVERVIEW_CACHE_TTL_SECONDS)
+- Cache key includes: filter scope, chart, bucket, page, page_size
+- Manual cache bust available via `bust_overview_drilldown_cache_for_request()`
+- Prevents repeated queries for the same drill-down slice within a session
+
+### Drill-Down Data Flow
+
+1. User clicks a chart slice or bar
+2. JavaScript captures the chart key (`outcomes` or `risk_distribution`) and bucket key
+3. Browser requests `dashboard:home-drilldown` with `?chart={chart_key}&bucket={bucket_key}&page=1&page_size=100`
+4. Backend checks cache; if miss, builds outcome or risk profiles
+5. Backend filters to matching bucket and returns paginated rows
+6. Modal renders table with 100 rows and Prev/Next navigation
+7. User pagination triggers new requests with updated `page` parameter
+8. Fresh cache entries are created for each page
+
+## 8. Shared Filter Bar
 
 The page still uses the shared filter bar from `templates/base.html` and
 `dashboard/static/dashboard/css/base.css`.
@@ -110,7 +151,7 @@ Important behavior:
 - the current filter query string is forwarded to async endpoints in the browser
 - sidebar navigation preserves the active filter scope in generated links
 
-## 8. Files To Update Together
+## 9. Files To Update Together
 
 If you add, rename, or remove a landing-page chart card, update these together:
 

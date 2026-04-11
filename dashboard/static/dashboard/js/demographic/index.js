@@ -8,7 +8,6 @@ import { initialiseLocationSection } from "./locations.js";
 import { initialiseLocationMixSection } from "./location_mix.js";
 import { initialiseOriginMapSection } from "./origin_map.js";
 import { initialiseProgrammeMixSection } from "./programme_mix.js";
-import { initialiseProgrammeGenderSection } from "./programme_gender.js";
 import { initialiseYearDistributionSection } from "./level_gender.js";
 import { initialiseAgeDistributionSection } from "./age_distribution.js";
 import {
@@ -168,6 +167,33 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
     });
 };
 
+const renderNarrativeDiagnostics = (context) => {
+    const diagnostics = context.data.narrativeDiagnostics || {};
+    const statusElement = context.elements.narrativeStatus;
+
+    if (!statusElement) {
+        return;
+    }
+
+    const message = String(diagnostics.message || "").trim();
+    if (!message) {
+        statusElement.hidden = true;
+        statusElement.textContent = "";
+        statusElement.className = "demographic-narrative-status";
+        return;
+    }
+
+    statusElement.hidden = false;
+    statusElement.textContent = message;
+    statusElement.className = `demographic-narrative-status is-${diagnostics.status || "rules"}`;
+
+    if (diagnostics.fallback_detail) {
+        statusElement.title = diagnostics.fallback_detail;
+    } else {
+        statusElement.removeAttribute("title");
+    }
+};
+
 const loadNarrativesInBackground = (context) => {
     if (!demographicRoot?.dataset.narrativesUrl) {
         return;
@@ -177,7 +203,18 @@ const loadNarrativesInBackground = (context) => {
         fetchJson(demographicRoot.dataset.narrativesUrl)
             .then((payload) => {
                 const cardNarratives = payload?.card_narratives || {};
-                updateDemographicContext(context, { cardNarratives });
+                const narrativeDiagnostics = payload?.diagnostics || {};
+                updateDemographicContext(context, { cardNarratives, narrativeDiagnostics });
+                if (context.elements.root) {
+                    context.elements.root.dataset.narrativeSource = narrativeDiagnostics.returned_source || "";
+                    context.elements.root.dataset.narrativeStatus = narrativeDiagnostics.status || "";
+                    context.elements.root.dataset.narrativeProvider = narrativeDiagnostics.provider_attempted || narrativeDiagnostics.configured_provider || "";
+                    context.elements.root.dataset.narrativeFallbackReason = narrativeDiagnostics.fallback_reason || "";
+                }
+                if (window.console?.info && payload?.diagnostics) {
+                    window.console.info("[Demographic narratives diagnostics]", payload.diagnostics);
+                }
+                renderNarrativeDiagnostics(context);
                 hydrateNarratives(context);
             })
             .catch(() => {});
@@ -235,13 +272,13 @@ export const initialiseDemographicPage = async () => {
     hydrateSummaryCards(context, buildMetricCards(payloadResponse?.metrics || {}));
 
     renderStoryBanner(context.elements.storyBanner, context.data.genderRows, context.data.locationRows, context.data.programmeRows);
+    renderNarrativeDiagnostics(context);
 
     const controllers = [
         initialiseGenderSection(context),
         initialiseLocationSection(context),
         initialiseLocationMixSection(context),
         initialiseProgrammeMixSection(context),
-        initialiseProgrammeGenderSection(context),
         initialiseYearDistributionSection(context),
         initialiseAgeDistributionSection(context),
     ];

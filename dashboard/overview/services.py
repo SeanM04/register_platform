@@ -1,16 +1,26 @@
 """Service-layer logic for the story-first landing dashboard."""
 
-from collections import Counter
+import math
+from collections import Counter, defaultdict
 from urllib.parse import urlencode
 
 from django.core.cache import cache
+from django.db.models import Avg, Count, Q
 from django.urls import reverse
 
 from ..risk.services import build_student_risk_profiles_from_registrations
-from ..views import RETENTION_EXIT_DECISIONS, get_filtered_registrations, normalize_decision_label, normalize_gender_key
+from ..views import (
+    RETENTION_EXIT_DECISIONS,
+    format_academic_level_label,
+    get_filtered_registrations,
+    normalize_decision_label,
+    normalize_gender_key,
+)
 from .constants import OVERVIEW_SUMMARY_CARD_SPECS, PROGRESS_STATUS_CONFIG, RISK_BAND_CONFIG
 
 OVERVIEW_CACHE_TTL_SECONDS = 30
+DEFAULT_DRILLDOWN_PAGE_SIZE = 100
+MAX_DRILLDOWN_PAGE_SIZE = 100
 
 
 def _is_first_semester_value(value):
@@ -32,135 +42,48 @@ def _is_first_semester_value(value):
 def _calculate_first_year_retention(registrations):
     """Calculate First Year Retention rate based on student progression across semesters."""
 
-    # Basic debug to see if function is called
-    print(f"DEBUG: _calculate_first_year_retention called with {len(registrations)} registrations")
-    
+    registrations = list(registrations)
     if not registrations:
-        print("DEBUG: No registrations provided")
         return "No data available"
 
-    # Group registrations by student to track their progression
-    student_records = {}
-    academic_years_found = set()
-    semesters_found = set()
-    period_details = []
-    
+    filtered_student_ids = set()
+    filtered_period_ids_by_student = defaultdict(set)
+
     for registration in registrations:
-        student_id = registration.student_id
-        
-        # Use stored academic year and semester from AcademicPeriod model
-        academic_year = None
-        semester = None
-        
-        if registration.period:
-            # Use the stored academic_year and semester fields from AcademicPeriod
-            try:
-                academic_year = int(registration.period.academic_year) if registration.period.academic_year else None
-                semester = int(registration.period.semester) if registration.period.semester else None
-            except (ValueError, TypeError):
-                academic_year = None
-                semester = None
-        
-        period_name = registration.period.name.lower() if registration.period else ""
-        
-        # Track what years and semesters we're finding
-        if academic_year is not None:
-            academic_years_found.add(academic_year)
-        if semester is not None:
-            semesters_found.add(semester)
-        
-        # Collect period details for debugging
-        period_details.append({
-            'period_name': period_name,
-            'stored_academic_year': registration.period.academic_year if registration.period else None,
-            'stored_semester': registration.period.semester if registration.period else None,
-            'extracted_academic_year': academic_year,
-            'extracted_semester': semester,
-            'student_id': student_id
-        })
-        
-        # Store student's academic record
-        if student_id not in student_records:
-            student_records[student_id] = {
-                'faculty': _get_registration_faculty_name(registration),
-                'records': []
-            }
-        
-        student_records[student_id]['records'].append({
-            'academic_year': academic_year,
-            'semester': semester,
-            'period_name': period_name
-        })
+        filtered_student_ids.add(registration.student_id)
+        if registration.period_id:
+            filtered_period_ids_by_student[registration.student_id].add(registration.period_id)
 
-    # Debug: Log comprehensive information
-    print(f"DEBUG: Academic years found: {sorted(academic_years_found)}")
-    print(f"DEBUG: Semesters found: {sorted(semesters_found)}")
-    print(f"DEBUG: Total students processed: {len(student_records)}")
-    print(f"DEBUG: Total registrations processed: {len(period_details)}")
-    
-    # Show sample period details
-    print(f"DEBUG: Sample period details:")
-    for i, detail in enumerate(period_details[:5]):  # Show first 5
-        print(f"  {i+1}. Period: '{detail['period_name']}' -> Stored: Year {detail['stored_academic_year']}, Sem {detail['stored_semester']} -> Extracted: Year {detail['extracted_academic_year']}, Sem {detail['extracted_semester']} (Student {detail['student_id']})")
-    
-    # Count students by academic year and semester
-    year_semester_counts = {}
-    for student_id, data in student_records.items():
-        for record in data['records']:
-            if record['academic_year'] is not None and record['semester'] is not None:
-                key = (record['academic_year'], record['semester'])
-                year_semester_counts[key] = year_semester_counts.get(key, 0) + 1
-    
-    print(f"DEBUG: Students by Year/Semester:")
-    for (year, semester), count in sorted(year_semester_counts.items()):
-        print(f"  Year {year}, Semester {semester}: {count} students")
+    from dashboard.models import Registration
 
-    # CORRECT APPROACH: First-year students are those without previous registrations
-    # These are the new students who enroll as Academic Year 1, Semester 1 in each period
-    
-    # Get all student IDs from the filtered registrations
-    filtered_student_ids = set(student_records.keys())
-    
-    # Check each student's complete registration history to determine if they're first-year
-    first_year_students = []
-    
-    for student_id in filtered_student_ids:
-        # Get all registrations for this student (not just filtered ones)
-        from dashboard.models import Registration
-        all_student_regs = Registration.objects.filter(student_id=student_id).order_by('created_at')
-        
-        # Check if this student's first registration is within the filtered periods
-        first_reg = all_student_regs.first()
-        if first_reg and first_reg.period_id in [reg.period_id for reg in registrations if reg.student_id == student_id]:
-            # This student's first registration is in the filtered data - they are first-year students
-            first_year_students.append({
-                'student_id': student_id,
-                'faculty': student_records[student_id]['faculty'],
-                'records': student_records[student_id]['records']
-            })
+    registration_history = (
+        Registration.objects.filter(student_id__in=filtered_student_ids)
+        .order_by("student_id", "created_at", "id")
+        .values("student_id", "period_id")
+    )
+    first_period_by_student = {}
+    registration_counts = Counter()
 
-    print(f"DEBUG: First-year students (new enrollments in filtered periods) found: {len(first_year_students)}")
+    for history_row in registration_history:
+        student_id = history_row["student_id"]
+        registration_counts[student_id] += 1
+        first_period_by_student.setdefault(student_id, history_row["period_id"])
 
-    if not first_year_students:
-        print("DEBUG: No first-year students found in filtered data")
+    first_year_student_ids = [
+        student_id
+        for student_id in filtered_student_ids
+        if first_period_by_student.get(student_id) in filtered_period_ids_by_student[student_id]
+    ]
+
+    if not first_year_student_ids:
         return "No data available"
 
-    # Check progression for each first-year student
-    progressed_students = 0
-    for student in first_year_students:
-        # A student progresses if they have more than 1 registration total
-        # This means they continued beyond their first period
-        
-        from dashboard.models import Registration
-        total_registrations = Registration.objects.filter(student_id=student['student_id']).count()
-        
-        if total_registrations > 1:
-            progressed_students += 1
-
-    print(f"DEBUG: Progressed students: {progressed_students} out of {len(first_year_students)}")
-
-    # Calculate retention rate
-    retention_rate = _pct(progressed_students, len(first_year_students))
+    progressed_students = sum(
+        1
+        for student_id in first_year_student_ids
+        if registration_counts.get(student_id, 0) > 1
+    )
+    retention_rate = _pct(progressed_students, len(first_year_student_ids))
     return f"{retention_rate}%"
 
 
@@ -278,6 +201,90 @@ def _format_count(value):
     return f"{int(value or 0):,}"
 
 
+def _format_mark_display(value):
+    """Return a compact display string for optional mark values."""
+
+    if value is None:
+        return "--"
+    return str(round(value))
+
+
+def _build_student_detail_url(request, detail_slug):
+    """Build a student-detail link that keeps the current filter scope."""
+
+    base_url = reverse("dashboard:student-detail", args=[detail_slug])
+    filter_pairs = []
+    for key in ("year", "period", "faculty"):
+        for value in request.GET.getlist(key):
+            cleaned_value = str(value or "").strip()
+            if cleaned_value:
+                filter_pairs.append((key, cleaned_value))
+
+    if not filter_pairs:
+        return base_url
+
+    return f"{base_url}?{urlencode(filter_pairs, doseq=True)}"
+
+
+def _build_outcome_student_profiles(registrations, request=None):
+    """Build one student-level outcome record per visible student for chart drill-downs."""
+
+    profiles = []
+    student_outcomes = set()
+
+    for registration in registrations:
+        student_id = registration.student_id
+        if student_id in student_outcomes:
+            continue
+
+        student_outcomes.add(student_id)
+        marked_results_count = getattr(registration, "marked_results", None)
+        awaiting_results_count = getattr(registration, "awaiting_results", None)
+        average_mark = getattr(registration, "average_mark", None)
+
+        if marked_results_count is None or awaiting_results_count is None:
+            student_results = list(registration.course_results.all())
+            if not student_results:
+                continue
+
+            marked_results = [result for result in student_results if result.mark is not None]
+            awaiting_results = [result for result in student_results if result.mark is None]
+            marked_results_count = len(marked_results)
+            awaiting_results_count = len(awaiting_results)
+            if marked_results_count:
+                average_mark = sum(float(result.mark) for result in marked_results) / marked_results_count
+
+        if marked_results_count == 0 and awaiting_results_count:
+            status_key = "awaiting"
+            status_label = "Awaiting Mark"
+        elif marked_results_count and average_mark is not None:
+            average_mark = float(average_mark)
+            if average_mark >= 50:
+                status_key = "passed"
+                status_label = "Passed"
+            else:
+                status_key = "failed"
+                status_label = "Failed"
+        else:
+            continue
+
+        detail_slug = registration.student.registration_number.lower()
+        profiles.append(
+            {
+                "student_id": student_id,
+                "name": registration.student.full_name,
+                "registration_number": registration.student.registration_number,
+                "programme": registration.programme.name if registration.programme else "Unassigned",
+                "average_mark": average_mark,
+                "status_key": status_key,
+                "status_label": status_label,
+                "detail_url": _build_student_detail_url(request, detail_slug) if request else "",
+            }
+        )
+
+    return profiles
+
+
 def _build_result_summary(registrations):
     """Collapse prefetched course results into a reusable overview summary."""
 
@@ -291,49 +298,27 @@ def _build_result_summary(registrations):
         "average_mark": 0,
     }
     total_mark_sum = 0
+    outcome_profiles = _build_outcome_student_profiles(registrations)
 
-    # Calculate student-level outcomes instead of course-level
-    student_outcomes = {}  # Track each student's overall outcome
-    
-    for registration in registrations:
-        student_id = registration.student_id
-        if student_id in student_outcomes:
-            continue  # Already processed this student
-            
-        student_results = list(registration.course_results.all())
-        if not student_results:
-            continue  # No results for this student
-            
+    for profile in outcome_profiles:
         summary["total_count"] += 1
-        
-        # Calculate student's average mark across all courses
-        marked_results = [r for r in student_results if r.mark is not None]
-        awaiting_results = [r for r in student_results if r.mark is None]
-        
-        if not marked_results and awaiting_results:
-            # Student has results but none marked yet
+
+        if profile["status_key"] == "awaiting":
             summary["awaiting_count"] += 1
-            student_outcomes[student_id] = "awaiting"
             continue
-            
-        if not marked_results:
-            # No marked results for this student
+
+        if profile["average_mark"] is None:
             continue
-            
-        # Calculate student's average mark
-        student_avg = sum(float(r.mark) for r in marked_results) / len(marked_results)
-        total_mark_sum += student_avg
+
         summary["marked_count"] += 1
-        
-        # Determine student outcome based on average
-        if student_avg >= 50:
+        total_mark_sum += profile["average_mark"]
+
+        if profile["status_key"] == "passed":
             summary["pass_count"] += 1
-            student_outcomes[student_id] = "passed"
-        else:
+        elif profile["status_key"] == "failed":
             summary["fail_count"] += 1
-            student_outcomes[student_id] = "failed"
-            
-        if student_avg >= 60:
+
+        if profile["average_mark"] >= 60:
             summary["high_performer_count"] += 1
 
     if summary["marked_count"]:
@@ -400,11 +385,17 @@ def _build_summary_values(registrations, result_summary, risk_profiles):
     first_year_retention = _calculate_first_year_retention(registrations)
     students_satisfaction = _calculate_students_satisfaction(result_summary)
 
+    completion_rate = (
+        f"{round((proceed_count / total_registered) * 100)}%"
+        if total_registered
+        else "0%"
+    )
+
     return {
         "enrolled": total_students,
         "registered": total_registered,
         "pass_rate": f"{round((pass_count / result_count) * 100)}%" if result_count else "0%",
-        "completion_rate": proceed_count,
+        "completion_rate": completion_rate,
         "on_time_graduation": on_time_count,
         "first_year_retention": first_year_retention,
         "students_satisfaction": students_satisfaction,
@@ -624,6 +615,182 @@ def _build_progress_rows(registrations):
     return rows
 
 
+def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, page_size):
+    """Build the student table shown when a user drills into an outcome slice."""
+
+    status_labels = {
+        "passed": "Passed",
+        "failed": "Failed",
+        "awaiting": "Awaiting Mark",
+    }
+    if bucket_key not in status_labels:
+        raise ValueError("Unsupported outcome drill-down bucket.")
+
+    outcome_profiles = [
+        profile for profile in _build_outcome_student_profiles(registrations, request)
+        if profile["status_key"] == bucket_key
+    ]
+
+    if bucket_key == "passed":
+        outcome_profiles.sort(key=lambda row: (-float(row["average_mark"] or 0), row["name"]))
+    elif bucket_key == "failed":
+        outcome_profiles.sort(key=lambda row: (float(row["average_mark"] or 0), row["name"]))
+    else:
+        outcome_profiles.sort(key=lambda row: (row["name"], row["registration_number"]))
+
+    label = status_labels[bucket_key]
+    payload = {
+        "title": f"{label} Students",
+        "subtitle": f"{_format_count(len(outcome_profiles))} students in the {label.lower()} outcome slice.",
+        "columns": [
+            {"key": "name", "label": "Student"},
+            {"key": "registration_number", "label": "Student Number"},
+            {"key": "programme", "label": "Programme"},
+        ],
+    }
+
+    minimal_rows = [
+        {
+            "name": profile["name"],
+            "registration_number": profile["registration_number"],
+            "programme": profile["programme"],
+            "detail_url": profile["detail_url"],
+        }
+        for profile in outcome_profiles
+    ]
+    return _build_paginated_payload(payload, minimal_rows, page, page_size)
+
+
+def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_key, page, page_size):
+    """Build the student table shown when a user drills into a risk bar."""
+
+    selected_band = next((band for band in RISK_BAND_CONFIG if band["key"] == bucket_key), None)
+    if not selected_band:
+        raise ValueError("Unsupported risk drill-down bucket.")
+
+    min_score = int(selected_band["min_score"] or 0)
+    max_score = selected_band["max_score"]
+    minimal_rows = []
+
+    for profile in risk_profiles:
+        risk_score = int(profile.get("risk_score", 0) or 0)
+        if risk_score < min_score:
+            continue
+        if max_score is not None and risk_score > int(max_score):
+            continue
+
+        minimal_rows.append(
+            {
+                "name": profile["name"],
+                "registration_number": profile["registration_number"],
+                "programme": profile["programme"],
+                "detail_url": _build_student_detail_url(request, profile["detail_slug"]),
+            }
+        )
+
+    payload = {
+        "title": f"{selected_band['label']} Students",
+        "subtitle": f"{_format_count(len(minimal_rows))} students in the {selected_band['label'].lower()} risk band.",
+        "columns": [
+            {"key": "name", "label": "Student"},
+            {"key": "registration_number", "label": "Student Number"},
+            {"key": "programme", "label": "Programme"},
+        ],
+    }
+
+    return _build_paginated_payload(payload, minimal_rows, page, page_size)
+
+
+def _parse_positive_int(value, default):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+
+    return parsed if parsed > 0 else default
+
+
+def _build_paginated_payload(payload, rows, page, page_size):
+    total_count = len(rows)
+    page_size = max(1, min(page_size, MAX_DRILLDOWN_PAGE_SIZE))
+    page_count = max(1, math.ceil(total_count / page_size)) if total_count else 1
+    page = max(1, min(page, page_count))
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    payload.update(
+        {
+            "rows": rows[start:end],
+            "page": page,
+            "page_size": page_size,
+            "page_count": page_count,
+            "total_count": total_count,
+        }
+    )
+    return payload
+
+
+def _build_overview_drilldown_cache_key(request, chart_key, bucket_key, page, page_size):
+    query_string = urlencode(
+        sorted(
+            (key, value)
+            for key, values in request.GET.lists()
+            if key not in ("page", "page_size")
+            for value in values
+        ),
+        doseq=True,
+    )
+    return f"dashboard:overview:drilldown:{chart_key}:{bucket_key}:page={page}:size={page_size}:{query_string or 'all'}"
+
+
+def _build_overview_drilldown_data(request, chart_key, bucket_key, page, page_size):
+    """Return on-demand student rows for a landing-page chart drill-down."""
+
+    registrations = get_filtered_registrations(request, include_course_results=True)
+
+    if chart_key == "outcomes":
+        return _build_outcome_drilldown_payload(request, registrations, bucket_key, page, page_size)
+
+    if chart_key == "risk_distribution":
+        risk_profiles = build_student_risk_profiles_from_registrations(registrations)
+        return _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_key, page, page_size)
+
+    raise ValueError("Unsupported overview drill-down chart.")
+
+
+def build_overview_drilldown_data(request, chart_key, bucket_key):
+    page = _parse_positive_int(request.GET.get("page"), 1)
+    page_size = _parse_positive_int(request.GET.get("page_size"), DEFAULT_DRILLDOWN_PAGE_SIZE)
+    cache_key = _build_overview_drilldown_cache_key(request, chart_key, bucket_key, page, page_size)
+
+    return cache.get_or_set(
+        cache_key,
+        lambda: _build_overview_drilldown_data(request, chart_key, bucket_key, page, page_size),
+        OVERVIEW_CACHE_TTL_SECONDS,
+    )
+
+
+def bust_overview_drilldown_caches():
+    """Clear all overview drilldown caches. Call this when underlying student data changes."""
+
+    cache.delete_many([
+        key for key in (cache._cache.keys() if hasattr(cache, "_cache") else [])
+        if isinstance(key, str) and key.startswith("dashboard:overview:drilldown:")
+    ])
+
+
+def bust_overview_drilldown_cache_for_request(request):
+    """Clear drilldown caches for a specific filtered scope, chart, bucket, page, and size."""
+
+    page = _parse_positive_int(request.GET.get("page"), 1)
+    page_size = _parse_positive_int(request.GET.get("page_size"), DEFAULT_DRILLDOWN_PAGE_SIZE)
+
+    for chart_key in ["outcomes", "risk_distribution"]:
+        for bucket_key in ["passed", "failed", "awaiting", "critical", "high", "medium", "low"]:
+            cache_key = _build_overview_drilldown_cache_key(request, chart_key, bucket_key, page, page_size)
+            cache.delete(cache_key)
+
+
 def _build_student_snapshot(registrations):
     """Collapse the filtered registrations into a unique student list."""
 
@@ -823,10 +990,8 @@ def get_cached_overview_dashboard_data(request):
     """Return cached overview analytics for the current filter scope."""
 
     cache_key = _build_overview_cache_key(request)
-    cached_payload = cache.get(cache_key)
-    if cached_payload is not None:
-        return cached_payload
-
-    overview_data = build_overview_dashboard_data(request)
-    cache.set(cache_key, overview_data, OVERVIEW_CACHE_TTL_SECONDS)
-    return overview_data
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_overview_dashboard_data(request),
+        OVERVIEW_CACHE_TTL_SECONDS,
+    )

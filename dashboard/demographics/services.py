@@ -56,6 +56,7 @@ def _get_demographic_registration_rows(request, search_query=""):
             "student__place_of_birth",
             "programme__name",
             "programme__code",
+            "period__academic_year",
         )
     )
 
@@ -78,7 +79,6 @@ def build_demographic_data(request, search_query=""):
     programme_gender_counts = defaultdict(_empty_gender_counts)
     programme_code_map = {}
     year_gender_counts = defaultdict(_empty_gender_counts)
-    age_gender_counts = defaultdict(_empty_gender_counts)
 
     for row in _get_demographic_registration_rows(request, search_query):
         total_students += 1
@@ -96,20 +96,9 @@ def build_demographic_data(request, search_query=""):
         programme_gender_counts[programme_name][gender_key] += 1
         programme_code_map[programme_name] = programme_code
 
-        # Assign students to academic years (placeholder - replace with actual year data)
-        # This distributes students across Year 1-5 for demonstration
-        import random
-        year_groups = ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"]
-        year = random.choice(year_groups)  # Placeholder - replace with actual year calculation
-        year_gender_counts[year][gender_key] += 1
-
-        # Age distribution (assuming age data is available - this is a placeholder)
-        # You'll need to adjust this based on your actual age data structure
-        # For now, distribute students across age groups for demonstration
-        import random
-        age_groups = ["14-18", "19-21", "22-25", "26-30", "30+"]
-        age_group = random.choice(age_groups)  # Placeholder - replace with actual age calculation
-        age_gender_counts[age_group][gender_key] += 1
+        # Academic year from the registration period
+        academic_year = str(row["period__academic_year"] or "").strip() or "Unspecified"
+        year_gender_counts[academic_year][gender_key] += 1
 
     unspecified_count = total_students - male_count - female_count
 
@@ -197,6 +186,7 @@ def build_demographic_data(request, search_query=""):
     programme_rows = [
         {
             "programme": programme_name,
+            "programme_code": programme_code_map.get(programme_name, "N/A"),
             "male": counts["male"],
             "female": counts["female"],
             "unspecified": counts["unspecified"],
@@ -240,21 +230,9 @@ def build_demographic_data(request, search_query=""):
     ]
 
     # Create age distribution rows with gender breakdown
-    age_distribution_rows = [
-        {
-            "age_group": age_group,
-            "male": counts["male"],
-            "female": counts["female"],
-            "male_share": _format_share(counts["male"], counts["male"] + counts["female"] + counts["unspecified"]),
-            "female_share": _format_share(counts["female"], counts["male"] + counts["female"] + counts["unspecified"]),
-            "total": counts["male"] + counts["female"] + counts["unspecified"],
-        }
-        for age_group, counts in sorted(
-            age_gender_counts.items(),
-            key=lambda item: (-(item[1]["male"] + item[1]["female"] + item[1]["unspecified"]), item[0]),
-        )
-        if (counts["male"] + counts["female"] + counts["unspecified"]) > 0  # Only include age groups with students
-    ]
+    # Age data is not available in the current Registration model,
+    # so this returns an empty list. Data source would need to be added to Student model.
+    age_distribution_rows = []
 
     return {
         "total_students": total_students,

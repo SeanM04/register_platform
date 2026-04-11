@@ -6,7 +6,7 @@ from django.views.decorators.http import require_GET
 
 from accounts.decorators import ajax_login_required, login_required_except_domains
 
-from .ai_insights import get_programme_card_narratives
+from .ai_insights import get_programme_card_narratives_result
 from .presenters import build_programme_shell_context
 from .services import build_programme_dashboard_data, get_programme_summary_values
 
@@ -58,4 +58,4 @@ def programme_narratives(request):
 
     search_query = request.GET.get("q", "").strip()
     programme_data = build_programme_dashboard_data(request, search_query)
-    return JsonResponse({"card_narratives": get_programme_card_narratives(programme_data)})
+    return JsonResponse(get_programme_card_narratives_result(programme_data))

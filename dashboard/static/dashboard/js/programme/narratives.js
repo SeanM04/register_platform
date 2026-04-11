@@ -61,6 +61,11 @@ const getConfidenceLabel = (confidence) => {
     return "Medium confidence";
 };
 
+const shouldRenderAiBadge = (flags = {}) => (
+    Boolean(flags.narrativesAreAi)
+    && ["openai", "google"].includes(String(flags.narrativeSource || "").trim().toLowerCase())
+);
+
 const buildAiBadgeMarkup = (source, severity = "stable", confidence = "medium") => {
     const providerLabel = source === "google"
         ? "AI-generated with Google Gemini"
@@ -217,7 +222,7 @@ export const initialiseLoadNarrative = (elements, rows, cardNarratives = {}, fla
     setElementText(elements.loadCopy, narrative.insight);
     setHintMarkup(elements.loadHints, []);
     setActionText(elements.loadNote, narrative.action, {
-        showAiBadge: flags.narrativesAreAi,
+        showAiBadge: shouldRenderAiBadge(flags),
         source: flags.narrativeSource,
         severity: narrative.severity,
         confidence: narrative.confidence,
@@ -243,7 +248,7 @@ export const initialiseDepartmentNarrative = (elements, rows, cardNarratives = {
     setElementText(elements.departmentsCopy, narrative.insight);
     setHintMarkup(elements.departmentsHints, []);
     setActionText(elements.departmentsNote, narrative.action, {
-        showAiBadge: flags.narrativesAreAi,
+        showAiBadge: shouldRenderAiBadge(flags),
         source: flags.narrativeSource,
         severity: narrative.severity,
         confidence: narrative.confidence,
@@ -270,7 +275,7 @@ export const initialiseQualityNarrative = (elements, rows, cardNarratives = {}, 
     setElementText(elements.qualityCopy, narrative.insight);
     setHintMarkup(elements.qualityHints, []);
     setActionText(elements.qualityNote, narrative.action, {
-        showAiBadge: flags.narrativesAreAi,
+        showAiBadge: shouldRenderAiBadge(flags),
         source: flags.narrativeSource,
         severity: narrative.severity,
         confidence: narrative.confidence,
@@ -299,7 +304,7 @@ export const initialisePerformanceNarrative = (elements, rows, cardNarratives = 
     setElementText(elements.performanceCopy, narrative.insight);
     setHintMarkup(elements.performanceHints, []);
     setActionText(elements.performanceNote, narrative.action, {
-        showAiBadge: flags.narrativesAreAi,
+        showAiBadge: shouldRenderAiBadge(flags),
         source: flags.narrativeSource,
         severity: narrative.severity,
         confidence: narrative.confidence,

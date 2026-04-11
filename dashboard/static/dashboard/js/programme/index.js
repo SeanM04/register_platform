@@ -1,7 +1,7 @@
-import { createProgrammeContext, updateProgrammeNarrativeContext } from "./context.js?v=20260405-programmes-progressive01";
-import { initialiseDepartmentSection } from "./departments.js?v=20260405-programmes-progressive01";
+import { createProgrammeContext, updateProgrammeNarrativeContext } from "./context.js?v=20260411-programme-axis05";
+import { initialiseDepartmentSection } from "./departments.js?v=20260411-programme-axis04";
 import { initialiseFullscreenControls } from "./fullscreen.js?v=20260405-programmes-progressive01";
-import { initialiseLoadSection } from "./load.js?v=20260405-programmes-progressive01";
+import { initialiseLoadSection } from "./load.js?v=20260411-programme-axis04";
 import { initialiseAccordion } from "./accordion.js?v=20260405-programmes-progressive01";
 import {
     initialiseDepartmentNarrative,
@@ -9,7 +9,7 @@ import {
     initialisePerformanceNarrative,
     initialiseQualityNarrative,
     renderStoryBanner,
-} from "./narratives.js?v=20260405-programmes-progressive01";
+} from "./narratives.js?v=20260411-programme-axis05";
 import { initialisePerformanceSection } from "./performance.js?v=20260405-programmes-progressive01";
 import { initialiseQualitySection } from "./quality.js?v=20260405-programmes-progressive01";
 import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260405-programmes-progressive01";
@@ -73,6 +73,45 @@ const hydrateNarratives = (context) => {
     initialiseDepartmentNarrative(context.elements, context.data.departmentRows, context.data.cardNarratives, context.flags);
     initialiseQualityNarrative(context.elements, context.data.lowPassRows, context.data.cardNarratives, context.flags);
     initialisePerformanceNarrative(context.elements, context.data.performanceRows, context.data.cardNarratives, context.flags);
+};
+
+const renderNarrativeDiagnostics = (context) => {
+    const diagnostics = context.data.narrativeDiagnostics || {};
+    const statusElement = context.elements.narrativeStatus;
+    const root = context.elements.root;
+
+    if (root) {
+        root.dataset.narrativeSource = diagnostics.returned_source || "";
+        root.dataset.narrativeStatus = diagnostics.status || "";
+        root.dataset.narrativeProvider = diagnostics.provider_attempted || diagnostics.configured_provider || "";
+        root.dataset.narrativeFallbackReason = diagnostics.fallback_reason || "";
+    }
+
+    if (!statusElement) {
+        return;
+    }
+
+    const message = String(diagnostics.message || "").trim();
+    if (!message) {
+        statusElement.hidden = true;
+        statusElement.textContent = "";
+        statusElement.className = "programme-narrative-status";
+        return;
+    }
+
+    statusElement.hidden = false;
+    statusElement.textContent = message;
+    statusElement.className = `programme-narrative-status is-${diagnostics.status || "rules"}`;
+
+    if (diagnostics.fallback_detail) {
+        statusElement.title = diagnostics.fallback_detail;
+    } else {
+        statusElement.removeAttribute("title");
+    }
+
+    if (window.console?.info) {
+        window.console.info("[Programme narratives diagnostics]", diagnostics);
+    }
 };
 
 const hydrateSummaryCards = (context, summaryCards = []) => {
@@ -147,6 +186,7 @@ export const initialiseProgrammePage = async () => {
         context.data.departmentRows,
         context.data.lowPassRows,
     );
+    renderNarrativeDiagnostics(context);
     renderProgrammeRegister(
         context.elements.registerBody,
         context.elements.registerMeta,
@@ -174,8 +214,10 @@ export const initialiseProgrammePage = async () => {
     fetchJson(root.dataset.narrativesUrl)
         .then((payload) => {
             const cardNarratives = payload?.card_narratives || {};
-            updateProgrammeNarrativeContext(context, cardNarratives);
+            const narrativeDiagnostics = payload?.diagnostics || {};
+            updateProgrammeNarrativeContext(context, cardNarratives, narrativeDiagnostics);
             hydrateNarratives(context);
+            renderNarrativeDiagnostics(context);
         })
         .catch(() => {});
 };

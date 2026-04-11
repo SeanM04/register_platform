@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css" crossorigin="anonymous">
-<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260403-demographic-storyflow02">
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260411-demographic-narrative-status01">
 {% endblock %}
 
 {% block content %}
@@ -24,6 +24,7 @@
     </section>
 
     <section class="demographic-story-banner" id="demographic-story-banner" aria-live="polite"></section>
+    <p class="demographic-narrative-status" id="demographic-narrative-status" hidden></p>
 
     <section class="demographic-story-flow" aria-label="Demographic storytelling flow">
         <div class="demographic-accordion">
@@ -45,46 +46,17 @@
                         <p class="demographic-insight-copy" id="demographic-location-copy">The ranked bars make it easier to see which locations dominate the visible cohort before you step into the geographic view.</p>
                         <div class="demographic-chart-hints" id="demographic-location-hints" aria-label="Chart interaction hints"></div>
                     </div>
-                    <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Top Birth Locations" aria-controls="demographic-location-chart" aria-label="View Top Birth Locations in full screen" aria-pressed="false">Full screen</button>
+                    <div class="demographic-chart-header-actions">
+                        <button class="demographic-chart-reset is-hidden" id="demographic-location-reset" type="button">Back to locations</button>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Top Birth Locations" aria-controls="demographic-location-chart" aria-label="View Top Birth Locations in full screen" aria-pressed="false">Full screen</button>
+                    </div>
                 </div>
 
-                <div class="demographic-chart-stage">
-                    <div class="demographic-chart-canvas" id="demographic-location-chart" role="img" aria-label="Top birth locations chart"></div>
-                </div>
                 <div class="demographic-chart-actions">
                     <p class="demographic-chart-note" id="demographic-location-note">This keeps count and share close together, so location concentration is easier to compare before you open the geographic view.</p>
-                    <button class="demographic-chart-reset is-hidden" id="demographic-location-reset" type="button">Back to locations</button>
                 </div>
-            </article>
-                </div>
-            </section>
-
-            <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="gender-distribution-programme">
-                <div class="demographic-flow-header">
-                    <h2 class="demographic-flow-title">Gender Distribution by Programme</h2>
-                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="gender-distribution-programme-content">
-                        <span class="demographic-accordion-toggle-text">Expand</span>
-                        <span class="demographic-accordion-toggle-icon">+</span>
-                    </button>
-                </div>
-
-                <div class="demographic-accordion-content is-hidden" id="gender-distribution-programme-content">
-                    <article class="demographic-insight-card demographic-insight-card-wide demographic-insight-card-programme-gender">
-                <div class="demographic-insight-header">
-                    <div>
-                        <p class="demographic-insight-kicker">Programme Gender</p>
-                        <h2 class="demographic-insight-title">Gender Distribution by Programme</h2>
-                        <p class="demographic-insight-copy" id="demographic-programme-gender-copy">The ranked bars show gender distribution across programmes, making it easy to compare gender balance at a glance.</p>
-                        <div class="demographic-chart-hints" id="demographic-programme-gender-hints" aria-label="Chart interaction hints"></div>
-                    </div>
-                    <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Gender Distribution by Programme" aria-controls="demographic-programme-gender-chart" aria-label="View Gender Distribution by Programme in full screen" aria-pressed="false">Full screen</button>
-                </div>
-
                 <div class="demographic-chart-stage">
-                    <div class="demographic-chart-canvas" id="demographic-programme-gender-chart" role="img" aria-label="Gender distribution by programme chart"></div>
-                </div>
-                <div class="demographic-chart-actions">
-                    <p class="demographic-chart-note" id="demographic-programme-gender-note">This view shows gender distribution across programmes, helping identify gender balance patterns.</p>
+                    <div class="demographic-chart-canvas" id="demographic-location-chart" role="img" aria-label="Top birth locations chart"></div>
                 </div>
             </article>
                 </div>
@@ -188,7 +160,7 @@
 
             <section class="demographic-flow-stage demographic-flow-stage-programme demographic-accordion-item" data-accordion-section="representation-shifts">
                 <div class="demographic-flow-header">
-                    <h2 class="demographic-flow-title">Representation Shifts By Programme</h2>
+                    <h2 class="demographic-flow-title">Programme Gender Composition</h2>
                     <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="representation-shifts-content">
                         <span class="demographic-accordion-toggle-text">Expand</span>
                         <span class="demographic-accordion-toggle-icon">+</span>
@@ -264,5 +236,5 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/demographic.js' %}?v=20260408-demographic-performance01"></script>
+<script type="module" src="{% static 'dashboard/js/demographic.js' %}?v=20260411-demographic-narrative-status01"></script>
 {% endblock %}

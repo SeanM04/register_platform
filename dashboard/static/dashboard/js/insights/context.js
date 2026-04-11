@@ -1,5 +1,7 @@
 import { parseJsonScript } from "./shared.js?v=20260403-insights-story02";
 
+const isTrustedAiNarrativeSource = (source) => ["openai", "google"].includes(String(source || "").trim().toLowerCase());
+
 export const createInsightContext = () => {
     const cardNarratives = parseJsonScript("insight-card-narratives", {});
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
@@ -14,7 +16,7 @@ export const createInsightContext = () => {
         },
         flags: {
             overviewNarrativeSource,
-            overviewNarrativesAreAi: Boolean(overviewNarrativeSource && overviewNarrativeSource !== "rules"),
+            overviewNarrativesAreAi: isTrustedAiNarrativeSource(overviewNarrativeSource),
         },
         elements: {
             storyBanner: document.getElementById("insight-story-banner"),

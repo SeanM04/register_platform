@@ -35,6 +35,12 @@ OVERVIEW_CARD_CONFIDENCES = {"low", "medium", "high"}
 OVERVIEW_CARD_SEVERITY_RANK = {"stable": 0, "medium": 1, "high": 2}
 OVERVIEW_CARD_KEYS = ("outcomes", "risk", "faculty", "progress")
 OVERVIEW_AI_CACHE_TTL_SECONDS = 600
+PROVIDER_LABELS = {
+    "google": "Google Gemini",
+    "openai": "OpenAI",
+    "rules": "Rule-based engine",
+    "auto": "Automatic provider selection",
+}
 OVERVIEW_NARRATIVE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -421,6 +427,112 @@ def _extract_google_response_text(response_payload):
     return ""
 
 
+def _get_provider_label(provider):
+    """Return a user-facing label for the configured narrative provider."""
+
+    return PROVIDER_LABELS.get(str(provider or "").strip().lower(), "Unknown provider")
+
+
+def _trim_diagnostic_detail(value, max_length=180):
+    """Clamp verbose provider error text before returning it to the UI."""
+
+    text = str(value or "").strip()
+    if len(text) <= max_length:
+        return text
+    return f"{text[:max_length - 3].rstrip()}..."
+
+
+def _classify_provider_error(provider_name, error):
+    """Normalize provider exceptions into stable diagnostic reason codes."""
+
+    detail = _trim_diagnostic_detail(error)
+    lowered_detail = detail.lower()
+    provider_key = str(provider_name or "provider").strip().lower()
+
+    if isinstance(error, urllib.error.HTTPError):
+        if int(getattr(error, "code", 0) or 0) == 429:
+            return (
+                f"{provider_key}_rate_limited",
+                f"{_get_provider_label(provider_key)} rate-limited the request because quota or request limits were reached.",
+                detail,
+            )
+        return (
+            f"{provider_key}_http_error",
+            f"{_get_provider_label(provider_key)} returned HTTP {error.code}.",
+            detail,
+        )
+    if isinstance(error, urllib.error.URLError):
+        if "10013" in lowered_detail or "forbidden by its access permissions" in lowered_detail:
+            return (
+                f"{provider_key}_network_blocked",
+                f"{_get_provider_label(provider_key)} could not be reached because outbound network access is blocked on this host.",
+                detail,
+            )
+        if "timed out" in lowered_detail or "timeout" in lowered_detail:
+            return (
+                f"{provider_key}_timeout",
+                f"{_get_provider_label(provider_key)} timed out before returning overview narratives.",
+                detail,
+            )
+        return (
+            f"{provider_key}_network_error",
+            f"{_get_provider_label(provider_key)} could not be reached from this environment.",
+            detail,
+        )
+    if isinstance(error, json.JSONDecodeError):
+        return (
+            f"{provider_key}_invalid_json",
+            f"{_get_provider_label(provider_key)} returned a response that could not be parsed as JSON.",
+            detail,
+        )
+    if isinstance(error, ValueError):
+        return (
+            f"{provider_key}_invalid_payload",
+            f"{_get_provider_label(provider_key)} returned an incomplete or invalid narrative payload.",
+            detail,
+        )
+    if isinstance(error, OSError):
+        return (
+            f"{provider_key}_os_error",
+            f"{_get_provider_label(provider_key)} could not be reached because of an operating-system network error.",
+            detail,
+        )
+    return (
+        f"{provider_key}_unexpected_error",
+        f"{_get_provider_label(provider_key)} failed unexpectedly while generating overview narratives.",
+        detail,
+    )
+
+
+def _build_overview_narrative_diagnostics(
+    *,
+    configured_provider,
+    returned_source,
+    status,
+    provider_attempted="",
+    fallback_reason="",
+    message="",
+    fallback_detail="",
+):
+    """Build structured diagnostics for the overview narrative pipeline."""
+
+    return {
+        "configured_provider": str(configured_provider or "rules").strip().lower() or "rules",
+        "provider_attempted": str(provider_attempted or "").strip().lower(),
+        "returned_source": str(returned_source or "rules").strip().lower() or "rules",
+        "status": str(status or "rules").strip().lower() or "rules",
+        "fallback_reason": str(fallback_reason or "").strip().lower(),
+        "message": str(message or "").strip(),
+        "fallback_detail": str(fallback_detail or "").strip(),
+        "google_configured": bool(getattr(settings, "GOOGLE_API_KEY", "")),
+        "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", "")),
+        "ai_enabled": bool(
+            getattr(settings, "AI_INSIGHTS_ENABLED", False)
+            or getattr(settings, "OPENAI_INSIGHTS_ENABLED", False)
+        ),
+    }
+
+
 def _normalize_ai_narrative_payload(payload, source, fallback_cards=None):
     """Validate and normalize provider output into the overview card contract."""
 
@@ -601,21 +713,45 @@ def _request_overview_google_narratives(fact_pack_json):
         return response.read().decode("utf-8")
 
 
-def get_overview_card_narratives(overview_data):
-    """Return overview card narratives for the landing-page dashboard."""
+def get_overview_card_narratives_result(overview_data):
+    """Return overview card narratives plus diagnostics for the landing-page dashboard."""
 
     fallback = build_rule_based_overview_narratives(overview_data)
     provider = getattr(settings, "AI_INSIGHTS_PROVIDER", "auto").strip().lower()
     insights_enabled = _overview_openai_is_enabled() or bool(getattr(settings, "GOOGLE_API_KEY", ""))
     if provider == "rules" or not insights_enabled:
-        return fallback
+        fallback_reason = "provider_rules_configured" if provider == "rules" else "ai_insights_disabled"
+        message = (
+            "Overview narratives are using the rule-based engine because AI provider mode is set to rules."
+            if provider == "rules"
+            else "Overview narratives are using the rule-based engine because AI insights are disabled."
+        )
+        return {
+            "card_narratives": fallback,
+            "diagnostics": _build_overview_narrative_diagnostics(
+                configured_provider=provider,
+                returned_source="rules",
+                status="rules",
+                fallback_reason=fallback_reason,
+                message=message,
+            ),
+        }
 
     fact_pack_json = json.dumps(build_overview_fact_pack(overview_data), sort_keys=True)
 
     if provider in {"auto", "google"} and getattr(settings, "GOOGLE_API_KEY", ""):
         cached_google_narratives = _get_cached_overview_ai_narratives(fact_pack_json, "google")
         if cached_google_narratives is not None:
-            return cached_google_narratives
+            return {
+                "card_narratives": cached_google_narratives,
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="google",
+                    returned_source="google",
+                    status="ai",
+                    message="Overview narratives were generated by Google Gemini.",
+                ),
+            }
         try:
             raw_response = _request_overview_google_narratives(fact_pack_json)
             response_payload = json.loads(raw_response)
@@ -623,28 +759,96 @@ def get_overview_card_narratives(overview_data):
             if not response_text:
                 raise ValueError("No output text returned by Gemini API.")
             normalized_payload = _normalize_ai_narrative_payload(json.loads(response_text), "google", fallback["cards"])
-            return _cache_overview_ai_narratives(fact_pack_json, normalized_payload)
+            return {
+                "card_narratives": _cache_overview_ai_narratives(fact_pack_json, normalized_payload),
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="google",
+                    returned_source="google",
+                    status="ai",
+                    message="Overview narratives were generated by Google Gemini.",
+                ),
+            }
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError, ValueError) as error:
             cached_google_narratives = _get_cached_overview_ai_narratives(fact_pack_json, "google")
             if cached_google_narratives is not None:
                 logger.warning("Reusing cached Google overview narratives after live request failed: %s", error)
-                return cached_google_narratives
+                return {
+                    "card_narratives": cached_google_narratives,
+                    "diagnostics": _build_overview_narrative_diagnostics(
+                        configured_provider=provider,
+                        provider_attempted="google",
+                        returned_source="google",
+                        status="ai",
+                        message="Overview narratives were generated by Google Gemini.",
+                    ),
+                }
             logger.warning("Falling back after Google overview narrative request failed: %s", error)
             if provider == "google":
-                return fallback
+                fallback_reason, message, detail = _classify_provider_error("google", error)
+                return {
+                    "card_narratives": fallback,
+                    "diagnostics": _build_overview_narrative_diagnostics(
+                        configured_provider=provider,
+                        provider_attempted="google",
+                        returned_source="rules",
+                        status="fallback",
+                        fallback_reason=fallback_reason,
+                        message=message,
+                        fallback_detail=detail,
+                    ),
+                }
 
     if provider in {"auto", "openai"}:
         if provider == "openai" and not getattr(settings, "OPENAI_API_KEY", ""):
             logger.info("AI_INSIGHTS_PROVIDER is openai but OPENAI_API_KEY is missing; using rule-based overview narratives.")
-            return fallback
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason="missing_openai_api_key",
+                    message="Overview narratives are using the rule-based engine because the OpenAI API key is missing.",
+                ),
+            }
         if provider == "auto" and not _overview_openai_is_enabled():
-            return fallback
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason="openai_not_enabled_in_auto_mode",
+                    message="Overview narratives are using the rule-based engine because OpenAI fallback is disabled in auto mode.",
+                ),
+            }
         if not getattr(settings, "OPENAI_API_KEY", ""):
-            return fallback
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai" if provider == "openai" else "",
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason="missing_openai_api_key",
+                    message="Overview narratives are using the rule-based engine because the OpenAI API key is missing.",
+                ),
+            }
 
         cached_openai_narratives = _get_cached_overview_ai_narratives(fact_pack_json, "openai")
         if cached_openai_narratives is not None:
-            return cached_openai_narratives
+            return {
+                "card_narratives": cached_openai_narratives,
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="openai",
+                    status="ai",
+                    message="Overview narratives were generated by OpenAI.",
+                ),
+            }
 
         try:
             raw_response = _request_overview_openai_narratives(fact_pack_json)
@@ -653,12 +857,58 @@ def get_overview_card_narratives(overview_data):
             if not response_text:
                 raise ValueError("No output text returned by Responses API.")
             normalized_payload = _normalize_ai_narrative_payload(json.loads(response_text), "openai", fallback["cards"])
-            return _cache_overview_ai_narratives(fact_pack_json, normalized_payload)
+            return {
+                "card_narratives": _cache_overview_ai_narratives(fact_pack_json, normalized_payload),
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="openai",
+                    status="ai",
+                    message="Overview narratives were generated by OpenAI.",
+                ),
+            }
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError, ValueError) as error:
             cached_openai_narratives = _get_cached_overview_ai_narratives(fact_pack_json, "openai")
             if cached_openai_narratives is not None:
                 logger.warning("Reusing cached OpenAI overview narratives after live request failed: %s", error)
-                return cached_openai_narratives
+                return {
+                    "card_narratives": cached_openai_narratives,
+                    "diagnostics": _build_overview_narrative_diagnostics(
+                        configured_provider=provider,
+                        provider_attempted="openai",
+                        returned_source="openai",
+                        status="ai",
+                        message="Overview narratives were generated by OpenAI.",
+                    ),
+                }
             logger.warning("Falling back after OpenAI overview narrative request failed: %s", error)
+            fallback_reason, message, detail = _classify_provider_error("openai", error)
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_overview_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason=fallback_reason,
+                    message=message,
+                    fallback_detail=detail,
+                ),
+            }
 
-    return fallback
+    return {
+        "card_narratives": fallback,
+        "diagnostics": _build_overview_narrative_diagnostics(
+            configured_provider=provider,
+            returned_source="rules",
+            status="fallback",
+            fallback_reason="no_provider_available",
+            message="Overview narratives are using the rule-based engine because no AI provider is currently available.",
+        ),
+    }
+
+
+def get_overview_card_narratives(overview_data):
+    """Return only overview card narratives for compatibility call sites."""
+
+    return get_overview_card_narratives_result(overview_data)["card_narratives"]

@@ -1,4 +1,4 @@
-import { initialiseAcademicLevelPage } from "./academic_level/index.js?v=20260401-high-badge-orange1";
+import { initialiseAcademicLevelPage } from "./academic_level/index.js?v=20260411-academic-narrative-status01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.

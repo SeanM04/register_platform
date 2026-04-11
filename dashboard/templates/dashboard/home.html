@@ -4,13 +4,14 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260408-home-ai02">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260411-home-narrative-status01">
 {% endblock %}
 
 {% block content %}
 <section
     class="home-layout"
     data-payload-url="{% url 'dashboard:home-payload' %}"
+    data-drilldown-url="{% url 'dashboard:home-drilldown' %}"
     data-narratives-url="{% url 'dashboard:home-narratives' %}"
     data-ai-narratives-enabled="{{ overview_ai_narratives_enabled|yesno:'true,false' }}"
 >
@@ -25,6 +26,7 @@
     </section>
 
     <section class="home-story-banner" id="home-story-banner" aria-live="polite"></section>
+    <p class="home-narrative-status" id="home-narrative-status" hidden></p>
 
     <section class="home-story-flow" aria-label="Landing dashboard storytelling flow">
         <section class="home-flow-stage home-flow-stage-primary">
@@ -185,5 +187,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260409-drill-down-01"></script>
+<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260411-home-narrative-status01"></script>
 {% endblock %}

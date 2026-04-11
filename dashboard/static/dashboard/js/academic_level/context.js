@@ -1,12 +1,15 @@
 import { parseJsonScript } from "./shared.js";
 
+const isTrustedAiNarrativeSource = (source) => ["openai", "google"].includes(String(source || "").trim().toLowerCase());
+
 export const createAcademicLevelContext = () => {
     const levelRows = parseJsonScript("academic-level-level-data", []);
     const genderRows = parseJsonScript("academic-level-gender-data", []);
     const programmeRows = parseJsonScript("academic-level-programme-data", []);
     const cardNarratives = parseJsonScript("academic-level-card-narratives", {});
+    const narrativeDiagnostics = parseJsonScript("academic-level-narrative-diagnostics", {});
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
-    const overviewNarrativesAreAi = Boolean(overviewNarrativeSource && overviewNarrativeSource !== "rules");
+    const overviewNarrativesAreAi = isTrustedAiNarrativeSource(overviewNarrativeSource);
     const topProgrammeRows = [...programmeRows]
         .sort((left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme))
         .slice(0, 5);
@@ -17,6 +20,7 @@ export const createAcademicLevelContext = () => {
             genderRows,
             programmeRows,
             cardNarratives,
+            narrativeDiagnostics,
             topProgrammeRows,
         },
         flags: {
@@ -27,6 +31,7 @@ export const createAcademicLevelContext = () => {
             levelSearchForm: document.querySelector(".level-toolbar"),
             levelSearchInput: document.querySelector(".level-search"),
             storyBanner: document.getElementById("academic-level-story-banner"),
+            narrativeStatus: document.getElementById("academic-level-narrative-status"),
             genderCopy: document.getElementById("academic-level-gender-copy"),
             genderNote: document.getElementById("academic-level-gender-note"),
             genderHints: document.getElementById("academic-level-gender-hints"),

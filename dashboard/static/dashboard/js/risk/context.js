@@ -1,5 +1,7 @@
 import { parseJsonScript } from "./shared.js";
 
+const isTrustedAiNarrativeSource = (source) => ["openai", "google"].includes(String(source || "").trim().toLowerCase());
+
 export const createRiskContext = () => {
     const cardNarratives = parseJsonScript("risk-card-narratives", {});
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
@@ -14,7 +16,7 @@ export const createRiskContext = () => {
         },
         flags: {
             overviewNarrativeSource,
-            overviewNarrativesAreAi: Boolean(overviewNarrativeSource && overviewNarrativeSource !== "rules"),
+            overviewNarrativesAreAi: isTrustedAiNarrativeSource(overviewNarrativeSource),
         },
         elements: {
             storyBanner: document.getElementById("risk-story-banner"),

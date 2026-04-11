@@ -151,25 +151,15 @@ const buildGuidanceBadgeMarkup = (severity = "stable", confidence = "medium") =>
 };
 
 /**
- * Update the compact AI state element that sits above each chart-card introduction.
+ * Keep the home dashboard chart intros free of top AI badges.
  */
 const setCardAiState = (element, options = {}) => {
     if (!element) {
         return;
     }
 
-    const pending = Boolean(options.pending);
-    const showAiBadge = Boolean(options.showAiBadge);
-    if (!pending && !showAiBadge) {
-        element.hidden = true;
-        element.innerHTML = "";
-        return;
-    }
-
-    element.hidden = false;
-    element.innerHTML = pending
-        ? buildAiLoadingMarkup()
-        : buildAiBadgeMarkup(options.source, options.severity, options.confidence);
+    element.hidden = true;
+    element.innerHTML = "";
 };
 
 /**
@@ -210,10 +200,8 @@ const setSummaryText = (element, text, options = {}) => {
         return;
     }
 
-    const showAiBadge = Boolean(options.showAiBadge);
     element.hidden = false;
     element.innerHTML = `
-        ${showAiBadge ? buildAiBadgeMarkup(options.source, options.severity, options.confidence) : ""}
         <p class="home-flow-summary-copy">${escapeTooltipHtml(trimmedText)}</p>
     `.trim();
 };

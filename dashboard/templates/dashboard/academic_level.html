@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260401-high-badge-orange1">
+<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260411-academic-narrative-status01">
 {% endblock %}
 
 {% block content %}
@@ -19,6 +19,7 @@
     </section>
 
     <section class="level-story-banner" id="academic-level-story-banner" aria-live="polite"></section>
+    <p class="level-narrative-status" id="academic-level-narrative-status" hidden></p>
 
     <section class="level-deep-dive">
         <article class="level-insight-card level-insight-card-gender">
@@ -226,6 +227,7 @@
 {{ gender_performance_rows|json_script:"academic-level-gender-data" }}
 {{ programme_performance_rows|json_script:"academic-level-programme-data" }}
 {{ academic_level_card_narratives|json_script:"academic-level-card-narratives" }}
+{{ academic_level_narrative_diagnostics|json_script:"academic-level-narrative-diagnostics" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260401-high-badge-orange1"></script>
+<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260411-academic-narrative-status01"></script>
 {% endblock %}

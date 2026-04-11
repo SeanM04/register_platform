@@ -9,6 +9,7 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
+import { openOverviewDrillDown } from "./drilldown.js?v=20260411-home-drilldown01";
 import { initialiseRiskNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const RISK_COLORS = {
@@ -107,15 +108,7 @@ export const initialiseRiskDistributionSection = (context) => {
                         itemStyle: {
                             color: RISK_COLORS[row.key] || HOME_COLORS.sky,
                         },
-                        drilldown: {
-                            name: row.label,
-                            items: [
-                                { label: "Students", value: formatCount(row.count) },
-                                { label: "Percentage", value: `${row.percent || 0}%` },
-                                { label: "Risk Level", value: row.label },
-                                { label: "Total Cohort", value: formatCount(row.total || 0) }
-                            ]
-                        }
+                        drilldownKey: row.key,
                     })),
                     barMaxWidth: 28,
                     label: {
@@ -131,11 +124,15 @@ export const initialiseRiskDistributionSection = (context) => {
         }
     );
 
-    // Add drill-down click handler
-    chart.on('click', function(params) {
-        if (params.data && params.data.drilldown) {
-            const drilldown = params.data.drilldown;
-            showDrillDownModal(drilldown.name, drilldown.items);
+    chart.on("click", (params) => {
+        const row = rows[params.dataIndex];
+        const bucketKey = row?.key || params.data?.drilldownKey;
+        if (bucketKey) {
+            openOverviewDrillDown(context, {
+                chartKey: "risk_distribution",
+                bucketKey,
+                label: row?.label || params.name,
+            });
         }
     });
 

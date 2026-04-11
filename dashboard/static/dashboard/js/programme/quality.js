@@ -39,6 +39,7 @@ export const initialiseQualitySection = (context) => {
         animationDuration: 650,
         animationDurationUpdate: 250,
         grid: {
+            containLabel: true,
             left: 210,
             right: 68,
             top: 18,

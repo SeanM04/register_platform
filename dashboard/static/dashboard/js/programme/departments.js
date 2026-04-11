@@ -7,7 +7,6 @@ import {
     echartsLib,
     formatCount,
     setChartFallback,
-    wrapAxisLabel,
 } from "./shared.js?v=20260405-programmes-progressive01";
 import { initialiseDepartmentNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
@@ -39,10 +38,11 @@ export const initialiseDepartmentSection = (context) => {
         animationDuration: 650,
         animationDurationUpdate: 250,
         grid: {
-            left: 170,
-            right: 78,
+            containLabel: true,
+            left: 84,
+            right: 96,
             top: 20,
-            bottom: 36,
+            bottom: 58,
         },
         tooltip: {
             ...buildTooltipBase("item"),
@@ -60,12 +60,18 @@ export const initialiseDepartmentSection = (context) => {
             type: "value",
             name: "Registrations",
             nameLocation: "middle",
-            nameGap: 28,
+            nameGap: 36,
             axisLine: { show: false },
             axisTick: { show: false },
             axisLabel: {
                 color: "#5c718f",
                 fontSize: 11,
+            },
+            nameTextStyle: {
+                color: "#5c718f",
+                fontSize: 12,
+                fontWeight: 700,
+                padding: [12, 0, 0, 0],
             },
             splitLine: {
                 lineStyle: {
@@ -81,23 +87,22 @@ export const initialiseDepartmentSection = (context) => {
             axisTick: { show: false },
             axisLabel: {
                 color: "#1c4573",
-                fontSize: 10.5,
+                fontSize: 11.5,
                 fontWeight: 700,
-                margin: 14,
-                formatter: (value) => wrapAxisLabel(value, { maxLineLength: 16, maxLines: 2 }),
+                margin: 12,
             },
-            data: sortedRows.map((row) => row.department),
+            data: sortedRows.map((row) => row.axis_label || row.department),
         },
         series: [
             {
                 type: "bar",
                 data: sortedRows.map((row) => row.registrations),
-                barWidth: 18,
+                barWidth: 22,
                 label: {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: 700,
                     formatter: (params) => {
                         const row = sortedRows[params.dataIndex];

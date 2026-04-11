@@ -30,6 +30,49 @@ def _truncate_text(value, max_length=34):
     return f"{text[:max_length - 3].rstrip()}..."
 
 
+def _build_programme_axis_label(row):
+    """Prefer a stable programme code on chart axes, then fall back to a compact acronym."""
+
+    code = str(row.get("code") or "").strip()
+    if code:
+        return code.upper()
+
+    words = [
+        word for word in str(row.get("name") or "").replace("-", " ").split()
+        if word and word.lower() not in {"of", "in", "and", "the", "honours", "degree"}
+    ]
+    if not words:
+        return "Programme"
+
+    acronym = "".join(word[0].upper() for word in words[:5])
+    return acronym or "Programme"
+
+
+def _build_department_axis_label(name):
+    """Compress long department names so horizontal bar charts keep more room for bars."""
+
+    cleaned_name = str(name or "").strip()
+    if not cleaned_name:
+        return "Department"
+
+    simplified = cleaned_name
+    if simplified.lower().startswith("department of "):
+        simplified = simplified[14:]
+
+    words = [
+        word for word in simplified.replace("-", " ").split()
+        if word and word.lower() not in {"of", "and", "the"}
+    ]
+    if not words:
+        return _truncate_text(cleaned_name, max_length=14)
+
+    if len(words) == 1:
+        return _truncate_text(words[0].upper(), max_length=14)
+
+    acronym = "".join(word[0].upper() for word in words[:5])
+    return acronym or _truncate_text(cleaned_name.upper(), max_length=14)
+
+
 def get_programmes_queryset(request, search_query=""):
     """Return annotated programmes for the current dashboard filter scope."""
 
@@ -92,6 +135,7 @@ def build_programme_rows(programmes):
             {
                 "code": programme.code,
                 "name": programme.name,
+                "axis_label": (programme.code or "").upper() or "",
                 "faculty": faculty,
                 "department": department,
                 "students": int(programme.student_count or 0),
@@ -105,6 +149,36 @@ def build_programme_rows(programmes):
                 "pass_rate_value": pass_rate_value,
             }
         )
+
+    return programme_rows
+
+
+def _sort_programme_rows(programme_rows, sort_key, sort_direction):
+    """Sort programme rows for the register table based on request query parameters."""
+    if not sort_key:
+        return programme_rows
+
+    sort_key = str(sort_key or "").strip().lower()
+    reverse = str(sort_direction or "").strip().lower() == "desc"
+
+    if sort_key == "code":
+        programme_rows.sort(key=lambda row: ((row["code"] or "").lower(), row["name"].lower()), reverse=reverse)
+    elif sort_key == "name":
+        programme_rows.sort(key=lambda row: (row["name"] or "").lower(), reverse=reverse)
+    elif sort_key == "faculty":
+        programme_rows.sort(key=lambda row: (row["faculty"] or "").lower(), reverse=reverse)
+    elif sort_key == "department":
+        programme_rows.sort(key=lambda row: (row["department"] or "").lower(), reverse=reverse)
+    elif sort_key == "students":
+        programme_rows.sort(key=lambda row: (row["students"], row["name"].lower()), reverse=reverse)
+    elif sort_key == "registrations":
+        programme_rows.sort(key=lambda row: (row["registrations"], row["name"].lower()), reverse=reverse)
+    elif sort_key == "average_mark":
+        programme_rows.sort(key=lambda row: (row["average_mark_value"], row["name"].lower()), reverse=reverse)
+    elif sort_key == "pass_rate":
+        programme_rows.sort(key=lambda row: (row["pass_rate_value"], row["name"].lower()), reverse=reverse)
+    else:
+        programme_rows.sort(key=lambda row: (row["name"] or "").lower(), reverse=reverse)
 
     return programme_rows
 
@@ -220,6 +294,7 @@ def _build_top_load_rows(programme_rows):
         {
             **row,
             "share_pct": _pct(row["registrations"], total_registrations),
+            "axis_label": _build_programme_axis_label(row),
         }
         for row in sorted(
             programme_rows,
@@ -277,6 +352,7 @@ def _build_department_rows(programme_rows):
             {
                 "faculty": bucket["faculty"],
                 "department": bucket["department"],
+                "axis_label": _build_department_axis_label(bucket["department"]),
                 "registrations": bucket["registrations"],
                 "students": bucket["students"],
                 "programme_count": bucket["programme_count"],
@@ -320,6 +396,11 @@ def build_programme_dashboard_data(request, search_query=""):
     """Assemble the story-first programme dashboard payload."""
 
     programme_rows = build_programme_rows(get_programmes_queryset(request, search_query))
+    programme_rows = _sort_programme_rows(
+        programme_rows,
+        request.GET.get("sort", ""),
+        request.GET.get("direction", "asc"),
+    )
     summary_values = _build_summary_values_from_rows(programme_rows)
 
     return {
