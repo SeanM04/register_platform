@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Graduation Analysis{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260411">
+{% endblock %}
+
+{% block content %}
+<section class="graduation-layout" data-payload-url="{% url 'dashboard:graduation-payload' %}">
+    <!-- Metrics Section -->
+    <section class="graduation-metrics">
+        <article class="graduation-metric">
+            <p class="graduation-metric-label">Total Graduated Students</p>
+            <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="total_graduated_students">-</p>
+        </article>
+        <article class="graduation-metric">
+            <p class="graduation-metric-label">Avg Graduation Rate</p>
+            <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="average_completion_graduation_rate">-</p>
+        </article>
+        <article class="graduation-metric">
+            <p class="graduation-metric-label">On-Time Graduation Rate</p>
+            <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="on_time_graduation_rate">-</p>
+        </article>
+        <article class="graduation-metric">
+            <p class="graduation-metric-label">Best Faculty Rate</p>
+            <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="best_faculty_rate">-</p>
+        </article>
+        <article class="graduation-metric">
+            <p class="graduation-metric-label">Graduation Periods</p>
+            <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="graduation_periods">-</p>
+        </article>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="graduation-filters">
+        <div class="filter-group">
+            <label for="faculty-filter">Faculty:</label>
+            <select id="faculty-filter" class="filter-select">
+                <option value="">All Faculties</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="programme-filter">Programme:</label>
+            <select id="programme-filter" class="filter-select">
+                <option value="">All Programmes</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="graduation-stage-filter">Graduation Stage:</label>
+            <select id="graduation-stage-filter" class="filter-select">
+                <option value="">All Stages</option>
+                <option value="4.2">4.2 (Standard)</option>
+                <option value="5.2">5.2 (Engineering)</option>
+                <option value="2.2">2.2 (Masters)</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="rate-filter">Min Graduation Rate:</label>
+            <input type="number" id="rate-filter" class="filter-input" min="0" max="100" placeholder="0">
+        </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="graduation-charts">
+        <!-- Programme Graduation Rates Chart -->
+        <article class="graduation-chart-card">
+            <div class="graduation-chart-header">
+                <div>
+                    <h2 class="graduation-chart-title">Programme Graduation Rates</h2>
+                    <p class="graduation-chart-copy">Compare graduation rates across programmes</p>
+                </div>
+                <button class="graduation-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Graduation Rates" aria-controls="programme-graduation-chart" aria-label="View Programme Graduation Rates in full screen" aria-pressed="false">Full screen</button>
+            </div>
+            <div class="graduation-chart-stage">
+                <div class="graduation-chart-canvas" id="programme-graduation-chart" role="img" aria-label="Programme graduation rates chart"></div>
+            </div>
+        </article>
+
+        <!-- Cohort Graduation Rates Chart -->
+        <article class="graduation-chart-card">
+            <div class="graduation-chart-header">
+                <div>
+                    <h2 class="graduation-chart-title">Cohort Graduation Rates</h2>
+                    <p class="graduation-chart-copy">Track graduation rates across different cohorts</p>
+                </div>
+                <button class="graduation-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Graduation Rates" aria-controls="cohort-graduation-chart" aria-label="View Cohort Graduation Rates in full screen" aria-pressed="false">Full screen</button>
+            </div>
+            <div class="graduation-chart-stage">
+                <div class="graduation-chart-canvas" id="cohort-graduation-chart" role="img" aria-label="Cohort graduation rates chart"></div>
+            </div>
+        </article>
+    </section>
+
+    <!-- Faculty Performance Section -->
+    <section class="graduation-faculty-section">
+        <div class="graduation-section-header">
+            <h2 class="graduation-section-title">Faculty Performance</h2>
+            <p class="graduation-section-copy">Graduation rates by faculty</p>
+        </div>
+        <div class="graduation-faculty-grid" id="faculty-grid">
+            <!-- Faculty cards will be populated here -->
+        </div>
+    </section>
+
+    <!-- Graduated Students Table Section -->
+    <section class="graduation-students-section">
+        <div class="graduation-students-header">
+            <h2 class="graduation-students-title">Graduated Students</h2>
+            <div class="graduation-students-controls">
+                <input type="text" id="student-search" class="graduation-search-input" placeholder="Search students...">
+                <button id="export-students" class="graduation-export-btn">Export Data</button>
+            </div>
+        </div>
+        <div class="graduation-table-container">
+            <table class="graduation-students-table" id="students-table">
+                <thead>
+                    <tr>
+                        <th data-sort="regnum">Student ID</th>
+                        <th data-sort="student_name">Student Name</th>
+                        <th data-sort="programme_name">Programme</th>
+                        <th data-sort="faculty">Faculty</th>
+                        <th data-sort="graduation_rate">Graduation Rate</th>
+                        <th data-sort="graduation_stage">Graduation Stage</th>
+                        <th data-sort="on_time">On-Time</th>
+                    </tr>
+                </thead>
+                <tbody id="students-tbody">
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        <div class="graduation-pagination" id="pagination">
+            <!-- Pagination will be populated here -->
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="graduation-statistics-section">
+        <div class="graduation-section-header">
+            <h2 class="graduation-section-title">Graduation Statistics</h2>
+            <p class="graduation-section-copy">Detailed graduation analysis and insights</p>
+        </div>
+        <div class="graduation-stats-grid">
+            <div class="graduation-stat-card">
+                <h3 class="graduation-stat-title">Performance Distribution</h3>
+                <div class="graduation-stat-chart" id="performance-distribution-chart"></div>
+            </div>
+            <div class="graduation-stat-card">
+                <h3 class="graduation-stat-title">Graduation Timeline</h3>
+                <div class="graduation-stat-chart" id="graduation-timeline-chart"></div>
+            </div>
+            <div class="graduation-stat-card">
+                <h3 class="graduation-stat-title">Programme Rankings</h3>
+                <div class="graduation-stat-rankings" id="programme-rankings"></div>
+            </div>
+        </div>
+    </section>
+</section>
+
+<!-- Loading Overlay -->
+<div class="graduation-loading-overlay" id="loading-overlay">
+    <div class="graduation-loading-spinner"></div>
+    <p>Loading graduation data...</p>
+</div>
+
+<!-- Error Modal -->
+<div class="graduation-modal" id="error-modal">
+    <div class="graduation-modal-content">
+        <div class="graduation-modal-header">
+            <h3>Error</h3>
+            <button class="graduation-modal-close" id="error-modal-close">&times;</button>
+        </div>
+        <div class="graduation-modal-body">
+            <p id="error-message">An error occurred while loading data.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Student Details Modal -->
+<div class="graduation-modal" id="student-details-modal">
+    <div class="graduation-modal-content graduation-modal-large">
+        <div class="graduation-modal-header">
+            <h3>Student Details</h3>
+            <button class="graduation-modal-close" id="student-details-close">&times;</button>
+        </div>
+        <div class="graduation-modal-body">
+            <div id="student-details-content">
+                <!-- Student details will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard/js/graduation.js' %}?v=20260411"></script>
+{% endblock %}

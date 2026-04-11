@@ -17,6 +17,19 @@ from .views import (
     student_list,
     system_management_view,
 )
+from .completion.views import (
+    completion_view, 
+    completion_payload, 
+    completion_programmes, 
+    completion_faculties, 
+    completion_academic_years
+)
+from .graduation.views import (
+    graduation_view, 
+    graduation_payload, 
+    graduation_programmes, 
+    graduation_faculties
+)
 
 app_name = "dashboard"
 
@@ -41,5 +54,14 @@ urlpatterns = [
     path("risk/", risk_view, name="risk"),
     path("metrics/risk/", risk_metrics, name="risk-metrics"),
     path("insights/", insights_view, name="insights"),
+    path("completion/", completion_view, name="completion"),
+    path("metrics/completion/payload/", completion_payload, name="completion-payload"),
+    path("api/completion/programmes", completion_programmes, name="completion-programmes"),
+    path("api/completion/faculties", completion_faculties, name="completion-faculties"),
+    path("api/completion/academic-years", completion_academic_years, name="completion-academic-years"),
+    path("graduation/", graduation_view, name="graduation"),
+    path("metrics/graduation/payload/", graduation_payload, name="graduation-payload"),
+    path("api/graduation/programmes", graduation_programmes, name="graduation-programmes"),
+    path("api/graduation/faculties", graduation_faculties, name="graduation-faculties"),
     path("system-management/", system_management_view, name="system-management"),
 ]
