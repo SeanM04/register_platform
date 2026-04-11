@@ -271,7 +271,7 @@
 }
 
 .demographic-chart-canvas {
-    min-height: 280px;
+    min-height: 300px;
     width: 100%;
 }
 
@@ -1086,8 +1086,25 @@
 }
 
 .demographic-accordion-toggle-icon {
-    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 1px solid rgba(13, 50, 93, 0.12);
+    border-radius: 12px;
+    background: rgba(13, 50, 93, 0.06);
+    color: #123b68;
+    font-size: 1.1rem;
     font-weight: 800;
+    line-height: 1;
+    margin-left: 0.35rem;
+    transition: all 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover .demographic-accordion-toggle-icon {
+    background: rgba(13, 50, 93, 0.1);
+    border-color: rgba(13, 50, 93, 0.16);
 }
 
 .demographic-accordion-content {
@@ -1098,6 +1115,10 @@
 
 .demographic-accordion-content.is-hidden {
     display: none;
+}
+
+.demographic-accordion-toggle[aria-expanded="true"] .demographic-accordion-toggle-icon {
+    transform: rotate(45deg);
 }
 
 .demographic-accordion-content:not(.is-hidden) {

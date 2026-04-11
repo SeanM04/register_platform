@@ -223,10 +223,7 @@ export const initialiseDistributionNarrative = (elements, rows, cardNarratives =
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
     setElementText(elements.distributionCopy, narrative.insight);
-    setHintMarkup(elements.distributionHints, [
-        { label: "Hover or tap columns for values", kind: "inspect" },
-        { label: "Start here for severity mix", kind: "support" },
-    ]);
+    setHintMarkup(elements.distributionHints, []);
     setActionText(elements.distributionNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -255,10 +252,7 @@ export const initialiseFacultyLoadNarrative = (elements, rows, cardNarratives = 
     const narrative = getOverviewCardNarrative(cardNarratives, "faculty_load", buildFacultyLoadOverviewNarrative(rows));
 
     setElementText(elements.facultyLoadCopy, narrative.insight);
-    setHintMarkup(elements.facultyLoadHints, [
-        { label: "Hover bars for counts", kind: "inspect" },
-        { label: "Compare registration share", kind: "support" },
-    ]);
+    setHintMarkup(elements.facultyLoadHints, []);
     setActionText(elements.facultyLoadNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -284,10 +278,7 @@ export const initialiseFacultyPressureNarrative = (elements, rows, cardNarrative
     const narrative = getOverviewCardNarrative(cardNarratives, "faculty_pressure", buildFacultyPressureOverviewNarrative(rows));
 
     setElementText(elements.facultyPressureCopy, narrative.insight);
-    setHintMarkup(elements.facultyPressureHints, [
-        { label: "Hover stacks for counts", kind: "inspect" },
-        { label: "Compare medium vs high queue", kind: "support" },
-    ]);
+    setHintMarkup(elements.facultyPressureHints, []);
     setActionText(elements.facultyPressureNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -316,10 +307,7 @@ export const initialiseDriversNarrative = (elements, rows, cardNarratives = {}, 
     const narrative = getOverviewCardNarrative(cardNarratives, "drivers", buildDriversOverviewNarrative(rows));
 
     setElementText(elements.driversCopy, narrative.insight);
-    setHintMarkup(elements.driversHints, [
-        { label: "Hover bars for counts", kind: "inspect" },
-        { label: "Compare recurring triggers", kind: "support" },
-    ]);
+    setHintMarkup(elements.driversHints, []);
     setActionText(elements.driversNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,

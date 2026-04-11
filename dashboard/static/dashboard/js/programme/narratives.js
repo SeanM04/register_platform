@@ -215,10 +215,7 @@ export const initialiseLoadNarrative = (elements, rows, cardNarratives = {}, fla
     const narrative = getProgrammeCardNarrative(cardNarratives, "load", buildLoadOverviewNarrative(rows));
 
     setElementText(elements.loadCopy, narrative.insight);
-    setHintMarkup(elements.loadHints, [
-        "Hover bars for counts",
-        "Compare share and pass rate together",
-    ]);
+    setHintMarkup(elements.loadHints, []);
     setActionText(elements.loadNote, narrative.action, {
         showAiBadge: flags.narrativesAreAi,
         source: flags.narrativeSource,
@@ -244,10 +241,7 @@ export const initialiseDepartmentNarrative = (elements, rows, cardNarratives = {
     const narrative = getProgrammeCardNarrative(cardNarratives, "departments", buildDepartmentOverviewNarrative(rows));
 
     setElementText(elements.departmentsCopy, narrative.insight);
-    setHintMarkup(elements.departmentsHints, [
-        "Hover bars for portfolio detail",
-        "Department bars include programme count context",
-    ]);
+    setHintMarkup(elements.departmentsHints, []);
     setActionText(elements.departmentsNote, narrative.action, {
         showAiBadge: flags.narrativesAreAi,
         source: flags.narrativeSource,
@@ -274,10 +268,7 @@ export const initialiseQualityNarrative = (elements, rows, cardNarratives = {}, 
     const narrative = getProgrammeCardNarrative(cardNarratives, "quality", buildQualityOverviewNarrative(rows));
 
     setElementText(elements.qualityCopy, narrative.insight);
-    setHintMarkup(elements.qualityHints, [
-        "Hover bars for full labels",
-        "Lower pass rates sit at the top of the ranking",
-    ]);
+    setHintMarkup(elements.qualityHints, []);
     setActionText(elements.qualityNote, narrative.action, {
         showAiBadge: flags.narrativesAreAi,
         source: flags.narrativeSource,
@@ -306,10 +297,7 @@ export const initialisePerformanceNarrative = (elements, rows, cardNarratives = 
     const narrative = getProgrammeCardNarrative(cardNarratives, "performance", buildPerformanceOverviewNarrative(rows));
 
     setElementText(elements.performanceCopy, narrative.insight);
-    setHintMarkup(elements.performanceHints, [
-        "Hover bubbles for full labels",
-        "Bubble size shows student footprint",
-    ]);
+    setHintMarkup(elements.performanceHints, []);
     setActionText(elements.performanceNote, narrative.action, {
         showAiBadge: flags.narrativesAreAi,
         source: flags.narrativeSource,
