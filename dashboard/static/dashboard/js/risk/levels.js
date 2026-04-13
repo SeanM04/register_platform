@@ -65,10 +65,6 @@ const buildTooltipFormatter = (selectedState) => (params) => {
     return buildTooltipMarkup(row.level, [
         ...(highRiskVisible ? [{ label: HIGH_RISK, value: row.high_risk }] : []),
         ...(mediumRiskVisible ? [{ label: MEDIUM_RISK, value: row.medium_risk }] : []),
-        {
-            label: highRiskVisible && mediumRiskVisible ? "Watchlist total" : "Visible total",
-            value: getVisibleLevelTotal(row, selectedState),
-        },
         { label: "Share of watchlist", value: `${row.share_pct}%` },
     ]);
 };
@@ -103,7 +99,7 @@ const buildLevelSeries = (rows, selectedState) => {
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#082340", "#1c4e80"),
+                    color: buildGradient("#dc2626", "#ef4444"),
                 },
             })),
             label: buildTotalLabel(selectedState, HIGH_RISK),
@@ -121,7 +117,7 @@ const buildLevelSeries = (rows, selectedState) => {
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#1f78b4", "#67c3e5"),
+                    color: buildGradient("#ca8a04", "#eab308"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -137,7 +133,7 @@ const buildLevelsOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#163a63", "#67c3e5"],
+        color: ["#dc2626", "#eab308"],
         grid: {
             top: 40,
             right: 72,

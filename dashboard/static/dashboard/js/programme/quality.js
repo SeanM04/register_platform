@@ -40,7 +40,7 @@ export const initialiseQualitySection = (context) => {
         animationDurationUpdate: 250,
         grid: {
             containLabel: true,
-            left: 210,
+            left: 82,
             right: 68,
             top: 18,
             bottom: 40,
@@ -96,12 +96,12 @@ export const initialiseQualitySection = (context) => {
             {
                 type: "bar",
                 data: sortedRows.map((row) => row.pass_rate_value),
-                barWidth: 18,
+                barWidth: 22,
                 label: {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: 700,
                     formatter: (params) => {
                         const row = sortedRows[params.dataIndex];
@@ -110,7 +110,7 @@ export const initialiseQualitySection = (context) => {
                 },
                 itemStyle: {
                     borderRadius: 0,
-                    color: buildGradient(PROGRAMME_COLORS.rose, PROGRAMME_COLORS.amber, "horizontal"),
+                    color: buildGradient(PROGRAMME_COLORS.navy, PROGRAMME_COLORS.sky, "horizontal"),
                 },
             },
         ],

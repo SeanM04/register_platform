@@ -209,21 +209,37 @@
     min-width: 0;
 }
 
-.level-insight-toggle {
+.level-section-toggle {
+    flex-shrink: 0;
     padding: 0.5rem 0.8rem;
     border: 1px solid #b8c8d9;
     border-radius: 12px;
     background: #ffffff;
     color: var(--navy);
-    font-size: 0.76rem;
+    font-size: 0.7rem;
     font-weight: 700;
     cursor: pointer;
+    text-align: center;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.level-insight-toggle {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .level-insight-toggle:hover {
     background: #f4f8fb;
-    border-color: rgba(13, 50, 93, 0.2);
+    border-color: #9cb3c8;
     transform: translateY(-1px);
 }
 
@@ -233,10 +249,11 @@
 }
 
 .level-insight-toggle-label {
-    color: #123b68;
-    font-size: 0.72rem;
+    color: var(--navy);
+    font-size: 0.7rem;
     font-weight: 700;
     line-height: 1;
+    text-align: center;
 }
 
 .level-insight-toggle-icon {
@@ -842,38 +859,40 @@
 }
 
 .level-section-heading {
-    flex: 1;
-    min-width: 0;
+flex: 1;
+min-width: 0;
 }
 
 .level-section-toggle {
-    padding: 0.5rem 0.8rem;
-    border: 1px solid #b8c8d9;
-    border-radius: 12px;
-    background: #ffffff;
-    color: var(--navy);
-    font-size: 0.76rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+padding: 0.35rem 0.65rem;
+border: 1px solid #b8c8d9;
+border-radius: 12px;
+background: #ffffff;
+color: var(--navy);
+font-size: 0.7rem;
+font-weight: 700;
+cursor: pointer;
+transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .level-section-toggle:hover {
-    background: #f4f8fb;
-    border-color: rgba(13, 50, 93, 0.2);
-    transform: translateY(-1px);
+background: #f4f8fb;
+border-color: #9cb3c8;
+transform: translateY(-1px);
 }
 
 .level-section-toggle:focus-visible {
-    outline: 2px solid rgba(79, 176, 209, 0.45);
+outline: 2px solid rgba(79, 176, 209, 0.45);
+outline-offset: 2px;
     outline-offset: 2px;
 }
 
 .level-section-toggle-label {
-    color: #123b68;
-    font-size: 0.72rem;
+    color: var(--navy);
+    font-size: 0.7rem;
     font-weight: 700;
     line-height: 1;
+    text-align: center;
 }
 
 .level-section-toggle-icon {
@@ -931,8 +950,8 @@
 }
 
 .level-search {
-    width: min(240px, 100%);
-    min-width: 220px;
+    width: min(200px, 100%);
+    min-width: 180px;
     padding: 0.56rem 0.78rem;
     border: 1px solid #dbe4f0;
     border-radius: 10px;
@@ -1035,23 +1054,23 @@
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
-    min-width: 980px;
+    min-width: 700px;
 }
 
 .level-col-key {
-    width: 13rem;
+    width: 10rem;
 }
 
 .level-col-students {
-    width: 9rem;
+    width: 8rem;
 }
 
 .level-col-registrations {
-    width: 11rem;
+    width: 8rem;
 }
 
 .level-col-average {
-    width: 10rem;
+    width: 8rem;
 }
 
 .level-col-pass {
@@ -1059,7 +1078,7 @@
 }
 
 .level-col-programme {
-    width: 18rem;
+    width: 12rem;
 }
 
 .level-table thead {
@@ -1073,7 +1092,7 @@
     text-align: center;
     vertical-align: top;
     font-size: 0.81rem;
-    word-break: break-word;
+    white-space: nowrap;
 }
 
 .level-table th {
@@ -1222,12 +1241,14 @@
     }
 
     .level-toolbar {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
     }
 
     .level-search {
-        width: 100%;
+        width: min(180px, 100%);
+        flex: 1;
     }
 
     .level-deep-dive {

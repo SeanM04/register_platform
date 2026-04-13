@@ -192,14 +192,26 @@
                         <thead>
                             <tr>
                                 <th class="level-th-key">Academic Level</th>
-                                <th>Students</th>
-                                <th>Registrations</th>
+                                <th>Total Students</th>
+                                <th>Total Registrations</th>
                                 <th>Average Mark</th>
                                 <th>Pass Rate</th>
                                 <th class="level-th-programme">Top Programme</th>
                             </tr>
                         </thead>
                         <tbody>
+                            {% for row in level_rows %}
+                            <tr data-level-row="{{ row.level }}">
+                                <td class="level-td-key">{{ row.level }}</td>
+                                <td>{{ row.students }}</td>
+                                <td>{{ row.registrations }}</td>
+                                <td>{{ row.average_mark }}</td>
+                                <td class="level-td-pass">
+                                    <span class="level-pass-pill{% if row.below_target %} is-below-target{% endif %}">{{ row.pass_rate }}</span>
+                                </td>
+                                <td class="level-td-programme">{{ row.top_programme }}</td>
+                            </tr>
+                            {% empty %}
                             <tr>
                                 <td class="level-empty" colspan="6">Loading academic level data for the current filters.</td>
                             </tr>

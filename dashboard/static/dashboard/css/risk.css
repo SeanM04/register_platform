@@ -165,20 +165,22 @@
 }
 
 .risk-flow-toggle {
+    flex-shrink: 0;
     padding: 0.5rem 0.8rem;
     border: 1px solid #b8c8d9;
     border-radius: 12px;
     background: #ffffff;
     color: var(--navy);
-    font-size: 0.76rem;
+    font-size: 0.7rem;
     font-weight: 700;
     cursor: pointer;
+    text-align: center;
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .risk-flow-toggle:hover {
     background: #f4f8fb;
-    border-color: rgba(13, 50, 93, 0.2);
+    border-color: #9cb3c8;
     transform: translateY(-1px);
 }
 
@@ -188,10 +190,11 @@
 }
 
 .risk-flow-toggle-label {
-    color: #123b68;
-    font-size: 0.72rem;
+    color: var(--navy);
+    font-size: 0.7rem;
     font-weight: 700;
     line-height: 1;
+    text-align: center;
 }
 
 .risk-flow-toggle-icon {

@@ -19,8 +19,8 @@ from ..views import (
 from .constants import OVERVIEW_SUMMARY_CARD_SPECS, PROGRESS_STATUS_CONFIG, RISK_BAND_CONFIG
 
 OVERVIEW_CACHE_TTL_SECONDS = 30
-DEFAULT_DRILLDOWN_PAGE_SIZE = 100
-MAX_DRILLDOWN_PAGE_SIZE = 100
+DEFAULT_DRILLDOWN_PAGE_SIZE = 10
+MAX_DRILLDOWN_PAGE_SIZE = 10
 
 
 def _is_first_semester_value(value):
@@ -274,7 +274,7 @@ def _build_outcome_student_profiles(registrations, request=None):
                 "student_id": student_id,
                 "name": registration.student.full_name,
                 "registration_number": registration.student.registration_number,
-                "programme": registration.programme.name if registration.programme else "Unassigned",
+                "programme": registration.programme.normalized_name if registration.programme else "Unassigned",
                 "average_mark": average_mark,
                 "status_key": status_key,
                 "status_label": status_label,

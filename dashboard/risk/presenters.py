@@ -41,7 +41,7 @@ def build_risk_shell_context(request, search_query=""):
 def build_risk_page_context(request, risk_data, search_query=""):
     """Build the template context for the risk dashboard page."""
 
-    paginator = Paginator(risk_data["risk_rows"], 20)
+    paginator = Paginator(risk_data["risk_rows"], 10)
     page_obj = paginator.get_page(request.GET.get("page"))
     page_window_start = max(page_obj.number - 2, 1)
     page_window_end = min(page_obj.number + 2, paginator.num_pages)

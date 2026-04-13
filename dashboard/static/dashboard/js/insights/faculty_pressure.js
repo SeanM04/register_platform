@@ -103,7 +103,7 @@ const buildPressureSeries = (rows, selectedState) => {
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#082340", "#1c4e80"),
+                    color: buildGradient("#ea580c", "#f97316"),
                 },
             })),
             label: buildTotalLabel(selectedState, HIGH_RISK),
@@ -121,7 +121,7 @@ const buildPressureSeries = (rows, selectedState) => {
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#1f78b4", "#67c3e5"),
+                    color: buildGradient("#ca8a04", "#eab308"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -137,7 +137,7 @@ const buildFacultyPressureOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#163a63", "#67c3e5"],
+        color: ["#ea580c", "#eab308"],
         grid: {
             top: 40,
             right: 72,

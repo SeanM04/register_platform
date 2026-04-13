@@ -39,19 +39,19 @@
                                 <th class="students-th-name">
                             <a class="students-th-link{% if sort_key == 'name' %} is-sorted is-{{ sort_direction }}{% endif %}"
                                href="?sort=name&direction={% if sort_key == 'name' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                Name
+                                Student Name
                             </a>
                         </th>
                         <th class="students-th-department">
                             <a class="students-th-link{% if sort_key == 'department' %} is-sorted is-{{ sort_direction }}{% endif %}"
                                href="?sort=department&direction={% if sort_key == 'department' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                Department
+                                Department Name
                             </a>
                         </th>
                         <th class="students-th-programme">
                             <a class="students-th-link{% if sort_key == 'programme' %} is-sorted is-{{ sort_direction }}{% endif %}"
                                href="?sort=programme&direction={% if sort_key == 'programme' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                Programmes
+                                Programme Name
                             </a>
                         </th>
                         <th>
@@ -63,7 +63,7 @@
                         <th>
                             <a class="students-th-link{% if sort_key == 'decision' %} is-sorted is-{{ sort_direction }}{% endif %}"
                                href="?sort=decision&direction={% if sort_key == 'decision' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                Decision
+                                Decision Status
                             </a>
                         </th>
                         <th class="students-th-gender">

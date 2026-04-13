@@ -82,7 +82,7 @@ def build_academic_level_data(request, search_query=""):
         level_key = f"{year}.{semester}"
         level_label = format_academic_level_label(year, semester)
         gender_key = normalize_gender_key(registration.student.gender)
-        programme_name = registration.programme.name
+        programme_name = registration.programme.normalized_name
 
         if level_key not in level_map:
             level_map[level_key] = {
