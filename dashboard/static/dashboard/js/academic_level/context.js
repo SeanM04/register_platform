@@ -2,12 +2,13 @@ import { parseJsonScript } from "./shared.js";
 
 const isTrustedAiNarrativeSource = (source) => ["openai", "google"].includes(String(source || "").trim().toLowerCase());
 
-export const createAcademicLevelContext = () => {
-    const levelRows = parseJsonScript("academic-level-level-data", []);
-    const genderRows = parseJsonScript("academic-level-gender-data", []);
-    const programmeRows = parseJsonScript("academic-level-programme-data", []);
-    const cardNarratives = parseJsonScript("academic-level-card-narratives", {});
-    const narrativeDiagnostics = parseJsonScript("academic-level-narrative-diagnostics", {});
+export const createAcademicLevelContext = (payload = {}) => {
+    const chartPayload = payload.chartPayload || {};
+    const cardNarratives = payload.cardNarratives || parseJsonScript("academic-level-card-narratives", {});
+    const narrativeDiagnostics = payload.narrativeDiagnostics || parseJsonScript("academic-level-narrative-diagnostics", {});
+    const levelRows = chartPayload.levelRows || parseJsonScript("academic-level-level-data", []);
+    const genderRows = chartPayload.genderRows || parseJsonScript("academic-level-gender-data", []);
+    const programmeRows = chartPayload.programmeRows || parseJsonScript("academic-level-programme-data", []);
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
     const overviewNarrativesAreAi = isTrustedAiNarrativeSource(overviewNarrativeSource);
     const topProgrammeRows = [...programmeRows]
@@ -28,10 +29,12 @@ export const createAcademicLevelContext = () => {
             overviewNarrativesAreAi,
         },
         elements: {
+            root: document.querySelector(".level-layout"),
             levelSearchForm: document.querySelector(".level-toolbar"),
             levelSearchInput: document.querySelector(".level-search"),
             storyBanner: document.getElementById("academic-level-story-banner"),
             narrativeStatus: document.getElementById("academic-level-narrative-status"),
+            metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
             genderCopy: document.getElementById("academic-level-gender-copy"),
             genderNote: document.getElementById("academic-level-gender-note"),
             genderHints: document.getElementById("academic-level-gender-hints"),
@@ -53,7 +56,33 @@ export const createAcademicLevelContext = () => {
             passTrendCard: document.getElementById("academic-level-pass-chart")?.closest(".level-insight-card"),
             topProgrammeCard: document.getElementById("academic-level-programme-top-chart")?.closest(".level-insight-card"),
             levelTableWrap: document.querySelector("[data-scroll-region]"),
+            levelTableBody: document.querySelector(".level-table tbody"),
             levelTableRows: Array.from(document.querySelectorAll("[data-level-row]")),
         },
     };
+};
+
+export const updateAcademicLevelContext = (context, payload = {}) => {
+    const chartPayload = payload.chartPayload || {};
+    const cardNarratives = Object.prototype.hasOwnProperty.call(payload, "cardNarratives")
+        ? (payload.cardNarratives || {})
+        : context.data.cardNarratives;
+    const narrativeDiagnostics = Object.prototype.hasOwnProperty.call(payload, "narrativeDiagnostics")
+        ? (payload.narrativeDiagnostics || {})
+        : context.data.narrativeDiagnostics;
+
+    context.data.levelRows = chartPayload.levelRows || context.data.levelRows;
+    context.data.genderRows = chartPayload.genderRows || context.data.genderRows;
+    context.data.programmeRows = chartPayload.programmeRows || context.data.programmeRows;
+    context.data.cardNarratives = cardNarratives;
+    context.data.narrativeDiagnostics = narrativeDiagnostics;
+    context.data.topProgrammeRows = [...context.data.programmeRows]
+        .sort((left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme))
+        .slice(0, 5);
+
+    const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
+    context.flags.overviewNarrativeSource = overviewNarrativeSource;
+    context.flags.overviewNarrativesAreAi = isTrustedAiNarrativeSource(overviewNarrativeSource);
+
+    return context;
 };

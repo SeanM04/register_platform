@@ -1,4 +1,4 @@
-import { initialiseRiskPage } from "./risk/index.js?v=20260403-risk-storyflow10";
+import { initialiseRiskPage } from "./risk/index.js?v=20260412-risk-shell01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.

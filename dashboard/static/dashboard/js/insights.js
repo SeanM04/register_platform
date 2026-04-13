@@ -1,4 +1,4 @@
-import { initialiseInsightsPage } from "./insights/index.js?v=20260403-insights-story02";
+import { initialiseInsightsPage } from "./insights/index.js?v=20260412-insights-shell01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.

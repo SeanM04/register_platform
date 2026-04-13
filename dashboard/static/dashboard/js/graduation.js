@@ -5,6 +5,8 @@
 
 class GraduationAnalysis {
     constructor() {
+        this.root = document.querySelector('.graduation-layout');
+        this.payloadUrl = this.root?.dataset.payloadUrl || '/metrics/graduation/payload/';
         this.currentData = null;
         this.currentFilters = {
             faculty: '',
@@ -169,7 +171,7 @@ class GraduationAnalysis {
             });
 
             // Fetch graduation data
-            const response = await fetch(`/api/graduation?${queryParams}`);
+            const response = await fetch(`${this.payloadUrl}?${queryParams}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

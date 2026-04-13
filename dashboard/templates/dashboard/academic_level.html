@@ -4,12 +4,16 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260411-academic-narrative-status01">
+<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260412-academic-shell02">
 {% endblock %}
 
 {% block content %}
-<section class="level-layout">
-    <section class="level-metrics" data-metrics-url="{% url 'dashboard:academic-level-metrics' %}">
+<section
+    class="level-layout"
+    data-payload-url="{% url 'dashboard:academic-level-payload' %}"
+    data-metrics-url="{% url 'dashboard:academic-level-metrics' %}"
+>
+    <section class="level-metrics">
         {% for card in summary_cards %}
         <article class="level-metric">
             <p class="level-metric-label">{{ card.label }}</p>
@@ -196,23 +200,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for row in level_rows %}
-                            <tr data-level-row="{{ row.level }}">
-                                <td class="level-td-key">{{ row.level }}</td>
-                                <td>{{ row.students }}</td>
-                                <td>{{ row.registrations }}</td>
-                                <td>{{ row.average_mark }}</td>
-                                <td class="level-td-pass">
-                                    <span class="level-pass-pill{% if row.below_target %} is-below-target{% endif %}">{{ row.pass_rate }}</span>
-                                    {% if row.below_target %}<span class="level-pass-flag">Below 85% target</span>{% endif %}
-                                </td>
-                                <td class="level-td-programme">{{ row.top_programme }}</td>
-                            </tr>
-                            {% empty %}
                             <tr>
-                                <td class="level-empty" colspan="6">No academic level data matched the current filters.</td>
+                                <td class="level-empty" colspan="6">Loading academic level data for the current filters.</td>
                             </tr>
-                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -223,11 +213,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{{ level_chart_rows|json_script:"academic-level-level-data" }}
-{{ gender_performance_rows|json_script:"academic-level-gender-data" }}
-{{ programme_performance_rows|json_script:"academic-level-programme-data" }}
-{{ academic_level_card_narratives|json_script:"academic-level-card-narratives" }}
-{{ academic_level_narrative_diagnostics|json_script:"academic-level-narrative-diagnostics" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260411-academic-narrative-status01"></script>
+<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260412-academic-shell02"></script>
 {% endblock %}

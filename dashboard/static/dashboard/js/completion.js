@@ -5,6 +5,8 @@
 
 class CompletionAnalysis {
     constructor() {
+        this.root = document.querySelector('.completion-layout');
+        this.payloadUrl = this.root?.dataset.payloadUrl || '/metrics/completion/payload/';
         this.currentData = null;
         this.currentFilters = {
             academic_year: '',
@@ -166,7 +168,7 @@ class CompletionAnalysis {
             });
 
             // Fetch completion data
-            const response = await fetch(`/api/completion/page?${queryParams}`);
+            const response = await fetch(`${this.payloadUrl}?${queryParams}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

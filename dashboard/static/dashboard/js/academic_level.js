@@ -1,4 +1,4 @@
-import { initialiseAcademicLevelPage } from "./academic_level/index.js?v=20260411-academic-narrative-status01";
+import { initialiseAcademicLevelPage } from "./academic_level/index.js?v=20260412-academic-shell02";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.
@@ -54,22 +54,6 @@ const initialiseCollapsibleSections = () => {
 
         toggle.addEventListener("click", () => {
             const isExpanded = toggle.getAttribute("aria-expanded") === "true";
-
-            if (!isExpanded) {
-                // If expanding this section, collapse all other sections first
-                toggles.forEach((otherToggle) => {
-                    if (otherToggle !== toggle) {
-                        const otherContentId = otherToggle.getAttribute("aria-controls");
-                        const otherContent = document.getElementById(otherContentId);
-                        
-                        if (otherContent && otherToggle.getAttribute("aria-expanded") === "true") {
-                            syncToggleState(otherToggle, otherContent, false, true);
-                        }
-                    }
-                });
-            }
-
-            // Then toggle this section
             syncToggleState(toggle, content, !isExpanded, true);
         });
     });

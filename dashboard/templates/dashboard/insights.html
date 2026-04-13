@@ -4,28 +4,27 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260403-insights-story02">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260412-insights-shell01">
 {% endblock %}
 
 {% block content %}
-<section class="insight-layout">
+<section
+    class="insight-layout"
+    data-payload-url="{% url 'dashboard:insights-payload' %}"
+    data-risk-url="{% url 'dashboard:risk' %}"
+    data-student-detail-prefix="{% url 'dashboard:students' %}"
+>
     <section class="insight-metrics">
         {% for card in summary_cards %}
         <article class="insight-metric insight-metric-{{ card.tone }}">
             <p class="insight-metric-label">{{ card.label }}</p>
-            <p class="insight-metric-value">{{ card.value }}</p>
+            <p class="insight-metric-value" data-metric-value data-metric-index="{{ forloop.counter0 }}">{{ card.value }}</p>
             <p class="insight-metric-note">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>
 
     <section class="insight-story-banner" id="insight-story-banner" aria-live="polite"></section>
-
-    <section class="insight-scope-row" aria-label="Active insight scope">
-        {% for pill in insight_scope_pills %}
-        <span class="insight-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
-        {% endfor %}
-    </section>
 
     <section class="insight-story-flow" aria-label="Institutional insights storytelling flow">
         <section class="insight-flow-stage insight-flow-stage-primary">
@@ -173,16 +172,7 @@
                         </div>
 
                         <div class="insight-recommendation-list">
-                            {% for recommendation in recommendations %}
-                            <article class="insight-recommendation-card">
-                                <div class="insight-recommendation-head">
-                                    <h3>{{ recommendation.title }}</h3>
-                                    <span class="insight-priority insight-priority-{{ recommendation.priority_key }}">{{ recommendation.priority }}</span>
-                                </div>
-                                <p class="insight-recommendation-copy">{{ recommendation.description }}</p>
-                                <a class="insight-recommendation-action" href="{{ recommendation.action_url }}">{{ recommendation.action_label }}</a>
-                            </article>
-                            {% endfor %}
+                            <div class="insight-empty-state">Loading operational recommendations.</div>
                         </div>
                     </article>
 
@@ -196,17 +186,7 @@
                         </div>
 
                         <div class="insight-confidence-list">
-                            {% for row in confidence_rows %}
-                            <div class="insight-confidence-row">
-                                <div class="insight-confidence-meta">
-                                    <span class="insight-confidence-label">{{ row.label }}</span>
-                                    <span class="insight-confidence-value">{{ row.value }}%</span>
-                                </div>
-                                <div class="insight-confidence-track">
-                                    <span class="insight-confidence-fill" style="width: {{ row.value }}%"></span>
-                                </div>
-                            </div>
-                            {% endfor %}
+                            <div class="insight-empty-state">Loading confidence signals.</div>
                         </div>
                     </article>
                 </div>
@@ -238,24 +218,13 @@
                         <div>
                             <p class="insight-card-kicker">Flagged Queue</p>
                             <h2 class="insight-card-title">Immediate Student Follow-Up</h2>
-                            <p class="insight-card-copy">{{ flagged_total }} students currently need closer academic attention in the visible scope.</p>
+                            <p class="insight-card-copy" id="insight-flagged-copy">Loading the current flagged student queue.</p>
                         </div>
                         <a class="insight-recommendation-action" href="{% url 'dashboard:risk' %}">Open risk register</a>
                     </div>
 
                     <div class="insight-flagged-list">
-                        {% for student in flagged_students %}
-                        <a class="insight-flagged-item" href="{% url 'dashboard:student-detail' student.detail_slug %}">
-                            <span class="insight-avatar insight-avatar-{{ student.risk_key }}">{{ student.initials }}</span>
-                            <span class="insight-flagged-body">
-                                <span class="insight-flagged-name">{{ student.name }}</span>
-                                <span class="insight-flagged-meta">{{ student.meta }}</span>
-                            </span>
-                            <span class="insight-risk-badge insight-risk-badge-{{ student.risk_key }}">{{ student.risk_level }}</span>
-                        </a>
-                        {% empty %}
-                        <div class="insight-empty-state">No students are currently flagged in the selected insight scope.</div>
-                        {% endfor %}
+                        <div class="insight-empty-state">Loading flagged students.</div>
                     </div>
                 </article>
             </div>
@@ -265,11 +234,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{{ risk_distribution_rows|json_script:"insight-distribution-data" }}
-{{ faculty_load_rows|json_script:"insight-faculty-load-data" }}
-{{ faculty_pressure_rows|json_script:"insight-faculty-pressure-data" }}
-{{ driver_rows|json_script:"insight-driver-data" }}
-{{ insight_card_narratives|json_script:"insight-card-narratives" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260403-insights-story02"></script>
+<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260412-insights-shell01"></script>
 {% endblock %}

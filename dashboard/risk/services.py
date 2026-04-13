@@ -1,5 +1,8 @@
 """Service-layer logic for the risk dashboard feature."""
 
+from urllib.parse import urlencode
+
+from django.core.cache import cache
 from django.db.models import Q
 
 from ..views import format_academic_level_label, get_filtered_registrations, normalize_decision_label
@@ -10,6 +13,8 @@ from .constants import (
     RISK_DRIVER_PRIORITY,
     RISK_PRIORITY,
 )
+
+RISK_CACHE_TTL_SECONDS = 30
 
 
 def _safe_int(value, fallback=999):
@@ -396,10 +401,65 @@ def build_risk_dashboard_data(request, search_query=""):
 def get_risk_summary_values(request, search_query=""):
     """Calculate student-risk summary metrics for asynchronous hydration."""
 
-    risk_data = build_risk_dashboard_data(request, search_query)
+    risk_data = get_cached_risk_dashboard_data(request, search_query)
     return {
         "at_risk_students": risk_data["at_risk_students"],
         "high_risk": risk_data["high_risk_count"],
         "medium_risk": risk_data["medium_risk_count"],
         "multi_fail": risk_data["multi_fail_count"],
     }
+
+
+def paginate_risk_rows(risk_rows, page_number, page_size=20):
+    """Return the current register page plus pagination metadata for risk rows."""
+
+    total_count = len(risk_rows)
+    page_count = max(1, ((total_count - 1) // page_size) + 1) if total_count else 1
+
+    try:
+        page = int(page_number or 1)
+    except (TypeError, ValueError):
+        page = 1
+
+    page = max(1, min(page, page_count))
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_rows = risk_rows[start:end]
+    page_window_start = max(page - 2, 1)
+    page_window_end = min(page + 2, page_count)
+
+    return {
+        "rows": page_rows,
+        "page": page,
+        "page_size": page_size,
+        "page_count": page_count,
+        "page_numbers": list(range(page_window_start, page_window_end + 1)),
+        "total_count": total_count,
+        "start_index": start + 1 if total_count else 0,
+        "end_index": min(end, total_count) if total_count else 0,
+        "has_previous": page > 1,
+        "has_next": page < page_count,
+        "previous_page": page - 1 if page > 1 else None,
+        "next_page": page + 1 if page < page_count else None,
+    }
+
+
+def _build_risk_cache_key(request, suffix):
+    """Create a stable cache key for the current risk filter scope."""
+
+    query_string = urlencode(
+        sorted((key, values) for key, values in request.GET.lists() if key != "page"),
+        doseq=True,
+    )
+    return f"dashboard:risk:{suffix}:{query_string or 'all'}"
+
+
+def get_cached_risk_dashboard_data(request, search_query=""):
+    """Return cached risk analytics for the current filter scope."""
+
+    cache_key = _build_risk_cache_key(request, "payload")
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_risk_dashboard_data(request, search_query),
+        RISK_CACHE_TTL_SECONDS,
+    )

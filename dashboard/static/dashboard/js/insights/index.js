@@ -1,10 +1,41 @@
-import { createInsightContext } from "./context.js?v=20260403-insights-story02";
+import { createInsightContext, updateInsightContext } from "./context.js?v=20260412-insights-shell01";
 import { initialiseDistributionSection } from "./distribution.js?v=20260403-insights-story02";
 import { initialiseDriversSection } from "./drivers.js?v=20260403-insights-story02";
 import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260403-insights-story02";
 import { initialiseFacultyPressureSection } from "./faculty_pressure.js?v=20260403-insights-story02";
 import { initialiseFullscreenControls } from "./fullscreen.js?v=20260403-insights-story02";
 import { renderStoryBanner } from "./narratives.js?v=20260403-insights-story02";
+import { escapeTooltipHtml } from "./shared.js?v=20260412-insights-shell01";
+
+const buildRequestUrl = (endpoint) => {
+    const requestUrl = new URL(endpoint, window.location.origin);
+    const currentUrl = new URL(window.location.href);
+
+    currentUrl.searchParams.forEach((value, key) => {
+        requestUrl.searchParams.set(key, value);
+    });
+
+    return requestUrl;
+};
+
+const fetchJson = async (endpoint) => {
+    if (!endpoint) {
+        return null;
+    }
+
+    const response = await fetch(buildRequestUrl(endpoint), {
+        credentials: "same-origin",
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
@@ -30,12 +61,141 @@ const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     });
 };
 
-export const initialiseInsightsPage = () => {
-    const context = createInsightContext();
-    const { data, elements } = context;
+const hydrateSummaryCards = (context, summaryCards = []) => {
+    context.elements.metricValues.forEach((element) => {
+        const metricIndex = Number(element.dataset.metricIndex);
+        const card = Number.isNaN(metricIndex) ? null : summaryCards[metricIndex];
+        if (!card) {
+            return;
+        }
+
+        element.textContent = card.value;
+    });
+};
+
+const renderRecommendations = (container, recommendations = []) => {
+    if (!container) {
+        return;
+    }
+
+    if (!recommendations.length) {
+        container.innerHTML = `<div class="insight-empty-state">No operational recommendations are available for the selected scope.</div>`;
+        return;
+    }
+
+    container.innerHTML = recommendations.map((recommendation) => `
+        <article class="insight-recommendation-card">
+            <div class="insight-recommendation-head">
+                <h3>${escapeTooltipHtml(recommendation.title)}</h3>
+                <span class="insight-priority insight-priority-${escapeTooltipHtml(recommendation.priority_key)}">${escapeTooltipHtml(recommendation.priority)}</span>
+            </div>
+            <p class="insight-recommendation-copy">${escapeTooltipHtml(recommendation.description)}</p>
+            <a class="insight-recommendation-action" href="${escapeTooltipHtml(recommendation.action_url)}">${escapeTooltipHtml(recommendation.action_label)}</a>
+        </article>
+    `).join("").trim();
+};
+
+const renderConfidenceRows = (container, rows = []) => {
+    if (!container) {
+        return;
+    }
+
+    if (!rows.length) {
+        container.innerHTML = `<div class="insight-empty-state">No confidence signals are available for the selected scope.</div>`;
+        return;
+    }
+
+    container.innerHTML = rows.map((row) => `
+        <div class="insight-confidence-row">
+            <div class="insight-confidence-meta">
+                <span class="insight-confidence-label">${escapeTooltipHtml(row.label)}</span>
+                <span class="insight-confidence-value">${escapeTooltipHtml(row.value)}%</span>
+            </div>
+            <div class="insight-confidence-track">
+                <span class="insight-confidence-fill" style="width: ${escapeTooltipHtml(row.value)}%"></span>
+            </div>
+        </div>
+    `).join("").trim();
+};
+
+const renderFlaggedStudents = (context, flaggedStudents = [], flaggedTotal = 0) => {
+    const { flaggedCopy, flaggedList, root } = context.elements;
+    if (!flaggedList) {
+        return;
+    }
+
+    if (flaggedCopy) {
+        flaggedCopy.textContent = flaggedTotal
+            ? `${flaggedTotal} students currently need closer academic attention in the visible scope.`
+            : "No students currently need closer academic attention in the visible scope.";
+    }
+
+    if (!flaggedStudents.length) {
+        flaggedList.innerHTML = `<div class="insight-empty-state">No students are currently flagged in the selected insight scope.</div>`;
+        return;
+    }
+
+    const studentDetailPrefix = root?.dataset.studentDetailPrefix || "/students/";
+    flaggedList.innerHTML = flaggedStudents.map((student) => `
+        <a class="insight-flagged-item" href="${escapeTooltipHtml(`${studentDetailPrefix}${encodeURIComponent(student.detail_slug)}/`)}">
+            <span class="insight-avatar insight-avatar-${escapeTooltipHtml(student.risk_key)}">${escapeTooltipHtml(student.initials)}</span>
+            <span class="insight-flagged-body">
+                <span class="insight-flagged-name">${escapeTooltipHtml(student.name)}</span>
+                <span class="insight-flagged-meta">${escapeTooltipHtml(student.meta)}</span>
+            </span>
+            <span class="insight-risk-badge insight-risk-badge-${escapeTooltipHtml(student.risk_key)}">${escapeTooltipHtml(student.risk_level)}</span>
+        </a>
+    `).join("").trim();
+};
+
+const setInsightShellErrorState = (context) => {
+    if (context.elements.storyBanner) {
+        context.elements.storyBanner.innerHTML = `
+            <div class="insight-story-main">
+                <p class="insight-story-kicker">Primary Takeaway</p>
+                <h2 class="insight-story-title">The page shell loaded, but the institutional insights dataset could not be retrieved.</h2>
+                <p class="insight-story-copy">Refresh the page to retry the institutional insights payload.</p>
+            </div>
+        `.trim();
+    }
+};
+
+export const initialiseInsightsPage = async () => {
+    const shellContext = createInsightContext();
+    const { elements } = shellContext;
+    const payloadUrl = elements.root?.dataset.payloadUrl;
+
+    if (!payloadUrl) {
+        setInsightShellErrorState(shellContext);
+        return;
+    }
+
+    let payloadResponse = null;
+    try {
+        payloadResponse = await fetchJson(payloadUrl);
+    } catch (error) {
+        setInsightShellErrorState(shellContext);
+        return;
+    }
+
+    const context = updateInsightContext(shellContext, {
+        chartPayload: {
+            distributionRows: payloadResponse?.risk_distribution_rows || [],
+            facultyLoadRows: payloadResponse?.faculty_load_rows || [],
+            facultyPressureRows: payloadResponse?.faculty_pressure_rows || [],
+            driverRows: payloadResponse?.driver_rows || [],
+        },
+        cardNarratives: payloadResponse?.insight_card_narratives || {},
+    });
+    const { data, elements: hydratedElements } = context;
+
+    hydrateSummaryCards(context, payloadResponse?.summary_cards || []);
+    renderRecommendations(hydratedElements.recommendationList, payloadResponse?.recommendations || []);
+    renderConfidenceRows(hydratedElements.confidenceList, payloadResponse?.confidence_rows || []);
+    renderFlaggedStudents(context, payloadResponse?.flagged_students || [], payloadResponse?.flagged_total || 0);
 
     renderStoryBanner(
-        elements.storyBanner,
+        hydratedElements.storyBanner,
         data.distributionRows,
         data.facultyLoadRows,
         data.facultyPressureRows,
@@ -55,5 +215,5 @@ export const initialiseInsightsPage = () => {
     };
 
     initialiseChartResizeHandling(controllers, resizeCharts);
-    initialiseFullscreenControls(elements.fullscreenButtons, resizeCharts);
+    initialiseFullscreenControls(hydratedElements.fullscreenButtons, resizeCharts);
 };

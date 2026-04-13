@@ -1,8 +1,8 @@
 from django.urls import path
 
-from .academic_levels.views import academic_level_metrics, academic_level_view
+from .academic_levels.views import academic_level_metrics, academic_level_payload, academic_level_view
 from .demographics.views import demographic_metrics, demographic_narratives, demographic_payload, demographic_view
-from .insights.views import insights_view
+from .insights.views import insights_payload, insights_view
 from .overview.views import (
     dashboard_home,
     dashboard_home_drilldown,
@@ -11,7 +11,7 @@ from .overview.views import (
     dashboard_home_payload,
 )
 from .programmes.views import programme_metrics, programme_narratives, programme_payload, programme_view
-from .risk.views import risk_metrics, risk_view
+from .risk.views import risk_metrics, risk_payload, risk_view
 from .views import (
     student_detail,
     student_list,
@@ -51,9 +51,12 @@ urlpatterns = [
     path("metrics/demographic/narratives/", demographic_narratives, name="demographic-narratives"),
     path("academic-level/", academic_level_view, name="academic-level"),
     path("metrics/academic-level/", academic_level_metrics, name="academic-level-metrics"),
+    path("metrics/academic-level/payload/", academic_level_payload, name="academic-level-payload"),
     path("risk/", risk_view, name="risk"),
     path("metrics/risk/", risk_metrics, name="risk-metrics"),
+    path("metrics/risk/payload/", risk_payload, name="risk-payload"),
     path("insights/", insights_view, name="insights"),
+    path("metrics/insights/payload/", insights_payload, name="insights-payload"),
     path("completion/", completion_view, name="completion"),
     path("metrics/completion/payload/", completion_payload, name="completion-payload"),
     path("api/completion/programmes", completion_programmes, name="completion-programmes"),

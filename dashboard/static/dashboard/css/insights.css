@@ -147,38 +147,6 @@
     line-height: 1.45;
 }
 
-.insight-scope-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-}
-
-.insight-scope-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.32rem 0.72rem;
-    border-radius: 12px;
-    background: rgba(148, 163, 184, 0.12);
-    color: #475569;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.insight-scope-pill.is-live {
-    background: rgba(79, 176, 209, 0.12);
-    color: #0d325d;
-}
-
-.insight-scope-pill.is-live::before {
-    content: "";
-    width: 10px;
-    height: 10px;
-    margin-right: 0.48rem;
-    border-radius: 12px;
-    background: #4fb0d1;
-    box-shadow: 0 0 0 6px rgba(79, 176, 209, 0.14);
-}
-
 .insight-story-flow {
     display: grid;
     gap: 1rem;

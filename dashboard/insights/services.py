@@ -1,10 +1,15 @@
 """Service-layer logic for the institutional insights dashboard."""
 
+from urllib.parse import urlencode
+
+from django.core.cache import cache
 from django.urls import reverse
 
 from ..risk.constants import RISK_DRIVER_LABELS, RISK_DRIVER_PRIORITY
 from ..risk.services import build_student_risk_profiles, format_insight_flagged_meta
 from ..views import RETENTION_EXIT_DECISIONS, build_initials, get_filtered_registrations
+
+INSIGHTS_CACHE_TTL_SECONDS = 30
 
 
 def _pct(count, total):
@@ -345,3 +350,21 @@ def build_insights_dashboard_data(request):
         "medium_risk_total": len(medium_risk_profiles),
         "watchlist_share_pct": _pct(len(at_risk_profiles), total_students),
     }
+
+
+def _build_insights_cache_key(request):
+    """Create a stable cache key for the current insights filter scope."""
+
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:insights:{query_string or 'all'}"
+
+
+def get_cached_insights_dashboard_data(request):
+    """Return cached insights analytics for the current filter scope."""
+
+    cache_key = _build_insights_cache_key(request)
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_insights_dashboard_data(request),
+        INSIGHTS_CACHE_TTL_SECONDS,
+    )

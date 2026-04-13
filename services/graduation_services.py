@@ -1,436 +1,298 @@
-"""
-Graduation Analysis Service
-Handles all graduation-related data processing and analysis.
-"""
+"""Database-backed graduation analysis service."""
 
-import pandas as pd
-import logging
-from typing import Dict, List, Any, Optional
+from collections import defaultdict
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from django.db.models import Prefetch
+
+from dashboard.models import CourseResult, Registration
 
 
-class GraduationService:
-    """Service for graduation analysis data processing."""
-    
-    def __init__(self):
-        self.registration_data = None
-        self.course_data = None
-        self._load_data()
-    
-    def _load_data(self):
-        """Load data from CSV files."""
-        try:
-            # Load registration data
-            self.registration_data = pd.read_csv('data/registration.csv')
-            
-            # Load course final marks data
-            self.course_data = pd.read_csv('data/course_final_marks.csv')
-            
-            logger.info("Successfully loaded graduation data")
-            
-        except FileNotFoundError as e:
-            logger.warning(f"Data files not found: {e}")
-            logger.info("Creating sample data for demonstration purposes")
-            self._create_sample_data()
-        except Exception as e:
-            logger.error(f"Error loading graduation data: {e}")
-            self._create_sample_data()
-    
-    def _create_sample_data(self):
-        """Create sample data when CSV files are not available."""
-        import numpy as np
-        
-        # Sample registration data with graduation focus
-        sample_registrations = []
-        programmes = [
-            (1, 'Computer Science', 'Science'),
-            (2, 'Engineering', 'Engineering'),
-            (3, 'Business Studies', 'Business'),
-            (4, 'Mathematics', 'Science'),
-            (5, 'Physics', 'Science')
-        ]
-        
-        for i in range(1, 301):  # 300 students
-            programme_id = np.random.choice([p[0] for p in programmes])
-            programme_info = next(p for p in programmes if p[0] == programme_id)
-            
-            # Create more graduated students for demonstration
-            academic_stage = np.random.choice(['[1,1]', '[2,1]', '[3,1]', '[4,1]', '[4,2]', '[5,2]'], 
-                                                p=[0.1, 0.15, 0.2, 0.25, 0.2, 0.1])
-            
-            sample_registrations.append({
-                'regnum': f'GRD{i:03d}',
-                'student_name': f'Graduated {i}',
-                'programme_id': programme_id,
-                'programme_name': programme_info[1],
-                'faculty': programme_info[2],
-                'academic_year': np.random.choice([2021, 2022, 2023, 2024]),
-                'semester': np.random.choice([1, 2]),
-                'cohort_period_id': np.random.choice([1, 2, 3, 4]),
-                'academic_stage': academic_stage,
-                'gender': np.random.choice(['M', 'F']),
-                'decision': np.random.choice(['PROCEED', 'GRADUATED'])
-            })
-        
-        self.registration_data = pd.DataFrame(sample_registrations)
-        
-        # Sample course data
-        sample_courses = []
-        for i in range(1, 301):
-            for course in ['CS101', 'MATH201', 'ENG301', 'BUS401']:
-                sample_courses.append({
-                    'regnum': f'GRD{i:03d}',
-                    'course_code': course,
-                    'final_mark': np.random.randint(50, 95),  # Higher marks for graduates
-                    'academic_year': np.random.choice([2021, 2022, 2023, 2024]),
-                    'semester': np.random.choice([1, 2])
-                })
-        
-        self.course_data = pd.DataFrame(sample_courses)
-        logger.info("Created sample graduation data for demonstration")
-    
-    def get_graduation_page_data(self, faculty: Optional[str] = None,
-                               programme_id: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Get complete page data for graduation analysis.
-        
-        Args:
-            faculty: Filter by faculty
-            programme_id: Filter by programme ID
-            
-        Returns:
-            Dictionary containing KPIs, charts data, and students data
-        """
-        try:
-            # Apply filters
-            filtered_data = self._apply_filters(
-                faculty=faculty,
-                programme_id=programme_id
+PASS_MARK = 50
+
+
+def _parse_int(value: Any) -> Optional[int]:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_rate(numerator: float, denominator: float) -> float:
+    if not denominator:
+        return 0.0
+    return round((numerator / denominator) * 100, 1)
+
+
+def _infer_programme_duration(programme_name: str) -> int:
+    normalized = str(programme_name or "").lower()
+    if "master" in normalized or "msc" in normalized or "mba" in normalized:
+        return 2
+    if "engineering" in normalized:
+        return 5
+    return 4
+
+
+def _graduation_stage(registration: Registration) -> str:
+    duration = _infer_programme_duration(registration.programme.name)
+    return f"{duration}.2"
+
+
+def _registration_marks(registration: Registration) -> List[float]:
+    marks: List[float] = []
+    for result in getattr(registration, "prefetched_course_results", []):
+        if result.mark is None:
+            continue
+        marks.append(float(result.mark))
+    return marks
+
+
+def _pass_rate(registrations: List[Registration]) -> float:
+    marks = [mark for registration in registrations for mark in _registration_marks(registration)]
+    if not marks:
+        return 0.0
+    passed = sum(1 for mark in marks if mark >= PASS_MARK)
+    return _safe_rate(passed, len(marks))
+
+
+def _is_graduated(registration: Registration) -> bool:
+    decision = str(registration.decision or "").strip().lower()
+    if "graduat" in decision or "complet" in decision or "award" in decision:
+        return True
+
+    year = _parse_int(registration.period.academic_year)
+    semester = _parse_int(registration.period.semester)
+    duration = _infer_programme_duration(registration.programme.name)
+    return bool(year and semester == 2 and year >= duration)
+
+
+def _is_on_time(registration: Registration) -> bool:
+    if not _is_graduated(registration):
+        return False
+
+    year = _parse_int(registration.period.academic_year)
+    semester = _parse_int(registration.period.semester)
+    duration = _infer_programme_duration(registration.programme.name)
+    return bool(year and semester and semester == 2 and year == duration)
+
+
+def _student_graduation_rate(registrations: List[Registration]) -> float:
+    latest = max(registrations, key=lambda registration: (registration.period.external_id, registration.id))
+    academic_pass_rate = _pass_rate(registrations)
+    if _is_graduated(latest):
+        if academic_pass_rate:
+            return round(max(academic_pass_rate, 85.0), 1)
+        return 90.0
+
+    year = _parse_int(latest.period.academic_year)
+    semester = _parse_int(latest.period.semester)
+    duration = _infer_programme_duration(latest.programme.name)
+    if year is None or semester is None:
+        return academic_pass_rate
+    progress = min((((year - 1) * 2) + semester) / (duration * 2), 1.0) * 100
+    return round(((progress * 0.5) + (academic_pass_rate * 0.5)), 1) if academic_pass_rate else round(progress, 1)
+
+
+def _get_filtered_registrations(
+    faculty: Optional[str] = None,
+    programme_id: Optional[str] = None,
+) -> List[Registration]:
+    registrations = (
+        Registration.objects.select_related(
+            "student",
+            "programme__department__faculty",
+            "period",
+        )
+        .prefetch_related(
+            Prefetch(
+                "course_results",
+                queryset=CourseResult.objects.only("registration_id", "mark"),
+                to_attr="prefetched_course_results",
             )
-            
-            # Calculate KPIs
-            kpis = self._calculate_kpis(filtered_data)
-            
-            # Generate chart data
-            charts = self._generate_charts(filtered_data)
-            
-            # Get graduated students
-            students = self._get_graduated_students(filtered_data)
-            
-            # Return data as-is, Django encoder will handle JSON serialization
-            result = {
-                'kpis': kpis,
-                'charts': charts,
-                'students': students
-            }
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error getting graduation page data: {e}")
-            raise
-    
-        
-    def _apply_filters(self, faculty: Optional[str] = None,
-                     programme_id: Optional[str] = None) -> pd.DataFrame:
-        """Apply filters to the data."""
-        filtered_data = self.registration_data.copy()
-        
-        if faculty:
-            filtered_data = filtered_data[filtered_data['faculty'] == faculty]
-        
-        if programme_id:
-            filtered_data = filtered_data[filtered_data['programme_id'] == int(programme_id)]
-        
-        return filtered_data
-    
-    def _calculate_kpis(self, data: pd.DataFrame) -> Dict[str, Any]:
-        """Calculate key performance indicators."""
-        try:
-            # Get graduated students
-            graduated_students = self._get_graduated_students_data(data)
-            
-            # Total graduated students
-            total_graduated = len(graduated_students)
-            
-            # Average completion graduation rate
-            avg_completion_grad_rate = self._calculate_average_completion_graduation_rate(graduated_students)
-            
-            # On-time graduation rate
-            on_time_grad_rate = self._calculate_on_time_graduation_rate(graduated_students)
-            
-            # Graduation rate by faculty
-            faculty_grad_rates = self._calculate_faculty_graduation_rates(data)
-            
-            return {
-                'total_graduated_students': int(total_graduated),
-                'average_completion_graduation_rate': float(round(avg_completion_grad_rate, 1)),
-                'on_time_graduation_rate': float(round(on_time_grad_rate, 1)),
-                'graduation_rate_by_faculty': {k: float(v) for k, v in faculty_grad_rates.items()}
-            }
-            
-        except Exception as e:
-            logger.error(f"Error calculating KPIs: {e}")
-            return {}
-    
-    def _get_graduated_students_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Get data for graduated students only."""
-        try:
-            # Define graduation criteria based on academic stage
-            graduated = data[
-                data['academic_stage'].astype(str).isin(['4,2', '5,2'])  # Final stages
-            ].copy()
-            
-            return graduated
-            
-        except Exception as e:
-            logger.error(f"Error getting graduated students data: {e}")
-            return pd.DataFrame()
-    
-    def _calculate_average_completion_graduation_rate(self, graduated_students: pd.DataFrame) -> float:
-        """Calculate average completion graduation rate."""
-        try:
-            if graduated_students.empty:
-                return 0.0
-            
-            # Calculate graduation rate for each student
-            graduation_rates = graduated_students.groupby('regnum').apply(
-                lambda x: self._calculate_student_graduation_rate(x.iloc[0])
-            )
-            
-            return graduation_rates.mean()
-            
-        except Exception as e:
-            logger.error(f"Error calculating average completion graduation rate: {e}")
-            return 0.0
-    
-    def _calculate_on_time_graduation_rate(self, graduated_students: pd.DataFrame) -> float:
-        """Calculate on-time graduation rate."""
-        try:
-            if graduated_students.empty:
-                return 0.0
-            
-            # Define on-time criteria (e.g., completed within expected duration)
-            # This is simplified - in reality, you'd track actual vs expected graduation time
-            on_time_count = 0
-            total_graduated = len(graduated_students['regnum'].unique())
-            
-            for regnum in graduated_students['regnum'].unique():
-                student_data = graduated_students[graduated_students['regnum'] == regnum]
-                if self._is_on_time_graduation(student_data):
-                    on_time_count += 1
-            
-            return (on_time_count / total_graduated) * 100 if total_graduated > 0 else 0.0
-            
-        except Exception as e:
-            logger.error(f"Error calculating on-time graduation rate: {e}")
-            return 0.0
-    
-    def _is_on_time_graduation(self, student_data: pd.DataFrame) -> bool:
-        """Check if student graduated on time."""
-        try:
-            # Simplified logic - in reality, you'd compare actual vs expected graduation time
-            max_stage = student_data['academic_stage'].max()
-            
-            # Assume 4,2 is on-time for 4-year programs, 5,2 for 5-year programs
-            if str(max_stage) == '4,2':
-                return True
-            elif str(max_stage) == '5,2':
-                return True
-            else:
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error checking on-time graduation: {e}")
-            return False
-    
-    def _calculate_faculty_graduation_rates(self, data: pd.DataFrame) -> Dict[str, float]:
-        """Calculate graduation rates by faculty."""
-        try:
-            faculty_rates = {}
-            
-            for faculty in data['faculty'].unique():
-                faculty_data = data[data['faculty'] == faculty]
-                graduated = self._get_graduated_students_data(faculty_data)
-                total_students = len(faculty_data['regnum'].unique())
-                
-                if total_students > 0:
-                    grad_rate = (len(graduated['regnum'].unique()) / total_students) * 100
-                    faculty_rates[faculty] = round(grad_rate, 1)
-                else:
-                    faculty_rates[faculty] = 0.0
-            
-            return faculty_rates
-            
-        except Exception as e:
-            logger.error(f"Error calculating faculty graduation rates: {e}")
-            return {}
-    
-    def _generate_charts(self, data: pd.DataFrame) -> Dict[str, List[Dict]]:
-        """Generate chart data."""
-        try:
-            # Programme graduation chart
-            programme_data = self._get_programme_graduation_data(data)
-            
-            # Cohort graduation chart
-            cohort_data = self._get_cohort_graduation_data(data)
-            
-            return {
-                'programme_graduation_rate': programme_data,
-                'cohort_graduation_rate': cohort_data
-            }
-            
-        except Exception as e:
-            logger.error(f"Error generating charts: {e}")
-            return {'programme_graduation_rate': [], 'cohort_graduation_rate': []}
-    
-    def _get_programme_graduation_data(self, data: pd.DataFrame) -> List[Dict]:
-        """Get programme graduation data for charting."""
-        try:
-            programme_stats = []
-            
-            for programme_id in sorted(data['programme_id'].unique()):
-                programme_data = data[data['programme_id'] == programme_id]
-                
-                # Get programme name
-                programme_name = programme_data['programme_name'].iloc[0] if not programme_data.empty else f"Programme {programme_id}"
-                
-                # Calculate graduation rate
-                graduation_rate = self._calculate_programme_graduation_rate(programme_data)
-                
-                programme_stats.append({
-                    'programme_name': str(programme_name),
-                    'graduation_rate': float(round(graduation_rate, 1))
-                })
-            
-            # Sort by graduation rate
-            programme_stats.sort(key=lambda x: x['graduation_rate'], reverse=True)
-            
-            return programme_stats
-            
-        except Exception as e:
-            logger.error(f"Error getting programme graduation data: {e}")
-            return []
-    
-    def _calculate_programme_graduation_rate(self, programme_data: pd.DataFrame) -> float:
-        """Calculate graduation rate for a specific programme."""
-        try:
-            total_students = len(programme_data['regnum'].unique())
-            graduated = self._get_graduated_students_data(programme_data)
-            graduated_count = len(graduated['regnum'].unique())
-            
-            return (graduated_count / total_students) * 100 if total_students > 0 else 0.0
-            
-        except Exception as e:
-            logger.error(f"Error calculating programme graduation rate: {e}")
-            return 0.0
-    
-    def _get_cohort_graduation_data(self, data: pd.DataFrame) -> List[Dict]:
-        """Get cohort graduation data for charting."""
-        try:
-            cohort_stats = []
-            
-            for cohort_id in sorted(data['cohort_period_id'].unique()):
-                cohort_data = data[data['cohort_period_id'] == cohort_id]
-                
-                # Calculate graduation rate for this cohort
-                graduation_rate = self._calculate_programme_graduation_rate(cohort_data)
-                
-                cohort_stats.append({
-                    'cohort_period_id': int(cohort_id),
-                    'graduation_rate': float(round(graduation_rate, 1))
-                })
-            
-            return cohort_stats
-            
-        except Exception as e:
-            logger.error(f"Error getting cohort graduation data: {e}")
-            return []
-    
-    def _get_graduated_students(self, data: pd.DataFrame) -> List[Dict]:
-        """Get detailed information about graduated students."""
-        try:
-            graduated_data = self._get_graduated_students_data(data)
-            student_details = []
-            
-            for regnum in graduated_data['regnum'].unique():
-                student_data = graduated_data[graduated_data['regnum'] == regnum].iloc[-1]
-                
-                # Calculate graduation rate
-                graduation_rate = self._calculate_student_graduation_rate(student_data)
-                
-                student_details.append({
-                    'regnum': str(regnum),
-                    'student_name': str(student_data['student_name']),
-                    'programme_name': str(student_data['programme_name']),
-                    'faculty': str(student_data['faculty']),
-                    'graduation_rate': float(round(graduation_rate, 1))
-                })
-            
-            return student_details
-            
-        except Exception as e:
-            logger.error(f"Error getting graduated students: {e}")
-            return []
-    
-    def _calculate_student_graduation_rate(self, student_data: pd.Series) -> float:
-        """Calculate graduation rate for a specific student."""
-        try:
-            # Calculate based on academic stage and performance
-            max_stage = student_data['academic_stage']
-            
-            # Simple graduation rate calculation
-            if str(max_stage) == '5,2':
-                return 95.0  # 5-year engineering program
-            elif str(max_stage) == '4,2':
-                return 90.0  # 4-year program
-            elif str(max_stage) == '2,2':
-                return 85.0  # Masters program
-            else:
-                return 0.0
-                
-        except Exception as e:
-            logger.error(f"Error calculating student graduation rate: {e}")
-            return 0.0
-    
-    def get_programmes(self) -> List[Dict[str, Any]]:
-        """Get list of available programmes."""
-        try:
-            programmes = self.registration_data[['programme_id', 'programme_name']].drop_duplicates()
-            return programmes.astype(object).to_dict('records')
-        except Exception as e:
-            logger.error(f"Error getting programmes: {e}")
-            return []
-    
-    def get_faculties(self) -> List[Dict[str, Any]]:
-        """Get list of available faculties."""
-        try:
-            faculties = self.registration_data[['faculty']].drop_duplicates()
-            return faculties.astype(object).to_dict('records')
-        except Exception as e:
-            logger.error(f"Error getting faculties: {e}")
-            return []
-
-
-# Global service instance
-graduation_service = GraduationService()
-
-
-def get_graduation_page_data(faculty: Optional[str] = None,
-                           programme_id: Optional[str] = None) -> Dict[str, Any]:
-    """Get graduation page data."""
-    return graduation_service.get_graduation_page_data(
-        faculty=faculty,
-        programme_id=programme_id
+        )
+        .all()
     )
+
+    if faculty:
+        registrations = registrations.filter(programme__department__faculty__name=faculty)
+    if programme_id:
+        registrations = registrations.filter(programme__external_id=_parse_int(programme_id))
+
+    return list(registrations.order_by("student__registration_number", "period__external_id", "id"))
+
+
+def get_graduation_page_data(
+    faculty: Optional[str] = None,
+    programme_id: Optional[str] = None,
+    graduation_stage: Optional[str] = None,
+    min_rate: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return graduation analytics directly from imported dashboard tables."""
+
+    registrations = _get_filtered_registrations(faculty=faculty, programme_id=programme_id)
+    if not registrations:
+        return {
+            "kpis": {
+                "total_graduated_students": 0,
+                "average_completion_graduation_rate": 0.0,
+                "on_time_graduation_rate": 0.0,
+                "graduation_rate_by_faculty": {},
+            },
+            "charts": {"programme_graduation_rate": [], "cohort_graduation_rate": []},
+            "students": [],
+        }
+
+    registrations_by_student: Dict[str, List[Registration]] = defaultdict(list)
+    for registration in registrations:
+        registrations_by_student[registration.student.registration_number].append(registration)
+
+    latest_by_student = {
+        student_number: max(student_registrations, key=lambda registration: (registration.period.external_id, registration.id))
+        for student_number, student_registrations in registrations_by_student.items()
+    }
+
+    graduated_students = []
+    for student_number, latest_registration in latest_by_student.items():
+        student_registrations = registrations_by_student[student_number]
+        graduation_rate = _student_graduation_rate(student_registrations)
+        stage = _graduation_stage(latest_registration)
+        if not _is_graduated(latest_registration):
+            continue
+        graduated_students.append(
+            {
+                "regnum": latest_registration.student.registration_number,
+                "student_name": latest_registration.student.full_name,
+                "programme_name": latest_registration.programme.name,
+                "faculty": latest_registration.programme.department.faculty.name,
+                "graduation_rate": graduation_rate,
+                "graduation_stage": stage,
+                "on_time": _is_on_time(latest_registration),
+                "period_external_id": latest_registration.period.external_id,
+                "programme_id": latest_registration.programme.external_id or latest_registration.programme.id,
+            }
+        )
+
+    requested_stage = str(graduation_stage or "").strip()
+    requested_min_rate = None
+    try:
+        requested_min_rate = float(min_rate) if str(min_rate).strip() else None
+    except (TypeError, ValueError):
+        requested_min_rate = None
+
+    if requested_stage:
+        graduated_students = [student for student in graduated_students if student["graduation_stage"] == requested_stage]
+    if requested_min_rate is not None:
+        graduated_students = [student for student in graduated_students if student["graduation_rate"] >= requested_min_rate]
+
+    graduated_students.sort(key=lambda row: (row["student_name"], row["regnum"]))
+
+    total_graduated = len(graduated_students)
+    average_graduation_rate = round(
+        sum(student["graduation_rate"] for student in graduated_students) / total_graduated,
+        1,
+    ) if total_graduated else 0.0
+    on_time_rate = _safe_rate(sum(1 for student in graduated_students if student["on_time"]), total_graduated)
+
+    faculty_population: Dict[str, set] = defaultdict(set)
+    faculty_graduated: Dict[str, int] = defaultdict(int)
+    for latest_registration in latest_by_student.values():
+        faculty_name = latest_registration.programme.department.faculty.name
+        faculty_population[faculty_name].add(latest_registration.student.registration_number)
+        if _is_graduated(latest_registration):
+            faculty_graduated[faculty_name] += 1
+    faculty_rates = {
+        faculty_name: _safe_rate(faculty_graduated.get(faculty_name, 0), len(student_numbers))
+        for faculty_name, student_numbers in faculty_population.items()
+    }
+
+    programme_population: Dict[int, set] = defaultdict(set)
+    programme_graduated: Dict[int, List[float]] = defaultdict(list)
+    programme_names: Dict[int, str] = {}
+    for latest_registration in latest_by_student.values():
+        programme_key = latest_registration.programme.external_id or latest_registration.programme.id
+        programme_population[programme_key].add(latest_registration.student.registration_number)
+        programme_names[programme_key] = latest_registration.programme.name
+    for student in graduated_students:
+        programme_graduated[student["programme_id"]].append(student["graduation_rate"])
+
+    programme_graduation_rate = []
+    for programme_key, student_numbers in programme_population.items():
+        graduated_count = len(programme_graduated.get(programme_key, []))
+        programme_graduation_rate.append(
+            {
+                "programme_name": programme_names[programme_key],
+                "graduation_rate": _safe_rate(graduated_count, len(student_numbers)),
+            }
+        )
+    programme_graduation_rate.sort(key=lambda row: row["graduation_rate"], reverse=True)
+
+    cohort_counts: Dict[int, Dict[str, int]] = defaultdict(lambda: {"graduated": 0, "total": 0})
+    for latest_registration in latest_by_student.values():
+        cohort_counts[latest_registration.period.external_id]["total"] += 1
+        if _is_graduated(latest_registration):
+            cohort_counts[latest_registration.period.external_id]["graduated"] += 1
+    cohort_graduation_rate = [
+        {
+            "cohort_period_id": period_external_id,
+            "graduation_rate": _safe_rate(counts["graduated"], counts["total"]),
+        }
+        for period_external_id, counts in sorted(cohort_counts.items())
+    ]
+
+    return {
+        "kpis": {
+            "total_graduated_students": total_graduated,
+            "average_completion_graduation_rate": average_graduation_rate,
+            "on_time_graduation_rate": on_time_rate,
+            "graduation_rate_by_faculty": faculty_rates,
+        },
+        "charts": {
+            "programme_graduation_rate": programme_graduation_rate,
+            "cohort_graduation_rate": cohort_graduation_rate,
+        },
+        "students": [
+            {
+                "regnum": student["regnum"],
+                "student_name": student["student_name"],
+                "programme_name": student["programme_name"],
+                "faculty": student["faculty"],
+                "graduation_rate": student["graduation_rate"],
+                "graduation_stage": student["graduation_stage"],
+                "on_time": student["on_time"],
+            }
+            for student in graduated_students
+        ],
+    }
 
 
 def get_graduation_programmes() -> List[Dict[str, Any]]:
-    """Get available programmes for graduation analysis."""
-    return graduation_service.get_programmes()
+    """Return programme options in the shape expected by the graduation page."""
+
+    registrations = Registration.objects.select_related("programme").order_by("programme__name")
+    seen = set()
+    programmes: List[Dict[str, Any]] = []
+    for registration in registrations:
+        programme = registration.programme
+        programme_id = programme.external_id or programme.id
+        if programme_id in seen:
+            continue
+        seen.add(programme_id)
+        programmes.append(
+            {
+                "programme_id": programme_id,
+                "programme_name": programme.name,
+            }
+        )
+    return programmes
 
 
 def get_graduation_faculties() -> List[Dict[str, Any]]:
-    """Get available faculties for graduation analysis."""
-    return graduation_service.get_faculties()
+    """Return faculty options in the shape expected by the graduation page."""
+
+    faculty_names = (
+        Registration.objects.select_related("programme__department__faculty")
+        .values_list("programme__department__faculty__name", flat=True)
+        .distinct()
+        .order_by("programme__department__faculty__name")
+    )
+    return [{"faculty": name} for name in faculty_names if name]

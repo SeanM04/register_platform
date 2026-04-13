@@ -1,7 +1,11 @@
 """Service-layer logic for academic-level analytics."""
 
-from django.db.models import Q
+from urllib.parse import urlencode
 
+from django.core.cache import cache
+from django.db.models import Prefetch, Q
+
+from ..models import CourseResult
 from ..views import (
     GENDER_BUCKETS,
     format_academic_level_label,
@@ -11,11 +15,39 @@ from ..views import (
 
 from .constants import ACADEMIC_LEVEL_PASS_TARGET
 
+ACADEMIC_LEVEL_CACHE_TTL_SECONDS = 30
+
 
 def get_academic_level_registrations(request, search_query=""):
     """Return academic-level registrations shaped by the page filters and search."""
 
-    registrations = get_filtered_registrations(request)
+    registrations = (
+        get_filtered_registrations(request, include_course_results=False)
+        .only(
+            "id",
+            "student_id",
+            "student__id",
+            "student__gender",
+            "programme_id",
+            "programme__id",
+            "programme__name",
+            "programme__department_id",
+            "programme__department__id",
+            "programme__department__faculty_id",
+            "programme__department__faculty__id",
+            "period_id",
+            "period__id",
+            "period__academic_year",
+            "period__semester",
+        )
+        .prefetch_related(
+            Prefetch(
+                "course_results",
+                queryset=CourseResult.objects.only("registration_id", "mark").order_by(),
+                to_attr="prefetched_course_results",
+            )
+        )
+    )
     if search_query:
         registrations = registrations.filter(
             Q(period__academic_year__icontains=search_query)
@@ -121,7 +153,7 @@ def build_academic_level_data(request, search_query=""):
         programme_map[programme_name]["level_breakdown"][level_label]["registrations"] += 1
         programme_map[programme_name]["level_breakdown"][level_label]["students"].add(registration.student_id)
 
-        for result in registration.course_results.all():
+        for result in registration.prefetched_course_results:
             if result.mark is None:
                 continue
             mark_value = float(result.mark)
@@ -304,17 +336,167 @@ def build_academic_level_data(request, search_query=""):
     }
 
 
-def get_academic_level_summary_values(request, search_query=""):
+def build_academic_level_summary_snapshot(request, search_query=""):
+    """Build a lightweight summary snapshot without the full chart payload structures."""
+
+    registrations = get_academic_level_registrations(request, search_query)
+    level_summary = {}
+    programme_summary = {}
+    gender_summary = {
+        key: {
+            "label": label,
+            "students": set(),
+            "marks_total": 0,
+            "mark_count": 0,
+            "pass_count": 0,
+        }
+        for key, label in GENDER_BUCKETS
+    }
+
+    for registration in registrations:
+        year = registration.period.academic_year or "?"
+        semester = registration.period.semester or "?"
+        level_key = f"{year}.{semester}"
+        level_label = format_academic_level_label(year, semester)
+        gender_key = normalize_gender_key(registration.student.gender)
+        programme_name = registration.programme.name
+
+        if level_key not in level_summary:
+            level_summary[level_key] = {
+                "level": level_label,
+                "sort_year": int(year) if str(year).isdigit() else 0,
+                "sort_semester": int(semester) if str(semester).isdigit() else 0,
+                "registrations": 0,
+                "students": set(),
+                "marks_total": 0,
+                "mark_count": 0,
+                "pass_count": 0,
+            }
+
+        if programme_name not in programme_summary:
+            programme_summary[programme_name] = {
+                "programme": programme_name,
+                "registrations": 0,
+            }
+
+        level_summary[level_key]["registrations"] += 1
+        level_summary[level_key]["students"].add(registration.student_id)
+        programme_summary[programme_name]["registrations"] += 1
+        gender_summary[gender_key]["students"].add(registration.student_id)
+
+        for result in registration.prefetched_course_results:
+            if result.mark is None:
+                continue
+
+            mark_value = float(result.mark)
+            level_summary[level_key]["marks_total"] += mark_value
+            level_summary[level_key]["mark_count"] += 1
+            gender_summary[gender_key]["marks_total"] += mark_value
+            gender_summary[gender_key]["mark_count"] += 1
+
+            if mark_value >= 50:
+                level_summary[level_key]["pass_count"] += 1
+                gender_summary[gender_key]["pass_count"] += 1
+
+    level_rows = []
+    for item in sorted(level_summary.values(), key=lambda row: (row["sort_year"], row["sort_semester"])):
+        mark_count = item["mark_count"]
+        avg_mark = round(item["marks_total"] / mark_count) if mark_count else 0
+        pass_rate = round((item["pass_count"] / mark_count) * 100) if mark_count else 0
+        level_rows.append(
+            {
+                "level": item["level"],
+                "students": len(item["students"]),
+                "registrations": item["registrations"],
+                "average_mark": avg_mark,
+                "pass_rate": f"{pass_rate}%",
+                "pass_rate_value": pass_rate,
+            }
+        )
+
+    total_students = len({student_id for item in gender_summary.values() for student_id in item["students"]})
+    gender_rows = []
+    for key, label in GENDER_BUCKETS:
+        item = gender_summary[key]
+        student_count = len(item["students"])
+        student_share = round((student_count / total_students) * 100) if total_students else 0
+        gender_rows.append(
+            {
+                "key": key,
+                "label": label,
+                "students": student_count,
+                "student_share": f"{student_share}%",
+                "student_share_value": student_share,
+            }
+        )
+
+    programme_rows = sorted(
+        programme_summary.values(),
+        key=lambda row: (-row["registrations"], row["programme"]),
+    )
+
+    return {
+        "metrics": {
+            "levels": len(level_summary),
+            "registrations": sum(item["registrations"] for item in level_summary.values()),
+            "students": sum(len(item["students"]) for item in level_summary.values()),
+            "average_pass_rate": (
+                f"{round(sum(round((item['pass_count'] / item['mark_count']) * 100) for item in level_summary.values() if item['mark_count']) / len(level_summary))}%"
+                if level_summary
+                else "0%"
+            ),
+        },
+        "story_payload": {
+            "level_rows": level_rows,
+            "gender_rows": gender_rows,
+            "programme_rows": programme_rows,
+        },
+    }
+
+
+def get_academic_level_summary_values(request, search_query="", academic_level_data=None):
     """Calculate academic-level summary metrics for asynchronous loading."""
 
-    level_rows = build_academic_level_data(request, search_query)["level_rows"]
-    return {
-        "levels": len(level_rows),
-        "registrations": sum(row["registrations"] for row in level_rows),
-        "students": sum(row["students"] for row in level_rows),
-        "average_pass_rate": (
-            f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in level_rows) / len(level_rows))}%"
-            if level_rows
-            else "0%"
-        ),
-    }
+    if academic_level_data is not None:
+        level_rows = academic_level_data["level_rows"]
+        return {
+            "levels": len(level_rows),
+            "registrations": sum(row["registrations"] for row in level_rows),
+            "students": sum(row["students"] for row in level_rows),
+            "average_pass_rate": (
+                f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in level_rows) / len(level_rows))}%"
+                if level_rows
+                else "0%"
+            ),
+        }
+
+    return build_academic_level_summary_snapshot(request, search_query)["metrics"]
+
+
+def _build_academic_level_cache_key(request, suffix):
+    """Create a stable cache key for the current academic-level filter scope."""
+
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:academic-level:{suffix}:{query_string or 'all'}"
+
+
+def get_cached_academic_level_dashboard_data(request, search_query=""):
+    """Return cached academic-level analytics for the current filter scope."""
+
+    cache_key = _build_academic_level_cache_key(request, "payload")
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_academic_level_data(request, search_query),
+        ACADEMIC_LEVEL_CACHE_TTL_SECONDS,
+    )
+
+
+def get_cached_academic_level_summary_snapshot(request, search_query=""):
+    """Return cached academic-level summary metrics and banner snapshot for the current scope."""
+
+    cache_key = _build_academic_level_cache_key(request, "summary")
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_academic_level_summary_snapshot(request, search_query),
+        ACADEMIC_LEVEL_CACHE_TTL_SECONDS,
+    )

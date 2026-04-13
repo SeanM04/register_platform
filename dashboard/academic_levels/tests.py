@@ -19,15 +19,26 @@ from ..test_support import DashboardFixtureMixin
 class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
     """Exercise academic-level analytics and AI narrative fallbacks."""
 
-    def test_academic_level_view_supplies_graph_breakdowns(self):
-        """Academic level analytics should expose pass, gender, and programme deep-dive data."""
+    def test_academic_level_view_renders_lightweight_shell(self):
+        """The first academic-level render should return a lightweight shell context."""
 
         response = self.client.get(reverse("dashboard:academic-level"))
 
-        level_rows = response.context["level_rows"]
-        level_chart_rows = response.context["level_chart_rows"]
-        gender_rows = response.context["gender_performance_rows"]
-        programme_rows = response.context["programme_performance_rows"]
+        self.assertEqual(response.context["summary_cards"][0]["value"], "--")
+        self.assertNotIn("level_rows", response.context)
+        self.assertNotIn("level_chart_rows", response.context)
+        self.assertContains(response, reverse("dashboard:academic-level-payload"))
+
+    def test_academic_level_payload_supplies_graph_breakdowns(self):
+        """Academic level payload should expose pass, gender, and programme deep-dive data."""
+
+        response = self.client.get(reverse("dashboard:academic-level-payload"))
+        payload = response.json()
+
+        level_rows = payload["level_rows"]
+        level_chart_rows = payload["level_chart_rows"]
+        gender_rows = payload["gender_performance_rows"]
+        programme_rows = payload["programme_performance_rows"]
 
         self.assertEqual(level_rows[0]["pass_rate_value"], 100)
         self.assertFalse(level_rows[0]["below_target"])
@@ -54,18 +65,19 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(programme_rows[1]["programme"], self.commerce_programme.name)
         self.assertEqual(programme_rows[1]["lead_level"], "Year 1, Semester 2")
 
-    def test_academic_level_graph_breakdowns_follow_faculty_filter(self):
-        """The academic-level deep-dive sections should respect active faculty filters."""
+    def test_academic_level_payload_breakdowns_follow_faculty_filter(self):
+        """The academic-level payload should respect active faculty filters."""
 
         response = self.client.get(
-            reverse("dashboard:academic-level"),
+            reverse("dashboard:academic-level-payload"),
             {"faculty": self.science_faculty.name},
         )
+        payload = response.json()
 
-        level_rows = response.context["level_rows"]
-        level_chart_rows = response.context["level_chart_rows"]
-        gender_rows = response.context["gender_performance_rows"]
-        programme_rows = response.context["programme_performance_rows"]
+        level_rows = payload["level_rows"]
+        level_chart_rows = payload["level_chart_rows"]
+        gender_rows = payload["gender_performance_rows"]
+        programme_rows = payload["programme_performance_rows"]
 
         self.assertEqual(len(level_rows), 1)
         self.assertEqual(level_chart_rows[0]["level"], "Year 1, Semester 1")
@@ -77,13 +89,30 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(len(programme_rows), 1)
         self.assertEqual(programme_rows[0]["programme"], self.science_programme.name)
 
-    def test_academic_level_view_supplies_rule_based_card_narratives_by_default(self):
-        """Academic-level cards should have deterministic narratives when AI insights are disabled."""
+    def test_academic_level_metrics_return_summary_values(self):
+        """Academic-level metrics should expose KPI values and the lightweight story payload."""
 
-        response = self.client.get(reverse("dashboard:academic-level"))
+        response = self.client.get(reverse("dashboard:academic-level-metrics"))
+        payload = response.json()
+        metrics = payload["metrics"]
+        story_payload = payload["story_payload"]
 
-        narratives = response.context["academic_level_card_narratives"]
-        diagnostics = response.context["academic_level_narrative_diagnostics"]
+        self.assertEqual(metrics["levels"], 2)
+        self.assertEqual(metrics["registrations"], 3)
+        self.assertEqual(metrics["students"], 3)
+        self.assertEqual(metrics["average_pass_rate"], "75%")
+        self.assertEqual(story_payload["level_rows"][0]["level"], "Year 1, Semester 1")
+        self.assertEqual(story_payload["gender_rows"][0]["label"], "Male")
+        self.assertEqual(story_payload["programme_rows"][0]["programme"], self.commerce_programme.name)
+
+    def test_academic_level_payload_supplies_rule_based_card_narratives_by_default(self):
+        """Academic-level payload should have deterministic narratives when AI insights are disabled."""
+
+        response = self.client.get(reverse("dashboard:academic-level-payload"))
+        payload = response.json()
+
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "rules")
         self.assertEqual(diagnostics["returned_source"], "rules")
@@ -108,8 +137,8 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         OPENAI_API_KEY="test-key",
     )
     @patch("dashboard.academic_levels.ai_insights._request_academic_level_openai_narratives")
-    def test_academic_level_view_uses_ai_card_narratives_when_available(self, mock_request):
-        """Academic-level cards should prefer AI-written narratives when the Responses API succeeds."""
+    def test_academic_level_payload_uses_ai_card_narratives_when_available(self, mock_request):
+        """Academic-level payload should prefer AI-written narratives when the Responses API succeeds."""
 
         mock_request.return_value = """
         {
@@ -117,10 +146,11 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:academic-level"))
+        response = self.client.get(reverse("dashboard:academic-level-payload"))
+        payload = response.json()
 
-        narratives = response.context["academic_level_card_narratives"]
-        diagnostics = response.context["academic_level_narrative_diagnostics"]
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "openai")
         self.assertEqual(diagnostics["returned_source"], "openai")
@@ -138,8 +168,8 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
 
     @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
     @patch("dashboard.academic_levels.ai_insights._request_academic_level_google_narratives")
-    def test_academic_level_view_can_use_google_card_narratives(self, mock_request):
-        """Academic-level cards should support Gemini-generated narratives when Google is selected."""
+    def test_academic_level_payload_can_use_google_card_narratives(self, mock_request):
+        """Academic-level payload should support Gemini-generated narratives when Google is selected."""
 
         mock_request.return_value = """
         {
@@ -157,10 +187,11 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:academic-level"))
+        response = self.client.get(reverse("dashboard:academic-level-payload"))
+        payload = response.json()
 
-        narratives = response.context["academic_level_card_narratives"]
-        diagnostics = response.context["academic_level_narrative_diagnostics"]
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "google")
         self.assertEqual(diagnostics["returned_source"], "google")
@@ -178,7 +209,7 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
 
     @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
     @patch("dashboard.academic_levels.ai_insights._request_academic_level_google_narratives")
-    def test_academic_level_view_reports_rate_limit_diagnostics_for_google_429(self, mock_request):
+    def test_academic_level_payload_reports_rate_limit_diagnostics_for_google_429(self, mock_request):
         """Academic-level diagnostics should explain when Gemini rejects the request with a quota/rate-limit response."""
 
         mock_request.side_effect = urllib.error.HTTPError(
@@ -189,10 +220,11 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
             None,
         )
 
-        response = self.client.get(reverse("dashboard:academic-level"))
+        response = self.client.get(reverse("dashboard:academic-level-payload"))
+        payload = response.json()
 
-        diagnostics = response.context["academic_level_narrative_diagnostics"]
-        narratives = response.context["academic_level_card_narratives"]
+        diagnostics = payload["diagnostics"]
+        narratives = payload["card_narratives"]
 
         self.assertEqual(narratives["source"], "rules")
         self.assertEqual(diagnostics["status"], "fallback")
