@@ -27,11 +27,13 @@ class Programme(TimeStampedModel):
 
     @property
     def normalized_name(self):
-        """Return programme name with Bsc corrected to BSc."""
+        """Return programme name with Bsc and Bcom corrected to BSc and BCom."""
         if not self.name:
             return self.name
-        # Replace Bsc with BSc (case-sensitive)
-        return self.name.replace("Bsc", "BSc")
+        # Replace Bsc with BSc and Bcom with BCom (case-sensitive)
+        normalized = self.name.replace("Bsc", "BSc")
+        normalized = normalized.replace("Bcom", "BCom")
+        return normalized
 
 
 class Faculty(TimeStampedModel):

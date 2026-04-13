@@ -104,7 +104,7 @@ const buildProgrammeSeries = (rows, selectedState) => {
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#082340", "#1c4e80"),
+                    color: buildGradient("#dc2626", "#ef4444"),
                 },
             })),
             label: buildTotalLabel(selectedState, HIGH_RISK),
@@ -122,7 +122,7 @@ const buildProgrammeSeries = (rows, selectedState) => {
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#1f78b4", "#67c3e5"),
+                    color: buildGradient("#ca8a04", "#eab308"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -138,7 +138,7 @@ const buildProgrammesOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#163a63", "#67c3e5"],
+        color: ["#dc2626", "#eab308"],
         grid: {
             top: 40,
             right: 24,

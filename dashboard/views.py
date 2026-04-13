@@ -731,7 +731,7 @@ def student_list(request):
         {
             "name": student.full_name,
             "department": student.latest_department or "",
-            "programme": (student.latest_programme or "").replace("Bsc", "BSc"),
+            "programme": (student.latest_programme or "").replace("Bsc", "BSc").replace("Bcom", "BCom"),
             "average_mark": round(student.scoped_average_mark or 0),
             "decision": str(student.latest_decision or "").title(),
             "gender": student.gender.title(),

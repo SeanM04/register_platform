@@ -92,7 +92,7 @@ def build_demographic_data(request, search_query=""):
         location_gender_counts[place][gender_key] += 1
 
         programme_name = str(row["programme__name"] or "").strip() or "Unspecified programme"
-        programme_name = programme_name.replace("Bsc", "BSc")
+        programme_name = programme_name.replace("Bsc", "BSc").replace("Bcom", "BCom")
         programme_code = str(row["programme__code"] or "").strip() or "N/A"
         programme_gender_counts[programme_name][gender_key] += 1
         programme_code_map[programme_name] = programme_code
