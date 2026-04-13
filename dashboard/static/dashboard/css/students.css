@@ -146,31 +146,31 @@
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
-    min-width: 920px;
+    min-width: 760px;
 }
 
 .students-col-name {
-    width: 14rem;
+    width: 10rem;
 }
 
 .students-col-department {
-    width: 14rem;
+    width: 10rem;
 }
 
 .students-col-programme {
-    width: 14rem;
+    width: 10rem;
 }
 
 .students-col-average {
-    width: 8rem;
+    width: 7rem;
 }
 
 .students-col-decision {
-    width: 8rem;
+    width: 7rem;
 }
 
 .students-col-gender {
-    width: 8rem;
+    width: 6rem;
 }
 
 .students-table thead {
@@ -180,7 +180,7 @@
 
 .students-table th,
 .students-table td {
-    padding: 0.54rem 0.88rem;
+    padding: 0.48rem 0.72rem;
     text-align: center;
     font-weight: 400;
     vertical-align: top;
@@ -310,11 +310,7 @@
     text-decoration: none;
     color: inherit;
     text-align: left;
-    border-radius: 4px;
-    padding: 0.24rem 0.4rem;
-    background: #eef2f7;
-    border: 1px solid #d7e9f6;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    transition: color 0.2s ease;
 }
 
 .student-link-name {
@@ -334,11 +330,6 @@
     text-decoration-color: rgba(79, 176, 209, 0.72);
 }
 
-.student-link:hover,
-.student-link:focus-visible {
-    background: #e3f2fb;
-    border-color: #c5dff1;
-}
 
 .student-link:focus-visible {
     outline: none;

@@ -317,6 +317,9 @@ class CompletionService:
                     'graduation_rate': float(round(graduation_rate, 1)) if graduation_rate > 0 else None
                 })
             
+            # Sort student details alphabetically by name
+            student_details.sort(key=lambda x: x['student_name'])
+            
             return student_details
             
         except Exception as e:

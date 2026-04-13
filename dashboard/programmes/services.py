@@ -251,13 +251,13 @@ def _build_summary_cards(summary_values, programme_rows):
     )
 
     notes = {
-        "programmes": f"{_format_count(summary_values['programmes'])} active programme portfolios are visible in scope.",
+        "programmes": "Active programme portfolios are visible in scope.",
         "registrations": (
             f"{_truncate_text(lead_programme['name'])} carries {round((lead_programme['registrations'] / summary_values['registrations']) * 100)}% of visible load."
             if lead_programme and summary_values["registrations"]
             else "Registration concentration will appear once records are available."
         ),
-        "students": f"Across {_format_count(summary_values['students'])} unique student appearances in the visible programme mix.",
+        "students": "Unique student appearances in the visible programme mix.",
         "average_pass_rate": (
             f"{_format_count(summary_values['pass_count'])} of {_format_count(summary_values['marked_results'])} marked module results are currently passing."
             if summary_values["marked_results"]

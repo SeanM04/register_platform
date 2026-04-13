@@ -188,8 +188,8 @@
                         <thead>
                             <tr>
                                 <th class="level-th-key">Academic Level</th>
-                                <th>Students</th>
-                                <th>Registrations</th>
+                                <th>Total Students</th>
+                                <th>Total Registrations</th>
                                 <th>Average Mark</th>
                                 <th>Pass Rate</th>
                                 <th class="level-th-programme">Top Programme</th>
@@ -204,7 +204,6 @@
                                 <td>{{ row.average_mark }}</td>
                                 <td class="level-td-pass">
                                     <span class="level-pass-pill{% if row.below_target %} is-below-target{% endif %}">{{ row.pass_rate }}</span>
-                                    {% if row.below_target %}<span class="level-pass-flag">Below 85% target</span>{% endif %}
                                 </td>
                                 <td class="level-td-programme">{{ row.top_programme }}</td>
                             </tr>

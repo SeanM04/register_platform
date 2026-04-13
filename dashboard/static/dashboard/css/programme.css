@@ -313,22 +313,28 @@
 .programme-chart-expand,
 .programme-search-button {
     flex-shrink: 0;
-    padding: 0.68rem 1.1rem;
-    border: 1px solid rgba(29, 84, 138, 0.28);
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.94);
-    color: #103767;
-    cursor: pointer;
-    font-size: 0.82rem;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.76rem;
     font-weight: 700;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .programme-chart-expand:hover,
 .programme-search-button:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
     transform: translateY(-1px);
-    box-shadow: 0 10px 26px rgba(15, 54, 95, 0.12);
-    background: #ffffff;
+}
+
+.programme-chart-expand:focus-visible,
+.programme-search-button:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
 }
 
 .programme-chart-stage {
@@ -667,11 +673,11 @@
 
 .programme-accordion-toggle {
     flex-shrink: 0;
-    padding: 0.35rem 0.65rem;
-    border: 1px solid rgba(29, 84, 138, 0.28);
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.94);
-    color: #103767;
+    background: #ffffff;
+    color: var(--navy);
     font-size: 0.7rem;
     font-weight: 700;
     cursor: pointer;
@@ -679,13 +685,13 @@
 }
 
 .programme-accordion-toggle:hover {
-    background: #ffffff;
-    border-color: rgba(72, 169, 215, 0.6);
+    background: #f4f8fb;
+    border-color: #9cb3c8;
     transform: translateY(-1px);
 }
 
 .programme-accordion-toggle:focus-visible {
-    outline: 2px solid rgba(72, 169, 215, 0.45);
+    outline: 2px solid rgba(79, 176, 209, 0.45);
     outline-offset: 2px;
 }
 

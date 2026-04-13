@@ -5,7 +5,7 @@ import {
     showDrillDownModal,
 } from "./drilldown_modal.js?v=20260411-home-drilldown01";
 
-const DEFAULT_DRILLDOWN_PAGE_SIZE = 100;
+const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeOverviewDrillDownToken = 0;
 
 const buildRequestUrl = (endpoint, params = {}) => {

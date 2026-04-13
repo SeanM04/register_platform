@@ -368,6 +368,9 @@ class GraduationService:
                     'graduation_rate': float(round(graduation_rate, 1))
                 })
             
+            # Sort student details alphabetically by name
+            student_details.sort(key=lambda x: x['student_name'])
+            
             return student_details
             
         except Exception as e:

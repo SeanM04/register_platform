@@ -723,7 +723,7 @@ def student_list(request):
         .order_by(*ordered_fields)
     )
 
-    paginator = Paginator(students_queryset, 20)
+    paginator = Paginator(students_queryset, 10)
     page_obj = paginator.get_page(request.GET.get("page"))
     page_window_start = max(page_obj.number - 2, 1)
     page_window_end = min(page_obj.number + 2, paginator.num_pages)
@@ -1374,7 +1374,7 @@ def system_management_view(request):
         user_form = SystemManagementUserForm(initial={"is_active": True})
 
     search_query = request.GET.get("q", "").strip()
-    managed_users = user_model.objects.select_related("user_type").order_by("-date_joined", "email")
+    managed_users = user_model.objects.select_related("user_type").order_by("email")
     if search_query:
         managed_users = managed_users.filter(
             Q(email__icontains=search_query)
