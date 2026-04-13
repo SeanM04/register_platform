@@ -211,10 +211,7 @@
 }
 
 .students-th-link::after {
-    content: "↕";
-    font-size: 0.86rem;
-    color: rgba(255, 255, 255, 0.65);
-    transition: color 0.2s ease, transform 0.2s ease;
+    content: "";
 }
 
 .students-th-link.is-sorted {
@@ -223,15 +220,11 @@
 }
 
 .students-th-link.is-sorted.asc::after {
-    content: "↑";
-    color: #ffffff;
-    transform: translateY(-1px);
+    content: "";
 }
 
 .students-th-link.is-sorted.desc::after {
-    content: "↓";
-    color: #ffffff;
-    transform: translateY(1px);
+    content: "";
 }
 
 .students-th-link:hover {

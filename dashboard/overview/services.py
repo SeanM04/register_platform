@@ -274,7 +274,7 @@ def _build_outcome_student_profiles(registrations, request=None):
                 "student_id": student_id,
                 "name": registration.student.full_name,
                 "registration_number": registration.student.registration_number,
-                "programme": registration.programme.name if registration.programme else "Unassigned",
+                "programme": registration.programme.normalized_name if registration.programme else "Unassigned",
                 "average_mark": average_mark,
                 "status_key": status_key,
                 "status_label": status_label,

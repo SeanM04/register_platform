@@ -139,7 +139,7 @@ def build_student_risk_profiles_from_registrations(registrations):
             {
                 "name": latest_registration.student.full_name,
                 "registration_number": latest_registration.student.registration_number,
-                "programme": latest_registration.programme.name,
+                "programme": latest_registration.programme.normalized_name,
                 "faculty": faculty.name if faculty else "Unassigned",
                 "department": department.name if department else "Unassigned",
                 "academic_level": format_academic_level_label(

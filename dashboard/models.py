@@ -25,6 +25,14 @@ class Programme(TimeStampedModel):
     def faculty(self):
         return self.department.faculty
 
+    @property
+    def normalized_name(self):
+        """Return programme name with Bsc corrected to BSc."""
+        if not self.name:
+            return self.name
+        # Replace Bsc with BSc (case-sensitive)
+        return self.name.replace("Bsc", "BSc")
+
 
 class Faculty(TimeStampedModel):
     name = models.CharField(max_length=255, unique=True)

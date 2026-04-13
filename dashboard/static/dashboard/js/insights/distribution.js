@@ -8,10 +8,10 @@ import {
 } from "./shared.js?v=20260403-insights-story02";
 
 const TONE_GRADIENTS = {
-    critical: ["#7a1731", "#f04c73"],
-    high: ["#082340", "#1c4e80"],
-    moderate: ["#1f78b4", "#5fb7dc"],
-    low: ["#94b8cf", "#d8eaf5"],
+    critical: ["#dc2626", "#ef4444"],
+    high: ["#ea580c", "#f97316"],
+    moderate: ["#ca8a04", "#eab308"],
+    low: ["#16a34a", "#22c55e"],
 };
 
 const buildDistributionOption = (rows, width) => ({

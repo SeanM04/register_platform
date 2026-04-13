@@ -134,7 +134,7 @@ def build_programme_rows(programmes):
         programme_rows.append(
             {
                 "code": programme.code,
-                "name": programme.name,
+                "name": programme.normalized_name,
                 "axis_label": (programme.code or "").upper() or "",
                 "faculty": faculty,
                 "department": department,

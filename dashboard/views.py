@@ -731,7 +731,7 @@ def student_list(request):
         {
             "name": student.full_name,
             "department": student.latest_department or "",
-            "programme": student.latest_programme or "",
+            "programme": (student.latest_programme or "").replace("Bsc", "BSc"),
             "average_mark": round(student.scoped_average_mark or 0),
             "decision": str(student.latest_decision or "").title(),
             "gender": student.gender.title(),
@@ -1254,7 +1254,7 @@ def student_detail(request, slug):
     student = {
         "name": student_record.full_name,
         "student_number": student_record.registration_number,
-        "programme": selected_registration.programme.name if selected_registration else "",
+        "programme": selected_registration.programme.normalized_name if selected_registration else "",
         "academic_level": (
             f"Year {calculate_academic_progression_year(all_registrations, selected_registration)} Semester {calculate_academic_semester(all_registrations, selected_registration)}"
             if selected_registration
