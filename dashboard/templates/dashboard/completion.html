@@ -33,36 +33,7 @@
         </article>
     </section>
 
-    <!-- Filters Section -->
-    <section class="completion-filters">
-        <div class="filter-group">
-            <label for="academic-year-filter">Academic Year:</label>
-            <select id="academic-year-filter" class="filter-select">
-                <option value="">All Years</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="semester-filter">Semester:</label>
-            <select id="semester-filter" class="filter-select">
-                <option value="">All Semesters</option>
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="programme-filter">Programme:</label>
-            <select id="programme-filter" class="filter-select">
-                <option value="">All Programmes</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="faculty-filter">Faculty:</label>
-            <select id="faculty-filter" class="filter-select">
-                <option value="">All Faculties</option>
-            </select>
-        </div>
-    </section>
-
+    
     <!-- Charts Section -->
     <section class="completion-charts">
         <!-- Cohort Completion Chart -->
@@ -147,5 +118,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'dashboard/js/completion.js' %}?v=20260412-db01"></script>
+<script src="{% static 'dashboard/js/completion.js' %}?v=20260414-fixed01"></script>
 {% endblock %}

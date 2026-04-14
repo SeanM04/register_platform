@@ -33,35 +33,7 @@
         </article>
     </section>
 
-    <!-- Filters Section -->
-    <section class="graduation-filters">
-        <div class="filter-group">
-            <label for="faculty-filter">Faculty:</label>
-            <select id="faculty-filter" class="filter-select">
-                <option value="">All Faculties</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="programme-filter">Programme:</label>
-            <select id="programme-filter" class="filter-select">
-                <option value="">All Programmes</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="graduation-stage-filter">Graduation Stage:</label>
-            <select id="graduation-stage-filter" class="filter-select">
-                <option value="">All Stages</option>
-                <option value="4.2">4.2 (Standard)</option>
-                <option value="5.2">5.2 (Engineering)</option>
-                <option value="2.2">2.2 (Masters)</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="rate-filter">Min Graduation Rate:</label>
-            <input type="number" id="rate-filter" class="filter-input" min="0" max="100" placeholder="0">
-        </div>
-    </section>
-
+    
     <!-- Charts Section -->
     <section class="graduation-charts">
         <!-- Programme Graduation Rates Chart -->
@@ -195,5 +167,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'dashboard/js/graduation.js' %}?v=20260412-db01"></script>
+<script src="{% static 'dashboard/js/graduation.js' %}?v=20260414-debug01"></script>
 {% endblock %}

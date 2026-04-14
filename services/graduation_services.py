@@ -94,8 +94,9 @@ def _student_graduation_rate(registrations: List[Registration]) -> float:
 
 
 def _get_filtered_registrations(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
     faculty: Optional[str] = None,
-    programme_id: Optional[str] = None,
 ) -> List[Registration]:
     registrations = (
         Registration.objects.select_related(
@@ -113,23 +114,24 @@ def _get_filtered_registrations(
         .all()
     )
 
+    if year:
+        registrations = registrations.filter(period__academic_year=str(year))
+    if period:
+        registrations = registrations.filter(period__name=str(period))
     if faculty:
         registrations = registrations.filter(programme__department__faculty__name=faculty)
-    if programme_id:
-        registrations = registrations.filter(programme__external_id=_parse_int(programme_id))
 
     return list(registrations.order_by("student__registration_number", "period__external_id", "id"))
 
 
 def get_graduation_page_data(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
     faculty: Optional[str] = None,
-    programme_id: Optional[str] = None,
-    graduation_stage: Optional[str] = None,
-    min_rate: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Return graduation analytics directly from imported dashboard tables."""
 
-    registrations = _get_filtered_registrations(faculty=faculty, programme_id=programme_id)
+    registrations = _get_filtered_registrations(year=year, period=period, faculty=faculty)
     if not registrations:
         return {
             "kpis": {
@@ -171,18 +173,6 @@ def get_graduation_page_data(
                 "programme_id": latest_registration.programme.external_id or latest_registration.programme.id,
             }
         )
-
-    requested_stage = str(graduation_stage or "").strip()
-    requested_min_rate = None
-    try:
-        requested_min_rate = float(min_rate) if str(min_rate).strip() else None
-    except (TypeError, ValueError):
-        requested_min_rate = None
-
-    if requested_stage:
-        graduated_students = [student for student in graduated_students if student["graduation_stage"] == requested_stage]
-    if requested_min_rate is not None:
-        graduated_students = [student for student in graduated_students if student["graduation_rate"] >= requested_min_rate]
 
     graduated_students.sort(key=lambda row: (row["student_name"], row["regnum"]))
 
