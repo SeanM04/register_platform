@@ -278,6 +278,10 @@
     gap: 0.85rem;
 }
 
+.insight-action-grid {
+    margin-top: 1rem;
+}
+
 .insight-card {
     display: grid;
     gap: 0.85rem;

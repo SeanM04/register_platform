@@ -75,7 +75,6 @@
                             <td>{{ student.decision }}</td>
                             <td class="risk-td-status">
                                 <span class="risk-status-badge risk-status-{{ student.risk_level_key }}">{{ student.risk_level }}</span>
-                                <span class="risk-status-copy">{{ student.risk_drivers }}</span>
                             </td>
                         </tr>
                         {% endfor %}
@@ -87,6 +86,27 @@
                 </tbody>
             </table>
         </div>
+
+        {% if students.has_other_pages %}
+        <div class="risk-pagination">
+            <div class="risk-pagination-info">
+                Showing {{ students.start_index }} - {{ students.end_index }} of {{ total_students }} students
+            </div>
+            <div class="risk-pagination-controls">
+                {% if students.has_previous %}
+                    <a href="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" class="risk-pagination-link">First</a>
+                    <a href="?page={{ students.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" class="risk-pagination-link">Previous</a>
+                {% endif %}
+                
+                <span class="risk-pagination-current">Page {{ students.number }} of {{ students.paginator.num_pages }}</span>
+                
+                {% if students.has_next %}
+                    <a href="?page={{ students.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" class="risk-pagination-link">Next</a>
+                    <a href="?page={{ students.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" class="risk-pagination-link">Last</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         <div class="risk-footer">
             <p class="risk-results-meta">

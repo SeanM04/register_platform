@@ -31,16 +31,20 @@ def risk_band_drilldown(request, risk_band):
     search_query = request.GET.get("q", "").strip()
     risk_profiles = build_student_risk_profiles(request, search_query)
 
-    # Filter profiles by risk band
-    risk_band_mapping = {
-        "low": "Low Risk",
-        "moderate": "Medium Risk",
-        "high": "High Risk",
-        "critical": "High Risk",  # Critical is also considered high risk
-    }
+    # Filter profiles by risk score ranges to match graph counts
+    def match_risk_score(score, band_key):
+        score = int(score or 0)
+        if band_key == "low":
+            return score <= 1
+        elif band_key == "moderate":
+            return 2 <= score <= 3
+        elif band_key == "high":
+            return 4 <= score <= 5
+        elif band_key == "critical":
+            return score >= 6
+        return False
 
-    target_risk_level = risk_band_mapping.get(risk_band.lower(), "Low Risk")
-    filtered_students = [p for p in risk_profiles if p["risk_level"] == target_risk_level]
+    filtered_students = [p for p in risk_profiles if match_risk_score(p.get("risk_score", 0), risk_band.lower())]
 
     # Get band label for display
     band_labels = {
@@ -50,12 +54,18 @@ def risk_band_drilldown(request, risk_band):
         "critical": "Critical (6+)",
     }
 
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(filtered_students, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     context = build_risk_shell_context(request, search_query)
     context.update({
         "page_title": f"Risk Band: {band_labels.get(risk_band, risk_band)}",
         "risk_band": risk_band,
         "risk_band_label": band_labels.get(risk_band, risk_band),
-        "students": filtered_students,
+        "students": page_obj,
         "total_students": len(filtered_students),
     })
 
@@ -72,11 +82,17 @@ def risk_level_drilldown(request, academic_level):
     # Filter profiles by academic level
     filtered_students = [p for p in risk_profiles if p["academic_level"] == academic_level]
 
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(filtered_students, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     context = build_risk_shell_context(request, search_query)
     context.update({
         "page_title": f"Academic Level: {academic_level}",
         "academic_level": academic_level,
-        "students": filtered_students,
+        "students": page_obj,
         "total_students": len(filtered_students),
     })
 
@@ -97,12 +113,18 @@ def risk_driver_drilldown(request, risk_driver):
     from .constants import RISK_DRIVER_LABELS
     driver_label = RISK_DRIVER_LABELS.get(risk_driver, risk_driver.replace("_", " ").title())
 
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(filtered_students, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     context = build_risk_shell_context(request, search_query)
     context.update({
         "page_title": f"Risk Driver: {driver_label}",
         "risk_driver": risk_driver,
         "risk_driver_label": driver_label,
-        "students": filtered_students,
+        "students": page_obj,
         "total_students": len(filtered_students),
     })
 
@@ -119,11 +141,17 @@ def risk_programme_drilldown(request, programme):
     # Filter profiles by programme
     filtered_students = [p for p in risk_profiles if p["programme"] == programme]
 
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(filtered_students, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     context = build_risk_shell_context(request, search_query)
     context.update({
         "page_title": f"Programme: {programme}",
         "programme": programme,
-        "students": filtered_students,
+        "students": page_obj,
         "total_students": len(filtered_students),
     })
 

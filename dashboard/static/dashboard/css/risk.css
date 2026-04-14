@@ -752,17 +752,57 @@
     gap: 0.9rem;
 }
 
+.risk-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.95rem 1rem;
+    background: #f8fbff;
+    border-radius: 14px;
+    margin-top: 1rem;
+}
+
+.risk-pagination-info {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.risk-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.risk-pagination-link {
+    padding: 0.5rem 0.85rem;
+    background: #fff;
+    border: 1px solid #d6e3ef;
+    border-radius: 8px;
+    color: #193a62;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.risk-pagination-link:hover {
+    background: #f0f7ff;
+    border-color: #5fb7dc;
+}
+
+.risk-pagination-current {
+    padding: 0.5rem 0.85rem;
+    color: #193a62;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
 .risk-results-meta {
     margin: 0;
     color: var(--muted);
     font-size: 0.78rem;
-}
-
-.risk-pagination {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    flex-wrap: wrap;
 }
 
 .risk-page-link {
