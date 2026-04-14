@@ -6,6 +6,7 @@ import {
     createEmptyController,
     echartsLib,
     formatCount,
+    formatProgrammeName,
     setChartFallback,
 } from "./shared.js?v=20260405-programmes-progressive01";
 import { initialiseLoadNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
@@ -48,7 +49,7 @@ export const initialiseLoadSection = (context) => {
             ...buildTooltipBase("item"),
             formatter: (params) => {
                 const row = sortedRows[params.dataIndex];
-                return buildTooltipMarkup(row.name, [
+                return buildTooltipMarkup(formatProgrammeName(row.name), [
                     { label: "Registrations", value: formatCount(row.registrations) },
                     { label: "Share", value: row.share },
                     { label: "Students", value: formatCount(row.students) },
@@ -92,7 +93,7 @@ export const initialiseLoadSection = (context) => {
                 fontWeight: 700,
                 margin: 12,
             },
-            data: sortedRows.map((row) => row.axis_label || row.code || row.name),
+            data: sortedRows.map((row) => row.axis_label || row.code || formatProgrammeName(row.name)),
         },
         series: [
             {

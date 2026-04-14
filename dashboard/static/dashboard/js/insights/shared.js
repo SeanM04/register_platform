@@ -170,7 +170,7 @@ export const initialiseChart = (elementId, rows, optionBuilder, emptyMessage, va
 
     const echartsLib = getEchartsLib();
     if (!echartsLib) {
-        setChartFallback(element, "ECharts could not load. The insights view is still available.");
+        setChartFallback(element, "ECharts could not load. the insights view is still available.");
         return null;
     }
 

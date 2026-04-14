@@ -102,7 +102,7 @@ def _student_profile(registrations: List[Registration]) -> Dict[str, Any]:
     return {
         "regnum": latest.student.registration_number,
         "student_name": latest.student.full_name,
-        "programme_name": latest.programme.name,
+        "programme_name": latest.programme.normalized_name,
         "academic_stage": _build_stage_label(latest),
         "decision": latest.decision or "Pending",
         "completion_rate": completion_rate,
@@ -220,7 +220,7 @@ def get_completion_page_data(
         latest_profiles_by_programme[latest_registration.programme.external_id or latest_registration.programme.id].append(
             {
                 "programme_id": latest_registration.programme.external_id or latest_registration.programme.id,
-                "programme_name": latest_registration.programme.name,
+                "programme_name": latest_registration.programme.normalized_name,
                 "completion_rate": profile["completion_rate"],
             }
         )
@@ -281,7 +281,7 @@ def get_completion_programmes() -> List[Dict[str, Any]]:
         programmes.append(
             {
                 "programme_id": programme_id,
-                "programme_name": programme.name,
+                "programme_name": programme.normalized_name,
             }
         )
     return programmes

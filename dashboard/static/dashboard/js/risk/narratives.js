@@ -133,7 +133,7 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
         storyBanner.innerHTML = `
             <div class="risk-story-main">
                 <h2 class="risk-story-title">No risk story is available for the current filters.</h2>
-                <p class="risk-story-copy">Adjust the current filters to bring the cohort watchlist and its intervention priorities back into view.</p>
+                <p class="risk-story-copy">Adjust the current filters to bring the cohort watchlist & its intervention priorities back into view.</p>
             </div>
         `;
         return;
@@ -302,7 +302,7 @@ export const buildProgrammesOverviewNarrative = (rows) => {
             ? `${formatChartLabel(leadRow.programme, 28)} currently carries the largest flagged programme cluster.`
             : "No programme concentration insight is available for the current filters.",
         action: leadRow
-            ? "This chart keeps programme concentration and severity mix in the same view so intervention planning stays operational."
+            ? "This chart keeps programme concentration & severity mix in the same view so intervention planning stays operational."
             : "Adjust the current filters to bring programme concentration back into view.",
     };
 };
@@ -313,7 +313,7 @@ export const initialiseProgrammesNarrative = (elements, rows, cardNarratives = {
     setElementText(elements.programmesCopy, narrative.insight);
     setHintMarkup(elements.programmesHints, [
         { label: "Hover columns for full labels", kind: "inspect" },
-        { label: "Compare concentration and severity", kind: "support" },
+        { label: "Compare concentration & severity", kind: "support" },
     ]);
     setActionText(elements.programmesNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,

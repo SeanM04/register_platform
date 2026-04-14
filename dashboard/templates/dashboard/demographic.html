@@ -4,8 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css" crossorigin="anonymous">
-<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260411-demographic-narrative-status01">
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
 
 {% block content %}
@@ -235,6 +234,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/demographic.js' %}?v=20260411-demographic-narrative-status01"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/demographic.js' %}?v=20260414-map-debug-fix01"></script>
 {% endblock %}

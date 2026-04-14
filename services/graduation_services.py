@@ -162,7 +162,7 @@ def get_graduation_page_data(
             {
                 "regnum": latest_registration.student.registration_number,
                 "student_name": latest_registration.student.full_name,
-                "programme_name": latest_registration.programme.name,
+                "programme_name": latest_registration.programme.normalized_name,
                 "faculty": latest_registration.programme.department.faculty.name,
                 "graduation_rate": graduation_rate,
                 "graduation_stage": stage,
@@ -211,7 +211,7 @@ def get_graduation_page_data(
     for latest_registration in latest_by_student.values():
         programme_key = latest_registration.programme.external_id or latest_registration.programme.id
         programme_population[programme_key].add(latest_registration.student.registration_number)
-        programme_names[programme_key] = latest_registration.programme.name
+        programme_names[programme_key] = latest_registration.programme.normalized_name
     for student in graduated_students:
         programme_graduated[student["programme_id"]].append(student["graduation_rate"])
 
@@ -280,7 +280,7 @@ def get_graduation_programmes() -> List[Dict[str, Any]]:
         programmes.append(
             {
                 "programme_id": programme_id,
-                "programme_name": programme.name,
+                "programme_name": programme.normalized_name,
             }
         )
     return programmes

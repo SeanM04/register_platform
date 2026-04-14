@@ -87,7 +87,7 @@ def format_period_label(period_name):
     if not period_name:
         return ""
     
-    # Extract year and remove it completely
+    # Extract year & remove it completely
     year_match = re.search(r"(20\d{2})", period_name)
     if year_match:
         text = period_name.replace(year_match.group(0), "").strip()
@@ -111,7 +111,7 @@ def calculate_academic_progression_year(all_registrations, current_registration)
         # Academic year calculation based on enrollment timeline
         # The first two registrations (positions 0, 1) are Year 1
         # The next two registrations (positions 2, 3) are Year 2
-        # And so on...
+        # & so on...
         progression_year = (current_index // 2) + 1
         
         # Debug output for troubleshooting
@@ -178,7 +178,7 @@ def format_semester_label(semester):
 
 
 def format_academic_level_label(academic_year, semester):
-    """Combine academic year and semester into a university-friendly level label."""
+    """Combine academic year & semester into a university-friendly level label."""
 
     year_label = format_academic_year_label(academic_year)
     semester_label = format_semester_label(semester)
@@ -243,7 +243,7 @@ def validate_semester_chronological_order(registrations):
     if not registrations or len(registrations) <= 1:
         return True, "Valid ordering (single or no registration)"
     
-    # Sort registrations by academic year and semester
+    # Sort registrations by academic year & semester
     sorted_registrations = sorted(
         registrations,
         key=lambda reg: (reg.period.academic_year, reg.period.semester)
@@ -279,7 +279,7 @@ def get_strict_semester_ordering(registrations):
             print(f"WARNING: {message} - Registration ID: {reg.id}")
             continue  # Skip invalid registrations
     
-    # Sort by academic year and semester (chronological order)
+    # Sort by academic year & semester (chronological order)
     chronological_order = sorted(
         registrations,
         key=lambda reg: (reg.period.academic_year, reg.period.semester)
@@ -301,7 +301,7 @@ def build_filters(request):
     periods = list(AcademicPeriod.objects.order_by("name").values("name"))
     years = sorted({extract_period_year(period["name"]) for period in periods if extract_period_year(period["name"])}, reverse=True)
     
-    # Filter periods by selected year and create options with display labels
+    # Filter periods by selected year & create options with display labels
     if selected_year:
         filtered_periods = [period for period in periods if extract_period_year(period["name"]) == selected_year]
         period_options = []
@@ -328,7 +328,7 @@ def build_filters(request):
 
 
 def build_layout_context(request, active_key):
-    """Build shared sidebar and filter context for dashboard templates."""
+    """Build shared sidebar & filter context for dashboard templates."""
 
     # Get current filter parameters
     filter_params = {}
@@ -377,7 +377,7 @@ def get_active_user_lockout_records():
 
 
 def get_system_management_summary_values():
-    """Calculate top-level user and access-control metrics for the system page."""
+    """Calculate top-level user & access-control metrics for the system page."""
 
     user_model = get_user_model()
     users = user_model.objects.select_related("user_type")
@@ -392,7 +392,7 @@ def get_system_management_summary_values():
 
 
 def build_system_user_rows(users, lockout_records, current_user):
-    """Transform managed users into template rows with status and action metadata."""
+    """Transform managed users into template rows with status & action metadata."""
 
     rows = []
     for user in users:
@@ -439,7 +439,7 @@ def build_summary_cards(specs, values=None):
 
 
 def build_registration_filter_q(request, prefix=""):
-    """Build a reusable registration filter for querysets and annotations."""
+    """Build a reusable registration filter for querysets & annotations."""
 
     selected_year = request.GET.get("year", "").strip()
     selected_period = request.GET.get("period", "").strip()
@@ -466,7 +466,7 @@ def build_registration_filter_q(request, prefix=""):
 
 
 def get_filtered_registrations(request, include_course_results=True):
-    """Return registrations filtered by the active year, period, and faculty."""
+    """Return registrations filtered by the active year, period, & faculty."""
 
     registrations = (
         Registration.objects.select_related(
@@ -558,7 +558,8 @@ def normalize_decision_label(decision):
     """Normalize a registration decision value for consistent user-facing display."""
 
     text = str(decision or "").strip()
-    return text.title() if text else "Not Recorded"
+    normalized = text.title() if text else "Not Recorded"
+    return normalized.replace(" And ", " & ")
 
 
 def build_initials(name):
@@ -629,7 +630,7 @@ def build_insight_scope_pills(request):
 
 
 def build_insights_dashboard_data(request):
-    """Assemble the live operational signals and recommendation content for Insights."""
+    """Assemble the live operational signals & recommendation content for Insights."""
 
     from .insights.services import build_insights_dashboard_data as feature_build_insights_dashboard_data
 
@@ -733,7 +734,7 @@ def student_list(request):
             "department": student.latest_department or "",
             "programme": (student.latest_programme or "").replace("Bsc", "BSc").replace("Bcom", "BCom"),
             "average_mark": round(student.scoped_average_mark or 0),
-            "decision": str(student.latest_decision or "").title(),
+            "decision": str(student.latest_decision or "").title().replace(" And ", " & "),
             "gender": student.gender.title(),
             "detail_slug": student.registration_number.lower(),
         }
@@ -758,7 +759,7 @@ def student_list(request):
 
 @login_required_except_domains()
 def student_detail(request, slug):
-    """Render a student profile with term tabs and course results with advanced filter synchronization."""
+    """Render a student profile with term tabs & course results with advanced filter synchronization."""
 
     student_record = get_object_or_404(
         Student.objects.prefetch_related(
@@ -1261,7 +1262,7 @@ def student_detail(request, slug):
             else ""
         ),
         "term_name": selected_registration.period.name.title() if selected_registration else "",
-        "decision": selected_registration.decision.title() if selected_registration else "",
+        "decision": selected_registration.decision.title().replace(" And ", " & ") if selected_registration else "",
         "gender": student_record.gender.title(),
         "age": "",
         "place_of_birth": student_record.place_of_birth,

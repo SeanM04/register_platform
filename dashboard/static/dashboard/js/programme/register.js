@@ -1,3 +1,5 @@
+import { escapeHtml, formatProgrammeName } from "./shared.js?v=20260405-programmes-progressive01";
+
 const escapeHtml = (value) => String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -41,7 +43,7 @@ export const renderProgrammeRegister = (body, metaElement, rows = [], registerMe
     body.innerHTML = rows.map((row) => `
         <tr>
             <td class="programme-td-code">${escapeHtml(row.code)}</td>
-            <td>${escapeHtml(row.name)}</td>
+            <td>${escapeHtml(formatProgrammeName(row.name))}</td>
             <td>${escapeHtml(row.faculty)}</td>
             <td>${escapeHtml(row.department)}</td>
             <td>${escapeHtml(row.students)}</td>

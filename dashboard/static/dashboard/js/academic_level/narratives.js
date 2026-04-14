@@ -101,7 +101,7 @@ export const renderStoryBanner = (storyBanner, rows, genderData, programmeData) 
                 <p class="level-story-pill-copy">${escapeTooltipHtml(cohortCopy)}</p>
             </article>
             <article class="level-story-pill">
-                <p class="level-story-pill-label">Load Leader</p>
+                <p class="level-story-pill-label">${topProgramme ? formatStoryProgrammeName(topProgramme.programme) : "Load Leader"}</p>
                 <p class="level-story-pill-value">${escapeTooltipHtml(loadValue)}</p>
                 <p class="level-story-pill-copy">${escapeTooltipHtml(loadCopy)}</p>
             </article>

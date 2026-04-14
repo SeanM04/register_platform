@@ -5,6 +5,7 @@ import {
     createEmptyController,
     echartsLib,
     formatCount,
+    formatProgrammeName,
     setChartFallback,
 } from "./shared.js?v=20260405-programmes-progressive01";
 import { initialisePerformanceNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
@@ -55,7 +56,7 @@ export const initialisePerformanceSection = (context) => {
             ...buildTooltipBase("item"),
             formatter: (params) => {
                 const row = params.data.row;
-                return buildTooltipMarkup(row.name, [
+                return buildTooltipMarkup(formatProgrammeName(row.name), [
                     { label: "Registrations", value: formatCount(row.registrations) },
                     { label: "Share", value: row.share },
                     { label: "Students", value: formatCount(row.students) },

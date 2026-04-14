@@ -280,7 +280,7 @@ export const renderStoryBanner = (element, outcomeRows, riskRows, facultyRows, p
 
     const summaryCards = [
         leadFaculty && {
-            kicker: "Load Leader",
+            kicker: leadFaculty ? truncateLabel(leadFaculty.label, 20) : "Load Leader",
             value: `${leadFaculty.share_pct}% share`,
             copy: `${truncateLabel(leadFaculty.label, 28)} is carrying the broadest visible registration load.`,
         },
@@ -288,7 +288,7 @@ export const renderStoryBanner = (element, outcomeRows, riskRows, facultyRows, p
             kicker: "Risk Watch",
             value: hotRiskCount ? formatCount(hotRiskCount) : "Stable",
             copy: hotRiskCount
-                ? "Critical and high-risk students already justify closer attention."
+                ? "Critical & high-risk students already justify closer attention."
                 : "High-pressure risk bands are currently light in this scope.",
         },
         (proceedRow || leadOutcome) && {
@@ -510,7 +510,7 @@ export const buildProgressOverviewNarrative = (rows) => {
             ? `${leadRow.label} currently represents ${leadRow.share_pct}% of visible registration decisions.`
             : "No registration-momentum insight is available for the current filters.",
         action: leadRow
-            ? "Use the decision chart to judge whether the visible cohort is moving forward or building rework and review pressure."
+            ? "Use the decision chart to judge whether the visible cohort is moving forward or building rework & review pressure."
             : "Adjust the current filters to bring the registration decision story back into view.",
     };
 };

@@ -1,3 +1,5 @@
+import { formatProgrammeName } from "./programme/shared.js?v=20260405-programmes-progressive01";
+
 /**
  * Graduation Analysis Page JavaScript
  * Handles data fetching, chart rendering, and user interactions
@@ -811,7 +813,7 @@ class GraduationAnalysis {
             item.className = 'graduation-ranking-item';
             
             item.innerHTML = `
-                <span class="graduation-ranking-name">${index + 1}. ${programme.programme_name}</span>
+                <span class="graduation-ranking-name">${index + 1}. ${formatProgrammeName(programme.programme_name)}</span>
                 <span class="graduation-ranking-rate">${programme.graduation_rate}%</span>
             `;
             

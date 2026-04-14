@@ -153,7 +153,7 @@ const setInsightShellErrorState = (context) => {
         context.elements.storyBanner.innerHTML = `
             <div class="insight-story-main">
                 <p class="insight-story-kicker">Primary Takeaway</p>
-                <h2 class="insight-story-title">The page shell loaded, but the institutional insights dataset could not be retrieved.</h2>
+                <h2 class="insight-story-title">the page shell loaded, but the institutional insights dataset could not be retrieved.</h2>
                 <p class="insight-story-copy">Refresh the page to retry the institutional insights payload.</p>
             </div>
         `.trim();

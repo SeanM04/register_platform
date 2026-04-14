@@ -6,6 +6,7 @@ import {
     createEmptyController,
     echartsLib,
     formatCount,
+    formatProgrammeName,
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260405-programmes-progressive01";
@@ -49,7 +50,7 @@ export const initialiseQualitySection = (context) => {
             ...buildTooltipBase("item"),
             formatter: (params) => {
                 const row = sortedRows[params.dataIndex];
-                return buildTooltipMarkup(row.name, [
+                return buildTooltipMarkup(formatProgrammeName(row.name), [
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Registrations", value: formatCount(row.registrations) },
                     { label: "Marked results", value: formatCount(row.marked_results) },
@@ -90,7 +91,7 @@ export const initialiseQualitySection = (context) => {
                 margin: 14,
                 formatter: (value) => wrapAxisLabel(value, { maxLineLength: 18, maxLines: 2 }),
             },
-            data: sortedRows.map((row) => row.name),
+            data: sortedRows.map((row) => formatProgrammeName(row.name)),
         },
         series: [
             {

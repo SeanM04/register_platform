@@ -1,4 +1,4 @@
-import { escapeTooltipHtml, formatCount } from "./shared.js?v=20260405-programmes-progressive01";
+import { escapeTooltipHtml, formatCount, formatProgrammeName } from "./shared.js?v=20260405-programmes-progressive01";
 
 const pickLeadRow = (rows, valueKey = "registrations") => {
     if (!rows.length) {
@@ -155,15 +155,15 @@ export const renderStoryBanner = (element, topLoadRows, departmentRows, lowPassR
     element.hidden = false;
 
     const title = leadProgramme
-        ? `${leadProgramme.name} currently carries the heaviest visible programme load.`
-        : "The programmes dashboard is tracking the strongest visible portfolio signals in the current scope.";
+        ? `${formatProgrammeName(leadProgramme.name)} currently carries the heaviest visible programme load.`
+        : "the programmes dashboard is tracking the strongest visible portfolio signals in the current scope.";
     const copyParts = [];
 
     if (leadProgramme) {
-        copyParts.push(`${leadProgramme.name} represents ${leadProgramme.share_pct}% of visible registrations`);
+        copyParts.push(`${formatProgrammeName(leadProgramme.name)} represents ${leadProgramme.share_pct}% of visible registrations`);
     }
     if (weakestProgramme) {
-        copyParts.push(`${weakestProgramme.name} is the weakest visible pass-rate signal at ${weakestProgramme.pass_rate}`);
+        copyParts.push(`${formatProgrammeName(weakestProgramme.name)} is the weakest visible pass-rate signal at ${weakestProgramme.pass_rate}`);
     }
     if (leadDepartment) {
         copyParts.push(`${leadDepartment.department} currently anchors ${leadDepartment.share_pct}% of programme load`);
@@ -171,14 +171,14 @@ export const renderStoryBanner = (element, topLoadRows, departmentRows, lowPassR
 
     const summaryCards = [
         leadProgramme && {
-            kicker: "Load Leader",
+            kicker: leadProgramme ? truncateLabel(formatProgrammeName(leadProgramme.name), 20) : "Load Leader",
             value: `${leadProgramme.share_pct}% share`,
-            copy: `${truncateLabel(leadProgramme.name)} is currently carrying the broadest registration footprint.`,
+            copy: `${truncateLabel(formatProgrammeName(leadProgramme.name))} is currently carrying the broadest registration footprint.`,
         },
         weakestProgramme && {
             kicker: "Quality Watch",
             value: weakestProgramme.pass_rate,
-            copy: `${truncateLabel(weakestProgramme.name)} is currently the weakest visible pass-rate signal.`,
+            copy: `${truncateLabel(formatProgrammeName(weakestProgramme.name))} is currently the weakest visible pass-rate signal.`,
         },
         leadDepartment && {
             kicker: "Department Focus",
@@ -208,7 +208,7 @@ export const buildLoadOverviewNarrative = (rows) => {
 
     return {
         insight: leadRow
-            ? `${leadRow.name} currently carries ${leadRow.share_pct}% of visible registrations${runnerUp ? `, ahead of ${runnerUp.name}` : ""}.`
+            ? `${formatProgrammeName(leadRow.name)} currently carries ${leadRow.share_pct}% of visible registrations${runnerUp ? `, ahead of ${formatProgrammeName(runnerUp.name)}` : ""}.`
             : "No programme-load insight is available for the current filters.",
         action: leadRow
             ? "Use the load chart first to separate the flagship programmes from the wider portfolio before opening the register."
@@ -261,7 +261,7 @@ export const buildQualityOverviewNarrative = (rows) => {
 
     return {
         insight: weakestRow
-            ? `${weakestRow.name} currently has the lowest visible pass rate at ${weakestRow.pass_rate}, with ${formatCount(underSixty)} programmes below 60%.`
+            ? `${formatProgrammeName(weakestRow.name)} currently has the lowest visible pass rate at ${weakestRow.pass_rate}, with ${formatCount(underSixty)} programmes below 60%.`
             : "No pass-rate quality insight is available for the current filters.",
         action: weakestRow
             ? "Use the quality ranking to decide which programmes should move from monitoring into academic review first."
@@ -288,9 +288,9 @@ export const buildPerformanceOverviewNarrative = (rows) => {
 
     return {
         insight: weakHighLoad
-            ? `${weakHighLoad.name} combines ${formatCount(weakHighLoad.registrations)} registrations with a ${weakHighLoad.pass_rate} pass rate.`
+            ? `${formatProgrammeName(weakHighLoad.name)} combines ${formatCount(weakHighLoad.registrations)} registrations with a ${weakHighLoad.pass_rate} pass rate.`
             : leadRow
-                ? `${leadRow.name} is the largest visible programme at ${formatCount(leadRow.registrations)} registrations and is currently passing at ${leadRow.pass_rate}.`
+                ? `${formatProgrammeName(leadRow.name)} is the largest visible programme at ${formatCount(leadRow.registrations)} registrations and is currently passing at ${leadRow.pass_rate}.`
                 : "No performance-map insight is available for the current filters.",
         action: leadRow
             ? "Use the scatter to balance scale against quality before committing support or curriculum review time."

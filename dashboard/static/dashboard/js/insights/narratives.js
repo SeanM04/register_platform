@@ -143,9 +143,9 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
     const headline = Number(criticalRow?.count || 0) > 0
         ? "Critical institutional pressure is already visible in the current cohort."
         : Number(highRow?.count || 0) > 0
-            ? "The current cohort is carrying a visible high-risk intervention load."
+            ? "the current cohort is carrying a visible high-risk intervention load."
             : totalWatchlist > 0
-                ? "The current cohort is showing an early watchlist signal rather than a severe risk spike."
+                ? "the current cohort is showing an early watchlist signal rather than a severe risk spike."
                 : "No active watchlist pressure is visible in the current cohort.";
     const headlineCopy = totalWatchlist > 0
         ? `${totalWatchlist} of ${totalVisible} visible students are currently flagged. ${leadLoad ? `${leadLoad.label} holds the heaviest registration load at ${leadLoad.share_pct}%.` : ""}${leadDriver ? ` ${leadDriver.label} is the strongest shared trigger across flagged students.` : ""}`.trim()
@@ -155,7 +155,7 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
         : `0 of ${totalVisible}`;
     const watchlistCopy = totalWatchlist > 0
         ? `${Math.round((totalWatchlist / totalVisible) * 100)}% of the visible cohort currently needs closer support attention.`
-        : "The current visible cohort is sitting outside the watchlist threshold.";
+        : "the current visible cohort is sitting outside the watchlist threshold.";
     const loadValue = leadLoad
         ? `${leadLoad.label} ${leadLoad.share_pct}%`
         : "No load cluster";
@@ -214,7 +214,7 @@ export const buildDistributionOverviewNarrative = (rows) => {
                     ? `${totalWatchlist} of ${totalVisible} visible students are on the watchlist, but the pressure is still concentrated below the most severe band.`
                     : "No institutional risk distribution insight is available for the current filters.",
         action: totalWatchlist > 0
-            ? "The band view gives the fastest executive read on whether the current cohort pressure is mainly preventive work or urgent intervention."
+            ? "the band view gives the fastest executive read on whether the current cohort pressure is mainly preventive work or urgent intervention."
             : "Adjust the current filters to bring the institutional risk distribution back into view.",
     };
 };

@@ -48,7 +48,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["average_pass_rate"], "100%")
 
     def test_insights_view_renders_live_operational_context(self):
-        """Insights page should render real flagged-student and recommendation content."""
+        """Insights page should render real flagged-student & recommendation content."""
 
         response = self.client.get(reverse("dashboard:insights"))
 
@@ -140,7 +140,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(active_labels, ["Demographics"])
 
     def test_admin_can_access_system_management(self):
-        """Platform admins should see and access the system management workspace."""
+        """Platform admins should see & access the system management workspace."""
 
         response = self.client.get(reverse("dashboard:system-management"))
 
