@@ -113,10 +113,9 @@ def _student_profile(registrations: List[Registration]) -> Dict[str, Any]:
 
 
 def _get_filtered_registrations(
-    academic_year: Optional[str] = None,
-    semester: Optional[str] = None,
+    year: Optional[str] = None,
+    period: Optional[str] = None,
     faculty: Optional[str] = None,
-    programme_id: Optional[str] = None,
 ) -> List[Registration]:
     registrations = (
         Registration.objects.select_related(
@@ -134,31 +133,27 @@ def _get_filtered_registrations(
         .all()
     )
 
-    if academic_year:
-        registrations = registrations.filter(period__academic_year=str(academic_year))
-    if semester:
-        registrations = registrations.filter(period__semester=str(semester))
+    if year:
+        registrations = registrations.filter(period__academic_year=str(year))
+    if period:
+        registrations = registrations.filter(period__name=str(period))
     if faculty:
         registrations = registrations.filter(programme__department__faculty__name=faculty)
-    if programme_id:
-        registrations = registrations.filter(programme__external_id=_parse_int(programme_id))
 
     return list(registrations.order_by("student__registration_number", "period__external_id", "id"))
 
 
 def get_completion_page_data(
-    academic_year: Optional[str] = None,
-    semester: Optional[str] = None,
+    year: Optional[str] = None,
+    period: Optional[str] = None,
     faculty: Optional[str] = None,
-    programme_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Return completion analytics directly from imported dashboard tables."""
 
     registrations = _get_filtered_registrations(
-        academic_year=academic_year,
-        semester=semester,
+        year=year,
+        period=period,
         faculty=faculty,
-        programme_id=programme_id,
     )
     if not registrations:
         return {

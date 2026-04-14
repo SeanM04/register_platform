@@ -34,20 +34,18 @@ def completion_payload(request):
     This endpoint provides data for frontend completion analysis page.
     """
     try:
-        # Get query parameters
-        academic_year = request.GET.get('academic_year')
-        semester = request.GET.get('semester')
-        programme_id = request.GET.get('programme_id')
+        # Get topbar filter parameters
+        year = request.GET.get('year')
+        period = request.GET.get('period')
         faculty = request.GET.get('faculty')
         
         # Call the completion service
         from services.completion_service import get_completion_page_data
         
         data = get_completion_page_data(
-            academic_year=academic_year,
-            semester=semester,
-            faculty=faculty,
-            programme_id=programme_id
+            year=year,
+            period=period,
+            faculty=faculty
         )
         
         return JsonResponse({

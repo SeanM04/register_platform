@@ -34,20 +34,18 @@ def graduation_payload(request):
     This endpoint provides data for frontend graduation analysis page.
     """
     try:
-        # Get query parameters
+        # Get topbar filter parameters
+        year = request.GET.get('year')
+        period = request.GET.get('period')
         faculty = request.GET.get('faculty')
-        programme_id = request.GET.get('programme_id')
-        graduation_stage = request.GET.get('graduation_stage')
-        min_rate = request.GET.get('min_rate')
         
         # Call graduation service
         from services.graduation_services import get_graduation_page_data
         
         data = get_graduation_page_data(
+            year=year,
+            period=period,
             faculty=faculty,
-            programme_id=programme_id,
-            graduation_stage=graduation_stage,
-            min_rate=min_rate,
         )
         
         return JsonResponse({

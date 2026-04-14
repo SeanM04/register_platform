@@ -1,4 +1,3 @@
-import { formatProgrammeName } from "./programme/shared.js?v=20260405-programmes-progressive01";
 
 /**
  * Graduation Analysis Page JavaScript
@@ -6,16 +5,23 @@ import { formatProgrammeName } from "./programme/shared.js?v=20260405-programmes
  */
 
 class GraduationAnalysis {
+    getFiltersFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return {
+            year: urlParams.get('year') || '',
+            period: urlParams.get('period') || '',
+            faculty: urlParams.get('faculty') || ''
+        };
+    }
+
     constructor() {
         this.root = document.querySelector('.graduation-layout');
+        console.log('Graduation root element found:', this.root);
         this.payloadUrl = this.root?.dataset.payloadUrl || '/metrics/graduation/payload/';
+        console.log('Graduation payload URL:', this.payloadUrl);
         this.currentData = null;
-        this.currentFilters = {
-            faculty: '',
-            programme_id: '',
-            graduation_stage: '',
-            min_rate: ''
-        };
+        this.currentFilters = this.getFiltersFromURL();
+        console.log('Graduation current filters:', this.currentFilters);
         this.currentPage = 1;
         this.itemsPerPage = 25;
         this.sortColumn = null;
@@ -32,26 +38,30 @@ class GraduationAnalysis {
     }
 
     bindEvents() {
-        // Filter events
-        document.getElementById('faculty-filter').addEventListener('change', (e) => {
-            this.currentFilters.faculty = e.target.value;
-            this.loadData();
-        });
+        // Topbar filter events - check if elements exist
+        const yearFilter = document.getElementById('year-filter');
+        if (yearFilter) {
+            yearFilter.addEventListener('change', (e) => {
+                this.currentFilters.year = e.target.value;
+                this.loadData();
+            });
+        }
 
-        document.getElementById('programme-filter').addEventListener('change', (e) => {
-            this.currentFilters.programme_id = e.target.value;
-            this.loadData();
-        });
+        const periodFilter = document.getElementById('period-filter');
+        if (periodFilter) {
+            periodFilter.addEventListener('change', (e) => {
+                this.currentFilters.period = e.target.value;
+                this.loadData();
+            });
+        }
 
-        document.getElementById('graduation-stage-filter').addEventListener('change', (e) => {
-            this.currentFilters.graduation_stage = e.target.value;
-            this.loadData();
-        });
-
-        document.getElementById('rate-filter').addEventListener('input', (e) => {
-            this.currentFilters.min_rate = e.target.value;
-            this.loadData();
-        });
+        const facultyFilter = document.getElementById('faculty-filter');
+        if (facultyFilter) {
+            facultyFilter.addEventListener('change', (e) => {
+                this.currentFilters.faculty = e.target.value;
+                this.loadData();
+            });
+        }
 
         // Search event
         document.getElementById('student-search').addEventListener('input', (e) => {
@@ -104,11 +114,7 @@ class GraduationAnalysis {
     async loadInitialData() {
         try {
             this.showLoading();
-            
-            // Load filter options
-            await this.loadFilterOptions();
-            
-            // Load initial data
+
             await this.loadData();
         } catch (error) {
             this.showError('Failed to load initial data: ' + error.message);
@@ -116,27 +122,7 @@ class GraduationAnalysis {
             this.hideLoading();
         }
     }
-
-    async loadFilterOptions() {
-        try {
-            // Load programmes
-            const programmesResponse = await fetch('/api/graduation/programmes');
-            if (programmesResponse.ok) {
-                const programmesData = await programmesResponse.json();
-                this.populateFilter('programme-filter', programmesData.programmes || [], 'programme_id', 'programme_name');
-            }
-
-            // Load faculties
-            const facultiesResponse = await fetch('/api/graduation/faculties');
-            if (facultiesResponse.ok) {
-                const facultiesData = await facultiesResponse.json();
-                this.populateFilter('faculty-filter', facultiesData.faculties || [], 'faculty', 'faculty');
-            }
-        } catch (error) {
-            console.error('Failed to load filter options:', error);
-        }
-    }
-
+    
     populateFilter(selectId, options, valueKey, labelKey) {
         const select = document.getElementById(selectId);
         const currentValue = select.value;
@@ -162,6 +148,7 @@ class GraduationAnalysis {
 
     async loadData() {
         try {
+            console.log('Graduation loading data from:', this.payloadUrl);
             this.showLoading();
             
             // Build query string
@@ -172,8 +159,12 @@ class GraduationAnalysis {
                 }
             });
 
+            const fullUrl = `${this.payloadUrl}?${queryParams}`;
+            console.log('Graduation full request URL:', fullUrl);
+            
             // Fetch graduation data
-            const response = await fetch(`${this.payloadUrl}?${queryParams}`);
+            const response = await fetch(fullUrl);
+            console.log('Graduation response status:', response.status);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -186,6 +177,7 @@ class GraduationAnalysis {
             }
 
             this.currentData = result.data;
+            console.log('Graduation data loaded successfully:', this.currentData);
             
             // Update UI with new data
             this.updateMetrics();
@@ -193,6 +185,7 @@ class GraduationAnalysis {
             this.updateFacultyGrid();
             this.updateStudentsTable();
             this.updateStatistics();
+            console.log('Graduation UI updated');
             
         } catch (error) {
             this.showError('Failed to load graduation data: ' + error.message);

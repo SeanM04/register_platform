@@ -1,20 +1,26 @@
-
 /**
  * Completion Analysis Page JavaScript
  * Handles data fetching, chart rendering, and user interactions
  */
 
 class CompletionAnalysis {
+    getFiltersFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return {
+            year: urlParams.get('year') || '',
+            period: urlParams.get('period') || '',
+            faculty: urlParams.get('faculty') || ''
+        };
+    }
+
     constructor() {
         this.root = document.querySelector('.completion-layout');
+        console.log('Root element found:', this.root);
         this.payloadUrl = this.root?.dataset.payloadUrl || '/metrics/completion/payload/';
+        console.log('Payload URL:', this.payloadUrl);
         this.currentData = null;
-        this.currentFilters = {
-            academic_year: '',
-            semester: '',
-            programme_id: '',
-            faculty: ''
-        };
+        this.currentFilters = this.getFiltersFromURL();
+        console.log('Current filters:', this.currentFilters);
         this.currentPage = 1;
         this.itemsPerPage = 25;
         this.sortColumn = null;
@@ -31,31 +37,38 @@ class CompletionAnalysis {
     }
 
     bindEvents() {
-        // Filter events
-        document.getElementById('academic-year-filter').addEventListener('change', (e) => {
-            this.currentFilters.academic_year = e.target.value;
-            this.loadData();
-        });
+        // Topbar filter events - check if elements exist
+        const yearFilter = document.getElementById('year-filter');
+        if (yearFilter) {
+            yearFilter.addEventListener('change', (e) => {
+                this.currentFilters.year = e.target.value;
+                this.loadData();
+            });
+        }
 
-        document.getElementById('semester-filter').addEventListener('change', (e) => {
-            this.currentFilters.semester = e.target.value;
-            this.loadData();
-        });
+        const periodFilter = document.getElementById('period-filter');
+        if (periodFilter) {
+            periodFilter.addEventListener('change', (e) => {
+                this.currentFilters.period = e.target.value;
+                this.loadData();
+            });
+        }
 
-        document.getElementById('programme-filter').addEventListener('change', (e) => {
-            this.currentFilters.programme_id = e.target.value;
-            this.loadData();
-        });
-
-        document.getElementById('faculty-filter').addEventListener('change', (e) => {
-            this.currentFilters.faculty = e.target.value;
-            this.loadData();
-        });
+        const facultyFilter = document.getElementById('faculty-filter');
+        if (facultyFilter) {
+            facultyFilter.addEventListener('change', (e) => {
+                this.currentFilters.faculty = e.target.value;
+                this.loadData();
+            });
+        }
 
         // Search event
-        document.getElementById('student-search').addEventListener('input', () => {
-            this.filterStudents();
-        });
+        const studentSearch = document.getElementById('student-search');
+        if (studentSearch) {
+            studentSearch.addEventListener('input', () => {
+                this.filterStudents();
+            });
+        }
 
         // Export event
         document.getElementById('export-students').addEventListener('click', () => {
@@ -94,36 +107,11 @@ class CompletionAnalysis {
         try {
             this.showLoading();
 
-            await this.loadFilterOptions();
             await this.loadData();
         } catch (error) {
             this.showError('Failed to load initial data: ' + error.message);
         } finally {
             this.hideLoading();
-        }
-    }
-
-    async loadFilterOptions() {
-        try {
-            const yearsResponse = await fetch('/api/completion/academic-years');
-            if (yearsResponse.ok) {
-                const yearsData = await yearsResponse.json();
-                this.populateFilter('academic-year-filter', yearsData.years || [], 'year', 'year');
-            }
-
-            const programmesResponse = await fetch('/api/completion/programmes');
-            if (programmesResponse.ok) {
-                const programmesData = await programmesResponse.json();
-                this.populateFilter('programme-filter', programmesData.programmes || [], 'programme_id', 'programme_name');
-            }
-
-            const facultiesResponse = await fetch('/api/completion/faculties');
-            if (facultiesResponse.ok) {
-                const facultiesData = await facultiesResponse.json();
-                this.populateFilter('faculty-filter', facultiesData.faculties || [], 'faculty', 'faculty');
-            }
-        } catch (error) {
-            console.error('Failed to load filter options:', error);
         }
     }
 
@@ -149,6 +137,7 @@ class CompletionAnalysis {
 
     async loadData() {
         try {
+            console.log('Loading data from:', this.payloadUrl);
             this.showLoading();
 
             const queryParams = new URLSearchParams();
@@ -158,7 +147,11 @@ class CompletionAnalysis {
                 }
             });
 
-            const response = await fetch(`${this.payloadUrl}?${queryParams}`);
+            const fullUrl = `${this.payloadUrl}?${queryParams}`;
+            console.log('Full request URL:', fullUrl);
+            
+            const response = await fetch(fullUrl);
+            console.log('Response status:', response.status);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -606,6 +599,14 @@ class CompletionAnalysis {
     }
 }
 
+console.log('Completion.js loaded and DOM ready');
+
 document.addEventListener('DOMContentLoaded', () => {
-    new CompletionAnalysis();
+    console.log('DOMContentLoaded event fired');
+    try {
+        new CompletionAnalysis();
+        console.log('CompletionAnalysis instance created');
+    } catch (error) {
+        console.error('Error creating CompletionAnalysis:', error);
+    }
 });
