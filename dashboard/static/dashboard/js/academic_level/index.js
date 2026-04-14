@@ -207,10 +207,35 @@ const changePageSize = (newSize) => {
 };
 
 const renderPaginatedTable = () => {
-    // Just use the immediate render with current pagination state
-    if (initialTableData && initialTableData.length > 0) {
-        renderTableImmediately(initialTableData);
-    }
+    console.log('[Academic Level] renderPaginatedTable called');
+    
+    // Wait a bit to ensure DOM is ready after accordion animation
+    setTimeout(() => {
+        const { start, end } = calculatePagination(
+            paginationState.allRows.length,
+            paginationState.pageSize,
+            paginationState.currentPage
+        );
+
+        const paginatedRows = paginationState.allRows.slice(start, end);
+        
+        console.log('[Academic Level] About to render', paginatedRows.length, 'rows');
+        
+        // Get fresh context with current DOM references
+        const context = createAcademicLevelContext();
+        
+        console.log('[Academic Level] Fresh context created, tableBody exists:', !!context.elements.levelTableBody);
+        
+        renderLevelTable({
+            ...context,
+            data: {
+                ...context.data,
+                levelRows: paginatedRows,
+            },
+        });
+        
+        renderPaginationControls();
+    }, 50);
 };
 
 const initialisePagination = () => {

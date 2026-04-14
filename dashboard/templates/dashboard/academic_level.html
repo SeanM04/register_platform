@@ -451,10 +451,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 targetToggleIcon.textContent = shouldOpen ? '-' : '+';
             }
 
-            // Dispatch event immediately when opening summary table - data is already in DOM
+            // Re-render table when summary table accordion opens - AFTER transition completes
             if (shouldOpen && targetItem.dataset.accordionSection === 'summary-table') {
-                console.log('[Accordion] Summary table opening - dispatching event');
-                window.dispatchEvent(new CustomEvent('academic-level:table-visibility-changed'));
+                // Wait for CSS transition to complete (300ms as defined in CSS)
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('academic-level:table-visibility-changed', {
+                        detail: { visible: true }
+                    }));
+                }, 350);
             }
         };
 
