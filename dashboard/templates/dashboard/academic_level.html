@@ -5,6 +5,150 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260412-academic-shell02">
+<style>
+/* Demographic Accordion Styles - Inline Implementation */
+.demographic-accordion {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.demographic-accordion-item {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+/* Full-width accordion bars - remove nested container styling */
+.level-layout > .demographic-flow-stage {
+    width: 100%;
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+    display: grid;
+    gap: 0.6rem;
+}
+
+.level-layout > .demographic-flow-stage.demographic-flow-stage-primary {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 32%),
+        linear-gradient(180deg, rgba(244, 250, 255, 0.99), rgba(235, 245, 252, 0.97));
+}
+
+.level-layout > .demographic-flow-stage.demographic-flow-stage-support {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
+}
+
+.demographic-flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.demographic-flow-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.demographic-accordion-toggle {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
+    transform: translateY(-1px);
+}
+
+.demographic-accordion-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.demographic-accordion-toggle-text {
+    display: inline;
+}
+
+.demographic-accordion-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 1px solid rgba(13, 50, 93, 0.12);
+    border-radius: 12px;
+    background: rgba(13, 50, 93, 0.06);
+    color: #123b68;
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-left: 0.35rem;
+    transition: all 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover .demographic-accordion-toggle-icon {
+    background: rgba(13, 50, 93, 0.1);
+    border-color: rgba(13, 50, 93, 0.16);
+}
+
+.demographic-accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.demographic-accordion-content.is-hidden {
+    display: none;
+}
+
+.demographic-accordion-toggle[aria-expanded="true"] .demographic-accordion-toggle-icon {
+    transform: rotate(45deg);
+}
+
+.demographic-accordion-content:not(.is-hidden) {
+    display: grid;
+    max-height: 5000px;
+    transition: max-height 0.3s ease-in;
+}
+
+.demographic-flow-stage-primary {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 32%),
+        linear-gradient(180deg, rgba(244, 250, 255, 0.99), rgba(235, 245, 252, 0.97));
+}
+
+.demographic-flow-stage-support {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -25,147 +169,86 @@
     <section class="level-story-banner" id="academic-level-story-banner" aria-live="polite"></section>
     <p class="level-narrative-status" id="academic-level-narrative-status" hidden></p>
 
+    <!-- Full-width accordion bars -->
+    <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="gender-split">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Gender Cohort Mix</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="gender-split-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
+        </div>
+
+        <div class="demographic-accordion-content is-hidden" id="gender-split-content">
+            <div class="level-chart-stage">
+                <div class="level-chart-canvas" id="academic-level-gender-chart" role="img" aria-label="Gender cohort mix chart"></div>
+            </div>
+            <div class="level-chart-actions">
+                <div class="level-chart-action-buttons">
+                    <button class="level-chart-reset is-hidden" id="academic-level-gender-jump" type="button">Find in table</button>
+                    <button class="level-chart-reset is-hidden" id="academic-level-gender-reset" type="button">Back to trend</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-top">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Top 5 Programmes by Enrolment</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-top-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
+        </div>
+
+        <div class="demographic-accordion-content is-hidden" id="programme-top-content">
+            <div class="level-chart-stage">
+                <div class="level-chart-canvas" id="academic-level-programme-top-chart" role="img" aria-label="Top 5 programmes by enrolment chart"></div>
+            </div>
+            <div class="level-chart-actions">
+                <p class="level-chart-status" id="academic-level-programme-top-status">Showing the top five programmes by enrolment in a cleaner donut view. Click a slice to drill into that programme inside this same chart.</p>
+                <button class="level-chart-reset is-hidden" id="academic-level-programme-top-reset" type="button">Back to top 5</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="pass-trends">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Academic Pass Trend</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="pass-trends-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
+        </div>
+
+        <div class="demographic-accordion-content is-hidden" id="pass-trends-content">
+            <div class="level-chart-stage">
+                <div class="level-chart-canvas" id="academic-level-pass-chart" role="img" aria-label="Pass rate by academic level chart"></div>
+            </div>
+            <div class="level-chart-actions">
+                <div class="level-chart-action-buttons">
+                    <button class="level-chart-reset is-hidden" id="academic-level-pass-jump" type="button">Find in table</button>
+                    <button class="level-chart-reset is-hidden" id="academic-level-pass-reset" type="button">Back to trend</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section class="level-deep-dive">
-        <article class="level-insight-card level-insight-card-gender">
-            <div class="level-insight-header">
-                <div class="level-insight-heading">
-                    <h2 class="level-insight-title">Gender Cohort Mix</h2>
-                </div>
-                <button
-                    class="level-insight-toggle"
-                    type="button"
-                    data-toggle="gender-split"
-                    data-section-title="Gender Cohort Mix"
-                    aria-expanded="false"
-                    aria-controls="gender-split-content"
-                    aria-label="Expand Gender Cohort Mix section"
-                >
-                    <span class="level-insight-toggle-label">Expand</span>
-                    <span class="level-insight-toggle-icon">+</span>
-                </button>
-            </div>
-
-            <div class="level-insight-content" id="gender-split-content">
-                <div class="level-chart-stage">
-                    <div class="level-chart-canvas" id="academic-level-gender-chart" role="img" aria-label="Gender cohort mix chart"></div>
-                </div>
-                <p class="level-chart-note" id="academic-level-gender-note">This uses petal size to emphasize cohort share first, then lets the tooltip expose pass rate, average mark, and result volume per segment.</p>
-            </div>
-        </article>
-
-        <article class="level-insight-card level-insight-card-top-enrolment">
-            <div class="level-insight-header">
-                <div class="level-insight-heading">
-                    <h2 class="level-insight-title">Top 5 Programmes by Enrolment</h2>
-                </div>
-                <button
-                    class="level-insight-toggle"
-                    type="button"
-                    data-toggle="top-enrolment"
-                    data-section-title="Top 5 Programmes by Enrolment"
-                    aria-expanded="false"
-                    aria-controls="top-enrolment-content"
-                    aria-label="Expand Top 5 Programmes by Enrolment section"
-                >
-                    <span class="level-insight-toggle-label">Expand</span>
-                    <span class="level-insight-toggle-icon">+</span>
-                </button>
-            </div>
-
-            <div class="level-insight-content" id="top-enrolment-content">
-                <div class="level-chart-context is-hidden" id="academic-level-programme-top-context" aria-live="polite">
-                    <p class="level-chart-context-title" id="academic-level-programme-top-title"></p>
-                    <div class="level-chart-legend" aria-label="Chart legend">
-                        <span class="level-chart-key">
-                            <span class="level-chart-swatch level-chart-swatch-bar" aria-hidden="true"></span>
-                            Registrations
-                        </span>
-                        <span class="level-chart-key">
-                            <span class="level-chart-swatch level-chart-swatch-line" aria-hidden="true"></span>
-                            Pass Rate
-                        </span>
-                    </div>
-                </div>
-
-                <div class="level-chart-stage">
-                    <div class="level-chart-canvas" id="academic-level-programme-top-chart" role="img" aria-label="Top five programmes by enrolment chart"></div>
-                </div>
-                <div class="level-chart-actions">
-                    <p class="level-chart-status" id="academic-level-programme-top-status">Showing the top five programmes by enrolment in a cleaner donut view. Click a slice to drill into that programme inside this same chart.</p>
-                    <button class="level-chart-reset is-hidden" id="academic-level-programme-top-reset" type="button">Back to top 5</button>
-                </div>
-            </div>
-        </article>
-
-        <article class="level-insight-card level-insight-card-wide level-insight-card-pass-trend">
-            <div class="level-insight-header">
-                <div class="level-insight-heading">
-                    <h2 class="level-insight-title">Academic Pass Trend</h2>
-                </div>
-                <button
-                    class="level-insight-toggle"
-                    type="button"
-                    data-toggle="pass-trends"
-                    data-section-title="Academic Pass Trend"
-                    aria-expanded="false"
-                    aria-controls="pass-trends-content"
-                    aria-label="Expand Academic Pass Trend section"
-                >
-                    <span class="level-insight-toggle-label">Expand</span>
-                    <span class="level-insight-toggle-icon">+</span>
-                </button>
-            </div>
-
-            <div class="level-insight-content" id="pass-trends-content">
-                <div class="level-chart-context is-hidden" id="academic-level-pass-context" aria-live="polite">
-                    <p class="level-chart-context-title" id="academic-level-pass-title"></p>
-                    <div class="level-chart-legend" aria-label="Chart legend">
-                        <button class="level-chart-key level-chart-key-toggle" type="button" data-pass-series="enrolment" aria-pressed="true">
-                            <span class="level-chart-swatch level-chart-swatch-bar" aria-hidden="true"></span>
-                            Enrolment Count
-                        </button>
-                        <button class="level-chart-key level-chart-key-toggle" type="button" data-pass-series="average_mark" aria-pressed="true">
-                            <span class="level-chart-swatch level-chart-swatch-bar-secondary" aria-hidden="true"></span>
-                            Average Mark
-                        </button>
-                    </div>
-                </div>
-
-                <div class="level-chart-stage">
-                    <div class="level-chart-canvas" id="academic-level-pass-chart" role="img" aria-label="Pass rate by academic level chart"></div>
-                </div>
-                <div class="level-chart-actions">
-                    <div class="level-chart-action-buttons">
-                        <button class="level-chart-reset is-hidden" id="academic-level-pass-jump" type="button">Find in table</button>
-                        <button class="level-chart-reset is-hidden" id="academic-level-pass-reset" type="button">Back to trend</button>
-                    </div>
-                </div>
-            </div>
-        </article>
-
     </section>
 
     <section class="level-card level-table-card">
-        <section class="level-table-section">
-            <div class="level-section-header">
-                <div class="level-section-heading">
-                    <h2 class="level-section-title">Straight Summary Table</h2>
+        <div class="demographic-accordion">
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="summary-table">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Straight Summary Table</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="summary-table-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
                 </div>
-                <button
-                    class="level-section-toggle"
-                    type="button"
-                    data-toggle="summary-table"
-                    data-section-title="Straight Summary Table"
-                    aria-expanded="false"
-                    aria-controls="summary-table-content"
-                    aria-label="Expand Straight Summary Table section"
-                >
-                    <span class="level-section-toggle-label">Expand</span>
-                    <span class="level-section-toggle-icon">+</span>
-                </button>
-            </div>
 
-            <div class="level-section-content" id="summary-table-content">
+                <div class="demographic-accordion-content is-hidden" id="summary-table-content">
                 <div class="level-section-subheader">
                     <div>
                         <p class="level-section-copy">Use the exact row values here when you need the clean numeric breakdown by level.</p>
@@ -215,11 +298,13 @@
                             <tr>
                                 <td class="level-empty" colspan="6">Loading academic level data for the current filters.</td>
                             </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </section>
+                </div>
+            </section>
+        </div>
     </section>
 </section>
 {% endblock %}
@@ -227,4 +312,82 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
 <script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260412-academic-shell02"></script>
+<script>
+/* Demographic Accordion JavaScript - Inline Implementation */
+document.addEventListener('DOMContentLoaded', function() {
+    const initialiseAccordion = () => {
+        const accordionItems = document.querySelectorAll('.demographic-accordion-item');
+        
+        accordionItems.forEach((item) => {
+            const toggleButton = item.querySelector('.demographic-accordion-toggle');
+            const content = item.querySelector('.demographic-accordion-content');
+            
+            if (!toggleButton || !content) {
+                return;
+            }
+            
+            toggleButton.addEventListener('click', () => {
+                const isOpen = item.classList.contains('is-open');
+                const toggleText = toggleButton.querySelector('.demographic-accordion-toggle-text');
+                const toggleIcon = toggleButton.querySelector('.demographic-accordion-toggle-icon');
+                
+                // Close all other accordion items
+                accordionItems.forEach((otherItem) => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('is-open');
+                        const otherContent = otherItem.querySelector('.demographic-accordion-content');
+                        const otherToggle = otherItem.querySelector('.demographic-accordion-toggle');
+                        const otherToggleText = otherToggle?.querySelector('.demographic-accordion-toggle-text');
+                        const otherToggleIcon = otherToggle?.querySelector('.demographic-accordion-toggle-icon');
+                        
+                        if (otherContent) {
+                            otherContent.classList.add('is-hidden');
+                            otherContent.style.maxHeight = '0';
+                        }
+                        
+                        if (otherToggle) {
+                            otherToggle.setAttribute('aria-expanded', 'false');
+                        }
+                        
+                        if (otherToggleText) {
+                            otherToggleText.textContent = 'Expand';
+                        }
+                        
+                        if (otherToggleIcon) {
+                            otherToggleIcon.textContent = '+';
+                        }
+                    }
+                });
+                
+                // Toggle current item
+                if (isOpen) {
+                    item.classList.remove('is-open');
+                    content.classList.add('is-hidden');
+                    content.style.maxHeight = '0';
+                    toggleButton.setAttribute('aria-expanded', 'false');
+                    if (toggleText) {
+                        toggleText.textContent = 'Expand';
+                    }
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '+';
+                    }
+                } else {
+                    item.classList.add('is-open');
+                    content.classList.remove('is-hidden');
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    toggleButton.setAttribute('aria-expanded', 'true');
+                    if (toggleText) {
+                        toggleText.textContent = 'Collapse';
+                    }
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '−';
+                    }
+                }
+            });
+        });
+    };
+    
+    initialiseAccordion();
+});
+</script>
 {% endblock %}

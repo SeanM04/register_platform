@@ -256,6 +256,11 @@
     transform: translateY(-1px);
 }
 
+.home-flow-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
 .home-flow-toggle-label {
     color: var(--navy);
     font-size: 0.7rem;

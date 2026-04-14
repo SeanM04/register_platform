@@ -5,6 +5,123 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260411-home-narrative-status01">
+<style>
+/* Demographic Accordion Styles - Inline Implementation */
+.demographic-accordion {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.demographic-accordion-item {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+.demographic-flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.demographic-flow-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.demographic-accordion-toggle {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
+    transform: translateY(-1px);
+}
+
+.demographic-accordion-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.demographic-accordion-toggle-text {
+    display: inline;
+}
+
+.demographic-accordion-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 1px solid rgba(13, 50, 93, 0.12);
+    border-radius: 12px;
+    background: rgba(13, 50, 93, 0.06);
+    color: #123b68;
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-left: 0.35rem;
+    transition: all 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover .demographic-accordion-toggle-icon {
+    background: rgba(13, 50, 93, 0.1);
+    border-color: rgba(13, 50, 93, 0.16);
+}
+
+.demographic-accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.demographic-accordion-content.is-hidden {
+    display: none;
+}
+
+.demographic-accordion-toggle[aria-expanded="true"] .demographic-accordion-toggle-icon {
+    transform: rotate(45deg);
+}
+
+.demographic-accordion-content:not(.is-hidden) {
+    display: grid;
+    max-height: 5000px;
+    transition: max-height 0.3s ease-in;
+}
+
+.demographic-flow-stage-primary {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 32%),
+        linear-gradient(180deg, rgba(244, 250, 255, 0.99), rgba(235, 245, 252, 0.97));
+}
+
+.demographic-flow-stage-support {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -29,25 +146,16 @@
     <p class="home-narrative-status" id="home-narrative-status" hidden></p>
 
     <section class="home-story-flow" aria-label="Landing dashboard storytelling flow">
-        <section class="home-flow-stage home-flow-stage-primary">
-            <div class="home-flow-header">
-                <div class="home-flow-heading">
-                    <h2 class="home-flow-title">Cohort Risk Profile</h2>
+        <div class="demographic-accordion">
+            <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="cohort-risk">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Cohort Risk Profile</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="cohort-risk-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
                 </div>
-                <button
-                    class="home-flow-toggle"
-                    type="button"
-                    data-toggle="cohort-risk"
-                    data-section-title="Cohort Risk Profile"
-                    aria-expanded="false"
-                    aria-controls="cohort-risk-content"
-                    aria-label="Expand Cohort Risk Profile section"
-                >
-                    <span class="home-flow-toggle-label">Expand</span>
-                    <span class="home-flow-toggle-icon">+</span>
-                </button>
-            </div>
-            <div class="home-flow-content" id="cohort-risk-content">
+                <div class="demographic-accordion-content is-hidden" id="cohort-risk-content">
 
             <div class="home-stage-grid home-stage-grid-primary">
                 <article class="home-card home-card-wide">
@@ -86,28 +194,17 @@
                     <p class="home-chart-note" id="home-risk-note">The risk mix separates stable cohort volume from the students who are already building intervention pressure.</p>
                 </article>
             </div>
-            </div>
-        </section>
+            </section>
 
-        <section class="home-flow-stage">
-            <div class="home-flow-header">
-                <div class="home-flow-heading">
-                    <h2 class="home-flow-title">Concentration Profile</h2>
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="load-concentration">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Concentration Profile</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="load-concentration-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
                 </div>
-                <button
-                    class="home-flow-toggle"
-                    type="button"
-                    data-toggle="load-concentration"
-                    data-section-title="Concentration Profile"
-                    aria-expanded="false"
-                    aria-controls="load-concentration-content"
-                    aria-label="Expand Concentration Profile section"
-                >
-                    <span class="home-flow-toggle-label">Expand</span>
-                    <span class="home-flow-toggle-icon">+</span>
-                </button>
-            </div>
-            <div class="home-flow-content" id="load-concentration-content">
+                <div class="demographic-accordion-content is-hidden" id="load-concentration-content">
 
             <div class="home-stage-grid">
                 <article class="home-card">
@@ -146,28 +243,18 @@
                     <p class="home-chart-note" id="home-progress-note">The decision view helps users see whether the visible cohort is mostly moving forward or building rework and exit pressure.</p>
                 </article>
             </div>
-            </div>
-        </section>
-
-        <section class="home-flow-stage home-flow-stage-actions">
-            <div class="home-flow-header">
-                <div class="home-flow-heading">
-                    <h2 class="home-flow-title">Insights</h2>
                 </div>
-                <button
-                    class="home-flow-toggle"
-                    type="button"
-                    data-toggle="insights"
-                    data-section-title="Insights"
-                    aria-expanded="false"
-                    aria-controls="insights-content"
-                    aria-label="Expand Insights section"
-                >
-                    <span class="home-flow-toggle-label">Expand</span>
-                    <span class="home-flow-toggle-icon">+</span>
-                </button>
-            </div>
-            <div class="home-flow-content" id="insights-content">
+            </section>
+
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="insights">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Insights</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="insights-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+                <div class="demographic-accordion-content is-hidden" id="insights-content">
 
             <div class="home-action-grid" id="home-action-grid">
                 {% for card in action_cards %}
@@ -179,8 +266,9 @@
                 </article>
                 {% endfor %}
             </div>
-            </div>
-        </section>
+                </div>
+            </section>
+        </div>
     </section>
 </section>
 {% endblock %}
@@ -188,4 +276,82 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
 <script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260411-home-narrative-status01"></script>
+<script>
+/* Demographic Accordion JavaScript - Inline Implementation */
+document.addEventListener('DOMContentLoaded', function() {
+    const initialiseAccordion = () => {
+        const accordionItems = document.querySelectorAll('.demographic-accordion-item');
+        
+        accordionItems.forEach((item) => {
+            const toggleButton = item.querySelector('.demographic-accordion-toggle');
+            const content = item.querySelector('.demographic-accordion-content');
+            
+            if (!toggleButton || !content) {
+                return;
+            }
+            
+            toggleButton.addEventListener('click', () => {
+                const isOpen = item.classList.contains('is-open');
+                const toggleText = toggleButton.querySelector('.demographic-accordion-toggle-text');
+                const toggleIcon = toggleButton.querySelector('.demographic-accordion-toggle-icon');
+                
+                // Close all other accordion items
+                accordionItems.forEach((otherItem) => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('is-open');
+                        const otherContent = otherItem.querySelector('.demographic-accordion-content');
+                        const otherToggle = otherItem.querySelector('.demographic-accordion-toggle');
+                        const otherToggleText = otherToggle?.querySelector('.demographic-accordion-toggle-text');
+                        const otherToggleIcon = otherToggle?.querySelector('.demographic-accordion-toggle-icon');
+                        
+                        if (otherContent) {
+                            otherContent.classList.add('is-hidden');
+                            otherContent.style.maxHeight = '0';
+                        }
+                        
+                        if (otherToggle) {
+                            otherToggle.setAttribute('aria-expanded', 'false');
+                        }
+                        
+                        if (otherToggleText) {
+                            otherToggleText.textContent = 'Expand';
+                        }
+                        
+                        if (otherToggleIcon) {
+                            otherToggleIcon.textContent = '+';
+                        }
+                    }
+                });
+                
+                // Toggle current item
+                if (isOpen) {
+                    item.classList.remove('is-open');
+                    content.classList.add('is-hidden');
+                    content.style.maxHeight = '0';
+                    toggleButton.setAttribute('aria-expanded', 'false');
+                    if (toggleText) {
+                        toggleText.textContent = 'Expand';
+                    }
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '+';
+                    }
+                } else {
+                    item.classList.add('is-open');
+                    content.classList.remove('is-hidden');
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    toggleButton.setAttribute('aria-expanded', 'true');
+                    if (toggleText) {
+                        toggleText.textContent = 'Collapse';
+                    }
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '−';
+                    }
+                }
+            });
+        });
+    };
+    
+    initialiseAccordion();
+});
+</script>
 {% endblock %}

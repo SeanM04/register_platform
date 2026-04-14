@@ -28,7 +28,7 @@ SIDEBAR_ITEMS = [
     {"key": "academic-levels", "label": "Academic Levels", "url_name": "dashboard:academic-level"},
     {"key": "completion", "label": "Completion Analysis", "url_name": "dashboard:completion"},
     {"key": "graduation", "label": "Graduation Analysis", "url_name": "dashboard:graduation"},
-    {"key": "risk", "label": "Risk", "url_name": "dashboard:risk"},
+    {"key": "risk", "label": "Risk Analysis", "url_name": "dashboard:risk"},
     {"key": "insights", "label": "Insights", "url_name": "dashboard:insights"},
     {"key": "system-management", "label": "System Management", "url_name": "dashboard:system-management", "requires_admin": True},
 ]
