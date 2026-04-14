@@ -434,7 +434,7 @@ class CompletionAnalysis {
             <td>${student.academic_stage}</td>
             <td><span class="completion-rate-badge ${this.getDecisionClass(student.decision)}">${student.decision}</span></td>
             <td><span class="completion-rate-badge ${this.getRateClass(student.completion_rate)}">${student.completion_rate}%</span></td>
-            <td>${student.graduation_rate ? `<span class="completion-rate-badge ${this.getRateClass(student.graduation_rate)}">${student.graduation_rate}%</span>` : '-'}</td>
+            
         `;
         
         return row;
@@ -605,7 +605,7 @@ class CompletionAnalysis {
         const sortedStudents = this.getSortedStudents(students);
         
         // Create CSV content
-        const headers = ['Student ID', 'Student Name', 'Programme', 'Academic Stage', 'Decision', 'Completion Rate', 'Graduation Rate'];
+        const headers = ['Student ID', 'Student Name', 'Programme', 'Academic Stage', 'Decision', 'Completion Rate'];
         const rows = sortedStudents.map(student => [
             student.regnum,
             student.student_name,
@@ -613,7 +613,7 @@ class CompletionAnalysis {
             student.academic_stage,
             student.decision,
             student.completion_rate,
-            student.graduation_rate || ''
+           ''
         ]);
         
         const csvContent = [headers, ...rows]
