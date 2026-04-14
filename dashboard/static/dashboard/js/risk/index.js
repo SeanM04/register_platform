@@ -100,7 +100,6 @@ const renderRiskRegister = (context, register = {}, cohortTotalStudents = 0) => 
                 <td class="risk-td-student">
                     <a class="risk-student-link" href="/students/${encodeURIComponent(row.detail_slug)}/" aria-label="View ${escapeTooltipHtml(row.name)} profile">
                         <span class="risk-student-name">${escapeTooltipHtml(row.name)}</span>
-                        <span class="risk-student-meta">${escapeTooltipHtml(row.registration_number)}</span>
                     </a>
                 </td>
                 <td>${escapeTooltipHtml(row.programme)}</td>

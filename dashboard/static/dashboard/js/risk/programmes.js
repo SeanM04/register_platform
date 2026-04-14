@@ -122,7 +122,7 @@ const buildProgrammeSeries = (rows, selectedState) => {
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#ca8a04", "#eab308"),
+                    color: buildGradient("#facc15", "#fde047"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -138,7 +138,7 @@ const buildProgrammesOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#dc2626", "#eab308"],
+        color: ["#dc2626", "#fde047"],
         grid: {
             top: 40,
             right: 24,

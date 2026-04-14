@@ -182,7 +182,7 @@ def format_academic_level_label(academic_year, semester):
 
     year_label = format_academic_year_label(academic_year)
     semester_label = format_semester_label(semester)
-    return f"{year_label}, {semester_label}"
+    return f"{year_label} {semester_label}"
 
 
 def normalize_gender_key(gender):

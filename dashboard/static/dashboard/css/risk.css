@@ -588,7 +588,7 @@
     overflow: auto;
     max-width: 100%;
     padding-bottom: 0.45rem;
-    border-radius: 14px;
+    border-radius: 0;
     background: #f8fbff;
 }
 
@@ -666,11 +666,11 @@
 }
 
 .risk-table thead th:first-child {
-    border-top-left-radius: 12px;
+    border-top-left-radius: 0;
 }
 
 .risk-table thead th:last-child {
-    border-top-right-radius: 12px;
+    border-top-right-radius: 0;
 }
 
 .risk-table tbody td {

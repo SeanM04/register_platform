@@ -10,7 +10,7 @@ import {
 const TONE_GRADIENTS = {
     critical: ["#dc2626", "#ef4444"],
     high: ["#ea580c", "#f97316"],
-    moderate: ["#ca8a04", "#eab308"],
+    moderate: ["#facc15", "#fde047"],
     low: ["#16a34a", "#22c55e"],
 };
 

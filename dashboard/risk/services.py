@@ -200,7 +200,10 @@ def format_risk_monitor_drivers(risk_driver_text):
     """Remove redundant phrases from the risk-monitor explanation shown on the table."""
 
     drivers = [driver.strip() for driver in str(risk_driver_text or "").split(",") if driver.strip()]
-    filtered_drivers = [driver for driver in drivers if driver.lower() != "average below 50%"]
+    filtered_drivers = [
+        driver for driver in drivers
+        if driver.lower() not in ["average below 50%", "3+ failed modules", "1 carried module", "repeat decision"]
+    ]
 
     if filtered_drivers:
         return ", ".join(filtered_drivers)

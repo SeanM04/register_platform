@@ -121,7 +121,7 @@ const buildPressureSeries = (rows, selectedState) => {
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#ca8a04", "#eab308"),
+                    color: buildGradient("#facc15", "#fde047"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -137,7 +137,7 @@ const buildFacultyPressureOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#ea580c", "#eab308"],
+        color: ["#ea580c", "#fde047"],
         grid: {
             top: 40,
             right: 72,
