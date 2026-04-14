@@ -527,7 +527,7 @@ class GraduationAnalysis {
         const onTime = this.calculateOnTime(student);
         
         row.innerHTML = `
-            <td>${student.regnum}</td>
+            
             <td>${student.student_name}</td>
             <td>${student.programme_name}</td>
             <td>${student.faculty}</td>
@@ -839,9 +839,7 @@ class GraduationAnalysis {
             <div class="graduation-student-details">
                 <h4>${student.student_name}</h4>
                 <div class="graduation-detail-grid">
-                    <div class="graduation-detail-item">
-                        <strong>Student ID:</strong> ${student.regnum}
-                    </div>
+                    
                     <div class="graduation-detail-item">
                         <strong>Programme:</strong> ${student.programme_name}
                     </div>
@@ -887,7 +885,7 @@ class GraduationAnalysis {
         // Create CSV content
         const headers = ['Student ID', 'Student Name', 'Programme', 'Faculty', 'Graduation Rate', 'Graduation Stage', 'On-Time'];
         const rows = sortedStudents.map(student => [
-            student.regnum,
+            
             student.student_name,
             student.programme_name,
             student.faculty,

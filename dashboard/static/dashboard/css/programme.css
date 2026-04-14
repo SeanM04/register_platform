@@ -490,7 +490,7 @@
 }
 
 .programme-col-code {
-    width: 8rem;
+    width: 7rem;
 }
 
 .programme-col-name {
@@ -518,7 +518,7 @@
 }
 
 .programme-col-pass {
-    width: 8rem;
+    width: 7rem;
 }
 
 .programme-table thead {
@@ -529,7 +529,7 @@
 .programme-table th,
 .programme-table td {
     padding: 0.66rem 0.9rem;
-    text-align: center;
+    text-align: left;
     vertical-align: top;
     font-size: 0.82rem;
     word-break: break-word;
@@ -553,23 +553,35 @@
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.04em;
+    padding: 0.5rem 0.55rem;
+    text-align: left !important;
+    vertical-align: middle;
 }
 
 .programme-th-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
     width: 100%;
-    height: 100%;
-    padding: 0.66rem 0.9rem;
+    box-sizing: border-box;
+    padding: 0.1rem 0.2rem;
     color: inherit;
     text-decoration: none;
+    text-align: left !important;
+    line-height: 1.15;
     transition: background 0.2s ease, color 0.2s ease;
+}
+
+.programme-th-link span {
+    display: block;
+    line-height: 1.05;
+    margin: 0;
 }
 
 .programme-th-link::after {
     content: "↕";
-    font-size: 0.86rem;
+    display: inline-block;
+    margin-top: 0.08rem;
+    font-size: 0.78rem;
+    line-height: 1;
     color: rgba(255, 255, 255, 0.65);
     transition: color 0.2s ease, transform 0.2s ease;
 }

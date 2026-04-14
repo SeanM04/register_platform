@@ -8,105 +8,90 @@
     padding: 0;
 }
 
-/* Metrics Section */
+/* Graduation KPI row */
 .graduation-metrics {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr)); /* adjust number if needed */
-    gap: 0.9rem;
-    width: 100%;
-    margin: 0 0 1rem;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.9rem !important;
+    width: 100% !important;
+    margin: 0 0 1rem !important;
+    padding: 0 !important;
 }
 
-/* KPI Card */
-.graduation-metric {
-    position: relative;
-    display: grid;
-    gap: 0.35rem;
-    min-height: 7.45rem;
-    padding: 0.95rem 1.05rem 1rem;
-    background: var(--panel);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    overflow: hidden;
-    min-width: 0;
+/* Graduation KPI card */
+.graduation-metrics .graduation-metric {
+    position: relative !important;
+    display: grid !important;
+    gap: 0.35rem !important;
+    min-height: 7.45rem !important;
+    padding: 0.95rem 1.05rem 1rem !important;
+    background: var(--panel) !important;
+    border-radius: 20px !important;
+    box-shadow: var(--shadow) !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+    align-content: start !important;
+    justify-items: start !important;
 }
 
-/* Top gradient strip (same as programme page) */
-.graduation-metric::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, rgba(22, 61, 105, 0.96), rgba(105, 193, 223, 0.9));
+.graduation-metrics .graduation-metric::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    height: 4px !important;
+    background: linear-gradient(90deg, rgba(22, 61, 105, 0.96), rgba(105, 193, 223, 0.9)) !important;
 }
 
-/* Label */
-.graduation-metric-label {
-    margin: 0;
-    color: #4f5f75;
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    text-align: left;
+.graduation-metrics .graduation-metric-label {
+    margin: 0 !important;
+    color: #4f5f75 !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    text-align: left !important;
 }
 
-/* Value */
-.graduation-metric-value {
-    margin: 0;
-    color: #111827;
-    font-size: 1.9rem;
-    font-weight: 800;
-    line-height: 1;
-    text-align: left;
+.graduation-metrics .graduation-metric-value {
+    margin: 0 !important;
+    color: #111827 !important;
+    font-size: 1.9rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-align: left !important;
 }
 
-/* Optional note (if you add it in HTML) */
-.graduation-metric-note {
-    margin: 0;
-    color: #5c718f;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    text-align: left;
+.graduation-metrics .graduation-metric-note {
+    margin: 0 !important;
+    color: #5c718f !important;
+    font-size: 0.8rem !important;
+    line-height: 1.5 !important;
+    text-align: left !important;
 }
 
-/* Remove hover lift to match programme */
-.graduation-metric:hover {
-    transform: none;
-    box-shadow: var(--shadow);
+.graduation-metrics .graduation-metric:hover {
+    transform: none !important;
+    box-shadow: var(--shadow) !important;
 }
 
-/* Loading animation */
-.graduation-metric-value.is-loading {
-    color: #94a3b8;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* Responsive */
 @media (max-width: 1200px) {
     .graduation-metrics {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
 }
 
 @media (max-width: 900px) {
     .graduation-metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 }
 
 @media (max-width: 600px) {
     .graduation-metrics {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 }
-
 /* Filters Section */
 .graduation-filters {
     display: flex;
@@ -360,26 +345,92 @@
 
 .graduation-table-container {
     background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .graduation-students-table {
     width: 100%;
-    border-collapse: collapse;
+    min-width: 980px;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    background: #ffffff;
+}
+
+.graduation-students-table thead {
+    background: var(--navy);
+    color: #ffffff;
+}
+
+.graduation-students-table th,
+.graduation-students-table td {
+    padding: 0.85rem 1rem;
+    font-size: 0.82rem;
+    vertical-align: top;
+    word-break: break-word;
 }
 
 .graduation-students-table th {
-    background: #f8fafc;
-    padding: 1rem;
+    background: var(--navy);
+    color: #ffffff;
     text-align: left;
-    font-weight: 600;
-    color: #475569;
-    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     cursor: pointer;
     user-select: none;
     transition: background-color 0.2s ease;
+}
+
+.graduation-students-table th:last-child {
+    border-right: none;
+}
+
+.graduation-students-table th:hover {
+    background: #0d325d;
+}
+
+.graduation-students-table th span {
+    display: block;
+    line-height: 1;
+}
+
+.graduation-students-table th[data-sort]::after {
+    content: "↕";
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.65);
+    opacity: 1;
+}
+
+.graduation-students-table th[data-sort].sort-asc::after {
+    content: "↑";
+    color: #ffffff;
+}
+
+.graduation-students-table th[data-sort].sort-desc::after {
+    content: "↓";
+    color: #ffffff;
+}
+
+.graduation-students-table tbody td {
+    background: #ffffff;
+    color: #1e293b;
+    box-shadow: inset 0 -1px 0 #edf2f7;
+}
+
+.graduation-students-table tbody tr:hover td {
+    background: #fbfdff;
+}
+
+.graduation-students-table tbody tr:last-child td {
+    box-shadow: none;
 }
 
 .graduation-students-table th:hover {
