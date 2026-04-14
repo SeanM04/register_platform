@@ -4,12 +4,12 @@ import {
     buildTooltipBase,
     buildTooltipMarkup,
     createEmptyController,
-    echartsLib,
+    escapeTooltipHtml,
     formatCount,
     formatProgrammeName,
     setChartFallback,
     wrapAxisLabel,
-} from "./shared.js?v=20260405-programmes-progressive01";
+} from "./shared.js?v=20260414-msc-support01";
 import { initialiseQualityNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 export const initialiseQualitySection = (context) => {

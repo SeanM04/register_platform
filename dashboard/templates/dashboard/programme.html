@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260411-programme-axis06">
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260414-pagination01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -291,54 +291,36 @@
                         <thead>
                             <tr>
                                 <th class="programme-th-code">
-                                    <a class="programme-th-link{% if sort_key == 'code' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=code&direction={% if sort_key == 'code' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        Code
-                                    </a>
+                                    <span>Programme</span><br>
+                                    <span>Code</span>
                                 </th>
                                 <th>
-                                    <a class="programme-th-link{% if sort_key == 'name' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=name&direction={% if sort_key == 'name' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        Programme
-                                    </a>
+                                    <span>Academic</span><br>
+                                    <span>Programme</span>
                                 </th>
                                 <th>
-                                    <a class="programme-th-link{% if sort_key == 'faculty' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=faculty&direction={% if sort_key == 'faculty' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        Faculty
-                                    </a>
+                                    <span>Programme</span><br>
+                                    <span>Faculty</span>
                                 </th>
                                 <th>
-                                    <a class="programme-th-link{% if sort_key == 'department' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=department&direction={% if sort_key == 'department' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        Department
-                                    </a>
+                                    <span>Programme</span><br>
+                                    <span>Department</span>
                                 </th>
                                 <th>
-                                    <a class="programme-th-link{% if sort_key == 'students' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=students&direction={% if sort_key == 'students' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        Students
-                                    </a>
+                                    <span>Total</span><br>
+                                    <span>Students</span>
                                 </th>
                                 <th>
-                                    <a class="programme-th-link{% if sort_key == 'registrations' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=registrations&direction={% if sort_key == 'registrations' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        Registrations
-                                    </a>
+                                    <span>Total</span><br>
+                                    <span>Registrations</span>
                                 </th>
                                 <th>
-                                    <a class="programme-th-link{% if sort_key == 'average_mark' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=average_mark&direction={% if sort_key == 'average_mark' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                        <span>Average</span><br>
-                                       <span>Mark</span>
-                                    </a>
+                                    <span>Average</span><br>
+                                   <span>Mark</span>
                                 </th>
                                 <th class="programme-th-pass">
-                                    <a class="programme-th-link{% if sort_key == 'pass_rate' %} is-sorted is-{{ sort_direction }}{% endif %}"
-                                       href="?sort=pass_rate&direction={% if sort_key == 'pass_rate' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">
-                                         <span>Pass</span><br>
-                                        <span>Rate</span>
-                                    </a>
+                                    <span>Pass</span><br>
+                                    <span>Rate</span>
                                 </th>
                             </tr>
                         </thead>
@@ -360,7 +342,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260411-programme-axis06"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260414-debug01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

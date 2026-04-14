@@ -12,7 +12,7 @@ import {
 } from "./narratives.js?v=20260411-programme-axis05";
 import { initialisePerformanceSection } from "./performance.js?v=20260405-programmes-progressive01";
 import { initialiseQualitySection } from "./quality.js?v=20260405-programmes-progressive01";
-import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260405-programmes-progressive01";
+import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260414-instant01";
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
@@ -152,25 +152,42 @@ export const initialiseProgrammePage = async () => {
     const shellContext = createProgrammeContext();
     const root = shellContext.elements.root;
 
+    console.log('Programme page initialization started');
+    console.log('Root element:', root);
+    console.log('Story banner element:', shellContext.elements.storyBanner);
+
     if (!root || !shellContext.elements.storyBanner) {
+        console.log('Missing required elements, aborting initialization');
         return;
     }
 
+    console.log('Payload URL:', root.dataset.payloadUrl);
+
     let chartPayload = null;
     try {
+        console.log('Fetching payload from:', root.dataset.payloadUrl);
         const payloadResponse = await fetchJson(root.dataset.payloadUrl);
+        console.log('Payload response received:', payloadResponse);
+        
         chartPayload = {
             topLoadRows: payloadResponse?.top_load_rows || [],
             departmentRows: payloadResponse?.department_rows || [],
             lowPassRows: payloadResponse?.low_pass_rows || [],
             performanceRows: payloadResponse?.performance_rows || [],
             programmeRows: payloadResponse?.programme_rows || [],
-            registerMeta: {
-                visibleCount: payloadResponse?.register_meta?.visible_count || 0,
+            registerMeta: payloadResponse?.register_meta || {
+                visibleCount: 0,
+                current_page: 1,
+                per_page: 10,
+                total_pages: 1,
+                has_previous: false,
+                has_next: false,
             },
         };
+        console.log('Chart payload created:', chartPayload);
         hydrateSummaryCards(shellContext, payloadResponse?.summary_cards || []);
     } catch (error) {
+        console.error('Error fetching payload:', error);
         setProgrammeShellErrorState(shellContext);
         renderProgrammeRegister(shellContext.elements.registerBody, shellContext.elements.registerMeta, [], {});
         return;

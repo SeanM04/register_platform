@@ -7,7 +7,7 @@ import {
     formatCount,
     formatProgrammeName,
     setChartFallback,
-} from "./shared.js?v=20260405-programmes-progressive01";
+} from "./shared.js?v=20260414-msc-support01";
 import { initialisePerformanceNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 const buildSymbolSize = (students, maxStudents) => {

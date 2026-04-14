@@ -8,7 +8,7 @@ import {
     formatCount,
     formatProgrammeName,
     setChartFallback,
-} from "./shared.js?v=20260405-programmes-progressive01";
+} from "./shared.js?v=20260414-msc-support01";
 import { initialiseLoadNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
 
 export const initialiseLoadSection = (context) => {

@@ -403,10 +403,25 @@ def build_programme_dashboard_data(request, search_query=""):
     )
     summary_values = _build_summary_values_from_rows(programme_rows)
 
+    # Apply pagination for the register table (10 rows per page)
+    page = int(request.GET.get("page", 1))
+    per_page = 10
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    paginated_rows = programme_rows[start_index:end_index]
+
     return {
         "summary_cards": _build_summary_cards(summary_values, programme_rows),
         "scope_pills": build_programme_scope_pills(request, search_query),
-        "programme_rows": programme_rows,
+        "programme_rows": paginated_rows,
+        "register_meta": {
+            "visible_count": len(programme_rows),
+            "current_page": page,
+            "per_page": per_page,
+            "total_pages": (len(programme_rows) + per_page - 1) // per_page,
+            "has_previous": page > 1,
+            "has_next": page < ((len(programme_rows) + per_page - 1) // per_page),
+        },
         "top_load_rows": _build_top_load_rows(programme_rows),
         "department_rows": _build_department_rows(programme_rows),
         "low_pass_rows": _build_low_pass_rows(programme_rows),
