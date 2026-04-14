@@ -15,6 +15,22 @@ from .constants import (
 )
 
 RISK_CACHE_TTL_SECONDS = 30
+RISK_DRILLDOWN_COLUMNS = (
+    {"key": "name", "label": "Student"},
+    {"key": "programme", "label": "Programme"},
+    {"key": "academic_level", "label": "Academic Level"},
+    {"key": "average_mark", "label": "Average Mark"},
+    {"key": "failed_courses", "label": "Failed Modules"},
+    {"key": "carrying", "label": "Carrying"},
+    {"key": "decision", "label": "Decision"},
+    {"key": "risk_level", "label": "Risk Status"},
+)
+RISK_DRILLDOWN_BAND_LABELS = {
+    "low": "Low Risk (0-1)",
+    "moderate": "Medium Risk (2-3)",
+    "high": "High Risk (4-5)",
+    "critical": "Critical (6+)",
+}
 
 
 def _safe_int(value, fallback=999):
@@ -398,6 +414,104 @@ def build_risk_dashboard_data(request, search_query=""):
         "risk_driver_rows": driver_rows,
         "risk_level_rows": level_rows,
         "risk_programme_rows": programme_rows,
+    }
+
+
+def _build_risk_drilldown_rows(source_rows):
+    """Normalise student rows for the modal drill-down table."""
+
+    return [
+        {
+            "name": row["name"],
+            "programme": row["programme"],
+            "academic_level": row["academic_level"],
+            "average_mark": row["average_mark"],
+            "failed_courses": row["failed_courses"],
+            "carrying": row["carrying"],
+            "decision": row["decision"],
+            "risk_level": row["risk_level"],
+            "risk_level_key": row["risk_level_key"],
+            "risk_drivers_display": format_risk_monitor_drivers(row["risk_drivers"]),
+            "detail_url": f"/students/{row['detail_slug']}/",
+        }
+        for row in source_rows
+    ]
+
+
+def build_risk_drilldown_payload(request, chart_key, bucket_key, search_query="", page_number=None, page_size=10):
+    """Build modal-ready drill-down payloads for risk charts."""
+
+    risk_profiles = build_student_risk_profiles(request, search_query)
+    risk_rows = [
+        row
+        for row in risk_profiles
+        if row["risk_level"] != "Low Risk"
+    ]
+
+    normalized_chart = str(chart_key or "").strip().lower()
+    normalized_bucket = str(bucket_key or "").strip()
+    if not normalized_chart or not normalized_bucket:
+        return None
+
+    title = "Risk Drill-Down"
+    subtitle = "No drill-down data is available for the current selection."
+    matching_rows = []
+
+    if normalized_chart == "distribution":
+        band = next(
+            (item for item in RISK_BAND_DEFINITIONS if item["key"] == normalized_bucket.lower()),
+            None,
+        )
+        if not band:
+            return None
+
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if _match_band(int(row.get("risk_score", 0) or 0), band)
+        ]
+        band_label = RISK_DRILLDOWN_BAND_LABELS.get(band["key"], band["label"])
+        title = f"{band_label} Students"
+        subtitle = f"Students currently classified inside the {band_label.lower()} band for the selected scope."
+
+    elif normalized_chart == "drivers":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if normalized_bucket in row.get("risk_driver_tags", [])
+        ]
+        driver_label = RISK_DRIVER_LABELS.get(normalized_bucket, normalized_bucket.replace("_", " ").title())
+        title = f"{driver_label} Students"
+        subtitle = f"At-risk students currently linked to the {driver_label.lower()} driver."
+
+    elif normalized_chart == "levels":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["academic_level"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently concentrated in {normalized_bucket}."
+
+    elif normalized_chart == "programmes":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["programme"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently attached to {normalized_bucket}."
+
+    else:
+        return None
+
+    normalized_rows = _build_risk_drilldown_rows(matching_rows)
+    paginated_rows = paginate_risk_rows(normalized_rows, page_number, page_size=page_size)
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": list(RISK_DRILLDOWN_COLUMNS),
+        **paginated_rows,
     }
 
 

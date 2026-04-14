@@ -9,6 +9,7 @@ from accounts.decorators import ajax_login_required, login_required_except_domai
 from .ai_insights import get_risk_card_narratives
 from .presenters import build_risk_shell_context
 from .services import (
+    build_risk_drilldown_payload,
     build_student_risk_profiles,
     get_cached_risk_dashboard_data,
     get_risk_summary_values,
@@ -189,3 +190,31 @@ def risk_payload(request):
             "register": page_data,
         }
     )
+
+
+@ajax_login_required
+@require_GET
+def risk_drilldown_payload(request):
+    """Return modal drill-down rows for an interactive risk chart selection."""
+
+    search_query = request.GET.get("q", "").strip()
+    chart_key = request.GET.get("chart", "").strip()
+    bucket_key = request.GET.get("bucket", "").strip()
+
+    try:
+        page_size = int(request.GET.get("page_size") or 10)
+    except (TypeError, ValueError):
+        page_size = 10
+
+    payload = build_risk_drilldown_payload(
+        request,
+        chart_key,
+        bucket_key,
+        search_query=search_query,
+        page_number=request.GET.get("page"),
+        page_size=max(1, min(page_size, 100)),
+    )
+    if payload is None:
+        return JsonResponse({"detail": "Unknown drill-down selection."}, status=400)
+
+    return JsonResponse(payload)

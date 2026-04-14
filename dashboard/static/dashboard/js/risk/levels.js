@@ -8,6 +8,7 @@ import {
     buildVerticalCategoryZoom,
     initialiseChart,
 } from "./shared.js";
+import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
 
 const HIGH_RISK = "High Risk";
 const MEDIUM_RISK = "Medium Risk";
@@ -237,13 +238,14 @@ export const initialiseLevelsSection = (context) => {
             });
         });
 
-        // Add click event handler for drill-down
-        chart.on('click', (params) => {
+        chart.on("click", (params) => {
             const row = params.data.raw;
             if (row && row.level) {
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('academic_level', row.level);
-                window.location.href = `/risk/level/${encodeURIComponent(row.level)}/?${currentUrl.searchParams.toString()}`;
+                openRiskDrillDown(context, {
+                    chartKey: "levels",
+                    bucketKey: row.level,
+                    label: row.level,
+                });
             }
         });
     }

@@ -106,6 +106,25 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["medium_risk"], 1)
         self.assertEqual(metrics["multi_fail"], 0)
 
+    def test_risk_drilldown_payload_returns_modal_rows_for_distribution_selection(self):
+        """Risk chart drill-down should return modal-ready rows instead of requiring page navigation."""
+
+        low_risk_student = self._add_low_risk_student()
+
+        response = self.client.get(
+            reverse("dashboard:risk-drilldown"),
+            {"chart": "distribution", "bucket": "low"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+        row_names = [row["name"] for row in payload["rows"]]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["title"], "Low Risk (0-1) Students")
+        self.assertIn(low_risk_student.full_name, row_names)
+        self.assertTrue(all("detail_url" in row for row in payload["rows"]))
+
     def test_risk_driver_copy_hides_redundant_average_below_50_text(self):
         """Risk rows should omit the repeated average-below-50 phrase from the table copy."""
 

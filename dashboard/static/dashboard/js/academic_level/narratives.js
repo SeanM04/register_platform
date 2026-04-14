@@ -263,8 +263,16 @@ export const buildGenderNarrative = (rows) => {
     const weakestPass = byPassRate[byPassRate.length - 1];
     const passGap = Math.abs((strongestPass?.pass_rate_value || 0) - (weakestPass?.pass_rate_value || 0));
 
-    const insight = "";
-    const action = "";
+    const insight = trailingRow
+        ? representationGap <= 5
+            ? `${leadRow.label} and ${trailingRow.label} are close to balanced in the current cohort, with ${leadRow.label} holding a narrow ${representationGap}-point edge at ${leadRow.student_share}.`
+            : `${leadRow.label} leads the visible cohort at ${leadRow.student_share}, opening a ${representationGap}-point gap over ${trailingRow.label}.`
+        : `${leadRow.label} accounts for ${leadRow.student_share} of the visible cohort in the current filters.`;
+    const action = trailingRow && passGap >= 4
+        ? `Compare ${strongestPass.label} and ${weakestPass.label} next, because their pass rates are ${passGap} points apart within the current gender mix.`
+        : trailingRow
+            ? `Keep tracking the balance between ${leadRow.label} and ${trailingRow.label} so the cohort mix stays steady as enrolment shifts.`
+            : "Broaden the current filters if you want to compare this cohort against an additional gender segment.";
 
     return { insight, action };
 };
@@ -281,11 +289,16 @@ export const buildTopProgrammeOverviewNarrative = (rows) => {
     const topRow = [...rows].sort(
         (left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme),
     )[0];
+    const runnerUp = [...rows].sort(
+        (left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme),
+    )[1] || null;
     const topShare = totalRegistrations ? Math.round((topRow.registrations / totalRegistrations) * 100) : 0;
     const programmeName = formatStoryProgrammeName(topRow.programme);
 
-    const insight = "";
-    const action = "";
+    const insight = `${programmeName} currently carries ${numberFormatter.format(topRow.registrations)} registrations, which is about ${topShare}% of the visible top-five programme load.`;
+    const action = runnerUp
+        ? `Drill into ${programmeName} first to see which academic levels are absorbing that load before comparing it with the next programme behind it.`
+        : "Widen the current filters if you want a broader programme comparison across the cohort.";
 
     return { insight, action };
 };
@@ -306,8 +319,8 @@ export const buildTopProgrammeDetailNarrative = (programme) => {
     )[0];
     const programmeName = formatStoryProgrammeName(programme.programme);
 
-    const insight = "";
-    const action = "";
+    const insight = `${programmeName} is most concentrated in ${highestLoadLevel.level}, where it currently holds ${numberFormatter.format(highestLoadLevel.registrations)} registrations.`;
+    const action = `Watch ${weakestPassLevel.level} next, because it is the weakest pass-rate point for ${programmeName} at ${weakestPassLevel.pass_rate}.`;
 
     return { insight, action };
 };
@@ -323,9 +336,14 @@ export const buildPassOverviewNarrative = (rows) => {
     const { strongest, weakest } = getStrongestAndWeakestLevels(rows);
     const belowTargetRows = rows.filter((row) => Number(row.pass_rate_value || 0) < PASS_RATE_TARGET);
     const focusRow = belowTargetRows[0] || weakest;
+    const passGap = strongest && weakest ? Math.round(strongest.pass_rate_value - weakest.pass_rate_value) : 0;
 
-    const insight = "";
-    const action = "";
+    const insight = belowTargetRows.length
+        ? `${belowTargetRows.length} academic level${belowTargetRows.length === 1 ? "" : "s"} ${belowTargetRows.length === 1 ? "is" : "are"} still below the ${PASS_RATE_TARGET}% target, with ${focusRow.level} currently the clearest pressure point at ${focusRow.pass_rate}.`
+        : `${strongest.level} currently leads the academic journey at ${strongest.pass_rate}, and every visible level is holding at or above the ${PASS_RATE_TARGET}% target.`;
+    const action = passGap >= 5
+        ? `Review the gap between ${strongest.level} and ${weakest.level} next, because pass performance is spread by ${passGap} points across the current levels.`
+        : `Track ${focusRow.level} next to keep the pass trend stable across the current academic journey.`;
 
     return { insight, action };
 };
@@ -351,8 +369,8 @@ export const buildPassDetailNarrative = (levelRow) => {
     const highestLoadName = formatStoryProgrammeName(highestLoadProgramme.programme);
     const weakestName = formatStoryProgrammeName(weakestProgramme.programme);
 
-    const insight = "";
-    const action = "";
+    const insight = `${levelRow.level} is currently anchored by ${highestLoadName}, which carries the largest programme load in this level at ${numberFormatter.format(highestLoadProgramme.registrations)} registrations.`;
+    const action = `Compare ${weakestName} next, because it is the weakest pass-rate pocket inside ${levelRow.level} at ${weakestProgramme.pass_rate}.`;
 
     return { insight, action };
 };

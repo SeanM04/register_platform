@@ -323,6 +323,18 @@
     line-height: 1.45;
 }
 
+.level-card-narrative {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.level-chart-copy {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.79rem;
+    line-height: 1.5;
+}
+
 .level-chart-hints {
     display: flex;
     flex-wrap: wrap;
@@ -394,6 +406,10 @@
 
 .level-insight-card-gender .level-chart-canvas {
     min-height: 360px;
+}
+
+.level-insight-card-top-enrolment .level-chart-stage {
+    padding: 0.5rem 0.6rem 1rem;
 }
 
 .level-chart-context {
@@ -561,6 +577,11 @@
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
+}
+
+.level-insight-card-top-enrolment .level-chart-actions {
+    margin-top: 0.35rem;
+    align-items: flex-start;
 }
 
 .level-chart-action-buttons {
@@ -1103,7 +1124,21 @@ outline-offset: 2px;
     text-align: center;
     vertical-align: top;
     font-size: 0.81rem;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.level-table td {
+    max-width: 200px;
+}
+
+.level-td-programme {
+    text-align: left;
+    max-width: 250px;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .level-table th {
@@ -1366,5 +1401,140 @@ outline-offset: 2px;
 
     .level-table-wrap {
         max-height: 52vh;
+    }
+}
+
+/* Table Pagination Styles */
+.level-table-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0.5rem 0.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: #ffffff;
+    border-top: 1px solid #e5edf7;
+}
+
+.level-pagination-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.level-pagination-info span {
+    color: #4d6178;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.level-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 2;
+    justify-content: center;
+    min-width: 300px;
+}
+
+.level-pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.5rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.level-pagination-btn:hover:not(:disabled) {
+    background: #f4f8fb;
+    border-color: #4fb0d1;
+    transform: translateY(-1px);
+}
+
+.level-pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.level-pagination-btn.is-active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #ffffff;
+}
+
+.level-pagination-pages {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.level-pagination-size {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    min-width: 200px;
+}
+
+.level-pagination-size label {
+    color: #4d6178;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.level-page-size-select {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.level-page-size-select:hover {
+    border-color: #4fb0d1;
+}
+
+.level-page-size-select:focus {
+    outline: none;
+    border-color: #4fb0d1;
+    box-shadow: 0 0 0 3px rgba(79, 176, 209, 0.15);
+}
+
+.level-pagination-size span {
+    color: #4d6178;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .level-table-pagination {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .level-pagination-info,
+    .level-pagination-controls,
+    .level-pagination-size {
+        justify-content: center;
+        text-align: center;
+        min-width: auto;
+    }
+
+    .level-pagination-size {
+        justify-content: center;
     }
 }

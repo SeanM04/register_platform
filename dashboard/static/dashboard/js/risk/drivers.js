@@ -8,6 +8,7 @@ import {
     formatChartLabel,
     initialiseChart,
 } from "./shared.js";
+import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
 
 const buildAxisMax = (value) => {
     const maxValue = Number(value?.max || 0);
@@ -113,14 +114,15 @@ export const initialiseDriversSection = (context) => {
         (rows) => rows.some((row) => Number(row.count || 0) > 0),
     );
 
-    // Add click event handler for drill-down
     if (chart) {
-        chart.on('click', (params) => {
+        chart.on("click", (params) => {
             const row = params.data.raw;
             if (row && row.key) {
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('risk_driver', row.key);
-                window.location.href = `/risk/driver/${row.key}/?${currentUrl.searchParams.toString()}`;
+                openRiskDrillDown(context, {
+                    chartKey: "drivers",
+                    bucketKey: row.key,
+                    label: row.label,
+                });
             }
         });
     }

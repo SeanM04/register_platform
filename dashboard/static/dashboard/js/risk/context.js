@@ -8,6 +8,9 @@ export const createRiskContext = (payload = {}) => {
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
 
     return {
+        config: {
+            drilldownUrl: document.querySelector(".risk-layout")?.dataset.drilldownUrl || "",
+        },
         data: {
             distributionRows: chartPayload.distributionRows || parseJsonScript("risk-distribution-data", []),
             driverRows: chartPayload.driverRows || parseJsonScript("risk-driver-data", []),

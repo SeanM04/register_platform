@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260412-risk-shell01">
+<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260414-risk-shell03">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -125,7 +125,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="risk-layout" data-payload-url="{% url 'dashboard:risk-payload' %}">
+<section class="risk-layout" data-payload-url="{% url 'dashboard:risk-payload' %}" data-drilldown-url="{% url 'dashboard:risk-drilldown' %}">
     <section class="risk-metrics" data-metrics-url="{% url 'dashboard:risk-metrics' %}">
         {% for card in summary_cards %}
         <article class="risk-metric">
@@ -314,7 +314,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/risk.js' %}?v=20260412-risk-shell01"></script>
+<script type="module" src="{% static 'dashboard/js/risk.js' %}?v=20260414-risk-shell03"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

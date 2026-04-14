@@ -15,6 +15,9 @@ export const createAcademicLevelContext = (payload = {}) => {
         .sort((left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme))
         .slice(0, 5);
 
+    const levelTableBody = document.querySelector(".level-table tbody");
+    console.log('[Academic Level Context] Table body found:', !!levelTableBody, 'Selector used:', '.level-table tbody');
+
     return {
         data: {
             levelRows,
@@ -53,10 +56,10 @@ export const createAcademicLevelContext = (payload = {}) => {
             programmeTopContext: document.getElementById("academic-level-programme-top-context"),
             programmeTopTitle: document.getElementById("academic-level-programme-top-title"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
-            passTrendCard: document.getElementById("academic-level-pass-chart")?.closest(".level-insight-card"),
-            topProgrammeCard: document.getElementById("academic-level-programme-top-chart")?.closest(".level-insight-card"),
+            passTrendCard: document.getElementById("academic-level-pass-chart")?.closest(".demographic-accordion-item"),
+            topProgrammeCard: document.getElementById("academic-level-programme-top-chart")?.closest(".demographic-accordion-item"),
             levelTableWrap: document.querySelector("[data-scroll-region]"),
-            levelTableBody: document.querySelector(".level-table tbody"),
+            levelTableBody: levelTableBody,
             levelTableRows: Array.from(document.querySelectorAll("[data-level-row]")),
         },
     };
