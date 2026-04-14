@@ -113,6 +113,18 @@ export const initialiseDriversSection = (context) => {
         (rows) => rows.some((row) => Number(row.count || 0) > 0),
     );
 
+    // Add click event handler for drill-down
+    if (chart) {
+        chart.on('click', (params) => {
+            const row = params.data.raw;
+            if (row && row.key) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('risk_driver', row.key);
+                window.location.href = `/risk/driver/${row.key}/?${currentUrl.searchParams.toString()}`;
+            }
+        });
+    }
+
     return {
         getChart: () => chart,
         resize: () => {

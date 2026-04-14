@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260412-risk-shell01">
+{% endblock %}
+
+{% block content %}
+<section class="risk-layout">
+    <section class="risk-story-banner">
+        <div class="risk-story-main">
+            <p class="risk-story-kicker">Academic Level Drill-down</p>
+            <h2 class="risk-story-title">{{ academic_level }} - Student Details</h2>
+            <p class="risk-story-copy">
+                Showing {{ total_students }} students in {{ academic_level }}.
+                {% if search_query %}Filtered by search query: "{{ search_query }}"{% endif %}
+            </p>
+        </div>
+    </section>
+
+    <section class="risk-register-card">
+        <div class="risk-register-header">
+            <div class="risk-register-copy">
+                <p class="risk-insight-kicker">Student List</p>
+                <h2 class="risk-register-title">Students in {{ academic_level }}</h2>
+                <p class="risk-register-subtitle">
+                    Detailed view of students at this academic level with their performance metrics and risk drivers.
+                </p>
+            </div>
+            <a href="{% url 'dashboard:risk' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="risk-search-button" style="text-decoration: none;">
+                ← Back to Risk Dashboard
+            </a>
+        </div>
+
+        <div class="risk-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Academic level students table">
+            <table class="risk-table">
+                <colgroup>
+                    <col class="risk-col-student">
+                    <col class="risk-col-programme">
+                    <col class="risk-col-level">
+                    <col class="risk-col-average">
+                    <col class="risk-col-fails">
+                    <col class="risk-col-carrying">
+                    <col class="risk-col-decision">
+                    <col class="risk-col-status">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="risk-th-student">Student <br> Name</th>
+                        <th>Programme <br> Name</th>
+                        <th>Academic <br> Level</th>
+                        <th>Average Mark</th>
+                        <th>Failed Modules</th>
+                        <th>Carrying <br> Status</th>
+                        <th>Decision <br> Status</th>
+                        <th class="risk-th-status">Risk <br> Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if students %}
+                        {% for student in students %}
+                        <tr>
+                            <td class="risk-td-student">
+                                <a class="risk-student-link" href="/students/{{ student.detail_slug }}/" aria-label="View {{ student.name }} profile">
+                                    <span class="risk-student-name">{{ student.name }}</span>
+                                </a>
+                            </td>
+                            <td>{{ student.programme }}</td>
+                            <td>{{ student.academic_level }}</td>
+                            <td>{{ student.average_mark }}</td>
+                            <td>{{ student.failed_courses }}</td>
+                            <td>{{ student.carrying }}</td>
+                            <td>{{ student.decision }}</td>
+                            <td class="risk-td-status">
+                                <span class="risk-status-badge risk-status-{{ student.risk_level_key }}">{{ student.risk_level }}</span>
+                                <span class="risk-status-copy">{{ student.risk_drivers }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td class="risk-empty" colspan="8">No students found at this academic level.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="risk-footer">
+            <p class="risk-results-meta">
+                Total students in {{ academic_level }}: {{ total_students }}
+            </p>
+        </div>
+    </section>
+</section>
+{% endblock %}

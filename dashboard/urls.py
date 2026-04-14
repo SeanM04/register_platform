@@ -11,7 +11,7 @@ from .overview.views import (
     dashboard_home_payload,
 )
 from .programmes.views import programme_metrics, programme_narratives, programme_payload, programme_view
-from .risk.views import risk_metrics, risk_payload, risk_view
+from .risk.views import risk_band_drilldown, risk_driver_drilldown, risk_level_drilldown, risk_metrics, risk_payload, risk_programme_drilldown, risk_view
 from .views import (
     student_detail,
     student_list,
@@ -53,6 +53,10 @@ urlpatterns = [
     path("metrics/academic-level/", academic_level_metrics, name="academic-level-metrics"),
     path("metrics/academic-level/payload/", academic_level_payload, name="academic-level-payload"),
     path("risk/", risk_view, name="risk"),
+    path("risk/band/<str:risk_band>/", risk_band_drilldown, name="risk-band-drilldown"),
+    path("risk/level/<str:academic_level>/", risk_level_drilldown, name="risk-level-drilldown"),
+    path("risk/driver/<str:risk_driver>/", risk_driver_drilldown, name="risk-driver-drilldown"),
+    path("risk/programme/<str:programme>/", risk_programme_drilldown, name="risk-programme-drilldown"),
     path("metrics/risk/", risk_metrics, name="risk-metrics"),
     path("metrics/risk/payload/", risk_payload, name="risk-payload"),
     path("insights/", insights_view, name="insights"),

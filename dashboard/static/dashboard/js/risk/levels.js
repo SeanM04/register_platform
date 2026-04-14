@@ -236,6 +236,16 @@ export const initialiseLevelsSection = (context) => {
                 silent: true,
             });
         });
+
+        // Add click event handler for drill-down
+        chart.on('click', (params) => {
+            const row = params.data.raw;
+            if (row && row.level) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('academic_level', row.level);
+                window.location.href = `/risk/level/${encodeURIComponent(row.level)}/?${currentUrl.searchParams.toString()}`;
+            }
+        });
     }
 
     return {

@@ -109,6 +109,18 @@ export const initialiseDistributionSection = (context) => {
         (rows) => rows.some((row) => Number(row.count || 0) > 0),
     );
 
+    // Add click event handler for drill-down
+    if (chart) {
+        chart.on('click', (params) => {
+            const row = params.data.raw;
+            if (row && row.key) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('risk_band', row.key);
+                window.location.href = `/risk/band/${row.key}/?${currentUrl.searchParams.toString()}`;
+            }
+        });
+    }
+
     return {
         getChart: () => chart,
         resize: () => {

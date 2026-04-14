@@ -9,6 +9,7 @@ from accounts.decorators import ajax_login_required, login_required_except_domai
 from .ai_insights import get_risk_card_narratives
 from .presenters import build_risk_shell_context
 from .services import (
+    build_student_risk_profiles,
     get_cached_risk_dashboard_data,
     get_risk_summary_values,
     paginate_risk_rows,
@@ -21,6 +22,112 @@ def risk_view(request):
 
     search_query = request.GET.get("q", "").strip()
     return render(request, "dashboard/risk.html", build_risk_shell_context(request, search_query))
+
+
+@login_required_except_domains()
+def risk_band_drilldown(request, risk_band):
+    """Render drill-down page for a specific risk band."""
+
+    search_query = request.GET.get("q", "").strip()
+    risk_profiles = build_student_risk_profiles(request, search_query)
+
+    # Filter profiles by risk band
+    risk_band_mapping = {
+        "low": "Low Risk",
+        "moderate": "Medium Risk",
+        "high": "High Risk",
+        "critical": "High Risk",  # Critical is also considered high risk
+    }
+
+    target_risk_level = risk_band_mapping.get(risk_band.lower(), "Low Risk")
+    filtered_students = [p for p in risk_profiles if p["risk_level"] == target_risk_level]
+
+    # Get band label for display
+    band_labels = {
+        "low": "Low Risk (0-1)",
+        "moderate": "Medium Risk (2-3)",
+        "high": "High Risk (4-5)",
+        "critical": "Critical (6+)",
+    }
+
+    context = build_risk_shell_context(request, search_query)
+    context.update({
+        "page_title": f"Risk Band: {band_labels.get(risk_band, risk_band)}",
+        "risk_band": risk_band,
+        "risk_band_label": band_labels.get(risk_band, risk_band),
+        "students": filtered_students,
+        "total_students": len(filtered_students),
+    })
+
+    return render(request, "dashboard/risk_band_drilldown.html", context)
+
+
+@login_required_except_domains()
+def risk_level_drilldown(request, academic_level):
+    """Render drill-down page for a specific academic level."""
+
+    search_query = request.GET.get("q", "").strip()
+    risk_profiles = build_student_risk_profiles(request, search_query)
+
+    # Filter profiles by academic level
+    filtered_students = [p for p in risk_profiles if p["academic_level"] == academic_level]
+
+    context = build_risk_shell_context(request, search_query)
+    context.update({
+        "page_title": f"Academic Level: {academic_level}",
+        "academic_level": academic_level,
+        "students": filtered_students,
+        "total_students": len(filtered_students),
+    })
+
+    return render(request, "dashboard/risk_level_drilldown.html", context)
+
+
+@login_required_except_domains()
+def risk_driver_drilldown(request, risk_driver):
+    """Render drill-down page for a specific risk driver."""
+
+    search_query = request.GET.get("q", "").strip()
+    risk_profiles = build_student_risk_profiles(request, search_query)
+
+    # Filter profiles by risk driver tag
+    filtered_students = [p for p in risk_profiles if risk_driver in p.get("risk_driver_tags", [])]
+
+    # Get driver label for display
+    from .constants import RISK_DRIVER_LABELS
+    driver_label = RISK_DRIVER_LABELS.get(risk_driver, risk_driver.replace("_", " ").title())
+
+    context = build_risk_shell_context(request, search_query)
+    context.update({
+        "page_title": f"Risk Driver: {driver_label}",
+        "risk_driver": risk_driver,
+        "risk_driver_label": driver_label,
+        "students": filtered_students,
+        "total_students": len(filtered_students),
+    })
+
+    return render(request, "dashboard/risk_driver_drilldown.html", context)
+
+
+@login_required_except_domains()
+def risk_programme_drilldown(request, programme):
+    """Render drill-down page for a specific programme."""
+
+    search_query = request.GET.get("q", "").strip()
+    risk_profiles = build_student_risk_profiles(request, search_query)
+
+    # Filter profiles by programme
+    filtered_students = [p for p in risk_profiles if p["programme"] == programme]
+
+    context = build_risk_shell_context(request, search_query)
+    context.update({
+        "page_title": f"Programme: {programme}",
+        "programme": programme,
+        "students": filtered_students,
+        "total_students": len(filtered_students),
+    })
+
+    return render(request, "dashboard/risk_programme_drilldown.html", context)
 
 
 @ajax_login_required

@@ -244,6 +244,16 @@ export const initialiseProgrammesSection = (context) => {
                 silent: true,
             });
         });
+
+        // Add click event handler for drill-down
+        chart.on('click', (params) => {
+            const row = params.data.raw;
+            if (row && row.programme) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('programme', row.programme);
+                window.location.href = `/risk/programme/${encodeURIComponent(row.programme)}/?${currentUrl.searchParams.toString()}`;
+            }
+        });
     }
 
     return {
