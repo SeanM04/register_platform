@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260415-modern-feel01">
+<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260415-fullscreen-css-fixed01">
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
 
 {% block content %}
@@ -12,11 +14,11 @@
     <!-- Metrics Section -->
     <section class="graduation-metrics">
         <article class="graduation-metric">
-            <p class="graduation-metric-label">Total Graduated Students</p>
+            <p class="graduation-metric-label">Graduated Students</p>
             <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="total_graduated_students">-</p>
         </article>
         <article class="graduation-metric">
-            <p class="graduation-metric-label">Avg Graduation Rate</p>
+            <p class="graduation-metric-label">Graduation Rate</p>
             <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="average_completion_graduation_rate">-</p>
         </article>
         <article class="graduation-metric">
@@ -33,100 +35,190 @@
         </article>
     </section>
 
+    <section class="completion-story-banner" id="graduation-story-banner" aria-live="polite">
+        <div>
+            <p class="completion-banner-title">Graduation Analysis Overview</p>
+            <p class="completion-banner-description">Track student graduation success with comprehensive graduation metrics. Analyze graduation rates across programmes, faculty performance, and individual student achievements to identify trends and support academic completion.</p>
+        </div>
+    </section>
+    <p class="completion-narrative-status" id="graduation-narrative-status" hidden></p>
+
     
     <!-- Charts Section -->
-    <section class="graduation-charts">
-        <!-- Programme Graduation Rates Chart -->
-        <article class="graduation-chart-card">
-            <div class="graduation-chart-header">
-                <div>
-                    <h2 class="graduation-chart-title">Programme Graduation Rates</h2>
-                    <p class="graduation-chart-copy">Compare graduation rates across programmes</p>
-                </div>
-                <button class="graduation-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Graduation Rates" aria-controls="programme-graduation-chart" aria-label="View Programme Graduation Rates in full screen" aria-pressed="false">Full screen</button>
+    <div class="demographic-accordion">
+        <!-- Programme Graduation Chart -->
+        <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-graduation">
+            <div class="demographic-flow-header">
+                <h2 class="demographic-flow-title">Programme Graduation Rates</h2>
+                <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-graduation-content">
+                    <span class="demographic-accordion-toggle-text">Expand</span>
+                    <span class="demographic-accordion-toggle-icon">+</span>
+                </button>
             </div>
-            <div class="graduation-chart-stage">
-                <div class="graduation-chart-canvas" id="programme-graduation-chart" role="img" aria-label="Programme graduation rates chart"></div>
-            </div>
-        </article>
 
-        <!-- Cohort Graduation Rates Chart -->
-        <article class="graduation-chart-card">
-            <div class="graduation-chart-header">
-                <div>
-                    <h2 class="graduation-chart-title">Cohort Graduation Rates</h2>
-                    <p class="graduation-chart-copy">Track graduation rates across different cohorts</p>
-                </div>
-                <button class="graduation-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Graduation Rates" aria-controls="cohort-graduation-chart" aria-label="View Cohort Graduation Rates in full screen" aria-pressed="false">Full screen</button>
+            <div class="demographic-accordion-content is-hidden" id="programme-graduation-content">
+                <article class="demographic-insight-card">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Programme Analysis</p>
+                            <h2 class="demographic-insight-title">Programme Graduation Rates</h2>
+                            <p class="demographic-insight-copy">Compare graduation rates across programmes</p>
+                            <div class="demographic-chart-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Graduation Rates" aria-controls="programme-graduation-chart" aria-label="View Programme Graduation Rates in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="programme-graduation-chart" role="img" aria-label="Programme graduation rates chart"></div>
+                    </div>
+                </article>
             </div>
-            <div class="graduation-chart-stage">
-                <div class="graduation-chart-canvas" id="cohort-graduation-chart" role="img" aria-label="Cohort graduation rates chart"></div>
+        </section>
+
+        <!-- Cohort Graduation Chart -->
+        <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="cohort-graduation">
+            <div class="demographic-flow-header">
+                <h2 class="demographic-flow-title">Cohort Graduation Rates</h2>
+                <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="cohort-graduation-content">
+                    <span class="demographic-accordion-toggle-text">Expand</span>
+                    <span class="demographic-accordion-toggle-icon">+</span>
+                </button>
             </div>
-        </article>
-    </section>
+
+            <div class="demographic-accordion-content is-hidden" id="cohort-graduation-content">
+                <article class="demographic-insight-card">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Cohort Analysis</p>
+                            <h2 class="demographic-insight-title">Cohort Graduation Rates</h2>
+                            <p class="demographic-insight-copy">Track graduation rates across different cohorts</p>
+                            <div class="demographic-chart-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Graduation Rates" aria-controls="cohort-graduation-chart" aria-label="View Cohort Graduation Rates in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="cohort-graduation-chart" role="img" aria-label="Cohort graduation rates chart"></div>
+                    </div>
+                </article>
+            </div>
+        </section>
+        </div>
 
     <!-- Faculty Performance Section -->
-    <section class="graduation-faculty-section">
-        <div class="graduation-section-header">
-            <h2 class="graduation-section-title">Faculty Performance</h2>
-            <p class="graduation-section-copy">Graduation rates by faculty</p>
+    <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="faculty-performance">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Faculty Performance</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="faculty-performance-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
         </div>
-        <div class="graduation-faculty-grid" id="faculty-grid">
-            <!-- Faculty cards will be populated here -->
+
+        <div class="demographic-accordion-content is-hidden" id="faculty-performance-content">
+            <article class="demographic-insight-card">
+                <div class="demographic-insight-header">
+                    <div>
+                        <p class="demographic-insight-kicker">Faculty Analysis</p>
+                        <h2 class="demographic-insight-title">Faculty Performance</h2>
+                        <p class="demographic-insight-copy">Graduation rates by faculty</p>
+                        <div class="demographic-chart-hints" aria-label="Faculty performance insights"></div>
+                    </div>
+                </div>
+                <div class="demographic-chart-stage">
+                    <div class="graduation-faculty-grid" id="faculty-grid">
+                        <!-- Faculty cards will be populated here -->
+                    </div>
+                </div>
+            </article>
         </div>
     </section>
 
     <!-- Graduated Students Table Section -->
-    <section class="graduation-students-section">
-        <div class="graduation-students-header">
-            <h2 class="graduation-students-title">Graduated Students</h2>
-            <div class="graduation-students-controls">
-                <input type="text" id="student-search" class="graduation-search-input" placeholder="Search students...">
-                <button id="export-students" class="graduation-export-btn">Export Data</button>
+    <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="graduation-details">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Graduated Students</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="graduation-details-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
+        </div>
+
+        <div class="demographic-accordion-content is-hidden" id="graduation-details-content">
+            <section class="completion-students-section">
+                <div class="completion-table-container">
+                    <div class="table-topbar">
+                        <div class="table-toolbar">
+                            <input class="search-input" type="search" id="student-search" placeholder="Search students" aria-label="Search students">
+                            <button class="search-button" id="export-students">Export Data</button>
+                        </div>
+                    </div>
+            <div class="table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Graduated students table">
+                <table class="completion-students-table" id="students-table">
+                    <thead>
+                        <tr>
+                            <th class="students-th-name"><span>Name</span></th>
+                            <th><span>Programme</span></th>
+                            <th><span>Faculty</span></th>
+                            <th><span>Graduation Stage</span></th>
+                            <th class="completion-rate-header">Graduation Rate</th>
+                            <th><span>On-Time Graduation</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="students-tbody">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <p class="results-meta" id="results-meta">
+                    <!-- Results info will be populated here -->
+                </p>
+
+                <nav class="pagination" aria-label="Graduated students table pages" id="pagination">
+                    <!-- Pagination will be populated here -->
+                </nav>
             </div>
         </div>
-        <div class="graduation-table-container">
-            <table class="graduation-students-table" id="students-table">
-                <thead>
-                    <tr>
-                        
-                        <th data-sort="student_name"><span>Student</span><br><span>Name</span></th>
-                        <th data-sort="programme_name"><span>Academic</span><br><span>Programme</span></th>
-                        <th data-sort="faculty"><span>Programme</span><br><span>Faculty</span></th>
-                        <th data-sort="graduation_rate"><span>Graduation</span><br><span>Rate</span></th>
-                        <th data-sort="graduation_stage"><span>Graduation</span><br><span>Stage</span></th>
-                        <th data-sort="on_time"><span>On-Time</span><br><span>Graduation</span></th>
-                    </tr>
-                </thead>
-                <tbody id="students-tbody">
-                    <!-- Data will be populated here -->
-                </tbody>
-            </table>
-        </div>
-        <div class="graduation-pagination" id="pagination">
-            <!-- Pagination will be populated here -->
-        </div>
+    </section>
+    </div>
     </section>
 
     <!-- Statistics Section -->
-    <section class="graduation-statistics-section">
-        <div class="graduation-section-header">
-            <h2 class="graduation-section-title">Graduation Statistics</h2>
-            <p class="graduation-section-copy">Detailed graduation analysis and insights</p>
+    <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="graduation-statistics">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Graduation Statistics</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="graduation-statistics-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
         </div>
-        <div class="graduation-stats-grid">
-            <div class="graduation-stat-card">
-                <h3 class="graduation-stat-title">Performance Distribution</h3>
-                <div class="graduation-stat-chart" id="performance-distribution-chart"></div>
-            </div>
-            <div class="graduation-stat-card">
-                <h3 class="graduation-stat-title">Graduation Timeline</h3>
-                <div class="graduation-stat-chart" id="graduation-timeline-chart"></div>
-            </div>
-            <div class="graduation-stat-card">
-                <h3 class="graduation-stat-title">Programme Rankings</h3>
-                <div class="graduation-stat-rankings" id="programme-rankings"></div>
-            </div>
+
+        <div class="demographic-accordion-content is-hidden" id="graduation-statistics-content">
+            <article class="demographic-insight-card">
+                <div class="demographic-insight-header">
+                    <div>
+                        <p class="demographic-insight-kicker">Statistical Analysis</p>
+                        <h2 class="demographic-insight-title">Graduation Statistics</h2>
+                        <p class="demographic-insight-copy">Detailed graduation analysis and insights</p>
+                        <div class="demographic-chart-hints" aria-label="Graduation statistics insights"></div>
+                    </div>
+                </div>
+                <div class="demographic-chart-stage">
+                    <div class="graduation-stats-grid">
+                        <div class="graduation-stat-card">
+                            <h3 class="graduation-stat-title">Performance Distribution</h3>
+                            <div class="graduation-stat-chart" id="performance-distribution-chart"></div>
+                        </div>
+                        <div class="graduation-stat-card">
+                            <h3 class="graduation-stat-title">Graduation Timeline</h3>
+                            <div class="graduation-stat-chart" id="graduation-timeline-chart"></div>
+                        </div>
+                        <div class="graduation-stat-card">
+                            <h3 class="graduation-stat-title">Programme Rankings</h3>
+                            <div class="graduation-stat-rankings" id="programme-rankings"></div>
+                        </div>
+                    </div>
+                </div>
+            </article>
         </div>
     </section>
 </section>
@@ -168,4 +260,75 @@
 
 {% block extra_js %}
 <script src="{% static 'dashboard/js/graduation.js' %}?v=20260415-modern-feel01"></script>
+<script>
+/* Demographic Accordion JavaScript - Inline Implementation */
+document.addEventListener('DOMContentLoaded', function() {
+    const initialiseAccordion = () => {
+        const accordionItems = document.querySelectorAll('.demographic-accordion-item');
+        
+        accordionItems.forEach((item) => {
+            const toggleButton = item.querySelector('.demographic-accordion-toggle');
+            const content = item.querySelector('.demographic-accordion-content');
+            
+            if (!toggleButton || !content) {
+                return;
+            }
+            
+            toggleButton.addEventListener('click', () => {
+                const isOpen = item.classList.contains('is-open');
+                const toggleText = toggleButton.querySelector('.demographic-accordion-toggle-text');
+                const toggleIcon = toggleButton.querySelector('.demographic-accordion-toggle-icon');
+                
+                // Close all other accordion items
+                accordionItems.forEach((otherItem) => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('is-open');
+                        const otherContent = otherItem.querySelector('.demographic-accordion-content');
+                        const otherToggle = otherItem.querySelector('.demographic-accordion-toggle');
+                        const otherToggleText = otherToggle?.querySelector('.demographic-accordion-toggle-text');
+                        const otherToggleIcon = otherToggle?.querySelector('.demographic-accordion-toggle-icon');
+                        
+                        if (otherContent) {
+                            otherContent.classList.add('is-hidden');
+                        }
+                        
+                        if (otherToggleText) {
+                            otherToggleText.textContent = 'Expand';
+                        }
+                        
+                        if (otherToggleIcon) {
+                            otherToggleIcon.textContent = '+';
+                        }
+                        
+                        if (otherToggle) {
+                            otherToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+                
+                // Toggle current item
+                if (content) {
+                    content.classList.toggle('is-hidden');
+                }
+                
+                if (toggleText) {
+                    toggleText.textContent = isOpen ? 'Expand' : 'Collapse';
+                }
+                
+                if (toggleIcon) {
+                    toggleIcon.textContent = isOpen ? '+' : '−';
+                }
+                
+                if (toggleButton) {
+                    toggleButton.setAttribute('aria-expanded', !isOpen);
+                }
+                
+                item.classList.toggle('is-open', !isOpen);
+            });
+        });
+    };
+    
+    initialiseAccordion();
+});
+</script>
 {% endblock %}

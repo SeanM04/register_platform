@@ -4,6 +4,7 @@ import {
     buildTooltipBase,
     buildTooltipMarkup,
     createEmptyController,
+    echartsLib,
     escapeTooltipHtml,
     formatCount,
     formatProgrammeName,

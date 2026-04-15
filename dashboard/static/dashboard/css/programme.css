@@ -507,18 +507,22 @@
 
 .programme-col-students {
     width: 8rem;
+    text-align: center;
 }
 
 .programme-col-registrations {
     width: 10rem;
+    text-align: center;
 }
 
 .programme-col-average {
     width: 10rem;
+    text-align: center;
 }
 
 .programme-col-pass {
     width: 7rem;
+    text-align: center;
 }
 
 .programme-table thead {
@@ -543,6 +547,18 @@
 .programme-table th:nth-child(4),
 .programme-table td:nth-child(4) {
     text-align: left;
+}
+
+/* Center-align numeric columns (Total Students, Total Registrations, Average Mark, Pass Rate) */
+.programme-table th:nth-child(5),
+.programme-table td:nth-child(5),
+.programme-table th:nth-child(6),
+.programme-table td:nth-child(6),
+.programme-table th:nth-child(7),
+.programme-table td:nth-child(7),
+.programme-table th:nth-child(8),
+.programme-table td:nth-child(8) {
+    text-align: center;
 }
 
 .programme-table th {

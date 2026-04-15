@@ -57,6 +57,7 @@ export const createDemographicContext = (payload = {}) => {
             ageDistributionCopy: document.getElementById("demographic-age-distribution-copy"),
             ageDistributionHints: document.getElementById("demographic-age-distribution-hints"),
             ageDistributionNote: document.getElementById("demographic-age-distribution-note"),
+            ageDistributionChart: document.getElementById("demographic-age-distribution-chart"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
         },

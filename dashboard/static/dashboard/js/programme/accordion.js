@@ -1,9 +1,9 @@
 export const initialiseAccordion = () => {
-    const accordionItems = document.querySelectorAll('.programme-accordion-item');
+    const accordionItems = document.querySelectorAll('.demographic-accordion-item');
     
     accordionItems.forEach((item) => {
-        const toggleButton = item.querySelector('.programme-accordion-toggle');
-        const content = item.querySelector('.programme-accordion-content');
+        const toggleButton = item.querySelector('.demographic-accordion-toggle');
+        const content = item.querySelector('.demographic-accordion-content');
         
         if (!toggleButton || !content) {
             return;
@@ -11,17 +11,17 @@ export const initialiseAccordion = () => {
         
         toggleButton.addEventListener('click', () => {
             const isOpen = item.classList.contains('is-open');
-            const toggleText = toggleButton.querySelector('.programme-accordion-toggle-text');
-            const toggleIcon = toggleButton.querySelector('.programme-accordion-toggle-icon');
+            const toggleText = toggleButton.querySelector('.demographic-accordion-toggle-text');
+            const toggleIcon = toggleButton.querySelector('.demographic-accordion-toggle-icon');
             
             // Close all other accordion items
             accordionItems.forEach((otherItem) => {
                 if (otherItem !== item) {
                     otherItem.classList.remove('is-open');
-                    const otherContent = otherItem.querySelector('.programme-accordion-content');
-                    const otherToggle = otherItem.querySelector('.programme-accordion-toggle');
-                    const otherToggleText = otherToggle?.querySelector('.programme-accordion-toggle-text');
-                    const otherToggleIcon = otherToggle?.querySelector('.programme-accordion-toggle-icon');
+                    const otherContent = otherItem.querySelector('.demographic-accordion-content');
+                    const otherToggle = otherItem.querySelector('.demographic-accordion-toggle');
+                    const otherToggleText = otherToggle?.querySelector('.demographic-accordion-toggle-text');
+                    const otherToggleIcon = otherToggle?.querySelector('.demographic-accordion-toggle-icon');
                     
                     if (otherContent) {
                         otherContent.classList.add('is-hidden');

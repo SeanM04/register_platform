@@ -222,7 +222,19 @@ export const initialiseOriginMapSection = (context) => {
                 className: "demographic-origin-popup-shell",
             }).setContent(buildPopupMarkup(row));
 
-            const marker = L.marker([parseFloat(row.latitude), parseFloat(row.longitude)], {
+            // Validate coordinates before creating marker
+            const latitude = parseFloat(row.latitude);
+            const longitude = parseFloat(row.longitude);
+            
+            // Check if coordinates are valid numbers and within reasonable ranges
+            if (isNaN(latitude) || isNaN(longitude) || 
+                latitude < -90 || latitude > 90 || 
+                longitude < -180 || longitude > 180) {
+                console.warn('Invalid coordinates for row:', row, 'Skipping marker creation');
+                return; // Skip this row
+            }
+
+            const marker = L.marker([latitude, longitude], {
                 icon: L.divIcon({
                     html: markerElement,
                     className: 'leaflet-div-icon',
