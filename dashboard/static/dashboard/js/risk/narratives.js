@@ -220,22 +220,15 @@ export const buildDistributionOverviewNarrative = (rows) => {
 export const initialiseDistributionNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
-    if (elements.distributionCopy) {
-        const noteText = "Counts reflect module-level risk signals per student within each band.";
-        const insightText = String(narrative.insight || "").trim();
+   if (elements.distributionCopy) {
+    const noteText = "Counts reflect module-level risk signals per student within each band.";
+    const insightText = String(narrative.insight || "").trim();
 
-        if (insightText.includes(noteText)) {
-            const mainText = insightText.replace(noteText, "").trim();
-
-            elements.distributionCopy.innerHTML = `
-                <span>${escapeTooltipHtml(mainText)}</span>
-                <span class="insight-subtle-note">${escapeTooltipHtml(noteText)}</span>
-            `.trim();
-        } else {
-            setElementText(elements.distributionCopy, insightText);
-        }
-    }
-
+    elements.distributionCopy.innerHTML = `
+        <span>${escapeTooltipHtml(insightText)}</span>
+        <span class="risk-subtle-note">${escapeTooltipHtml(noteText)}</span>
+    `.trim();
+}
     setHintMarkup(elements.distributionHints, []);
     setActionText(elements.distributionNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,

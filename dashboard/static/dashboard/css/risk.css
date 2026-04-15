@@ -1256,3 +1256,11 @@ body.has-risk-drilldown-modal {
         width: 100%;
     }
 }
+
+.risk-subtle-note {
+    display: block;
+    margin-top: 0.35rem;
+    color: #64748b;
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
