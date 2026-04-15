@@ -871,7 +871,7 @@ body.has-home-drilldown-modal {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-align: left;
-    text-transform: uppercase;
+    text-transform: none;
     white-space: nowrap;
 }
 
