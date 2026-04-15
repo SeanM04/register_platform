@@ -128,3 +128,49 @@ def completion_academic_years(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+
+@require_GET
+def completion_periods(request):
+    """
+    Return list of available periods for completion analysis.
+    """
+    try:
+        from services.completion_service import get_completion_periods
+        
+        periods = get_completion_periods()
+        
+        return JsonResponse({
+            'status': 'success',
+            'periods': periods
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in completion_periods: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_GET
+def completion_periods_by_year(request):
+    """
+    Return list of available periods grouped by academic year for completion analysis.
+    """
+    try:
+        from services.completion_service import get_completion_periods_by_year
+        
+        periods_by_year = get_completion_periods_by_year()
+        
+        return JsonResponse({
+            'status': 'success',
+            'periods_by_year': periods_by_year
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in completion_periods_by_year: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

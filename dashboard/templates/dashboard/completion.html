@@ -4,7 +4,8 @@
 {% block title %}Completion Analysis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260412-db01">
+<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260415-fullscreen-css-fixed01">
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
 
 {% block content %}
@@ -20,7 +21,7 @@
             <p class="completion-metric-value is-loading" data-metric-value data-metric-key="total_cohorts">-</p>
         </article>
         <article class="completion-metric">
-            <p class="completion-metric-label">Avg Completion Rate</p>
+            <p class="completion-metric-label">Completion Rate</p>
             <p class="completion-metric-value is-loading" data-metric-value data-metric-key="average_completion_rate">-</p>
         </article>
         <article class="completion-metric">
@@ -33,75 +34,124 @@
         </article>
     </section>
 
-    
+    <section class="completion-story-banner" id="completion-story-banner" aria-live="polite">
+        <div>
+            <p class="completion-banner-title">Completion Analysis Overview</p>
+            <p class="completion-banner-description">Track student progress through academic programmes with comprehensive completion metrics. Analyze cohort performance, programme effectiveness, and individual student completion rates to identify trends and support academic success.</p>
+        </div>
+    </section>
+    <p class="completion-narrative-status" id="completion-narrative-status" hidden></p>
+
     <!-- Charts Section -->
-    <section class="completion-charts">
+    <div class="demographic-accordion">
         <!-- Cohort Completion Chart -->
-        <article class="completion-chart-card">
-            <div class="completion-chart-header">
-                <div>
-                    <h2 class="completion-chart-title">Cohort Completion Rates</h2>
-                    <p class="completion-chart-copy">Track completion rates across different cohorts</p>
-                </div>
-                <button class="completion-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Completion Rates" aria-controls="cohort-completion-chart" aria-label="View Cohort Completion Rates in full screen" aria-pressed="false">Full screen</button>
+        <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="cohort-completion">
+            <div class="demographic-flow-header">
+                <h2 class="demographic-flow-title">Cohort Completion Rates</h2>
+                <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="cohort-completion-content">
+                    <span class="demographic-accordion-toggle-text">Expand</span>
+                    <span class="demographic-accordion-toggle-icon">+</span>
+                </button>
             </div>
-            <div class="completion-chart-stage">
-                <div class="completion-chart-canvas" id="cohort-completion-chart" role="img" aria-label="Cohort completion rates chart"></div>
+
+            <div class="demographic-accordion-content is-hidden" id="cohort-completion-content">
+                <article class="demographic-insight-card">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Cohort Analysis</p>
+                            <h2 class="demographic-insight-title">Cohort Completion Rates</h2>
+                            <p class="demographic-insight-copy">Track completion rates across different cohorts</p>
+                            <div class="demographic-chart-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Completion Rates" aria-controls="cohort-completion-chart" aria-label="View Cohort Completion Rates in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="cohort-completion-chart" role="img" aria-label="Cohort completion rates chart"></div>
+                    </div>
+                </article>
             </div>
-        </article>
+        </section>
 
         <!-- Programme Completion Chart -->
-        <article class="completion-chart-card">
-            <div class="completion-chart-header">
-                <div>
-                    <h2 class="completion-chart-title">Programme Completion Rates</h2>
-                    <p class="completion-chart-copy">Compare completion rates across programmes</p>
-                </div>
-                <button class="completion-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Completion Rates" aria-controls="programme-completion-chart" aria-label="View Programme Completion Rates in full screen" aria-pressed="false">Full screen</button>
+        <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-completion">
+            <div class="demographic-flow-header">
+                <h2 class="demographic-flow-title">Programme Completion Rates</h2>
+                <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-completion-content">
+                    <span class="demographic-accordion-toggle-text">Expand</span>
+                    <span class="demographic-accordion-toggle-icon">+</span>
+                </button>
             </div>
-            <div class="completion-chart-stage">
-                <div class="completion-chart-canvas" id="programme-completion-chart" role="img" aria-label="Programme completion rates chart"></div>
+
+            <div class="demographic-accordion-content is-hidden" id="programme-completion-content">
+                <article class="demographic-insight-card">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Programme Analysis</p>
+                            <h2 class="demographic-insight-title">Programme Completion Rates</h2>
+                            <p class="demographic-insight-copy">Compare completion rates across programmes</p>
+                            <div class="demographic-chart-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Completion Rates" aria-controls="programme-completion-chart" aria-label="View Programme Completion Rates in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="programme-completion-chart" role="img" aria-label="Programme completion rates chart"></div>
+                    </div>
+                </article>
             </div>
-        </article>
-    </section>
+        </section>
 
     <!-- Students Table Section -->
-    <section class="completion-students-section">
-        <div class="completion-students-header">
-            <h2 class="completion-students-title">Student Completion Details</h2>
-            <div class="completion-students-controls">
-                <input type="text" id="student-search" class="completion-search-input" placeholder="Search students...">
-                <button id="export-students" class="completion-export-btn">Export Data</button>
+    <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="completion-details">
+        <div class="demographic-flow-header">
+            <h2 class="demographic-flow-title">Completion rate details</h2>
+            <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="completion-details-content">
+                <span class="demographic-accordion-toggle-text">Expand</span>
+                <span class="demographic-accordion-toggle-icon">+</span>
+            </button>
+        </div>
+
+        <div class="demographic-accordion-content is-hidden" id="completion-details-content">
+            <section class="completion-students-section">
+                <div class="completion-table-container">
+                    <div class="table-topbar">
+                        <div class="table-toolbar">
+                            <input class="search-input" type="search" id="student-search" placeholder="Search students" aria-label="Search students">
+                            <button class="search-button" id="export-students">Export Data</button>
+                        </div>
+                    </div>
+            <div class="table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Completion details table">
+                <table class="completion-students-table" id="students-table">
+                    <thead>
+                        <tr>
+                            
+                            <th class="students-th-name"><span>Name</span></th>
+                            <th><span>Programme</span></th>
+                            <th><span>Academic Stage</span></th>
+                            <th><span>Decision</span></th>
+                            <th class="completion-rate-header">Completion Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="students-tbody">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <p class="results-meta" id="results-meta">
+                    <!-- Results info will be populated here -->
+                </p>
+
+                <nav class="pagination" aria-label="Completion table pages" id="pagination">
+                    <!-- Pagination will be populated here -->
+                </nav>
             </div>
         </div>
-        <div class="completion-table-container">
-            <table class="completion-students-table" id="students-table">
-                <thead>
-                    <tr>
-                        
-                        <th data-sort="student_name"><span>Student</span><br><span>Name</span></th>
-                        <th data-sort="programme_name"><span>Academic</span><br><span>Programme</span></th>
-                        <th data-sort="academic_stage"><span>Academic</span><br><span>Stage</span></th>
-                        <th data-sort="decision"><span>Decision</span><br><span>Status</span></th>
-                        <th data-sort="completion_rate"><span>Completion</span><br><span>Rate</span></th>
-                    </tr>
-                </thead>
-                <tbody id="students-tbody">
-                    <!-- Data will be populated here -->
-                </tbody>
-            </table>
-        </div>
-        <div class="completion-pagination" id="pagination">
-            <!-- Pagination will be populated here -->
-        </div>
     </section>
+    </div>
+    </section>
+    </div>
 </section>
 
-<!-- Loading Overlay -->
-<div class="completion-loading-overlay" id="loading-overlay">
-    <div class="completion-loading-spinner"></div>
-    <p>Loading completion data...</p>
-</div>
 
 <!-- Error Modal -->
 <div class="completion-modal" id="error-modal">
@@ -118,5 +168,76 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'dashboard/js/completion.js' %}?v=20260414-fixed01"></script>
+<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260415-year-period-mapping01"></script>
+<script>
+/* Demographic Accordion JavaScript - Inline Implementation */
+document.addEventListener('DOMContentLoaded', function() {
+    const initialiseAccordion = () => {
+        const accordionItems = document.querySelectorAll('.demographic-accordion-item');
+        
+        accordionItems.forEach((item) => {
+            const toggleButton = item.querySelector('.demographic-accordion-toggle');
+            const content = item.querySelector('.demographic-accordion-content');
+            
+            if (!toggleButton || !content) {
+                return;
+            }
+            
+            toggleButton.addEventListener('click', () => {
+                const isOpen = item.classList.contains('is-open');
+                const toggleText = toggleButton.querySelector('.demographic-accordion-toggle-text');
+                const toggleIcon = toggleButton.querySelector('.demographic-accordion-toggle-icon');
+                
+                // Close all other accordion items
+                accordionItems.forEach((otherItem) => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('is-open');
+                        const otherContent = otherItem.querySelector('.demographic-accordion-content');
+                        const otherToggle = otherItem.querySelector('.demographic-accordion-toggle');
+                        const otherToggleText = otherToggle?.querySelector('.demographic-accordion-toggle-text');
+                        const otherToggleIcon = otherToggle?.querySelector('.demographic-accordion-toggle-icon');
+                        
+                        if (otherContent) {
+                            otherContent.classList.add('is-hidden');
+                        }
+                        
+                        if (otherToggleText) {
+                            otherToggleText.textContent = 'Expand';
+                        }
+                        
+                        if (otherToggleIcon) {
+                            otherToggleIcon.textContent = '+';
+                        }
+                        
+                        if (otherToggle) {
+                            otherToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+                
+                // Toggle current item
+                if (content) {
+                    content.classList.toggle('is-hidden');
+                }
+                
+                if (toggleText) {
+                    toggleText.textContent = isOpen ? 'Expand' : 'Collapse';
+                }
+                
+                if (toggleIcon) {
+                    toggleIcon.textContent = isOpen ? '+' : '−';
+                }
+                
+                if (toggleButton) {
+                    toggleButton.setAttribute('aria-expanded', !isOpen);
+                }
+                
+                item.classList.toggle('is-open', !isOpen);
+            });
+        });
+    };
+    
+    initialiseAccordion();
+});
+</script>
 {% endblock %}

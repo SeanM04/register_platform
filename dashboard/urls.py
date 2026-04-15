@@ -22,12 +22,14 @@ from .completion.views import (
     completion_payload, 
     completion_programmes, 
     completion_faculties, 
-    completion_academic_years
+    completion_academic_years,
+    completion_periods,
+    completion_periods_by_year
 )
 from .graduation.views import (
     graduation_view, 
     graduation_payload, 
-    graduation_programmes, 
+    graduation_programmes,
     graduation_faculties
 )
 
@@ -67,6 +69,8 @@ urlpatterns = [
     path("api/completion/programmes", completion_programmes, name="completion-programmes"),
     path("api/completion/faculties", completion_faculties, name="completion-faculties"),
     path("api/completion/academic-years", completion_academic_years, name="completion-academic-years"),
+    path("api/completion/periods", completion_periods, name="completion-periods"),
+    path("api/completion/periods-by-year", completion_periods_by_year, name="completion-periods-by-year"),
     path("graduation/", graduation_view, name="graduation"),
     path("metrics/graduation/payload/", graduation_payload, name="graduation-payload"),
     path("api/graduation/programmes", graduation_programmes, name="graduation-programmes"),

@@ -109,6 +109,8 @@ def _student_profile(registrations: List[Registration]) -> Dict[str, Any]:
         "graduation_rate": graduation_rate,
         "gender_key": _normalise_gender(latest.student.gender),
         "period_external_id": latest.period.external_id,
+        "registration_number": latest.student.registration_number,
+        "detail_slug": latest.student.registration_number.lower(),
     }
 
 
@@ -133,10 +135,17 @@ def _get_filtered_registrations(
         .all()
     )
 
-    if year:
-        registrations = registrations.filter(period__academic_year=str(year))
-    if period:
+    # Handle combined year and period filtering
+    if year and period:
+        # Both year and period provided - filter by exact period name
         registrations = registrations.filter(period__name=str(period))
+    elif year:
+        # Only year provided - filter by academic year
+        registrations = registrations.filter(period__academic_year=str(year))
+    elif period:
+        # Only period provided - filter by exact period name
+        registrations = registrations.filter(period__name=str(period))
+    
     if faculty:
         registrations = registrations.filter(programme__department__faculty__name=faculty)
 
@@ -255,6 +264,7 @@ def get_completion_page_data(
                 "decision": profile["decision"],
                 "completion_rate": profile["completion_rate"],
                 "graduation_rate": profile["graduation_rate"],
+                "detail_slug": profile["detail_slug"],
             }
             for profile in student_profiles
         ],
@@ -303,4 +313,63 @@ def get_completion_academic_years() -> List[Dict[str, Any]]:
         .distinct()
         .order_by("period__academic_year")
     )
-    return [{"year": year} for year in years if str(year).strip()]
+    # Clean up years and convert to proper format
+    clean_years = []
+    for year in years:
+        year_str = str(year).strip()
+        if year_str and year_str.isdigit():
+            # Convert to proper year format (e.g., "1" -> "Year 1")
+            clean_years.append({"year": f"Year {year_str}", "value": year_str})
+    return clean_years
+
+
+def get_completion_periods() -> List[Dict[str, Any]]:
+    """Return period options in the shape expected by the completion page."""
+
+    periods = (
+        Registration.objects.select_related("period")
+        .values_list("period__name", flat=True)
+        .distinct()
+        .order_by("period__name")
+    )
+    # Clean up periods and provide both display and value
+    clean_periods = []
+    for period in periods:
+        period_str = str(period).strip()
+        if period_str:
+            clean_periods.append({"period": period_str, "value": period_str})
+    return clean_periods
+
+
+def get_completion_periods_by_year() -> List[Dict[str, Any]]:
+    """Return periods grouped by academic year for frontend mapping."""
+    
+    # Get all periods with their academic years
+    periods_data = (
+        Registration.objects.select_related("period")
+        .values_list("period__name", "period__academic_year")
+        .distinct()
+        .order_by("period__academic_year", "period__name")
+    )
+    
+    # Group periods by academic year
+    periods_by_year = {}
+    for period_name, academic_year in periods_data:
+        year_str = str(academic_year).strip()
+        period_str = str(period_name).strip()
+        
+        if year_str and period_str and year_str.isdigit():
+            year_key = f"Year {year_str}"
+            if year_key not in periods_by_year:
+                periods_by_year[year_key] = {
+                    "year": year_key,
+                    "value": year_str,
+                    "periods": []
+                }
+            periods_by_year[year_key]["periods"].append({
+                "period": period_str,
+                "value": period_str
+            })
+    
+    # Convert to sorted list
+    return list(periods_by_year.values())

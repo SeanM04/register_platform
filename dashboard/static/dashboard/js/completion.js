@@ -6,11 +6,13 @@
 class CompletionAnalysis {
     getFiltersFromURL() {
         const urlParams = new URLSearchParams(window.location.search);
-        return {
-            year: urlParams.get('year') || '',
-            period: urlParams.get('period') || '',
-            faculty: urlParams.get('faculty') || ''
-        };
+        const filters = {};
+        for (const [key, value] of urlParams) {
+            if (key === 'year' || key === 'period' || key === 'faculty') {
+                filters[key] = value;
+            }
+        }
+        return filters;
     }
 
     constructor() {
@@ -22,7 +24,7 @@ class CompletionAnalysis {
         this.currentFilters = this.getFiltersFromURL();
         console.log('Current filters:', this.currentFilters);
         this.currentPage = 1;
-        this.itemsPerPage = 25;
+        this.itemsPerPage = 10;
         this.sortColumn = null;
         this.sortDirection = 'asc';
         this.charts = {};
@@ -37,31 +39,6 @@ class CompletionAnalysis {
     }
 
     bindEvents() {
-        // Topbar filter events - check if elements exist
-        const yearFilter = document.getElementById('year-filter');
-        if (yearFilter) {
-            yearFilter.addEventListener('change', (e) => {
-                this.currentFilters.year = e.target.value;
-                this.loadData();
-            });
-        }
-
-        const periodFilter = document.getElementById('period-filter');
-        if (periodFilter) {
-            periodFilter.addEventListener('change', (e) => {
-                this.currentFilters.period = e.target.value;
-                this.loadData();
-            });
-        }
-
-        const facultyFilter = document.getElementById('faculty-filter');
-        if (facultyFilter) {
-            facultyFilter.addEventListener('change', (e) => {
-                this.currentFilters.faculty = e.target.value;
-                this.loadData();
-            });
-        }
-
         // Search event
         const studentSearch = document.getElementById('student-search');
         if (studentSearch) {
@@ -75,13 +52,7 @@ class CompletionAnalysis {
             this.exportStudentsData();
         });
 
-        // Table sorting events
-        document.querySelectorAll('[data-sort]').forEach(th => {
-            th.addEventListener('click', (e) => {
-                const column = e.currentTarget.dataset.sort;
-                this.sortTable(column);
-            });
-        });
+        // Sorting functionality removed - table headers are no longer sortable
 
         // Chart fullscreen events
         document.querySelectorAll('[data-chart-fullscreen-toggle]').forEach(btn => {
@@ -89,6 +60,13 @@ class CompletionAnalysis {
                 this.toggleChartFullscreen(e.currentTarget);
             });
         });
+
+        // Fullscreen event listeners
+        document.addEventListener("fullscreenchange", () => this.syncFullscreenButtons());
+        document.addEventListener("webkitfullscreenchange", () => this.syncFullscreenButtons());
+        
+        // Initial sync
+        this.syncFullscreenButtons();
 
         // Modal close events
         document.getElementById('error-modal-close').addEventListener('click', () => {
@@ -105,13 +83,9 @@ class CompletionAnalysis {
 
     async loadInitialData() {
         try {
-            this.showLoading();
-
             await this.loadData();
         } catch (error) {
             this.showError('Failed to load initial data: ' + error.message);
-        } finally {
-            this.hideLoading();
         }
     }
 
@@ -138,7 +112,6 @@ class CompletionAnalysis {
     async loadData() {
         try {
             console.log('Loading data from:', this.payloadUrl);
-            this.showLoading();
 
             const queryParams = new URLSearchParams();
             Object.entries(this.currentFilters).forEach(([key, value]) => {
@@ -171,8 +144,6 @@ class CompletionAnalysis {
 
         } catch (error) {
             this.showError('Failed to load completion data: ' + error.message);
-        } finally {
-            this.hideLoading();
         }
     }
 
@@ -194,7 +165,7 @@ class CompletionAnalysis {
             element.classList.remove('is-loading');
 
             if (key.includes('rate')) {
-                element.textContent = `${value}%`;
+                element.textContent = `${Math.round(value)}%`;
             } else {
                 element.textContent = this.formatNumber(value);
             }
@@ -203,7 +174,12 @@ class CompletionAnalysis {
 
     formatNumber(num) {
         if (typeof num !== 'number') return num;
-        return num.toLocaleString();
+        return num.toString();
+    }
+
+    formatAcademicStage(stage) {
+        if (!stage) return stage;
+        return stage.replace(/,\s*/g, ' '); // Remove commas and extra spaces
     }
 
     setupChartInstances() {
@@ -216,7 +192,7 @@ class CompletionAnalysis {
         if (!container) return null;
 
         const canvas = document.createElement('canvas');
-        canvas.width = container.offsetWidth;
+        canvas.width = container.offsetWidth || 800; // Fallback width if container is hidden
         canvas.height = 300;
         container.innerHTML = '';
         container.appendChild(canvas);
@@ -258,13 +234,13 @@ class CompletionAnalysis {
         const padding = 40;
         const chartWidth = canvas.width - 2 * padding;
         const chartHeight = canvas.height - 2 * padding;
-        const barWidth = chartWidth / data.length * 0.8;
-        const barSpacing = chartWidth / data.length * 0.2;
+        const barWidth = chartWidth * 0.8;
+        const barSpacing = chartWidth * 0.2;
 
         const maxValue = Math.max(...data.map(d => d.completion_rate || 0), 1);
 
         data.forEach((item, index) => {
-            const x = padding + index * (barWidth + barSpacing);
+            const x = padding + barSpacing;
             const barHeight = (item.completion_rate / maxValue) * chartHeight;
             const y = canvas.height - padding - barHeight;
 
@@ -275,7 +251,7 @@ class CompletionAnalysis {
             ctx.font = '10px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(`C${item.cohort_period_id}`, x + barWidth / 2, canvas.height - 20);
-            ctx.fillText(`${item.completion_rate}%`, x + barWidth / 2, y - 5);
+            ctx.fillText(`${Math.round(item.completion_rate)}%`, x + barWidth / 2, y - 5);
         });
 
         ctx.strokeStyle = '#ddd';
@@ -302,28 +278,27 @@ class CompletionAnalysis {
         const padding = 40;
         const chartWidth = canvas.width - 2 * padding;
         const chartHeight = canvas.height - 2 * padding;
-        const barHeight = chartHeight / data.length * 0.8;
-        const barSpacing = chartHeight / data.length * 0.2;
+        const barWidth = chartWidth / data.length * 0.6;
+        const barSpacing = chartWidth / data.length * 0.4;
 
         const maxValue = Math.max(...data.map(d => d.completion_rate || 0), 1);
 
         data.forEach((item, index) => {
-            const y = padding + index * (barHeight + barSpacing);
-            const barWidth = (item.completion_rate / maxValue) * chartWidth;
+            const x = padding + index * (barWidth + barSpacing);
+            const barHeight = (item.completion_rate / maxValue) * chartHeight;
+            const y = canvas.height - padding - barHeight;
 
             ctx.fillStyle = this.getRateColor(item.completion_rate);
-            ctx.fillRect(padding, y, barWidth, barHeight);
+            ctx.fillRect(x, y, barWidth, barHeight);
 
             ctx.fillStyle = '#333';
             ctx.font = '10px sans-serif';
-            ctx.textAlign = 'right';
+            ctx.textAlign = 'center';
             const label = item.programme_name.length > 15
                 ? item.programme_name.substring(0, 15) + '...'
                 : item.programme_name;
-            ctx.fillText(label, padding - 5, y + barHeight / 2 + 3);
-
-            ctx.textAlign = 'left';
-            ctx.fillText(`${item.completion_rate}%`, padding + barWidth + 5, y + barHeight / 2 + 3);
+            ctx.fillText(label, x + barWidth / 2, canvas.height - 20);
+            ctx.fillText(`${Math.round(item.completion_rate)}%`, x + barWidth / 2, y - 5);
         });
 
         ctx.strokeStyle = '#ddd';
@@ -379,11 +354,15 @@ class CompletionAnalysis {
         const row = document.createElement('tr');
 
         row.innerHTML = `
-            <td>${student.student_name ?? ''}</td>
+            <td class="students-td-name">
+                <a class="student-link" href="/students/${student.detail_slug}/" aria-label="View ${student.student_name} profile">
+                    ${student.student_name ?? ''}
+                </a>
+            </td>
             <td>${student.programme_name ?? ''}</td>
-            <td>${student.academic_stage ?? ''}</td>
+            <td>${this.formatAcademicStage(student.academic_stage ?? '')}</td>
             <td><span class="completion-rate-badge ${this.getDecisionClass(student.decision)}">${student.decision ?? ''}</span></td>
-            <td><span class="completion-rate-badge ${this.getRateClass(student.completion_rate)}">${student.completion_rate ?? 0}%</span></td>
+            <td><span class="completion-rate-badge ${this.getRateClass(student.completion_rate)}">${Math.round(student.completion_rate ?? 0)}%</span></td>
         `;
 
         return row;
@@ -468,53 +447,72 @@ class CompletionAnalysis {
     updatePagination(totalItems) {
         const totalPages = Math.ceil(totalItems / this.itemsPerPage);
         const paginationContainer = document.getElementById('pagination');
+        const resultsMeta = document.getElementById('results-meta');
+
+        // Update results meta
+        const startItem = totalItems > 0 ? (this.currentPage - 1) * this.itemsPerPage + 1 : 0;
+        const endItem = Math.min(this.currentPage * this.itemsPerPage, totalItems);
+        resultsMeta.textContent = `Showing ${startItem}-${endItem} of ${totalItems} students`;
 
         paginationContainer.innerHTML = '';
 
         if (totalPages <= 1) return;
 
-        const prevBtn = document.createElement('button');
-        prevBtn.textContent = 'Previous';
-        prevBtn.disabled = this.currentPage === 1;
-        prevBtn.addEventListener('click', () => {
-            if (this.currentPage > 1) {
+        // Previous button
+        const prevLink = document.createElement('a');
+        prevLink.className = 'page-link page-link-arrow';
+        prevLink.textContent = 'Prev';
+        if (this.currentPage === 1) {
+            prevLink.className += ' is-disabled';
+            prevLink.href = '#';
+        } else {
+            prevLink.href = '#';
+            prevLink.addEventListener('click', (e) => {
+                e.preventDefault();
                 this.currentPage--;
                 this.updateStudentsTable();
-            }
-        });
-        paginationContainer.appendChild(prevBtn);
+            });
+        }
+        paginationContainer.appendChild(prevLink);
 
+        // Page numbers
         const startPage = Math.max(1, this.currentPage - 2);
         const endPage = Math.min(totalPages, this.currentPage + 2);
 
         for (let i = startPage; i <= endPage; i++) {
-            const pageBtn = document.createElement('button');
-            pageBtn.textContent = i;
-            pageBtn.classList.toggle('active', i === this.currentPage);
-            pageBtn.addEventListener('click', () => {
-                this.currentPage = i;
-                this.updateStudentsTable();
-            });
-            paginationContainer.appendChild(pageBtn);
+            const pageLink = document.createElement(i === this.currentPage ? 'span' : 'a');
+            pageLink.className = 'page-link';
+            if (i === this.currentPage) {
+                pageLink.className += ' is-current';
+                pageLink.textContent = i;
+            } else {
+                pageLink.href = '#';
+                pageLink.textContent = i;
+                pageLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.currentPage = i;
+                    this.updateStudentsTable();
+                });
+            }
+            paginationContainer.appendChild(pageLink);
         }
 
-        const nextBtn = document.createElement('button');
-        nextBtn.textContent = 'Next';
-        nextBtn.disabled = this.currentPage === totalPages;
-        nextBtn.addEventListener('click', () => {
-            if (this.currentPage < totalPages) {
+        // Next button
+        const nextLink = document.createElement('a');
+        nextLink.className = 'page-link page-link-arrow';
+        nextLink.textContent = 'Next';
+        if (this.currentPage === totalPages) {
+            nextLink.className += ' is-disabled';
+            nextLink.href = '#';
+        } else {
+            nextLink.href = '#';
+            nextLink.addEventListener('click', (e) => {
+                e.preventDefault();
                 this.currentPage++;
                 this.updateStudentsTable();
-            }
-        });
-        paginationContainer.appendChild(nextBtn);
-
-        const pageInfo = document.createElement('div');
-        pageInfo.className = 'page-info';
-        const startItem = (this.currentPage - 1) * this.itemsPerPage + 1;
-        const endItem = Math.min(this.currentPage * this.itemsPerPage, totalItems);
-        pageInfo.textContent = `Showing ${startItem}-${endItem} of ${totalItems} students`;
-        paginationContainer.appendChild(pageInfo);
+            });
+        }
+        paginationContainer.appendChild(nextLink);
     }
 
     showEmptyStudentsTable() {
@@ -548,9 +546,9 @@ class CompletionAnalysis {
         const rows = sortedStudents.map(student => [
             student.student_name ?? '',
             student.programme_name ?? '',
-            student.academic_stage ?? '',
+            this.formatAcademicStage(student.academic_stage ?? ''),
             student.decision ?? '',
-            `${student.completion_rate ?? 0}%`
+            `${Math.round(student.completion_rate ?? 0)}%`
         ]);
 
         const csvContent = [headers, ...rows]
@@ -569,24 +567,48 @@ class CompletionAnalysis {
     }
 
     toggleChartFullscreen(button) {
-        const chartCard = button.closest('.completion-chart-card');
-        chartCard.classList.toggle('is-fullscreen');
-
-        const isFullscreen = chartCard.classList.contains('is-fullscreen');
-        button.setAttribute('aria-pressed', isFullscreen);
-
-        setTimeout(() => {
-            this.setupChartInstances();
-            this.updateCharts();
-        }, 100);
+        const chartCard = button.closest('.demographic-insight-card');
+        
+        if (!chartCard) return;
+        
+        try {
+            if (document.fullscreenElement === chartCard) {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            } else {
+                // Enter fullscreen
+                if (chartCard.requestFullscreen) {
+                    chartCard.requestFullscreen();
+                } else if (chartCard.webkitRequestFullscreen) {
+                    chartCard.webkitRequestFullscreen();
+                }
+            }
+        } catch (error) {
+            console.error('Fullscreen error:', error);
+        }
+        
+        this.syncFullscreenButtons();
     }
 
-    showLoading() {
-        document.getElementById('loading-overlay').classList.add('active');
-    }
-
-    hideLoading() {
-        document.getElementById('loading-overlay').classList.remove('active');
+    syncFullscreenButtons() {
+        const activeCard = document.fullscreenElement;
+        
+        document.querySelectorAll('[data-chart-fullscreen-toggle]').forEach(button => {
+            const card = button.closest('.demographic-insight-card');
+            const chartTitle = button.dataset.chartTitle || "chart";
+            const isActive = Boolean(card && activeCard === card);
+            
+            if (card) {
+                card.classList.toggle("is-fullscreen", isActive);
+            }
+            
+            button.textContent = isActive ? "Exit full screen" : "Full screen";
+            button.setAttribute('aria-pressed', isActive);
+        });
     }
 
     showError(message) {
