@@ -222,7 +222,13 @@ export const buildDistributionOverviewNarrative = (rows) => {
 export const initialiseDistributionNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
-    setElementText(elements.distributionCopy, narrative.insight);
+    if (elements.distributionCopy) {
+        elements.distributionCopy.innerHTML = `
+            <span>${escapeTooltipHtml(narrative.insight)}</span>
+            <span class="insight-subtle-note">Counts reflect module-level risk signals per student within each band.</span>
+        `.trim();
+    }
+
     setHintMarkup(elements.distributionHints, []);
     setActionText(elements.distributionNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,

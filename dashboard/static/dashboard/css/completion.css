@@ -8,11 +8,10 @@
     padding: 0;
 }
 
-/* Completion KPI row */
 .completion-metrics {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.9rem;
+    gap: 0.72rem;
     width: 100%;
     padding: 0;
     margin: 0 0 1rem;
@@ -20,14 +19,13 @@
 
 .completion-metric {
     position: relative;
-    display: grid;
-    gap: 0.35rem;
-    min-height: 7.45rem;
-    padding: 0.95rem 1.05rem 1rem;
-    background: var(--panel);
-    border-radius: 20px;
+    padding: 0.72rem 0.95rem 0.82rem;
+    background: #ffffff;
+    border-radius: 14px;
     box-shadow: var(--shadow);
     overflow: hidden;
+    display: grid;
+    gap: 0.22rem;
     min-width: 0;
 }
 
@@ -36,26 +34,26 @@
     position: absolute;
     inset: 0 auto auto 0;
     width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, rgba(22, 61, 105, 0.96), rgba(105, 193, 223, 0.9));
+    height: 3px;
+    background: linear-gradient(90deg, var(--navy), #67c1e1);
 }
 
 .completion-metric-label {
     margin: 0;
-    color: #4f5f75;
+    color: #526277;
     font-size: 0.72rem;
-    font-weight: 800;
+    font-weight: 700;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
     text-align: left;
 }
 
 .completion-metric-value {
-    margin: 0;
-    color: #111827;
-    font-size: 1.9rem;
-    font-weight: 800;
+    margin: 0.22rem 0 0;
+    color: #141414;
+    font-size: 1.85rem;
     line-height: 1;
+    font-weight: 700;
     text-align: left;
 }
 

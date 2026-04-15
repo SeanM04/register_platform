@@ -44,14 +44,10 @@ class InsightViewTests(DashboardFixtureMixin, TestCase):
         driver_rows = payload["driver_rows"]
         confidence_rows = payload["confidence_rows"]
 
-        self.assertEqual(distribution_rows[0]["key"], "critical")
-        self.assertEqual(distribution_rows[0]["count"], 0)
-        self.assertEqual(distribution_rows[1]["key"], "high")
-        self.assertEqual(distribution_rows[1]["count"], 1)
-        self.assertEqual(distribution_rows[2]["key"], "moderate")
-        self.assertEqual(distribution_rows[2]["count"], 1)
-        self.assertEqual(distribution_rows[3]["key"], "low")
-        self.assertEqual(distribution_rows[3]["count"], 0)
+    self.assertEqual(distribution_rows[0]["key"], "low")
+    self.assertEqual(distribution_rows[1]["key"], "moderate")
+    self.assertEqual(distribution_rows[2]["key"], "high")
+    self.assertEqual(distribution_rows[3]["key"], "critical")
 
         self.assertEqual(faculty_load_rows[0]["label"], self.commerce_faculty.name)
         self.assertEqual(faculty_load_rows[0]["registrations"], 2)

@@ -48,7 +48,7 @@ const buildDistributionOption = (rows, width) => ({
             color: "#52677c",
             fontSize: width < 720 ? 10 : 11,
             interval: 0,
-            rotate: width < 720 ? 16 : 0,
+            rotate: 0,
         },
     },
     yAxis: {

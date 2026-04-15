@@ -134,11 +134,11 @@ def _build_risk_distribution_rows(risk_profiles):
 
     total_students = len(risk_profiles)
     risk_bands = [
-        ("critical", "Critical (6+)", lambda score: score >= 6, "critical"),
-        ("high", "High (4-5)", lambda score: 4 <= score <= 5, "high"),
-        ("moderate", "Moderate (2-3)", lambda score: 2 <= score <= 3, "moderate"),
-        ("low", "Low (0-1)", lambda score: score <= 1, "low"),
-    ]
+    ("low", "Low (0-1)", lambda score: score <= 1, "low"),
+    ("moderate", "Moderate (2-3)", lambda score: 2 <= score <= 3, "moderate"),
+    ("high", "High (4-5)", lambda score: 4 <= score <= 5, "high"),
+    ("critical", "Critical (6+)", lambda score: score >= 6, "critical"),
+]
 
     rows = []
     for key, label, matcher, tone in risk_bands:
