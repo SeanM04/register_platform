@@ -840,7 +840,7 @@ body.has-home-drilldown-modal {
     min-height: 0;
     overflow: auto;
     border: 1px solid rgba(184, 200, 217, 0.72);
-    border-radius: 14px;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.92);
 }
 

@@ -614,7 +614,7 @@ body.has-risk-drilldown-modal {
 .risk-drilldown-table-wrap {
     overflow: auto;
     border: 1px solid rgba(226, 232, 240, 0.92);
-    border-radius: 16px;
+    border-radius: 0;
     background: #ffffff;
 }
 
@@ -957,6 +957,13 @@ body.has-risk-drilldown-modal {
     width: 7rem;
 }
 
+/* Center data cells for Average Mark, Failed Modules, and Carrying while keeping headers left-aligned */
+.risk-table td:nth-child(4),
+.risk-table td:nth-child(5),
+.risk-table td:nth-child(6) {
+    text-align: center;
+}
+
 .risk-col-decision {
     width: 9rem;
 }
@@ -984,6 +991,7 @@ body.has-risk-drilldown-modal {
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.01em;
+    white-space: nowrap;
 }
 
 .risk-table thead th:first-child {
