@@ -15,10 +15,10 @@ OVERVIEW_SUMMARY_CARD_SPECS = [
 ]
 
 RISK_BAND_CONFIG = [
-    {"key": "critical", "label": "Critical (6+)", "min_score": 6, "max_score": None, "tone": "critical"},
-    {"key": "high", "label": "High (4-5)", "min_score": 4, "max_score": 5, "tone": "high"},
-    {"key": "moderate", "label": "Moderate (2-3)", "min_score": 2, "max_score": 3, "tone": "moderate"},
     {"key": "stable", "label": "Stable (0-1)", "min_score": 0, "max_score": 1, "tone": "stable"},
+    {"key": "moderate", "label": "Moderate (2-3)", "min_score": 2, "max_score": 3, "tone": "moderate"},
+    {"key": "high", "label": "High (4-5)", "min_score": 4, "max_score": 5, "tone": "high"},
+    {"key": "critical", "label": "Critical (6+)", "min_score": 6, "max_score": None, "tone": "critical"},
 ]
 
 PROGRESS_STATUS_CONFIG = [
