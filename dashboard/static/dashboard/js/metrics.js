@@ -1,4 +1,10 @@
-const metricGroups = document.querySelectorAll("[data-metrics-url]");
+/**
+ * Load KPI groups independently so nested metric widgets do not duplicate requests.
+ */
+const metricGroups = Array.from(document.querySelectorAll("[data-metrics-url]")).filter((group) => {
+    const parentMetricGroup = group.parentElement?.closest("[data-metrics-url]");
+    return !parentMetricGroup;
+});
 
 metricGroups.forEach((group) => {
     const endpoint = group.dataset.metricsUrl;
@@ -7,6 +13,9 @@ metricGroups.forEach((group) => {
     }
 
     const metricValues = group.querySelectorAll("[data-metric-value]");
+    if (!metricValues.length) {
+        return;
+    }
     const requestUrl = new URL(endpoint, window.location.origin);
     const currentUrl = new URL(window.location.href);
 

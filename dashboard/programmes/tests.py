@@ -1,5 +1,6 @@
 """Programme feature tests."""
 
+import urllib.error
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -61,6 +62,54 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(len(payload["programme_rows"]), 1)
         self.assertEqual(payload["top_load_rows"][0]["faculty"], self.science_faculty.name)
         self.assertEqual(payload["register_meta"]["visible_count"], 1)
+        self.assertEqual(payload["top_load_rows"][0]["axis_label"], self.science_programme.code)
+
+    def test_programme_payload_endpoint_sorts_programme_rows_by_query_parameters(self):
+        """Programme register rows should respect sort and direction query parameters."""
+
+        response = self.client.get(
+            reverse("dashboard:programme-payload"),
+            {"sort": "registrations", "direction": "desc"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+        programme_rows = payload["programme_rows"]
+
+        self.assertGreaterEqual(len(programme_rows), 2)
+        self.assertEqual(programme_rows[0]["name"], self.commerce_programme.name)
+        self.assertEqual(programme_rows[1]["name"], self.science_programme.name)
+
+        response = self.client.get(
+            reverse("dashboard:programme-payload"),
+            {"sort": "average_mark", "direction": "asc"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+        programme_rows = payload["programme_rows"]
+
+        self.assertGreaterEqual(len(programme_rows), 2)
+        self.assertEqual(programme_rows[0]["name"], self.commerce_programme.name)
+        self.assertEqual(programme_rows[1]["name"], self.science_programme.name)
+
+    def test_programme_payload_exposes_compact_axis_labels_for_story_charts(self):
+        """Programme chart payloads should include short axis labels for cramped horizontal charts."""
+
+        response = self.client.get(
+            reverse("dashboard:programme-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+
+        self.assertTrue(payload["top_load_rows"])
+        self.assertTrue(payload["department_rows"])
+        self.assertTrue(
+            all(row["axis_label"] == row["code"] for row in payload["top_load_rows"] if row.get("code"))
+        )
+        self.assertTrue(payload["department_rows"][0]["axis_label"])
+        self.assertNotEqual(payload["department_rows"][0]["axis_label"], payload["department_rows"][0]["department"])
 
     def test_programme_metrics_endpoint_respects_faculty_filter(self):
         """Programme metrics JSON should still respect the selected faculty."""
@@ -86,8 +135,12 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         )
 
         narratives = response.json()["card_narratives"]
+        diagnostics = response.json()["diagnostics"]
 
         self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "rules")
+        self.assertEqual(diagnostics["fallback_reason"], "provider_rules_configured")
         self.assertIn("load", narratives["cards"])
         self.assertIn("departments", narratives["cards"])
         self.assertIn("quality", narratives["cards"])
@@ -118,9 +171,14 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
 
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "openai")
+        self.assertEqual(diagnostics["returned_source"], "openai")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "openai")
         self.assertEqual(narratives["cards"]["load"]["insight"], "AI load insight")
         self.assertEqual(narratives["cards"]["departments"]["action"], "AI department action")
         self.assertEqual(narratives["cards"]["quality"]["insight"], "AI quality insight")
@@ -154,12 +212,65 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
 
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "google")
+        self.assertEqual(diagnostics["returned_source"], "google")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
         self.assertEqual(narratives["cards"]["load"]["insight"], "Gemini load insight")
         self.assertEqual(narratives["cards"]["departments"]["action"], "Gemini department action")
         self.assertEqual(narratives["cards"]["quality"]["insight"], "Gemini quality insight")
         self.assertEqual(narratives["cards"]["performance"]["action"], "Gemini performance action")
         self.assertIn(narratives["cards"]["load"]["severity"], {"stable", "medium", "high"})
         self.assertIn(narratives["cards"]["departments"]["confidence"], {"low", "medium", "high"})
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.programmes.ai_insights._request_programme_google_narratives")
+    def test_programme_narratives_endpoint_reports_structured_fallback_diagnostics_when_google_fails(self, mock_request):
+        """Programme narratives should expose a stable fallback reason when Gemini cannot be reached."""
+
+        mock_request.side_effect = OSError("WinError 10013 network blocked")
+
+        response = self.client.get(
+            reverse("dashboard:programme-narratives"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
+
+        self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_os_error")
+        self.assertIn("Google Gemini", diagnostics["message"])
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.programmes.ai_insights._request_programme_google_narratives")
+    def test_programme_narratives_endpoint_reports_rate_limit_diagnostics_for_google_429(self, mock_request):
+        """Programme narratives should explain when Gemini rejects the request with a quota/rate-limit response."""
+
+        mock_request.side_effect = urllib.error.HTTPError(
+            "https://example.com",
+            429,
+            "Too Many Requests",
+            None,
+            None,
+        )
+
+        response = self.client.get(
+            reverse("dashboard:programme-narratives"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        diagnostics = response.json()["diagnostics"]
+
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_rate_limited")
+        self.assertIn("quota or request limits", diagnostics["message"])

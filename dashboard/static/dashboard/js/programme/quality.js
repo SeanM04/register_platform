@@ -5,11 +5,14 @@ import {
     buildTooltipMarkup,
     createEmptyController,
     echartsLib,
+    escapeTooltipHtml,
     formatCount,
+    formatProgrammeName,
     setChartFallback,
     wrapAxisLabel,
-} from "./shared.js?v=20260405-programmes-progressive01";
+} from "./shared.js?v=20260414-msc-support01";
 import { initialiseQualityNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
 
 export const initialiseQualitySection = (context) => {
     initialiseQualityNarrative(context.elements, context.data.lowPassRows, context.data.cardNarratives, context.flags);
@@ -39,7 +42,8 @@ export const initialiseQualitySection = (context) => {
         animationDuration: 650,
         animationDurationUpdate: 250,
         grid: {
-            left: 210,
+            containLabel: true,
+            left: 82,
             right: 68,
             top: 18,
             bottom: 40,
@@ -48,7 +52,7 @@ export const initialiseQualitySection = (context) => {
             ...buildTooltipBase("item"),
             formatter: (params) => {
                 const row = sortedRows[params.dataIndex];
-                return buildTooltipMarkup(row.name, [
+                return buildTooltipMarkup(formatProgrammeName(row.name), [
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Registrations", value: formatCount(row.registrations) },
                     { label: "Marked results", value: formatCount(row.marked_results) },
@@ -89,27 +93,43 @@ export const initialiseQualitySection = (context) => {
                 margin: 14,
                 formatter: (value) => wrapAxisLabel(value, { maxLineLength: 18, maxLines: 2 }),
             },
-            data: sortedRows.map((row) => row.name),
+            data: sortedRows.map((row) => formatProgrammeName(row.name)),
         },
         series: [
             {
                 type: "bar",
                 data: sortedRows.map((row) => row.pass_rate_value),
-                barWidth: 18,
+                barWidth: 22,
                 label: {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    formatter: ({ value }) => `${value}%`,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    formatter: (params) => {
+                        const row = sortedRows[params.dataIndex];
+                        return `${row.pass_rate} (${formatCount(row.registrations)})`;
+                    },
                 },
                 itemStyle: {
-                    borderRadius: [0, 12, 12, 0],
-                    color: buildGradient(PROGRAMME_COLORS.rose, PROGRAMME_COLORS.amber, "horizontal"),
+                    borderRadius: 0,
+                    color: buildGradient(PROGRAMME_COLORS.navy, PROGRAMME_COLORS.sky, "horizontal"),
                 },
             },
         ],
+    });
+
+    // Add drill-down click handler
+    chart.on("click", (params) => {
+        const row = sortedRows[params.dataIndex];
+        if (row && row.name) {
+            console.log("Quality chart clicked:", row);
+            openProgrammeDrillDown(context, {
+                chartKey: "programme_load",
+                bucketKey: row.name,
+                label: formatProgrammeName(row.name),
+            });
+        }
     });
 
     return {

@@ -6,12 +6,13 @@ import {
     buildTooltipMarkup,
     initialiseChart,
 } from "./shared.js";
+import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
 
 const TONE_GRADIENTS = {
-    critical: ["#082340", "#1c4e80"],
-    high: ["#0b4c6d", "#1f78b4"],
-    moderate: ["#1f78b4", "#5fb7dc"],
-    low: ["#94b8cf", "#d8eaf5"],
+    critical: ["#dc2626", "#ef4444"],
+    high: ["#ea580c", "#f97316"],
+    moderate: ["#facc15", "#fde047"],
+    low: ["#16a34a", "#22c55e"],
 };
 
 const buildDistributionOption = (rows, width) => ({
@@ -48,7 +49,7 @@ const buildDistributionOption = (rows, width) => ({
             color: "#52677c",
             fontSize: width < 720 ? 10 : 11,
             interval: 0,
-            rotate: width < 720 ? 16 : 0,
+            rotate:  0,
         },
     },
     yAxis: {
@@ -74,7 +75,7 @@ const buildDistributionOption = (rows, width) => ({
     series: [
         {
             type: "bar",
-            barWidth: width < 720 ? "50%" : "58%",
+            barMaxWidth: 28,
             data: rows.map((row) => {
                 const [startColor, endColor] = TONE_GRADIENTS[row.tone] || TONE_GRADIENTS.moderate;
                 return {
@@ -82,7 +83,6 @@ const buildDistributionOption = (rows, width) => ({
                     raw: row,
                     itemStyle: {
                         color: buildGradient(startColor, endColor, "vertical"),
-                        borderRadius: [12, 12, 0, 0],
                     },
                 };
             }),
@@ -109,6 +109,19 @@ export const initialiseDistributionSection = (context) => {
         "No risk distribution is available for the current filters.",
         (rows) => rows.some((row) => Number(row.count || 0) > 0),
     );
+
+    if (chart) {
+        chart.on("click", (params) => {
+            const row = params.data.raw;
+            if (row && row.key) {
+                openRiskDrillDown(context, {
+                    chartKey: "distribution",
+                    bucketKey: row.key,
+                    label: row.label,
+                });
+            }
+        });
+    }
 
     return {
         getChart: () => chart,

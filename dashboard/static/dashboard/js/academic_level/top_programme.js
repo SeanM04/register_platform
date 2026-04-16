@@ -29,7 +29,7 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
 
     return ({
         ...buildAnimationConfig(rows),
-        color: ["#4b66c1", "#98d978", "#ffca57", "#f26a6a", "#78c8e8"],
+       color: ["#4b66c1", "#98d978", "#ffca57", "#9A60B4", "#78c8e8"],
         title: {
             text: rows.reduce((total, row) => total + row.registrations, 0).toLocaleString(),
             subtext: "top 5 registrations",

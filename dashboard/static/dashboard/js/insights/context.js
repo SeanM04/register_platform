@@ -1,22 +1,26 @@
-import { parseJsonScript } from "./shared.js?v=20260403-insights-story02";
+import { parseJsonScript } from "./shared.js?v=20260412-insights-shell01";
 
-export const createInsightContext = () => {
-    const cardNarratives = parseJsonScript("insight-card-narratives", {});
+const isTrustedAiNarrativeSource = (source) => ["openai", "google"].includes(String(source || "").trim().toLowerCase());
+
+export const createInsightContext = (payload = {}) => {
+    const chartPayload = payload.chartPayload || {};
+    const cardNarratives = payload.cardNarratives || parseJsonScript("insight-card-narratives", {});
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
 
     return {
         data: {
-            distributionRows: parseJsonScript("insight-distribution-data", []),
-            facultyLoadRows: parseJsonScript("insight-faculty-load-data", []),
-            facultyPressureRows: parseJsonScript("insight-faculty-pressure-data", []),
-            driverRows: parseJsonScript("insight-driver-data", []),
+            distributionRows: chartPayload.distributionRows || parseJsonScript("insight-distribution-data", []),
+            facultyLoadRows: chartPayload.facultyLoadRows || parseJsonScript("insight-faculty-load-data", []),
+            facultyPressureRows: chartPayload.facultyPressureRows || parseJsonScript("insight-faculty-pressure-data", []),
+            driverRows: chartPayload.driverRows || parseJsonScript("insight-driver-data", []),
             cardNarratives,
         },
         flags: {
             overviewNarrativeSource,
-            overviewNarrativesAreAi: Boolean(overviewNarrativeSource && overviewNarrativeSource !== "rules"),
+            overviewNarrativesAreAi: isTrustedAiNarrativeSource(overviewNarrativeSource),
         },
         elements: {
+            root: document.querySelector(".insight-layout"),
             storyBanner: document.getElementById("insight-story-banner"),
             distributionCopy: document.getElementById("insight-distribution-copy"),
             distributionHints: document.getElementById("insight-distribution-hints"),
@@ -31,6 +35,30 @@ export const createInsightContext = () => {
             driversHints: document.getElementById("insight-drivers-hints"),
             driversNote: document.getElementById("insight-drivers-note"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
+            metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
+            recommendationList: document.querySelector(".insight-recommendation-list"),
+            confidenceList: document.querySelector(".insight-confidence-list"),
+            flaggedCopy: document.getElementById("insight-flagged-copy"),
+            flaggedList: document.querySelector(".insight-flagged-list"),
         },
     };
+};
+
+export const updateInsightContext = (context, payload = {}) => {
+    const chartPayload = payload.chartPayload || {};
+    const cardNarratives = Object.prototype.hasOwnProperty.call(payload, "cardNarratives")
+        ? (payload.cardNarratives || {})
+        : context.data.cardNarratives;
+
+    context.data.distributionRows = chartPayload.distributionRows || context.data.distributionRows;
+    context.data.facultyLoadRows = chartPayload.facultyLoadRows || context.data.facultyLoadRows;
+    context.data.facultyPressureRows = chartPayload.facultyPressureRows || context.data.facultyPressureRows;
+    context.data.driverRows = chartPayload.driverRows || context.data.driverRows;
+    context.data.cardNarratives = cardNarratives;
+
+    const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
+    context.flags.overviewNarrativeSource = overviewNarrativeSource;
+    context.flags.overviewNarrativesAreAi = isTrustedAiNarrativeSource(overviewNarrativeSource);
+
+    return context;
 };

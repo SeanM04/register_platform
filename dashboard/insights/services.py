@@ -1,10 +1,15 @@
 """Service-layer logic for the institutional insights dashboard."""
 
+from urllib.parse import urlencode
+
+from django.core.cache import cache
 from django.urls import reverse
 
 from ..risk.constants import RISK_DRIVER_LABELS, RISK_DRIVER_PRIORITY
 from ..risk.services import build_student_risk_profiles, format_insight_flagged_meta
 from ..views import RETENTION_EXIT_DECISIONS, build_initials, get_filtered_registrations
+
+INSIGHTS_CACHE_TTL_SECONDS = 30
 
 
 def _pct(count, total):
@@ -73,8 +78,8 @@ def _build_summary_cards(total_students, total_registrations, at_risk_profiles, 
             "tone": "neutral",
         },
         {
-            "label": "Visible Cohort",
-            "value": f"{total_students:,}",
+            "label": "Active Cohort",
+            "value": f"{total_students}",
             "note": (
                 f"{top_faculty_name} carries {faculty_load_pct}% of registrations"
                 if total_registrations
@@ -129,11 +134,11 @@ def _build_risk_distribution_rows(risk_profiles):
 
     total_students = len(risk_profiles)
     risk_bands = [
-        ("critical", "Critical (6+)", lambda score: score >= 6, "critical"),
-        ("high", "High (4-5)", lambda score: 4 <= score <= 5, "high"),
-        ("moderate", "Moderate (2-3)", lambda score: 2 <= score <= 3, "moderate"),
-        ("low", "Low (0-1)", lambda score: score <= 1, "low"),
-    ]
+    ("low", "Low (0-1)", lambda score: score <= 1, "low"),
+    ("moderate", "Moderate (2-3)", lambda score: 2 <= score <= 3, "moderate"),
+    ("high", "High (4-5)", lambda score: 4 <= score <= 5, "high"),
+    ("critical", "Critical (6+)", lambda score: score >= 6, "critical"),
+]
 
     rows = []
     for key, label, matcher, tone in risk_bands:
@@ -345,3 +350,21 @@ def build_insights_dashboard_data(request):
         "medium_risk_total": len(medium_risk_profiles),
         "watchlist_share_pct": _pct(len(at_risk_profiles), total_students),
     }
+
+
+def _build_insights_cache_key(request):
+    """Create a stable cache key for the current insights filter scope."""
+
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:insights:{query_string or 'all'}"
+
+
+def get_cached_insights_dashboard_data(request):
+    """Return cached insights analytics for the current filter scope."""
+
+    cache_key = _build_insights_cache_key(request)
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_insights_dashboard_data(request),
+        INSIGHTS_CACHE_TTL_SECONDS,
+    )

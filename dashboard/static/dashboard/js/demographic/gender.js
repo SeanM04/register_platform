@@ -6,7 +6,6 @@ const buildGenderChartOption = (rows, chartWidth = 0) => {
     const isCompact = chartWidth > 0 ? chartWidth < 640 : false;
     const isNarrow = chartWidth > 0 ? chartWidth < 480 : false;
     const outerRadius = isNarrow ? "58%" : isCompact ? "63%" : "68%";
-    const innerRadius = isNarrow ? "34%" : isCompact ? "36%" : "40%";
 
     return {
         ...buildAnimationConfig(visibleRows),
@@ -33,7 +32,7 @@ const buildGenderChartOption = (rows, chartWidth = 0) => {
             {
                 name: "Students",
                 type: "pie",
-                radius: [innerRadius, outerRadius],
+                radius: outerRadius,
                 center: ["50%", isNarrow ? "42%" : "46%"],
                 startAngle: 90,
                 avoidLabelOverlap: true,
@@ -53,20 +52,7 @@ const buildGenderChartOption = (rows, chartWidth = 0) => {
                     },
                 },
                 label: {
-                    show: true,
-                    position: "outside",
-                    color: "#082340",
-                    fontWeight: 700,
-                    fontSize: isCompact ? 11 : 12,
-                    lineHeight: 18,
-                    formatter: ({ data }) => `${data.name}\n${data.share}`,
-                },
-                labelLine: {
-                    length: 10,
-                    length2: 8,
-                    lineStyle: {
-                        color: "#94a3b8",
-                    },
+                    show: false,
                 },
                 data: visibleRows.map((row) => ({
                     value: row.count,

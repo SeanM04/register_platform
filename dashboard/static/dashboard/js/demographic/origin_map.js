@@ -1,7 +1,7 @@
 import { escapeTooltipHtml, formatChartLabel, setChartFallback } from "./shared.js";
 import { initialiseOriginMapNarrative } from "./narratives.js";
 
-const getMapLibreLib = () => window.maplibregl || null;
+const getLeafletLib = () => window.L || null;
 
 const MAP_STYLE = {
     version: 8,
@@ -10,7 +10,7 @@ const MAP_STYLE = {
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
-            attribution: "&copy; OpenStreetMap contributors",
+            attribution: "&copy; OpenStreetMap contributors | Leaflet",
             maxzoom: 19,
         },
     },
@@ -23,13 +23,13 @@ const MAP_STYLE = {
     ],
 };
 
-const ZIMBABWE_VIEW_BOUNDS = [
-    [25.0, -22.6],
-    [33.3, -15.4],
+const WORLD_VIEW_BOUNDS = [
+    [-90, -180],
+    [90, 180],
 ];
-const ZIMBABWE_MAX_BOUNDS = [
-    [24.3, -23.3],
-    [34.0, -14.9],
+const WORLD_MAX_BOUNDS = [
+    [-90, -180],
+    [90, 180],
 ];
 const FEATURED_MARKER_LIMIT = 6;
 
@@ -94,32 +94,64 @@ const buildMapPadding = (containerWidth = 0) => {
     return { top: 34, right: 34, bottom: 40, left: 34 };
 };
 
-const createMapLibreInstance = (container) => {
-    const maplibre = getMapLibreLib();
-    if (!maplibre || !container) {
+const createLeafletInstance = (container) => {
+    const L = getLeafletLib();
+    if (!L || !container) {
         return null;
     }
 
-    const map = new maplibre.Map({
-        container,
-        style: MAP_STYLE,
-        center: [29.9, -19.0],
-        zoom: 5.1,
-        minZoom: 4.5,
-        maxZoom: 8.5,
-        maxBounds: ZIMBABWE_MAX_BOUNDS,
+    const map = L.map(container, {
+        center: [-19.0, 29.9], // Zimbabwe center
+        zoom: 6, // Zimbabwe zoom level
+        minZoom: 1,
+        maxZoom: 18,
+        worldCopyJump: false,
         attributionControl: true,
-        cooperativeGestures: true,
-        dragRotate: false,
-        pitchWithRotate: false,
-        touchPitch: false,
-        renderWorldCopies: false,
     });
 
-    map.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
-    map.scrollZoom.disable();
-    map.touchZoomRotate.disableRotation();
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Leaflet',
+        maxZoom: 19,
+    }).addTo(map);
+
+    L.control.zoom({
+        position: 'topright'
+    }).addTo(map);
+
     return map;
+};
+
+const calculateDataBounds = (locationMapRows) => {
+    if (!locationMapRows || locationMapRows.length === 0) {
+        return null;
+    }
+    
+    // Get all coordinate points
+    const coordinates = locationMapRows
+        .filter(row => row.latitude && row.longitude)
+        .map(row => [parseFloat(row.latitude), parseFloat(row.longitude)]);
+    
+    if (coordinates.length === 0) {
+        return null;
+    }
+    
+    // Calculate bounds from actual data points
+    const lats = coordinates.map(coord => coord[0]);
+    const lngs = coordinates.map(coord => coord[1]);
+    
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    
+    // Add padding around bounds
+    const padding = 0.5;
+    
+    // Return Leaflet bounds format: [[minLat, minLng], [maxLat, maxLng]]
+    return [
+        [minLat - padding, minLng - padding],
+        [maxLat + padding, maxLng + padding]
+    ];
 };
 
 export const initialiseOriginMapSection = (context) => {
@@ -134,9 +166,10 @@ export const initialiseOriginMapSection = (context) => {
         };
     }
 
-    const maplibre = getMapLibreLib();
-    if (!maplibre) {
-        setChartFallback(originMapChart, "MapLibre could not load. The geographic view is unavailable.");
+    const L = getLeafletLib();
+    if (!L) {
+        console.error("Leaflet library not available:", L);
+        setChartFallback(originMapChart, "Leaflet could not load. The geographic view is unavailable.");
         return {
             getChart: () => null,
             resize: () => {},
@@ -154,52 +187,72 @@ export const initialiseOriginMapSection = (context) => {
     originMapChart.classList.remove("is-empty");
     originMapChart.textContent = "";
 
-    const map = createMapLibreInstance(originMapChart);
+    const map = createLeafletInstance(originMapChart);
     if (!map) {
+        console.error("Map creation failed:", originMapChart);
         setChartFallback(originMapChart, "The interactive map could not start for this view.");
         return {
             getChart: () => null,
             resize: () => {},
         };
     }
+    console.log("Map created successfully:", map);
 
     const markers = [];
     const maxCount = Math.max(...locationMapRows.map((row) => Number(row.count || 0)), 1);
     const sortedRows = [...locationMapRows].sort((left, right) => right.count - left.count || left.place.localeCompare(right.place));
 
-    map.on("load", () => {
-        map.fitBounds(ZIMBABWE_VIEW_BOUNDS, {
-            padding: buildMapPadding(originMapChart.clientWidth),
-            duration: 0,
-            maxZoom: 6.2,
-        });
+    map.whenReady(() => {
+        // Calculate dynamic bounds based on actual data
+        const dataBounds = calculateDataBounds(locationMapRows);
+        if (dataBounds) {
+            map.fitBounds(dataBounds, { padding: buildMapPadding(originMapChart.clientWidth) });
+        } else {
+            map.setView([-19.0, 29.9], 6); // Default to Zimbabwe
+        }
 
         sortedRows.forEach((row, index) => {
             const markerElement = buildMarkerElement(row, maxCount, index);
-            const popup = new maplibre.Popup({
+            const markerSize = 18 + Math.round((Number(row.count || 0) / Math.max(maxCount, 1)) * 20);
+            const popup = L.popup({
                 closeButton: false,
                 closeOnClick: true,
-                offset: 18,
-                maxWidth: "300px",
+                offset: [18, 0],
+                maxWidth: 300,
                 className: "demographic-origin-popup-shell",
-            }).setHTML(buildPopupMarkup(row));
+            }).setContent(buildPopupMarkup(row));
 
-            const marker = new maplibre.Marker({
-                element: markerElement,
-                anchor: "center",
+            // Validate coordinates before creating marker
+            const latitude = parseFloat(row.latitude);
+            const longitude = parseFloat(row.longitude);
+            
+            // Check if coordinates are valid numbers and within reasonable ranges
+            if (isNaN(latitude) || isNaN(longitude) || 
+                latitude < -90 || latitude > 90 || 
+                longitude < -180 || longitude > 180) {
+                console.warn('Invalid coordinates for row:', row, 'Skipping marker creation');
+                return; // Skip this row
+            }
+
+            const marker = L.marker([latitude, longitude], {
+                icon: L.divIcon({
+                    html: markerElement,
+                    className: 'leaflet-div-icon',
+                    iconSize: [markerSize, markerSize],
+                    iconAnchor: [markerSize/2, markerSize/2]
+                })
             })
-                .setLngLat([Number(row.lng), Number(row.lat)])
-                .setPopup(popup)
-                .addTo(map);
+            .bindPopup(popup)
+            .addTo(map);
 
             markers.push(marker);
         });
     });
 
     return {
-        getChart: () => null,
+        getChart: () => map,
         resize: () => {
-            map.resize();
+            map.invalidateSize();
         },
     };
 };

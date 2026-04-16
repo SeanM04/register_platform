@@ -5,9 +5,11 @@ import {
     createEmptyController,
     echartsLib,
     formatCount,
+    formatProgrammeName,
     setChartFallback,
-} from "./shared.js?v=20260405-programmes-progressive01";
+} from "./shared.js?v=20260414-msc-support01";
 import { initialisePerformanceNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
 
 const buildSymbolSize = (students, maxStudents) => {
     if (!maxStudents) {
@@ -45,6 +47,7 @@ export const initialisePerformanceSection = (context) => {
         animationDuration: 650,
         animationDurationUpdate: 250,
         grid: {
+            containLabel: true,
             left: 64,
             right: 26,
             top: 22,
@@ -54,8 +57,9 @@ export const initialisePerformanceSection = (context) => {
             ...buildTooltipBase("item"),
             formatter: (params) => {
                 const row = params.data.row;
-                return buildTooltipMarkup(row.name, [
+                return buildTooltipMarkup(formatProgrammeName(row.name), [
                     { label: "Registrations", value: formatCount(row.registrations) },
+                    { label: "Share", value: row.share },
                     { label: "Students", value: formatCount(row.students) },
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Average mark", value: formatCount(row.average_mark) },
@@ -123,8 +127,30 @@ export const initialisePerformanceSection = (context) => {
                         color: PROGRAMME_COLORS.navy,
                     },
                 },
+                label: {
+                    show: true,
+                    position: "top",
+                    color: PROGRAMME_COLORS.ink,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    formatter: (params) => params.data.row.share,
+                    distance: 5,
+                },
             },
         ],
+    });
+
+    // Add drill-down click handler
+    chart.on("click", (params) => {
+        const row = params.data.row;
+        if (row && row.name) {
+            console.log("Performance chart clicked:", row);
+            openProgrammeDrillDown(context, {
+                chartKey: "programme_load",
+                bucketKey: row.name,
+                label: formatProgrammeName(row.name),
+            });
+        }
     });
 
     return {

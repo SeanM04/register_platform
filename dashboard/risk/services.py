@@ -1,5 +1,8 @@
 """Service-layer logic for the risk dashboard feature."""
 
+from urllib.parse import urlencode
+
+from django.core.cache import cache
 from django.db.models import Q
 
 from ..views import format_academic_level_label, get_filtered_registrations, normalize_decision_label
@@ -10,6 +13,24 @@ from .constants import (
     RISK_DRIVER_PRIORITY,
     RISK_PRIORITY,
 )
+
+RISK_CACHE_TTL_SECONDS = 30
+RISK_DRILLDOWN_COLUMNS = (
+    {"key": "name", "label": "Student"},
+    {"key": "programme", "label": "Programme"},
+    {"key": "academic_level", "label": "Academic Level"},
+    {"key": "average_mark", "label": "Average Mark"},
+    {"key": "failed_courses", "label": "Failed Modules"},
+    {"key": "carrying", "label": "Carrying"},
+    {"key": "decision", "label": "Decision"},
+    {"key": "risk_level", "label": "Risk Status"},
+)
+RISK_DRILLDOWN_BAND_LABELS = {
+    "low": "Low Risk (0-1)",
+    "moderate": "Medium Risk (2-3)",
+    "high": "High Risk (4-5)",
+    "critical": "Critical (6+)",
+}
 
 
 def _safe_int(value, fallback=999):
@@ -120,19 +141,8 @@ def assess_student_risk(registrations):
     }
 
 
-def build_student_risk_profiles(request, search_query=""):
-    """Build per-student risk profiles from the currently filtered registration scope."""
-
-    registrations = get_filtered_registrations(request)
-    if search_query:
-        registrations = registrations.filter(
-            Q(student__first_names__icontains=search_query)
-            | Q(student__surname__icontains=search_query)
-            | Q(student__registration_number__icontains=search_query)
-            | Q(programme__name__icontains=search_query)
-            | Q(programme__department__name__icontains=search_query)
-            | Q(decision__icontains=search_query)
-        )
+def build_student_risk_profiles_from_registrations(registrations):
+    """Build per-student risk profiles from an already-filtered registration iterable."""
 
     student_registrations = {}
     for registration in registrations:
@@ -150,7 +160,7 @@ def build_student_risk_profiles(request, search_query=""):
             {
                 "name": latest_registration.student.full_name,
                 "registration_number": latest_registration.student.registration_number,
-                "programme": latest_registration.programme.name,
+                "programme": latest_registration.programme.normalized_name,
                 "faculty": faculty.name if faculty else "Unassigned",
                 "department": department.name if department else "Unassigned",
                 "academic_level": format_academic_level_label(
@@ -185,11 +195,31 @@ def build_student_risk_profiles(request, search_query=""):
     )
 
 
+def build_student_risk_profiles(request, search_query=""):
+    """Build per-student risk profiles from the currently filtered registration scope."""
+
+    registrations = get_filtered_registrations(request)
+    if search_query:
+        registrations = registrations.filter(
+            Q(student__first_names__icontains=search_query)
+            | Q(student__surname__icontains=search_query)
+            | Q(student__registration_number__icontains=search_query)
+            | Q(programme__name__icontains=search_query)
+            | Q(programme__department__name__icontains=search_query)
+            | Q(decision__icontains=search_query)
+        )
+
+    return build_student_risk_profiles_from_registrations(list(registrations))
+
+
 def format_risk_monitor_drivers(risk_driver_text):
     """Remove redundant phrases from the risk-monitor explanation shown on the table."""
 
     drivers = [driver.strip() for driver in str(risk_driver_text or "").split(",") if driver.strip()]
-    filtered_drivers = [driver for driver in drivers if driver.lower() != "average below 50%"]
+    filtered_drivers = [
+        driver for driver in drivers
+        if driver.lower() not in ["average below 50%", "3+ failed modules", "1 carried module", "repeat decision"]
+    ]
 
     if filtered_drivers:
         return ", ".join(filtered_drivers)
@@ -387,13 +417,184 @@ def build_risk_dashboard_data(request, search_query=""):
     }
 
 
+def _build_risk_drilldown_rows(source_rows):
+    """Normalise student rows for the modal drill-down table."""
+
+    return [
+        {
+            "name": row["name"],
+            "programme": row["programme"],
+            "academic_level": row["academic_level"],
+            "average_mark": row["average_mark"],
+            "failed_courses": row["failed_courses"],
+            "carrying": row["carrying"],
+            "decision": row["decision"],
+            "risk_level": row["risk_level"],
+            "risk_level_key": row["risk_level_key"],
+            "risk_drivers_display": format_risk_monitor_drivers(row["risk_drivers"]),
+            "detail_url": f"/students/{row['detail_slug']}/",
+        }
+        for row in source_rows
+    ]
+
+
+def build_risk_drilldown_payload(request, chart_key, bucket_key, search_query="", page_number=None, page_size=10):
+    """Build modal-ready drill-down payloads for risk charts."""
+
+    risk_profiles = build_student_risk_profiles(request, search_query)
+    risk_rows = [
+        row
+        for row in risk_profiles
+        if row["risk_level"] != "Low Risk"
+    ]
+
+    normalized_chart = str(chart_key or "").strip().lower()
+    normalized_bucket = str(bucket_key or "").strip()
+    if not normalized_chart or not normalized_bucket:
+        return None
+
+    title = "Risk Drill-Down"
+    subtitle = "No drill-down data is available for the current selection."
+    matching_rows = []
+
+    if normalized_chart == "distribution":
+        band = next(
+            (item for item in RISK_BAND_DEFINITIONS if item["key"] == normalized_bucket.lower()),
+            None,
+        )
+        if not band:
+            return None
+
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if _match_band(int(row.get("risk_score", 0) or 0), band)
+        ]
+        band_label = RISK_DRILLDOWN_BAND_LABELS.get(band["key"], band["label"])
+        title = f"{band_label} Students"
+        subtitle = f"Students currently classified inside the {band_label.lower()} band for the selected scope."
+
+    elif normalized_chart == "drivers":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if normalized_bucket in row.get("risk_driver_tags", [])
+        ]
+        driver_label = RISK_DRIVER_LABELS.get(normalized_bucket, normalized_bucket.replace("_", " ").title())
+        title = f"{driver_label} Students"
+        subtitle = f"At-risk students currently linked to the {driver_label.lower()} driver."
+
+    elif normalized_chart == "levels":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["academic_level"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently concentrated in {normalized_bucket}."
+
+    elif normalized_chart == "programmes":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["programme"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently attached to {normalized_bucket}."
+
+    elif normalized_chart == "programme_load":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["programme"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently attached to {normalized_bucket}."
+
+    elif normalized_chart == "departments":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["department"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently attached to {normalized_bucket}."
+
+    else:
+        return None
+
+    normalized_rows = _build_risk_drilldown_rows(matching_rows)
+    paginated_rows = paginate_risk_rows(normalized_rows, page_number, page_size=page_size)
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": list(RISK_DRILLDOWN_COLUMNS),
+        **paginated_rows,
+    }
+
+
 def get_risk_summary_values(request, search_query=""):
     """Calculate student-risk summary metrics for asynchronous hydration."""
 
-    risk_data = build_risk_dashboard_data(request, search_query)
+    risk_data = get_cached_risk_dashboard_data(request, search_query)
     return {
         "at_risk_students": risk_data["at_risk_students"],
         "high_risk": risk_data["high_risk_count"],
         "medium_risk": risk_data["medium_risk_count"],
         "multi_fail": risk_data["multi_fail_count"],
     }
+
+
+def paginate_risk_rows(risk_rows, page_number, page_size=20):
+    """Return the current register page plus pagination metadata for risk rows."""
+
+    total_count = len(risk_rows)
+    page_count = max(1, ((total_count - 1) // page_size) + 1) if total_count else 1
+
+    try:
+        page = int(page_number or 1)
+    except (TypeError, ValueError):
+        page = 1
+
+    page = max(1, min(page, page_count))
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_rows = risk_rows[start:end]
+    page_window_start = max(page - 2, 1)
+    page_window_end = min(page + 2, page_count)
+
+    return {
+        "rows": page_rows,
+        "page": page,
+        "page_size": page_size,
+        "page_count": page_count,
+        "page_numbers": list(range(page_window_start, page_window_end + 1)),
+        "total_count": total_count,
+        "start_index": start + 1 if total_count else 0,
+        "end_index": min(end, total_count) if total_count else 0,
+        "has_previous": page > 1,
+        "has_next": page < page_count,
+        "previous_page": page - 1 if page > 1 else None,
+        "next_page": page + 1 if page < page_count else None,
+    }
+
+
+def _build_risk_cache_key(request, suffix):
+    """Create a stable cache key for the current risk filter scope."""
+
+    query_string = urlencode(
+        sorted((key, values) for key, values in request.GET.lists() if key != "page"),
+        doseq=True,
+    )
+    return f"dashboard:risk:{suffix}:{query_string or 'all'}"
+
+
+def get_cached_risk_dashboard_data(request, search_query=""):
+    """Return cached risk analytics for the current filter scope."""
+
+    cache_key = _build_risk_cache_key(request, "payload")
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_risk_dashboard_data(request, search_query),
+        RISK_CACHE_TTL_SECONDS,
+    )

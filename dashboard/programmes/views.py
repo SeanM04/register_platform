@@ -6,7 +6,7 @@ from django.views.decorators.http import require_GET
 
 from accounts.decorators import ajax_login_required, login_required_except_domains
 
-from .ai_insights import get_programme_card_narratives
+from .ai_insights import get_programme_card_narratives_result
 from .presenters import build_programme_shell_context
 from .services import build_programme_dashboard_data, get_programme_summary_values
 
@@ -36,6 +36,15 @@ def programme_payload(request):
 
     search_query = request.GET.get("q", "").strip()
     programme_data = build_programme_dashboard_data(request, search_query)
+    
+    # Debug: Log the data being returned
+    print(f"Programme payload data keys: {programme_data.keys()}")
+    print(f"Top load rows count: {len(programme_data.get('top_load_rows', []))}")
+    print(f"Department rows count: {len(programme_data.get('department_rows', []))}")
+    print(f"Low pass rows count: {len(programme_data.get('low_pass_rows', []))}")
+    print(f"Performance rows count: {len(programme_data.get('performance_rows', []))}")
+    print(f"Programme rows count: {len(programme_data.get('programme_rows', []))}")
+    
     return JsonResponse(
         {
             "summary_cards": programme_data["summary_cards"],
@@ -44,9 +53,7 @@ def programme_payload(request):
             "low_pass_rows": programme_data["low_pass_rows"],
             "performance_rows": programme_data["performance_rows"],
             "programme_rows": programme_data["programme_rows"],
-            "register_meta": {
-                "visible_count": len(programme_data["programme_rows"]),
-            },
+            "register_meta": programme_data["register_meta"],
         }
     )
 
@@ -58,4 +65,27 @@ def programme_narratives(request):
 
     search_query = request.GET.get("q", "").strip()
     programme_data = build_programme_dashboard_data(request, search_query)
-    return JsonResponse({"card_narratives": get_programme_card_narratives(programme_data)})
+    return JsonResponse(get_programme_card_narratives_result(programme_data))
+
+
+@ajax_login_required
+@require_GET
+def programme_drilldown(request):
+    """Return on-demand student rows for the requested programme chart bucket."""
+
+    from .services import build_programme_drilldown_data
+    
+    chart_key = str(request.GET.get("chart", "")).strip().lower()
+    bucket_key = str(request.GET.get("bucket", "")).strip()
+    page = int(request.GET.get("page", 1))
+    page_size = int(request.GET.get("page_size", 10))
+    
+    if not chart_key or not bucket_key:
+        return JsonResponse({"error": "Both chart and bucket are required."}, status=400)
+
+    try:
+        payload = build_programme_drilldown_data(request, chart_key, bucket_key, page, page_size)
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+
+    return JsonResponse(payload)

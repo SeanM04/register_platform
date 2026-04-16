@@ -1,11 +1,14 @@
 """Dashboard view tests covering filters, summaries, and navigation state."""
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from accounts.models import UserType
 
+from .models import Registration, Student
 from .test_support import DashboardFixtureMixin
 
 
@@ -45,7 +48,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["average_pass_rate"], "100%")
 
     def test_insights_view_renders_live_operational_context(self):
-        """Insights page should render real flagged-student and recommendation content."""
+        """Insights page should render real flagged-student & recommendation content."""
 
         response = self.client.get(reverse("dashboard:insights"))
 
@@ -68,6 +71,51 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(alice_rows[0]["program"], self.science_programme.name)
         self.assertEqual(alice_rows[0]["department"], self.science_department.name)
         self.assertEqual(alice_rows[0]["decision"], "Proceed")
+
+    def test_student_list_search_preserves_matching_registration_context(self):
+        """Students search should keep the latest registration inside the matched subset."""
+
+        response = self.client.get(reverse("dashboard:students"), {"q": "Accounting"})
+
+        students = response.context["students"]
+        alice_rows = [row for row in students if row["name"] == self.student_primary.full_name]
+        self.assertEqual(len(alice_rows), 1)
+        self.assertEqual(alice_rows[0]["program"], self.commerce_programme.name)
+        self.assertEqual(alice_rows[0]["department"], self.commerce_department.name)
+        self.assertEqual(alice_rows[0]["decision"], "Pending")
+
+    def test_student_list_paginates_in_the_database(self):
+        """Students page should fetch only the requested page instead of materializing the full directory."""
+
+        for index in range(3, 28):
+            student = Student.objects.create(
+                registration_number=f"REG{index:03d}",
+                first_names=f"Student{index}",
+                surname="LoadTest",
+                gender="Female",
+                place_of_birth="Windhoek",
+            )
+            Registration.objects.create(
+                external_id=100 + index,
+                student=student,
+                programme=self.science_programme,
+                period=self.period_2026,
+                decision="proceed",
+                carrying=0,
+            )
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(reverse("dashboard:students"), {"page": 2})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["students"]), 7)
+        student_queries = [
+            query["sql"]
+            for query in queries.captured_queries
+            if 'FROM "dashboard_student"' in query["sql"]
+        ]
+        self.assertTrue(student_queries)
+        self.assertTrue(any("OFFSET 20" in query.upper() for query in student_queries))
 
     def test_programme_view_respects_faculty_filter(self):
         """Programme payload should only include rows from the selected faculty."""
@@ -92,7 +140,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(active_labels, ["Demographics"])
 
     def test_admin_can_access_system_management(self):
-        """Platform admins should see and access the system management workspace."""
+        """Platform admins should see & access the system management workspace."""
 
         response = self.client.get(reverse("dashboard:system-management"))
 

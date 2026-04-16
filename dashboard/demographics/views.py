@@ -6,7 +6,7 @@ from django.views.decorators.http import require_GET
 
 from accounts.decorators import ajax_login_required, login_required_except_domains
 
-from .ai_insights import get_demographic_card_narratives
+from .ai_insights import get_demographic_card_narratives_result
 from .presenters import build_demographic_shell_context
 from .services import build_demographic_data, get_demographic_summary_values
 
@@ -38,12 +38,16 @@ def demographic_payload(request):
     demographic_data = build_demographic_data(request, search_query)
     return JsonResponse(
         {
+            "metrics": demographic_data["summary_metrics"],
             "gender_rows": demographic_data["gender_rows"],
             "location_rows": demographic_data["location_rows"],
             "location_mix_rows": demographic_data["location_mix_rows"],
             "location_map_rows": demographic_data["location_map_rows"],
             "location_map_meta": demographic_data["location_map_meta"],
             "programme_rows": demographic_data["programme_rows"],
+            "programme_gender_rows": demographic_data.get("programme_gender_rows", []),
+            "year_distribution_rows": demographic_data.get("year_distribution_rows", []),
+            "age_distribution_rows": demographic_data.get("age_distribution_rows", []),
             "register_meta": {
                 "visible_count": len(demographic_data["programme_rows"]),
             },
@@ -58,4 +62,4 @@ def demographic_narratives(request):
 
     search_query = request.GET.get("q", "").strip()
     demographic_data = build_demographic_data(request, search_query)
-    return JsonResponse({"card_narratives": get_demographic_card_narratives(demographic_data)})
+    return JsonResponse(get_demographic_card_narratives_result(demographic_data))

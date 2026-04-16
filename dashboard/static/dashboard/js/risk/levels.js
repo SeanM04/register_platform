@@ -8,6 +8,7 @@ import {
     buildVerticalCategoryZoom,
     initialiseChart,
 } from "./shared.js";
+import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
 
 const HIGH_RISK = "High Risk";
 const MEDIUM_RISK = "Medium Risk";
@@ -65,10 +66,6 @@ const buildTooltipFormatter = (selectedState) => (params) => {
     return buildTooltipMarkup(row.level, [
         ...(highRiskVisible ? [{ label: HIGH_RISK, value: row.high_risk }] : []),
         ...(mediumRiskVisible ? [{ label: MEDIUM_RISK, value: row.medium_risk }] : []),
-        {
-            label: highRiskVisible && mediumRiskVisible ? "Watchlist total" : "Visible total",
-            value: getVisibleLevelTotal(row, selectedState),
-        },
         { label: "Share of watchlist", value: `${row.share_pct}%` },
     ]);
 };
@@ -98,13 +95,12 @@ const buildLevelSeries = (rows, selectedState) => {
             type: "bar",
             stack: "risk-level",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#082340", "#1c4e80"),
-                    borderRadius: buildHighRiskBorderRadius(row, selectedState),
+                    color: buildGradient("#dc2626", "#ef4444"),
                 },
             })),
             label: buildTotalLabel(selectedState, HIGH_RISK),
@@ -117,13 +113,12 @@ const buildLevelSeries = (rows, selectedState) => {
             type: "bar",
             stack: "risk-level",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#1f78b4", "#67c3e5"),
-                    borderRadius: buildMediumRiskBorderRadius(row, selectedState),
+                    color: buildGradient("#facc15", "#fde047"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -139,7 +134,7 @@ const buildLevelsOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#163a63", "#67c3e5"],
+        color: ["#dc2626", "#fde047"],
         grid: {
             top: 40,
             right: 72,
@@ -241,6 +236,17 @@ export const initialiseLevelsSection = (context) => {
             chart.setOption(buildLevelsLegendPatch(data.levelRows, event.selected), {
                 silent: true,
             });
+        });
+
+        chart.on("click", (params) => {
+            const row = params.data.raw;
+            if (row && row.level) {
+                openRiskDrillDown(context, {
+                    chartKey: "levels",
+                    bucketKey: row.level,
+                    label: row.level,
+                });
+            }
         });
     }
 

@@ -1,5 +1,6 @@
 """Demographics feature tests."""
 
+import urllib.error
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -50,7 +51,13 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         location_mix_rows = data["location_mix_rows"]
         location_map_rows = data["location_map_rows"]
         location_map_meta = data["location_map_meta"]
+        metrics = data["metrics"]
         programme_rows = data["programme_rows"]
+
+        self.assertEqual(metrics["students"], 2)
+        self.assertEqual(metrics["male"], 1)
+        self.assertEqual(metrics["female"], 1)
+        self.assertEqual(metrics["birth_locations"], 2)
 
         self.assertEqual(gender_rows[0]["label"], "Male")
         self.assertEqual(gender_rows[0]["count"], 1)
@@ -104,7 +111,13 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         location_rows = data["location_rows"]
         location_mix_rows = data["location_mix_rows"]
         location_map_rows = data["location_map_rows"]
+        metrics = data["metrics"]
         programme_rows = data["programme_rows"]
+
+        self.assertEqual(metrics["students"], 1)
+        self.assertEqual(metrics["male"], 0)
+        self.assertEqual(metrics["female"], 1)
+        self.assertEqual(metrics["birth_locations"], 1)
 
         self.assertEqual(gender_rows[0]["count"], 0)
         self.assertEqual(gender_rows[1]["count"], 1)
@@ -139,9 +152,14 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         response = self.client.get(reverse("dashboard:demographic-narratives"))
 
         self.assertEqual(response.status_code, 200)
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "rules")
+        self.assertEqual(diagnostics["fallback_reason"], "provider_rules_configured")
         self.assertIn("gender", narratives["cards"])
         self.assertIn("location", narratives["cards"])
         self.assertIn("location_mix", narratives["cards"])
@@ -172,9 +190,14 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
 
         response = self.client.get(reverse("dashboard:demographic-narratives"))
 
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "openai")
+        self.assertEqual(diagnostics["returned_source"], "openai")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "openai")
         self.assertEqual(narratives["cards"]["gender"]["insight"], "AI gender insight")
         self.assertEqual(narratives["cards"]["location"]["action"], "AI location action")
         self.assertEqual(narratives["cards"]["location_mix"]["insight"], "AI location mix insight")
@@ -206,9 +229,14 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
 
         response = self.client.get(reverse("dashboard:demographic-narratives"))
 
-        narratives = response.json()["card_narratives"]
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
 
         self.assertEqual(narratives["source"], "google")
+        self.assertEqual(diagnostics["returned_source"], "google")
+        self.assertEqual(diagnostics["status"], "ai")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
         self.assertEqual(narratives["cards"]["gender"]["insight"], "Gemini gender insight")
         self.assertEqual(narratives["cards"]["location"]["action"], "Gemini location action")
         self.assertEqual(narratives["cards"]["location_mix"]["insight"], "Gemini location mix insight")
@@ -216,3 +244,45 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(narratives["cards"]["origin_map"]["insight"], "Gemini map insight")
         self.assertEqual(narratives["cards"]["gender"]["severity"], "stable")
         self.assertEqual(narratives["cards"]["gender"]["confidence"], "low")
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.demographics.ai_insights._request_demographic_google_narratives")
+    def test_demographic_narratives_endpoint_reports_structured_fallback_diagnostics_when_google_fails(self, mock_request):
+        """Demographic narratives should expose a stable fallback reason when Gemini cannot be reached."""
+
+        mock_request.side_effect = OSError("WinError 10013 network blocked")
+
+        response = self.client.get(reverse("dashboard:demographic-narratives"))
+
+        payload = response.json()
+        narratives = payload["card_narratives"]
+        diagnostics = payload["diagnostics"]
+
+        self.assertEqual(narratives["source"], "rules")
+        self.assertEqual(diagnostics["returned_source"], "rules")
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_os_error")
+        self.assertIn("Google Gemini", diagnostics["message"])
+
+    @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
+    @patch("dashboard.demographics.ai_insights._request_demographic_google_narratives")
+    def test_demographic_narratives_endpoint_reports_rate_limit_diagnostics_for_google_429(self, mock_request):
+        """Demographic narratives should explain when Gemini rejects the request with a quota/rate-limit response."""
+
+        mock_request.side_effect = urllib.error.HTTPError(
+            "https://example.com",
+            429,
+            "Too Many Requests",
+            None,
+            None,
+        )
+
+        response = self.client.get(reverse("dashboard:demographic-narratives"))
+
+        diagnostics = response.json()["diagnostics"]
+
+        self.assertEqual(diagnostics["status"], "fallback")
+        self.assertEqual(diagnostics["provider_attempted"], "google")
+        self.assertEqual(diagnostics["fallback_reason"], "google_rate_limited")
+        self.assertIn("quota or request limits", diagnostics["message"])

@@ -9,7 +9,8 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseRiskNarrative } from "./narratives.js?v=20260403-home-story04";
+import { openOverviewDrillDown } from "./drilldown.js?v=20260411-home-drilldown01";
+import { initialiseRiskNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const RISK_COLORS = {
     critical: buildGradient("#d1535d", "#e88473"),
@@ -18,6 +19,9 @@ const RISK_COLORS = {
     stable: buildGradient("#4fae82", "#79d6af"),
 };
 
+/**
+ * Build the risk-distribution chart and sync its narrative surfaces.
+ */
 export const initialiseRiskDistributionSection = (context) => {
     const rows = context.data.riskDistributionRows || [];
     const { riskChart } = context.elements;
@@ -103,10 +107,10 @@ export const initialiseRiskDistributionSection = (context) => {
                         value: row.count,
                         itemStyle: {
                             color: RISK_COLORS[row.key] || HOME_COLORS.sky,
-                            borderRadius: [14, 14, 0, 0],
                         },
+                        drilldownKey: row.key,
                     })),
-                    barMaxWidth: 54,
+                    barMaxWidth: 28,
                     label: {
                         show: true,
                         position: "top",
@@ -119,6 +123,18 @@ export const initialiseRiskDistributionSection = (context) => {
             ],
         }
     );
+
+    chart.on("click", (params) => {
+        const row = rows[params.dataIndex];
+        const bucketKey = row?.key || params.data?.drilldownKey;
+        if (bucketKey) {
+            openOverviewDrillDown(context, {
+                chartKey: "risk_distribution",
+                bucketKey,
+                label: row?.label || params.name,
+            });
+        }
+    });
 
     return {
         getChart: () => chart,

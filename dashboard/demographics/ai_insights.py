@@ -33,6 +33,12 @@ DEMOGRAPHIC_CARD_SEVERITIES = {"stable", "medium", "high"}
 DEMOGRAPHIC_CARD_CONFIDENCES = {"low", "medium", "high"}
 DEMOGRAPHIC_CARD_SEVERITY_RANK = {"stable": 0, "medium": 1, "high": 2}
 DEMOGRAPHIC_CARD_KEYS = ("gender", "location", "location_mix", "programme", "origin_map")
+PROVIDER_LABELS = {
+    "google": "Google Gemini",
+    "openai": "OpenAI",
+    "rules": "Rule-based engine",
+    "auto": "Automatic provider selection",
+}
 DEMOGRAPHIC_NARRATIVE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -551,6 +557,112 @@ def _extract_google_response_text(response_payload):
     return ""
 
 
+def _get_provider_label(provider):
+    """Return a user-facing label for the configured narrative provider."""
+
+    return PROVIDER_LABELS.get(str(provider or "").strip().lower(), "Unknown provider")
+
+
+def _trim_diagnostic_detail(value, max_length=180):
+    """Clamp verbose provider error text before returning it to the UI."""
+
+    text = str(value or "").strip()
+    if len(text) <= max_length:
+        return text
+    return f"{text[:max_length - 3].rstrip()}..."
+
+
+def _classify_provider_error(provider_name, error):
+    """Normalize provider exceptions into stable diagnostic reason codes."""
+
+    detail = _trim_diagnostic_detail(error)
+    lowered_detail = detail.lower()
+    provider_key = str(provider_name or "provider").strip().lower()
+
+    if isinstance(error, urllib.error.HTTPError):
+        if int(getattr(error, "code", 0) or 0) == 429:
+            return (
+                f"{provider_key}_rate_limited",
+                f"{_get_provider_label(provider_key)} rate-limited the request because quota or request limits were reached.",
+                detail,
+            )
+        return (
+            f"{provider_key}_http_error",
+            f"{_get_provider_label(provider_key)} returned HTTP {error.code}.",
+            detail,
+        )
+    if isinstance(error, urllib.error.URLError):
+        if "10013" in lowered_detail or "forbidden by its access permissions" in lowered_detail:
+            return (
+                f"{provider_key}_network_blocked",
+                f"{_get_provider_label(provider_key)} could not be reached because outbound network access is blocked on this host.",
+                detail,
+            )
+        if "timed out" in lowered_detail or "timeout" in lowered_detail:
+            return (
+                f"{provider_key}_timeout",
+                f"{_get_provider_label(provider_key)} timed out before returning demographics narratives.",
+                detail,
+            )
+        return (
+            f"{provider_key}_network_error",
+            f"{_get_provider_label(provider_key)} could not be reached from this environment.",
+            detail,
+        )
+    if isinstance(error, json.JSONDecodeError):
+        return (
+            f"{provider_key}_invalid_json",
+            f"{_get_provider_label(provider_key)} returned a response that could not be parsed as JSON.",
+            detail,
+        )
+    if isinstance(error, ValueError):
+        return (
+            f"{provider_key}_invalid_payload",
+            f"{_get_provider_label(provider_key)} returned an incomplete or invalid narrative payload.",
+            detail,
+        )
+    if isinstance(error, OSError):
+        return (
+            f"{provider_key}_os_error",
+            f"{_get_provider_label(provider_key)} could not be reached because of an operating-system network error.",
+            detail,
+        )
+    return (
+        f"{provider_key}_unexpected_error",
+        f"{_get_provider_label(provider_key)} failed unexpectedly while generating demographics narratives.",
+        detail,
+    )
+
+
+def _build_demographic_narrative_diagnostics(
+    *,
+    configured_provider,
+    returned_source,
+    status,
+    provider_attempted="",
+    fallback_reason="",
+    message="",
+    fallback_detail="",
+):
+    """Build structured diagnostics for the demographics narrative pipeline."""
+
+    return {
+        "configured_provider": str(configured_provider or "rules").strip().lower() or "rules",
+        "provider_attempted": str(provider_attempted or "").strip().lower(),
+        "returned_source": str(returned_source or "rules").strip().lower() or "rules",
+        "status": str(status or "rules").strip().lower() or "rules",
+        "fallback_reason": str(fallback_reason or "").strip().lower(),
+        "message": str(message or "").strip(),
+        "fallback_detail": str(fallback_detail or "").strip(),
+        "google_configured": bool(getattr(settings, "GOOGLE_API_KEY", "")),
+        "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", "")),
+        "ai_enabled": bool(
+            getattr(settings, "AI_INSIGHTS_ENABLED", False)
+            or getattr(settings, "OPENAI_INSIGHTS_ENABLED", False)
+        ),
+    }
+
+
 def _normalize_ai_narrative_payload(payload, source, fallback_cards=None):
     """Validate and normalize provider output into the demographics card contract."""
 
@@ -690,8 +802,8 @@ def _request_demographic_google_narratives(fact_pack_json):
         return response.read().decode("utf-8")
 
 
-def get_demographic_card_narratives(demographic_data):
-    """Return overview card narratives for the demographics dashboard page."""
+def get_demographic_card_narratives_result(demographic_data):
+    """Return overview card narratives plus diagnostics for the demographics dashboard page."""
 
     fallback = build_rule_based_demographic_narratives(demographic_data)
     provider = getattr(settings, "AI_INSIGHTS_PROVIDER", "auto").strip().lower()
@@ -700,7 +812,22 @@ def get_demographic_card_narratives(demographic_data):
         or getattr(settings, "OPENAI_INSIGHTS_ENABLED", False)
     )
     if provider == "rules" or not insights_enabled:
-        return fallback
+        fallback_reason = "provider_rules_configured" if provider == "rules" else "ai_insights_disabled"
+        message = (
+            "Demographics narratives are using the rule-based engine because AI provider mode is set to rules."
+            if provider == "rules"
+            else "Demographics narratives are using the rule-based engine because AI insights are disabled."
+        )
+        return {
+            "card_narratives": fallback,
+            "diagnostics": _build_demographic_narrative_diagnostics(
+                configured_provider=provider,
+                returned_source="rules",
+                status="rules",
+                fallback_reason=fallback_reason,
+                message=message,
+            ),
+        }
 
     fact_pack_json = json.dumps(build_demographic_fact_pack(demographic_data), sort_keys=True)
 
@@ -711,20 +838,70 @@ def get_demographic_card_narratives(demographic_data):
             response_text = _extract_google_response_text(response_payload)
             if not response_text:
                 raise ValueError("No output text returned by Gemini API.")
-            return _normalize_ai_narrative_payload(json.loads(response_text), "google", fallback["cards"])
+            return {
+                "card_narratives": _normalize_ai_narrative_payload(json.loads(response_text), "google", fallback["cards"]),
+                "diagnostics": _build_demographic_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="google",
+                    returned_source="google",
+                    status="ai",
+                    message="Demographics narratives were generated by Google Gemini.",
+                ),
+            }
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError, ValueError) as error:
             logger.warning("Falling back after Google demographics narrative request failed: %s", error)
             if provider == "google":
-                return fallback
+                fallback_reason, message, detail = _classify_provider_error("google", error)
+                return {
+                    "card_narratives": fallback,
+                    "diagnostics": _build_demographic_narrative_diagnostics(
+                        configured_provider=provider,
+                        provider_attempted="google",
+                        returned_source="rules",
+                        status="fallback",
+                        fallback_reason=fallback_reason,
+                        message=message,
+                        fallback_detail=detail,
+                    ),
+                }
 
     if provider in {"auto", "openai"}:
         if provider == "openai" and not getattr(settings, "OPENAI_API_KEY", ""):
             logger.info("AI_INSIGHTS_PROVIDER is openai but OPENAI_API_KEY is missing; using rule-based demographics narratives.")
-            return fallback
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_demographic_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason="missing_openai_api_key",
+                    message="Demographics narratives are using the rule-based engine because the OpenAI API key is missing.",
+                ),
+            }
         if provider == "auto" and not getattr(settings, "OPENAI_INSIGHTS_ENABLED", False):
-            return fallback
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_demographic_narrative_diagnostics(
+                    configured_provider=provider,
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason="openai_not_enabled_in_auto_mode",
+                    message="Demographics narratives are using the rule-based engine because OpenAI fallback is disabled in auto mode.",
+                ),
+            }
         if not getattr(settings, "OPENAI_API_KEY", ""):
-            return fallback
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_demographic_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai" if provider == "openai" else "",
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason="missing_openai_api_key",
+                    message="Demographics narratives are using the rule-based engine because the OpenAI API key is missing.",
+                ),
+            }
 
         try:
             raw_response = _request_demographic_openai_narratives(fact_pack_json)
@@ -732,8 +909,45 @@ def get_demographic_card_narratives(demographic_data):
             response_text = _extract_response_text(response_payload)
             if not response_text:
                 raise ValueError("No output text returned by Responses API.")
-            return _normalize_ai_narrative_payload(json.loads(response_text), "openai", fallback["cards"])
+            return {
+                "card_narratives": _normalize_ai_narrative_payload(json.loads(response_text), "openai", fallback["cards"]),
+                "diagnostics": _build_demographic_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="openai",
+                    status="ai",
+                    message="Demographics narratives were generated by OpenAI.",
+                ),
+            }
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError, ValueError) as error:
             logger.warning("Falling back after OpenAI demographics narrative request failed: %s", error)
+            fallback_reason, message, detail = _classify_provider_error("openai", error)
+            return {
+                "card_narratives": fallback,
+                "diagnostics": _build_demographic_narrative_diagnostics(
+                    configured_provider=provider,
+                    provider_attempted="openai",
+                    returned_source="rules",
+                    status="fallback",
+                    fallback_reason=fallback_reason,
+                    message=message,
+                    fallback_detail=detail,
+                ),
+            }
 
-    return fallback
+    return {
+        "card_narratives": fallback,
+        "diagnostics": _build_demographic_narrative_diagnostics(
+            configured_provider=provider,
+            returned_source="rules",
+            status="fallback",
+            fallback_reason="no_provider_available",
+            message="Demographics narratives are using the rule-based engine because no AI provider is currently available.",
+        ),
+    }
+
+
+def get_demographic_card_narratives(demographic_data):
+    """Return only overview card narratives for compatibility call sites."""
+
+    return get_demographic_card_narratives_result(demographic_data)["card_narratives"]

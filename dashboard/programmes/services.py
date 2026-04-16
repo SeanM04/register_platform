@@ -30,6 +30,49 @@ def _truncate_text(value, max_length=34):
     return f"{text[:max_length - 3].rstrip()}..."
 
 
+def _build_programme_axis_label(row):
+    """Prefer a stable programme code on chart axes, then fall back to a compact acronym."""
+
+    code = str(row.get("code") or "").strip()
+    if code:
+        return code.upper()
+
+    words = [
+        word for word in str(row.get("name") or "").replace("-", " ").split()
+        if word and word.lower() not in {"of", "in", "and", "the", "honours", "degree"}
+    ]
+    if not words:
+        return "Programme"
+
+    acronym = "".join(word[0].upper() for word in words[:5])
+    return acronym or "Programme"
+
+
+def _build_department_axis_label(name):
+    """Compress long department names so horizontal bar charts keep more room for bars."""
+
+    cleaned_name = str(name or "").strip()
+    if not cleaned_name:
+        return "Department"
+
+    simplified = cleaned_name
+    if simplified.lower().startswith("department of "):
+        simplified = simplified[14:]
+
+    words = [
+        word for word in simplified.replace("-", " ").split()
+        if word and word.lower() not in {"of", "and", "the"}
+    ]
+    if not words:
+        return _truncate_text(cleaned_name, max_length=14)
+
+    if len(words) == 1:
+        return _truncate_text(words[0].upper(), max_length=14)
+
+    acronym = "".join(word[0].upper() for word in words[:5])
+    return acronym or _truncate_text(cleaned_name.upper(), max_length=14)
+
+
 def get_programmes_queryset(request, search_query=""):
     """Return annotated programmes for the current dashboard filter scope."""
 
@@ -91,7 +134,8 @@ def build_programme_rows(programmes):
         programme_rows.append(
             {
                 "code": programme.code,
-                "name": programme.name,
+                "name": programme.normalized_name,
+                "axis_label": (programme.code or "").upper() or "",
                 "faculty": faculty,
                 "department": department,
                 "students": int(programme.student_count or 0),
@@ -105,6 +149,36 @@ def build_programme_rows(programmes):
                 "pass_rate_value": pass_rate_value,
             }
         )
+
+    return programme_rows
+
+
+def _sort_programme_rows(programme_rows, sort_key, sort_direction):
+    """Sort programme rows for the register table based on request query parameters."""
+    if not sort_key:
+        return programme_rows
+
+    sort_key = str(sort_key or "").strip().lower()
+    reverse = str(sort_direction or "").strip().lower() == "desc"
+
+    if sort_key == "code":
+        programme_rows.sort(key=lambda row: ((row["code"] or "").lower(), row["name"].lower()), reverse=reverse)
+    elif sort_key == "name":
+        programme_rows.sort(key=lambda row: (row["name"] or "").lower(), reverse=reverse)
+    elif sort_key == "faculty":
+        programme_rows.sort(key=lambda row: (row["faculty"] or "").lower(), reverse=reverse)
+    elif sort_key == "department":
+        programme_rows.sort(key=lambda row: (row["department"] or "").lower(), reverse=reverse)
+    elif sort_key == "students":
+        programme_rows.sort(key=lambda row: (row["students"], row["name"].lower()), reverse=reverse)
+    elif sort_key == "registrations":
+        programme_rows.sort(key=lambda row: (row["registrations"], row["name"].lower()), reverse=reverse)
+    elif sort_key == "average_mark":
+        programme_rows.sort(key=lambda row: (row["average_mark_value"], row["name"].lower()), reverse=reverse)
+    elif sort_key == "pass_rate":
+        programme_rows.sort(key=lambda row: (row["pass_rate_value"], row["name"].lower()), reverse=reverse)
+    else:
+        programme_rows.sort(key=lambda row: (row["name"] or "").lower(), reverse=reverse)
 
     return programme_rows
 
@@ -177,13 +251,13 @@ def _build_summary_cards(summary_values, programme_rows):
     )
 
     notes = {
-        "programmes": f"{_format_count(summary_values['programmes'])} active programme portfolios are visible in scope.",
+        "programmes": "Active programme portfolios are visible in scope.",
         "registrations": (
             f"{_truncate_text(lead_programme['name'])} carries {round((lead_programme['registrations'] / summary_values['registrations']) * 100)}% of visible load."
             if lead_programme and summary_values["registrations"]
             else "Registration concentration will appear once records are available."
         ),
-        "students": f"Across {_format_count(summary_values['students'])} unique student appearances in the visible programme mix.",
+        "students": "Unique student appearances in the visible programme mix.",
         "average_pass_rate": (
             f"{_format_count(summary_values['pass_count'])} of {_format_count(summary_values['marked_results'])} marked module results are currently passing."
             if summary_values["marked_results"]
@@ -220,6 +294,7 @@ def _build_top_load_rows(programme_rows):
         {
             **row,
             "share_pct": _pct(row["registrations"], total_registrations),
+            "axis_label": _build_programme_axis_label(row),
         }
         for row in sorted(
             programme_rows,
@@ -277,6 +352,7 @@ def _build_department_rows(programme_rows):
             {
                 "faculty": bucket["faculty"],
                 "department": bucket["department"],
+                "axis_label": _build_department_axis_label(bucket["department"]),
                 "registrations": bucket["registrations"],
                 "students": bucket["students"],
                 "programme_count": bucket["programme_count"],
@@ -320,14 +396,165 @@ def build_programme_dashboard_data(request, search_query=""):
     """Assemble the story-first programme dashboard payload."""
 
     programme_rows = build_programme_rows(get_programmes_queryset(request, search_query))
+    programme_rows = _sort_programme_rows(
+        programme_rows,
+        request.GET.get("sort", ""),
+        request.GET.get("direction", "asc"),
+    )
     summary_values = _build_summary_values_from_rows(programme_rows)
+
+    # Apply pagination for the register table (10 rows per page)
+    page = int(request.GET.get("page", 1))
+    per_page = 10
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    paginated_rows = programme_rows[start_index:end_index]
 
     return {
         "summary_cards": _build_summary_cards(summary_values, programme_rows),
         "scope_pills": build_programme_scope_pills(request, search_query),
-        "programme_rows": programme_rows,
+        "programme_rows": paginated_rows,
+        "register_meta": {
+            "visible_count": len(programme_rows),
+            "current_page": page,
+            "per_page": per_page,
+            "total_pages": (len(programme_rows) + per_page - 1) // per_page,
+            "has_previous": page > 1,
+            "has_next": page < ((len(programme_rows) + per_page - 1) // per_page),
+        },
         "top_load_rows": _build_top_load_rows(programme_rows),
         "department_rows": _build_department_rows(programme_rows),
         "low_pass_rows": _build_low_pass_rows(programme_rows),
         "performance_rows": _build_performance_rows(programme_rows),
+    }
+
+
+def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
+    """Return student rows for programme chart drill-downs based on academic data."""
+    
+    from urllib.parse import unquote_plus
+    from ..models import Registration, Student, Programme
+    
+    # URL decode the bucket key to handle special characters
+    bucket_key = unquote_plus(bucket_key)
+    
+    try:
+        # Debug: Log the request parameters
+        print(f"DEBUG: Programme drilldown request - chart_key: {chart_key}, bucket_key: {bucket_key}")
+        
+        if chart_key == "programme_load":
+            # Get students in the specified programme
+            registrations = Registration.objects.filter(
+                programme__name__iexact=bucket_key
+            ).select_related('student', 'programme', 'programme__department')[:page_size]
+            
+            print(f"DEBUG: Found {len(registrations)} registrations for programme '{bucket_key}'")
+            
+        elif chart_key == "departments":
+            # Get students in the specified department
+            registrations = Registration.objects.filter(
+                programme__department__name__iexact=bucket_key
+            ).select_related('student', 'programme', 'programme__department')[:page_size]
+            
+            print(f"DEBUG: Found {len(registrations)} registrations for department '{bucket_key}'")
+            
+        else:
+            raise ValueError("Unsupported programme drill-down chart.")
+        
+        # Build student rows
+        student_rows = []
+        for i, registration in enumerate(registrations):
+            student = registration.student
+            programme = registration.programme
+            row_data = {
+                "name": student.full_name,
+                "registration_number": student.registration_number,
+                "programme": programme.name if programme else "Unassigned",
+                "department": programme.department.name if programme and programme.department else "Unassigned",
+                "decision": registration.decision or "Unknown",
+                "carrying": registration.carrying or 0,
+                "detail_url": f"/students/{student.registration_number}/",
+            }
+            student_rows.append(row_data)
+            
+            # Debug: Log first few rows
+            if i < 3:
+                print(f"DEBUG: Student {i+1}: {row_data['name']} - {row_data['programme']} - {row_data['department']}")
+        
+        print(f"DEBUG: Built {len(student_rows)} student rows for response")
+        
+        return {
+            "title": f"{bucket_key} Students",
+            "subtitle": f"Students currently registered in {bucket_key}.",
+            "columns": [
+                {"key": "name", "label": "Student Name"},
+                {"key": "registration_number", "label": "Registration Number"},
+                {"key": "programme", "label": "Programme"},
+                {"key": "department", "label": "Department"},
+                {"key": "decision", "label": "Decision"},
+                {"key": "carrying", "label": "Carrying"},
+            ],
+            "rows": student_rows,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_items": len(student_rows),
+                "total_pages": 1,
+                "has_next": False,
+                "has_previous": False,
+            },
+        }
+        
+    except Exception as e:
+        # Log the error and re-raise to show real issues
+        print(f"ERROR: Programme drilldown failed - {str(e)}")
+        raise e
+
+
+def _build_programme_student_drilldown_payload(request, registrations, title, subtitle, page=1, page_size=10):
+    """Build student drill-down payload for programme charts."""
+    
+    # Simple pagination without complex filtering for now
+    total_count = registrations.count()
+    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+    
+    # Pagination
+    offset = (page - 1) * page_size
+    paginated_registrations = registrations[offset:offset + page_size]
+    
+    # Build student rows
+    student_rows = []
+    for registration in paginated_registrations:
+        student = registration.student
+        programme = registration.programme
+        student_rows.append({
+            "name": student.full_name,
+            "registration_number": student.registration_number,
+            "programme": programme.name if programme else "Unassigned",
+            "department": programme.department.name if programme and programme.department else "Unassigned",
+            "decision": registration.decision or "Unknown",
+            "carrying": registration.carrying or 0,
+            "detail_url": f"/students/{student.slug}/",
+        })
+    
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": [
+            {"key": "name", "label": "Student Name"},
+            {"key": "registration_number", "label": "Registration Number"},
+            {"key": "programme", "label": "Programme"},
+            {"key": "department", "label": "Department"},
+            {"key": "decision", "label": "Decision"},
+            {"key": "carrying", "label": "Carrying"},
+        ],
+        "rows": student_rows,
+        "pagination": {
+            "current_page": page,
+            "page_size": page_size,
+            "total_items": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_previous": page > 1,
+        },
     }

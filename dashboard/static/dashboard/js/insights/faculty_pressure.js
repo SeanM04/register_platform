@@ -98,13 +98,12 @@ const buildPressureSeries = (rows, selectedState) => {
             type: "bar",
             stack: "faculty-pressure",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#082340", "#1c4e80"),
-                    borderRadius: buildHighRiskBorderRadius(row, selectedState),
+                    color: buildGradient("#ea580c", "#f97316"),
                 },
             })),
             label: buildTotalLabel(selectedState, HIGH_RISK),
@@ -117,13 +116,12 @@ const buildPressureSeries = (rows, selectedState) => {
             type: "bar",
             stack: "faculty-pressure",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
-                    color: buildGradient("#1f78b4", "#67c3e5"),
-                    borderRadius: buildMediumRiskBorderRadius(row, selectedState),
+                    color: buildGradient("#facc15", "#fde047"),
                 },
             })),
             label: buildTotalLabel(selectedState, MEDIUM_RISK),
@@ -139,7 +137,7 @@ const buildFacultyPressureOption = (rows, selectedState = null) => {
 
     return {
         ...buildAnimationConfig(rows),
-        color: ["#163a63", "#67c3e5"],
+        color: ["#ea580c", "#fde047"],
         grid: {
             top: 40,
             right: 72,

@@ -8,10 +8,10 @@ import {
 } from "./shared.js?v=20260403-insights-story02";
 
 const TONE_GRADIENTS = {
-    critical: ["#7a1731", "#f04c73"],
-    high: ["#082340", "#1c4e80"],
-    moderate: ["#1f78b4", "#5fb7dc"],
-    low: ["#94b8cf", "#d8eaf5"],
+    critical: ["#dc2626", "#ef4444"],
+    high: ["#ea580c", "#f97316"],
+    moderate: ["#facc15", "#fde047"],
+    low: ["#16a34a", "#22c55e"],
 };
 
 const buildDistributionOption = (rows, width) => ({
@@ -29,7 +29,7 @@ const buildDistributionOption = (rows, width) => ({
             const row = params.data.raw;
             return buildTooltipMarkup(row.label, [
                 { label: "Students", value: row.count },
-                { label: "Share of visible cohort", value: `${row.percent}%` },
+                { label: "Share of active cohort", value: `${row.percent}%` },
             ]);
         },
     },
@@ -48,7 +48,7 @@ const buildDistributionOption = (rows, width) => ({
             color: "#52677c",
             fontSize: width < 720 ? 10 : 11,
             interval: 0,
-            rotate: width < 720 ? 16 : 0,
+            rotate: 0,
         },
     },
     yAxis: {
@@ -74,7 +74,7 @@ const buildDistributionOption = (rows, width) => ({
     series: [
         {
             type: "bar",
-            barWidth: width < 720 ? "50%" : "58%",
+            barMaxWidth: 28,
             data: rows.map((row) => {
                 const [startColor, endColor] = TONE_GRADIENTS[row.tone] || TONE_GRADIENTS.moderate;
                 return {
@@ -82,7 +82,6 @@ const buildDistributionOption = (rows, width) => ({
                     raw: row,
                     itemStyle: {
                         color: buildGradient(startColor, endColor, "vertical"),
-                        borderRadius: [12, 12, 0, 0],
                     },
                 };
             }),

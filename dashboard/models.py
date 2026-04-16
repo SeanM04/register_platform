@@ -25,6 +25,20 @@ class Programme(TimeStampedModel):
     def faculty(self):
         return self.department.faculty
 
+    @property
+    def normalized_name(self):
+        """Return programme name with Bsc & Bcom corrected to BSc & BCom, & And/and replaced with &."""
+        if not self.name:
+            return self.name
+        # Replace Bsc with BSc & Bcom with BCom (case-sensitive)
+        normalized = self.name.replace("Bsc", "BSc")
+        normalized = normalized.replace("Bcom", "BCom")
+        # Replace coordinating conjunctions with & symbol
+        normalized = normalized.replace(" AND ", " & ")
+        normalized = normalized.replace(" And ", " & ")
+        normalized = normalized.replace(" and ", " & ")
+        return normalized
+
 
 class Faculty(TimeStampedModel):
     name = models.CharField(max_length=255, unique=True)

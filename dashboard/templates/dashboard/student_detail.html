@@ -7,97 +7,193 @@
 <link rel="stylesheet" href="{% static 'dashboard/css/student_detail.css' %}">
 {% endblock %}
 
+{% block extra_js %}
+<script type="module" src="{% static 'dashboard/js/student_detail.js' %}?v=20260409-advanced-filters-01"></script>
+{% endblock %}
+
 {% block content %}
 <section class="detail-layout">
-    <header class="detail-header">
-        <div>
-            <h1>{{ student.name }}</h1>
-            <p class="detail-copy">Review programme, current term context, and module-level results for this student.</p>
-        </div>
-        <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
-    </header>
+    {% if student %}
+    {% if show_empty_content %}
+        <!-- Minimal view when filters have no matches -->
+        <header class="detail-header">
+            <div>
+                <h1>{{ student.name }}</h1>
+                <p class="detail-copy">Student record found but no data matches current filters.</p>
+            </div>
+            <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+        </header>
 
-    <section class="profile-card">
-        <div class="profile-media">
-            <div class="avatar-circle">JD</div>
-            <p class="student-number">{{ student.student_number }}</p>
-        </div>
+        <section class="profile-card">
+            <div class="profile-media">
+                <div class="avatar-circle">
+    <img src="{% static 'dashboard/images/default-avatar.png' %}" alt="Student avatar" class="avatar-image">
+</div>
+                <p class="student-number">{{ student.student_number }}</p>
+            </div>
 
-        <dl class="profile-grid">
-            <div>
-                <dt>Programme:</dt>
-                <dd>{{ student.programme }}</dd>
+            <div class="empty-state">
+                <h3>User Not Found</h3>
+                <p>{{ no_data_message }}</p>
+                <div class="filter-summary">
+                    <p><strong>Current Filters:</strong></p>
+                    <ul>
+                        {% if selected_filters.year %}<li>Year: {{ selected_filters.year }}</li>{% endif %}
+                        {% if selected_filters.period %}<li>Period: {{ selected_filters.period }}</li>{% endif %}
+                        {% if selected_filters.faculty %}<li>Faculty: {{ selected_filters.faculty }}</li>{% endif %}
+                    </ul>
+                </div>
+                <div class="empty-actions">
+                    <p>Try adjusting your filters to see available information.</p>
+                </div>
             </div>
+        </section>
+    {% else %}
+        <!-- Full view when filters have matches -->
+        <header class="detail-header">
             <div>
-                <dt>Gender:</dt>
-                <dd>{{ student.gender }}</dd>
+                <h1>{{ student.name }}</h1>
+                <p class="detail-copy">Review programme, current term context, and module-level results for this student.</p>
             </div>
-            <div>
-                <dt>Academic Level:</dt>
-                <dd>{{ student.academic_level }}</dd>
-            </div>
-            <div>
-                <dt>Term:</dt>
-                <dd>{{ student.term_name }}</dd>
-            </div>
-            <div>
-                <dt>Age:</dt>
-                <dd>{{ student.age }}</dd>
-            </div>
-            <div>
-                <dt>Decision:</dt>
-                <dd>{{ student.decision }}</dd>
-            </div>
-            <div>
-                <dt>Place of Birth:</dt>
-                <dd>{{ student.place_of_birth }}</dd>
-            </div>
-        </dl>
+            <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+        </header>
 
-        <aside class="grade-card">
-            <span class="grade-label">Cumulative Grade</span>
-            <strong class="grade-value">{{ student.cumulative_grade }}</strong>
-        </aside>
-    </section>
+        <section class="profile-card">
+            <div class="profile-media">
+                <div class="avatar-circle">
+    <img src="{% static 'dashboard/images/default-avatar.png' %}" alt="Student avatar" class="avatar-image">
+</div>
+                <p class="student-number">{{ student.student_number }}</p>
+            </div>
 
-    <nav class="year-tabs" aria-label="Academic terms">
-        {% for tab in student.term_tabs %}
-        <a class="year-tab{% if tab.is_active %} is-active{% endif %}" href="?term={{ tab.id }}">
-            <span class="year-tab-label">{{ tab.label }}</span>
-            <span class="year-tab-meta">{{ tab.period_name }}</span>
-        </a>
-        {% endfor %}
-    </nav>
+            <dl class="profile-grid">
+                <div>
+                    <dt>Programme:</dt>
+                    <dd>{{ student.programme }}</dd>
+                </div>
+                <div>
+                    <dt>Gender:</dt>
+                    <dd>{{ student.gender }}</dd>
+                </div>
+                <div>
+                    <dt>Academic Level:</dt>
+                    <dd>{{ student.academic_level }}</dd>
+                </div>
+                <div>
+                    <dt>Term:</dt>
+                    <dd>{{ student.term_name }}</dd>
+                </div>
+                <div>
+                    <dt>Age:</dt>
+                    <dd>{{ student.age }}</dd>
+                </div>
+                <div>
+                    <dt>Decision:</dt>
+                    <dd>{{ student.decision }}</dd>
+                </div>
+                <div>
+                    <dt>Place of Birth:</dt>
+                    <dd>{{ student.place_of_birth }}</dd>
+                </div>
+            </dl>
 
-    <section class="results-card">
-        <div class="table-wrap" data-scroll-region tabindex="0" aria-label="Student results table">
-            <table class="results-table">
-                <colgroup>
-                    <col class="results-col-code">
-                    <col class="results-col-course">
-                    <col class="results-col-period">
-                    <col class="results-col-mark">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th class="results-th-code">Code</th>
-                        <th>Course</th>
-                        <th>Period</th>
-                        <th class="results-th-mark">Mark</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for result in student.results %}
-                    <tr>
-                        <td class="results-td-code">{{ result.code }}</td>
-                        <td>{{ result.course }}</td>
-                        <td>{{ result.period }}</td>
-                        <td class="results-td-mark">{{ result.mark }}</td>
-                    </tr>
+            <aside class="grade-card">
+                <span class="grade-label">Cumulative Grade</span>
+                <strong class="grade-value">{{ student.cumulative_grade }}</strong>
+            </aside>
+        </section>
+
+        <nav class="year-dropdown-tabs" aria-label="Academic years">
+            {% for year_tab in student.year_dropdown_tabs %}
+            <div class="year-dropdown{% if year_tab.is_active %} is-active{% endif %}{% if year_tab.semester_selected %} semester-selected{% endif %}">
+                <button class="year-dropdown-toggle" type="button" aria-expanded="false" aria-controls="year-{{ year_tab.year }}-dropdown">
+                    <span class="year-dropdown-label">{{ year_tab.year_label }}</span>
+                    <span class="year-dropdown-arrow">+</span>
+                </button>
+                <div class="year-dropdown-content" id="year-{{ year_tab.year }}-dropdown">
+                    {% for semester in year_tab.semesters %}
+                    <a class="year-dropdown-option{% if semester.is_active %} is-active{% endif %}" 
+                       href="?term={{ semester.id }}&year={{ student.selected_filters.year }}&period={{ student.selected_filters.period }}&faculty={{ student.selected_filters.faculty }}">
+                        <span class="year-dropdown-option-label">{{ semester.label }} - {{ semester.period_name }}</span>
+                    </a>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </div>
+            </div>
+            {% endfor %}
+        </nav>
+
+        <section class="results-card">
+            <div class="table-wrap" data-scroll-region tabindex="0" aria-label="Student results table">
+                <table class="results-table">
+                    <colgroup>
+                        <col class="results-col-code">
+                        <col class="results-col-course">
+                        <col class="results-col-period">
+                        <col class="results-col-mark">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="results-th-code">Course Code</th>
+                            <th class="results-th-course">Course Name</th>
+                            <th>Period</th>
+                            <th class="results-th-mark">Mark</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DEBUG: Template data verification -->
+<!-- DEBUG: student.results count: {{ student.results|length }} -->
+<!-- DEBUG: show_empty_content: {{ show_empty_content }} -->
+<!-- DEBUG: no_data_message: {{ no_data_message }} -->
+
+{% if student.results %}
+                            <!-- DEBUG: Entering results loop -->
+                            {% for result in student.results %}
+                            <tr>
+                                <td class="results-td-code">{{ result.code }}</td>
+                                <td class="results-td-course">{{ result.course }}</td>
+                                <td>{{ result.period }}</td>
+                                <td class="results-td-mark">{{ result.mark }}%</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="empty-results">
+                                    <div class="empty-results-content">
+                                        <p>{{ no_data_message|default:"No courses found for this student." }}</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+    {% else %}
+    <!-- Empty state when no student data matches filters -->
+    <section class="detail-layout">
+        <header class="detail-header">
+            <div>
+                <h1>No Records Found</h1>
+                <p class="detail-copy">{{ no_data_message }}</p>
+            </div>
+            <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+        </header>
+        
+        <section class="profile-card">
+            <div class="empty-state">
+                <h3>Filter Information</h3>
+                <div class="filter-summary">
+                    <p><strong>Year:</strong> {{ selected_filters.year|default:"All" }}</p>
+                    <p><strong>Period:</strong> {{ selected_filters.period|default:"All" }}</p>
+                    <p><strong>Faculty:</strong> {{ selected_filters.faculty|default:"All" }}</p>
+                </div>
+                <div class="empty-actions">
+                    <p>Please try different filters to find the student's records.</p>
+                </div>
+            </div>
+        </section>
     </section>
+    {% endif %}
 </section>
 {% endblock %}

@@ -24,13 +24,23 @@
 .back-button {
     min-width: 62px;
     padding: 0.54rem 0.84rem;
+    border: 0;
     border-radius: 12px;
     background: var(--navy);
     color: #ffffff;
-    text-align: center;
+    cursor: pointer;
     font-size: 0.82rem;
     font-weight: 600;
     box-shadow: 0 10px 18px rgba(8, 35, 64, 0.14);
+}
+
+.search-button {
+    padding: 0.54rem 0.84rem;
+    border: 0;
+    border-radius: 12px;
+    background: var(--navy);
+    color: #ffffff;
+    cursor: pointer;
 }
 
 .profile-card,
@@ -56,14 +66,12 @@
     width: 82px;
     height: 82px;
     margin: 0 auto 0.5rem;
-    border-radius: 50%;
+    border-radius: 50%;  /* ← CHANGE THIS */
     display: grid;
     place-items: center;
     background: linear-gradient(180deg, #d8edf7, #9ccbe1);
-    color: var(--navy);
-    font-size: 1.55rem;
-    font-weight: 700;
     box-shadow: var(--shadow);
+    overflow: hidden;    /* keep this */
 }
 
 .student-number {
@@ -79,9 +87,9 @@
 
 .profile-grid dt {
     margin-bottom: 0.22rem;
-    color: var(--muted);
+    color: #475569;
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 800;
 }
 
 .profile-grid dd {
@@ -93,7 +101,7 @@
 .grade-card {
     min-height: 88px;
     padding: 0.7rem;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #f1f5f9;
     display: grid;
     place-items: center;
@@ -125,7 +133,7 @@
     gap: 0.14rem;
     min-width: 100px;
     padding: 0.52rem 0.78rem;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #eef2f7;
     color: var(--navy);
 }
@@ -166,7 +174,7 @@
 
 .table-wrap::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, #b8c5d3, #94a3b8);
     background-clip: padding-box;
 }
@@ -185,11 +193,12 @@
 }
 
 .results-col-code {
-    width: 9rem;
+    width: 8rem;
 }
 
 .results-col-course {
     width: auto;
+    min-width: 12rem;
 }
 
 .results-col-period {
@@ -197,7 +206,7 @@
 }
 
 .results-col-mark {
-    width: 7rem;
+    width: 8rem;
 }
 
 .results-table thead {
@@ -230,6 +239,70 @@
     position: sticky;
     left: 0;
     background-clip: padding-box;
+}
+
+.results-table .results-th-course,
+.results-table .results-td-course {
+    text-align: left !important;
+}
+
+/* Enhanced visual feedback for filter synchronization */
+.year-tab {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.year-tab.is-active {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(8, 35, 64, 0.15);
+}
+
+.year-tab:hover:not(.is-active) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(8, 35, 64, 0.1);
+}
+
+/* Loading state for table */
+.table-wrap.loading {
+    opacity: 0.6;
+    pointer-events: none;
+    position: relative;
+}
+
+.table-wrap.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--sky);
+    border-top-color: var(--navy);
+    border-radius: 12px;
+    animation: spin 1s linear infinite;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Enhanced filter visual states */
+.year-tab.is-syncing {
+    background: linear-gradient(180deg, rgba(79, 176, 209, 0.1), rgba(79, 176, 209, 0.05));
+    border-color: rgba(79, 176, 209, 0.3);
+}
+
+/* Cumulative grade animation */
+.grade-value {
+    transition: all 0.5s ease;
+}
+
+.grade-value.updating {
+    transform: scale(1.05);
+    color: var(--sky);
 }
 
 .results-th-mark,
@@ -283,6 +356,154 @@
     box-shadow: none;
 }
 
+/* Year Dropdown Tabs */
+.year-dropdown-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+}
+
+.year-dropdown {
+    position: relative;
+    border: 1px solid #d7e7f6;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.year-dropdown.is-active {
+    border-color: var(--sky);
+    box-shadow: 0 0 0 2px rgba(79, 176, 209, 0.1);
+}
+
+.year-dropdown.semester-selected {
+    border-color: var(--sky);
+    background: rgba(79, 176, 209, 0.05);
+}
+
+.year-dropdown.semester-selected .year-dropdown-label {
+    color: var(--sky);
+    font-weight: 800;
+}
+
+.year-dropdown.semester-selected .year-dropdown-arrow {
+    color: var(--sky);
+}
+
+.year-dropdown.dropdown-disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.year-dropdown.dropdown-disabled .year-dropdown-toggle {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.year-dropdown.dropdown-disabled .year-dropdown-arrow {
+    color: var(--sky);
+    transform: none;
+}
+
+.year-dropdown-toggle {
+    width: 100%;
+    padding: 0.5rem 0.8rem;
+    border: none;
+    background: transparent;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.year-dropdown-toggle:hover {
+    background: #f8fbff;
+}
+
+.year-dropdown-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.year-dropdown-arrow {
+    font-size: 0.9rem;
+    font-weight: 400;
+    transition: transform 0.2s ease;
+}
+
+.year-dropdown[aria-expanded="true"] .year-dropdown-arrow {
+    transform: rotate(45deg);
+}
+
+.year-dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background: #ffffff;
+    border: 1px solid #d7e7f6;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    margin-top: 0.5rem;
+}
+
+.year-dropdown[aria-expanded="true"] .year-dropdown-content,
+.year-dropdown-content.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.year-dropdown-option {
+    display: block;
+    padding: 0.4rem 0.8rem;
+    color: var(--navy);
+    text-decoration: none;
+    font-size: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s ease;
+}
+
+.year-dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.year-dropdown-option:hover {
+    background: #f8fbff;
+}
+
+.year-dropdown-option.is-active {
+    background: rgba(79, 176, 209, 0.08);
+    color: var(--sky);
+    font-weight: 700;
+}
+
+.year-dropdown-option-label {
+    display: block;
+    font-weight: 600;
+}
+
+.year-dropdown-option-meta {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+
+.year-dropdown-option.is-active .year-dropdown-option-meta {
+    color: var(--sky);
+}
+
 @media (max-width: 1100px) {
     .profile-card {
         grid-template-columns: 1fr;
@@ -291,4 +512,37 @@
     .profile-grid {
         grid-template-columns: 1fr;
     }
+    
+    .year-dropdown-tabs {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.6rem;
+    }
+    
+    .year-dropdown-toggle {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Empty Results Styling */
+.empty-results {
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-results-content {
+    color: var(--navy);
+    font-style: italic;
+}
+
+.empty-results-content p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 50%;  /* optional but safer */
 }

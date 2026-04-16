@@ -17,6 +17,8 @@
                 {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
                 {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
                 {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}">{% endif %}
+                {% if sort_direction %}<input type="hidden" name="direction" value="{{ sort_direction }}">{% endif %}
                 <input class="search-input" type="search" name="q" value="{{ search_query }}" placeholder="Search students" aria-label="Search students">
                 <button class="search-button" type="submit">Search</button>
             </form>
@@ -27,19 +29,19 @@
                 <colgroup>
                     <col class="students-col-name">
                     <col class="students-col-department">
-                    <col class="students-col-program">
+                    <col class="students-col-programme">
                     <col class="students-col-average">
                     <col class="students-col-decision">
                     <col class="students-col-gender">
                 </colgroup>
                 <thead>
                     <tr>
-                        <th class="students-th-name">Name</th>
-                        <th>Department</th>
-                        <th>Program</th>
-                        <th>Average Mark</th>
-                        <th>Decision</th>
-                        <th class="students-th-gender">Student Gender</th>
+                        <th class="students-th-name"><span>Student</span></th>
+                       <th class="students-th-department"><span>Department</span></th>
+                        <th class="students-th-programme"><span>Programme</span></th>
+                        <th><span>Average Mark</span></th>
+                        <th><span>Decision</span></th>
+                        <th class="students-th-gender"><span>Student</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,12 +50,11 @@
                         <td class="students-td-name">
                             <a class="student-link" href="{% url 'dashboard:student-detail' student.detail_slug %}" aria-label="View {{ student.name }} profile">
                                 <span class="student-link-name">{{ student.name }}</span>
-                                <span class="student-link-badge">View</span>
                             </a>
                         </td>
-                        <td>{{ student.department }}</td>
-                        <td>{{ student.program }}</td>
-                        <td>{{ student.average_mark }}</td>
+                        <td class="students-td-department">{{ student.department }}</td>
+                        <td class="students-td-programme">{{ student.programme }}</td>
+                        <td>{{ student.average_mark }}%</td>
                         <td>{{ student.decision }}</td>
                         <td class="students-td-gender">{{ student.gender }}</td>
                     </tr>
@@ -73,7 +74,7 @@
 
             <nav class="pagination" aria-label="Student table pages">
                 {% if page_obj.has_previous %}
-                <a class="page-link page-link-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Prev</a>
+                <a class="page-link page-link-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}{% if sort_key %}&sort={{ sort_key }}{% endif %}{% if sort_direction %}&direction={{ sort_direction }}{% endif %}">Prev</a>
                 {% else %}
                 <span class="page-link page-link-arrow is-disabled">Prev</span>
                 {% endif %}
@@ -82,12 +83,12 @@
                     {% if page_number == page_obj.number %}
                     <span class="page-link is-current">{{ page_number }}</span>
                     {% else %}
-                    <a class="page-link" href="?page={{ page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">{{ page_number }}</a>
+                    <a class="page-link" href="?page={{ page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}{% if sort_key %}&sort={{ sort_key }}{% endif %}{% if sort_direction %}&direction={{ sort_direction }}{% endif %}">{{ page_number }}</a>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
-                <a class="page-link page-link-arrow" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Next</a>
+                <a class="page-link page-link-arrow" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}{% if sort_key %}&sort={{ sort_key }}{% endif %}{% if sort_direction %}&direction={{ sort_direction }}{% endif %}">Next</a>
                 {% else %}
                 <span class="page-link page-link-arrow is-disabled">Next</span>
                 {% endif %}

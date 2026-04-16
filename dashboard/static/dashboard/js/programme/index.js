@@ -1,17 +1,18 @@
-import { createProgrammeContext, updateProgrammeNarrativeContext } from "./context.js?v=20260405-programmes-progressive01";
-import { initialiseDepartmentSection } from "./departments.js?v=20260405-programmes-progressive01";
+import { createProgrammeContext, updateProgrammeNarrativeContext } from "./context.js?v=20260411-programme-axis05";
+import { initialiseDepartmentSection } from "./departments.js?v=20260411-programme-axis04";
 import { initialiseFullscreenControls } from "./fullscreen.js?v=20260405-programmes-progressive01";
-import { initialiseLoadSection } from "./load.js?v=20260405-programmes-progressive01";
+import { initialiseLoadSection } from "./load.js?v=20260411-programme-axis04";
+import { initialiseAccordion } from "./accordion.js?v=20260405-programmes-progressive01";
 import {
     initialiseDepartmentNarrative,
     initialiseLoadNarrative,
     initialisePerformanceNarrative,
     initialiseQualityNarrative,
     renderStoryBanner,
-} from "./narratives.js?v=20260405-programmes-progressive01";
+} from "./narratives.js?v=20260411-programme-axis05";
 import { initialisePerformanceSection } from "./performance.js?v=20260405-programmes-progressive01";
 import { initialiseQualitySection } from "./quality.js?v=20260405-programmes-progressive01";
-import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260405-programmes-progressive01";
+import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260414-instant01";
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
@@ -74,6 +75,45 @@ const hydrateNarratives = (context) => {
     initialisePerformanceNarrative(context.elements, context.data.performanceRows, context.data.cardNarratives, context.flags);
 };
 
+const renderNarrativeDiagnostics = (context) => {
+    const diagnostics = context.data.narrativeDiagnostics || {};
+    const statusElement = context.elements.narrativeStatus;
+    const root = context.elements.root;
+
+    if (root) {
+        root.dataset.narrativeSource = diagnostics.returned_source || "";
+        root.dataset.narrativeStatus = diagnostics.status || "";
+        root.dataset.narrativeProvider = diagnostics.provider_attempted || diagnostics.configured_provider || "";
+        root.dataset.narrativeFallbackReason = diagnostics.fallback_reason || "";
+    }
+
+    if (!statusElement) {
+        return;
+    }
+
+    const message = String(diagnostics.message || "").trim();
+    if (!message) {
+        statusElement.hidden = true;
+        statusElement.textContent = "";
+        statusElement.className = "programme-narrative-status";
+        return;
+    }
+
+    statusElement.hidden = false;
+    statusElement.textContent = message;
+    statusElement.className = `programme-narrative-status is-${diagnostics.status || "rules"}`;
+
+    if (diagnostics.fallback_detail) {
+        statusElement.title = diagnostics.fallback_detail;
+    } else {
+        statusElement.removeAttribute("title");
+    }
+
+    if (window.console?.info) {
+        window.console.info("[Programme narratives diagnostics]", diagnostics);
+    }
+};
+
 const hydrateSummaryCards = (context, summaryCards = []) => {
     if (!summaryCards.length) {
         return;
@@ -98,7 +138,6 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
 const setProgrammeShellErrorState = (context) => {
     if (context.elements.storyBanner) {
         context.elements.storyBanner.innerHTML = `
-            <p class="programme-banner-kicker">Primary Takeaway</p>
             <p class="programme-banner-loading">The page shell loaded, but the programme dataset could not be retrieved. Try refreshing this workspace.</p>
         `.trim();
         context.elements.storyBanner.hidden = false;
@@ -113,25 +152,42 @@ export const initialiseProgrammePage = async () => {
     const shellContext = createProgrammeContext();
     const root = shellContext.elements.root;
 
+    console.log('Programme page initialization started');
+    console.log('Root element:', root);
+    console.log('Story banner element:', shellContext.elements.storyBanner);
+
     if (!root || !shellContext.elements.storyBanner) {
+        console.log('Missing required elements, aborting initialization');
         return;
     }
 
+    console.log('Payload URL:', root.dataset.payloadUrl);
+
     let chartPayload = null;
     try {
+        console.log('Fetching payload from:', root.dataset.payloadUrl);
         const payloadResponse = await fetchJson(root.dataset.payloadUrl);
+        console.log('Payload response received:', payloadResponse);
+        
         chartPayload = {
             topLoadRows: payloadResponse?.top_load_rows || [],
             departmentRows: payloadResponse?.department_rows || [],
             lowPassRows: payloadResponse?.low_pass_rows || [],
             performanceRows: payloadResponse?.performance_rows || [],
             programmeRows: payloadResponse?.programme_rows || [],
-            registerMeta: {
-                visibleCount: payloadResponse?.register_meta?.visible_count || 0,
+            registerMeta: payloadResponse?.register_meta || {
+                visibleCount: 0,
+                current_page: 1,
+                per_page: 10,
+                total_pages: 1,
+                has_previous: false,
+                has_next: false,
             },
         };
+        console.log('Chart payload created:', chartPayload);
         hydrateSummaryCards(shellContext, payloadResponse?.summary_cards || []);
     } catch (error) {
+        console.error('Error fetching payload:', error);
         setProgrammeShellErrorState(shellContext);
         renderProgrammeRegister(shellContext.elements.registerBody, shellContext.elements.registerMeta, [], {});
         return;
@@ -139,12 +195,15 @@ export const initialiseProgrammePage = async () => {
 
     const context = createProgrammeContext({ chartPayload });
 
+    initialiseAccordion();
+
     renderStoryBanner(
         context.elements.storyBanner,
         context.data.topLoadRows,
         context.data.departmentRows,
         context.data.lowPassRows,
     );
+    renderNarrativeDiagnostics(context);
     renderProgrammeRegister(
         context.elements.registerBody,
         context.elements.registerMeta,
@@ -172,8 +231,10 @@ export const initialiseProgrammePage = async () => {
     fetchJson(root.dataset.narrativesUrl)
         .then((payload) => {
             const cardNarratives = payload?.card_narratives || {};
-            updateProgrammeNarrativeContext(context, cardNarratives);
+            const narrativeDiagnostics = payload?.diagnostics || {};
+            updateProgrammeNarrativeContext(context, cardNarratives, narrativeDiagnostics);
             hydrateNarratives(context);
+            renderNarrativeDiagnostics(context);
         })
         .catch(() => {});
 };

@@ -4,13 +4,132 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260405-programmes-progressive02">
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260414-pagination01">
+<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260414-risk-drilldown01">
+<style>
+/* Demographic Accordion Styles - Inline Implementation */
+.demographic-accordion {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.demographic-accordion-item {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+.demographic-flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.demographic-flow-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.demographic-accordion-toggle {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
+    transform: translateY(-1px);
+}
+
+.demographic-accordion-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.demographic-accordion-toggle-text {
+    display: inline;
+}
+
+.demographic-accordion-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 1px solid rgba(13, 50, 93, 0.12);
+    border-radius: 12px;
+    background: rgba(13, 50, 93, 0.06);
+    color: #123b68;
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-left: 0.35rem;
+    transition: all 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover .demographic-accordion-toggle-icon {
+    background: rgba(13, 50, 93, 0.1);
+    border-color: rgba(13, 50, 93, 0.16);
+}
+
+.demographic-accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.demographic-accordion-content.is-hidden {
+    display: none;
+}
+
+.demographic-accordion-toggle[aria-expanded="true"] .demographic-accordion-toggle-icon {
+    transform: rotate(45deg);
+}
+
+.demographic-accordion-content:not(.is-hidden) {
+    display: grid;
+    max-height: 5000px;
+    transition: max-height 0.3s ease-in;
+}
+
+.demographic-flow-stage-primary {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 32%),
+        linear-gradient(180deg, rgba(244, 250, 255, 0.99), rgba(235, 245, 252, 0.97));
+}
+
+.demographic-flow-stage-support {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
+}
+</style>
 {% endblock %}
 
 {% block content %}
 <section
     class="programme-dashboard"
     data-payload-url="{% url 'dashboard:programme-payload' %}"
+    data-drilldown-url="{% url 'dashboard:programme-drilldown' %}"
     {% if programme_ai_narratives_enabled %}data-narratives-url="{% url 'dashboard:programme-narratives' %}"{% endif %}
 >
     <section class="programme-metrics" data-metrics-url="{% url 'dashboard:programme-metrics' %}">
@@ -24,22 +143,23 @@
     </section>
 
     <section class="programme-story-banner" id="programme-story-banner" aria-live="polite">
-        <p class="programme-banner-kicker">Primary Takeaway</p>
-        <p class="programme-banner-loading">Loading the programme story and visual payload...</p>
+        <p class="programme-banner-loading">Loading the programme story & visual payload...</p>
     </section>
+    <p class="programme-narrative-status" id="programme-narrative-status" hidden></p>
 
-    <section class="programme-scope-row" aria-label="Active programme scope">
-        {% for pill in scope_pills %}
-        <span class="programme-scope-pill{% if pill.variant == 'live' %} is-live{% endif %}">{{ pill.label }}</span>
-        {% endfor %}
-    </section>
-
+    
     <section class="programme-story-flow" aria-label="Programme storytelling flow">
-        <section class="programme-flow-stage programme-flow-stage-primary">
-            <div class="programme-flow-header">
-                <p class="programme-flow-kicker">Chapter 1</p>
-                <h2 class="programme-flow-title">Where The Programme Load Is Sitting</h2>
-            </div>
+        <div class="demographic-accordion">
+            <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-load-status">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Programme Load Status</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-load-status-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="demographic-accordion-content is-hidden" id="programme-load-status-content">
 
             <div class="programme-stage-grid programme-stage-grid-primary">
                 <article class="programme-card programme-card-wide">
@@ -56,18 +176,18 @@
                     <div class="programme-chart-stage">
                         <div class="programme-chart-canvas is-empty" id="programme-load-chart" role="img" aria-label="Visible registrations by programme chart">Loading programme load chart...</div>
                     </div>
-                    <p class="programme-chart-note" id="programme-load-note">This view keeps the flagship programmes visible before the page moves into quality and review pressure.</p>
+                    <p class="programme-chart-note" id="programme-load-note">This view keeps the flagship programmes visible before the page moves into quality & review pressure.</p>
                 </article>
 
                 <article class="programme-card">
                     <div class="programme-card-header">
                         <div>
                             <p class="programme-card-kicker">Department Pressure</p>
-                            <h2 class="programme-card-title">Where Portfolio Load Concentrates</h2>
+                            <h2 class="programme-card-title">Portfolio Load Concentration</h2>
                             <p class="programme-card-copy" id="programme-departments-copy">Use the department roll-up to see whether visible programme demand is isolated to one portfolio or already spread across multiple teams.</p>
                             <div class="programme-chart-hints" id="programme-departments-hints" aria-label="Chart interaction hints"></div>
                         </div>
-                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Portfolio Load Concentrates" aria-controls="programme-departments-chart" aria-label="View Where Portfolio Load Concentrates in full screen" aria-pressed="false">Full screen</button>
+                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Portfolio Load Concentration" aria-controls="programme-departments-chart" aria-label="View Portfolio Load Concentration in full screen" aria-pressed="false">Full screen</button>
                     </div>
 
                     <div class="programme-chart-stage">
@@ -76,13 +196,19 @@
                     <p class="programme-chart-note" id="programme-departments-note">Department concentration helps managers judge which academic teams are carrying the broadest programme footprint.</p>
                 </article>
             </div>
-        </section>
+                </div>
+            </section>
 
-        <section class="programme-flow-stage">
-            <div class="programme-flow-header">
-                <p class="programme-flow-kicker">Chapter 2</p>
-                <h2 class="programme-flow-title">Which Programmes Need Review First</h2>
-            </div>
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="priority-programmes">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Priority Programmes</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="priority-programmes-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="demographic-accordion-content is-hidden" id="priority-programmes-content">
 
             <div class="programme-stage-grid">
                 <article class="programme-card">
@@ -116,29 +242,37 @@
                     <div class="programme-chart-stage programme-chart-stage-performance">
                         <div class="programme-chart-canvas is-empty" id="programme-performance-chart" role="img" aria-label="Scale versus pass rate chart">Loading registrations versus pass-rate view...</div>
                     </div>
-                    <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale and quality in one view, which is much harder to see in a flat programme table.</p>
+                    <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale & quality in one view, which is much harder to see in a flat programme table.</p>
                 </article>
             </div>
-        </section>
+                </div>
+            </section>
 
-        <section class="programme-flow-stage programme-flow-stage-register">
-            <div class="programme-flow-header">
-                <p class="programme-flow-kicker">Chapter 3</p>
-                <h2 class="programme-flow-title">Programme Register</h2>
-            </div>
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="programme-register">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Programme Register</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-register-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+
+                <div class="demographic-accordion-content is-hidden" id="programme-register-content">
 
             <article class="programme-card programme-card-register">
                 <div class="programme-register-header">
                     <div>
                         <p class="programme-card-kicker">Detailed Register</p>
                         <h2 class="programme-card-title">Searchable Programme Reference</h2>
-                        <p class="programme-card-copy">Use the register when you need the exact row values behind the story cards and charts above.</p>
+                        <p class="programme-card-copy">Use the register when you need the exact row values behind the story cards & charts above.</p>
                     </div>
 
                     <form class="programme-toolbar" method="get">
                         {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
                         {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
                         {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                        {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}">{% endif %}
+                        {% if sort_direction %}<input type="hidden" name="direction" value="{{ sort_direction }}">{% endif %}
                         <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programme register" aria-label="Search programme register">
                         <button class="programme-search-button" type="submit">Search</button>
                     </form>
@@ -158,14 +292,30 @@
                         </colgroup>
                         <thead>
                             <tr>
-                                <th class="programme-th-code">Code</th>
-                                <th>Programme</th>
-                                <th>Faculty</th>
-                                <th>Department</th>
-                                <th>Students</th>
-                                <th>Registrations</th>
-                                <th>Average Mark</th>
-                                <th class="programme-th-pass">Pass Rate</th>
+                                <th class="programme-th-code">
+                                    <span>Code</span>
+                                </th>
+                                <th>
+                                    <span>Programme</span>
+                                </th>
+                                <th>
+                                    <span>Faculty</span>
+                                </th>
+                                <th>
+                                    <span>Department</span>
+                                </th>
+                                <th>
+                                    <span>Total Students</span>
+                                </th>
+                                <th>
+                                    <span>Total Registrations</span>
+                                </th>
+                                <th>
+                                    <span>Average Mark</span>
+                                </th>
+                                <th class="programme-th-pass">
+                                    <span>Pass Rate</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="programme-register-body">
@@ -177,12 +327,14 @@
                 </div>
                 <p class="programme-register-meta" id="programme-register-meta">Loading visible programme rows...</p>
             </article>
-        </section>
+                </div>
+            </section>
+        </div>
     </section>
 </section>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260405-programmes-progressive01"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260416-programme-drilldown20"></script>
 {% endblock %}
