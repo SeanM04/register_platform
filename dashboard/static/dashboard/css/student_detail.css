@@ -66,14 +66,12 @@
     width: 82px;
     height: 82px;
     margin: 0 auto 0.5rem;
-    border-radius: 12px;
+    border-radius: 50%;  /* ← CHANGE THIS */
     display: grid;
     place-items: center;
     background: linear-gradient(180deg, #d8edf7, #9ccbe1);
-    color: var(--navy);
-    font-size: 1.55rem;
-    font-weight: 700;
     box-shadow: var(--shadow);
+    overflow: hidden;    /* keep this */
 }
 
 .student-number {
@@ -540,4 +538,11 @@
 .empty-results-content p {
     margin: 0;
     font-size: 0.9rem;
+}
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 50%;  /* optional but safer */
 }
