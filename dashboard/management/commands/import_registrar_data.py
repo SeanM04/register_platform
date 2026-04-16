@@ -23,7 +23,15 @@ def parse_date(value):
 
     if not value:
         return None
-    return datetime.strptime(value, "%Y-%m-%d").date()
+    
+    # Try multiple date formats
+    for date_format in ["%Y/%m/%d", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"]:
+        try:
+            return datetime.strptime(value, date_format).date()
+        except ValueError:
+            continue
+    
+    return None
 
 
 def parse_decimal(value):
@@ -105,11 +113,11 @@ class Command(BaseCommand):
                 student, _ = Student.objects.get_or_create(
                     registration_number=row["regnum"].strip(),
                     defaults={
-                        "first_names": row["firstnames"].strip(),
-                        "surname": row["surname"].strip(),
-                        "date_of_birth": parse_date(row["dob"].strip()) if row["dob"] else None,
-                        "gender": row["gender"].strip(),
-                        "place_of_birth": row["place_of_birth"].strip(),
+                        "first_names": row.get("firstnames", row["regnum"]).strip() if row.get("firstnames") else row["regnum"].strip(),
+                        "surname": row.get("surname", "").strip() if row.get("surname") else "",
+                        "date_of_birth": parse_date(row["dob"].strip()) if row.get("dob") else None,
+                        "gender": row.get("gender", "").strip() if row.get("gender") else "",
+                        "place_of_birth": row.get("place_of_birth", "").strip() if row.get("place_of_birth") else "",
                     },
                 )
 
