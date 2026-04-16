@@ -299,7 +299,7 @@
 .completion-students-table td {
     padding: 0.48rem 0.72rem;
     border-bottom: 1px solid #edf2f7;
-    color: #163a63;
+    color: #000000;  /* ← changed here */
     vertical-align: top;
     font-weight: 400;
     font-size: 0.81rem;

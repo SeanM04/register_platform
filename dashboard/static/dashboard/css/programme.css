@@ -656,6 +656,12 @@
 }
 
 .programme-table tbody td {
+    padding: 0.66rem 0.9rem;
+    text-align: left;
+    vertical-align: top;
+    font-size: 0.82rem;
+    word-break: break-word;
+    color: #000000;
     background: #ffffff;
     box-shadow: inset 0 -1px 0 #edf2f7;
 }

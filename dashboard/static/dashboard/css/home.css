@@ -882,7 +882,7 @@ body.has-home-drilldown-modal {
 .home-drilldown-table tbody td {
     padding: 0.82rem 0.9rem;
     border-bottom: 1px solid #edf2f7;
-    color: #1e293b;
+    color: #000000;
     font-size: 0.82rem;
     line-height: 1.45;
     vertical-align: top;
