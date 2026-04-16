@@ -138,7 +138,6 @@ const renderFlaggedStudents = (context, flaggedStudents = [], flaggedTotal = 0) 
     const studentDetailPrefix = root?.dataset.studentDetailPrefix || "/students/";
     flaggedList.innerHTML = flaggedStudents.map((student) => `
         <a class="insight-flagged-item" href="${escapeTooltipHtml(`${studentDetailPrefix}${encodeURIComponent(student.detail_slug)}/`)}">
-            <span class="insight-avatar insight-avatar-${escapeTooltipHtml(student.risk_key)}">${escapeTooltipHtml(student.initials)}</span>
             <span class="insight-flagged-body">
                 <span class="insight-flagged-name">${escapeTooltipHtml(student.name)}</span>
                 <span class="insight-flagged-meta">${escapeTooltipHtml(student.meta)}</span>

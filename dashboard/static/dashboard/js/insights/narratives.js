@@ -162,11 +162,13 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
     const loadCopy = leadLoad
         ? `${leadLoad.label} currently carries ${leadLoad.registrations} registrations in scope, making it the clearest operational load centre.`
         : "No faculty load concentration is visible in the current filters.";
-    const driverValue = leadDriver
-        ? `${formatChartLabel(leadDriver.label, 22)} ${leadDriver.count}`
-        : leadPressure
-            ? `${leadPressure.label} ${leadPressure.total}`
-            : "No pressure lead";
+    const driverModuleCount = Number(leadDriver?.label.match(/\d+/)?.[0] || 0);
+
+const driverValue = leadDriver
+    ? `${leadDriver.count} students carried ${driverModuleCount} module${driverModuleCount !== 1 ? "s" : ""}`
+    : leadPressure
+        ? `${leadPressure.label} ${leadPressure.total}`
+        : "No pressure lead";
     const driverCopy = leadDriver
         ? `${leadDriver.label} appears in ${leadDriver.count} flagged student records and should shape the next intervention cycle.`
         : leadPressure

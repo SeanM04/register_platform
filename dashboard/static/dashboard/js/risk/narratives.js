@@ -156,8 +156,8 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
         ? `${Math.round((totalWatchlist / totalVisible) * 100)}% of the visible cohort currently needs some level of intervention attention.`
         : "The visible cohort is currently sitting outside the watchlist threshold.";
     const driverValue = leadDriver
-        ? `${leadDriver.label} ${leadDriver.count}`
-        : "No shared driver";
+    ? `${leadDriver.count} students carried ${leadDriver.label.match(/\d+/)?.[0]} module`
+    : "No shared driver";
     const driverCopy = leadDriver
         ? `${leadDriver.count} flagged student${leadDriver.count !== 1 ? "s" : ""} currently show this driver in the watchlist mix.`
         : "The current filters do not expose a shared watchlist driver pattern.";
