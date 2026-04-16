@@ -227,7 +227,7 @@ export const initialiseDistributionNarrative = (elements, rows, cardNarratives =
     if (elements.distributionCopy) {
         elements.distributionCopy.innerHTML = `
             <span>${escapeTooltipHtml(narrative.insight)}</span>
-            <span class="insight-subtle-note">Counts reflect module-level risk signals per student within each band.</span>
+           <span class="insight-subtle-note">Values in brackets represent the number of modules.</span>
         `.trim();
     }
 

@@ -221,7 +221,7 @@ export const initialiseDistributionNarrative = (elements, rows, cardNarratives =
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
    if (elements.distributionCopy) {
-    const noteText = "Counts reflect module-level risk signals per student within each band.";
+    const noteText = "Values in brackets represent the number of modules.";
     const insightText = String(narrative.insight || "").trim();
 
     elements.distributionCopy.innerHTML = `
