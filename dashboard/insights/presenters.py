@@ -16,7 +16,7 @@ def build_insight_shell_context(request):
                 {"label": "At-Risk Students", "value": "--", "note": "Loading current watchlist pressure.", "tone": "danger"},
                 {"label": "High Priority", "value": "--", "note": "Loading high-priority concentration.", "tone": "warning"},
                 {"label": "Retention Rate", "value": "--", "note": "Loading current retention outlook.", "tone": "neutral"},
-                {"label": "Visible Cohort", "value": "--", "note": "Loading visible cohort footprint.", "tone": "success"},
+                {"label": "Active Cohort", "value": "--", "note": "Loading active cohort footprint.", "tone": "success"},
             ],
             "insight_summary_cards": [],
         }

@@ -10,7 +10,7 @@ from .overview.views import (
     dashboard_home_narratives,
     dashboard_home_payload,
 )
-from .programmes.views import programme_metrics, programme_narratives, programme_payload, programme_view
+from .programmes.views import programme_drilldown, programme_metrics, programme_narratives, programme_payload, programme_view
 from .risk.views import risk_band_drilldown, risk_drilldown_payload, risk_driver_drilldown, risk_level_drilldown, risk_metrics, risk_payload, risk_programme_drilldown, risk_view
 from .views import (
     student_detail,
@@ -47,6 +47,7 @@ urlpatterns = [
     path("metrics/programme/", programme_metrics, name="programme-metrics"),
     path("metrics/programme/payload/", programme_payload, name="programme-payload"),
     path("metrics/programme/narratives/", programme_narratives, name="programme-narratives"),
+    path("metrics/programme/drilldown/", programme_drilldown, name="programme-drilldown"),
     path("demographic/", demographic_view, name="demographic"),
     path("metrics/demographic/", demographic_metrics, name="demographic-metrics"),
     path("metrics/demographic/payload/", demographic_payload, name="demographic-payload"),

@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260414-pagination01">
+<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260414-risk-drilldown01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -128,6 +129,7 @@
 <section
     class="programme-dashboard"
     data-payload-url="{% url 'dashboard:programme-payload' %}"
+    data-drilldown-url="{% url 'dashboard:programme-drilldown' %}"
     {% if programme_ai_narratives_enabled %}data-narratives-url="{% url 'dashboard:programme-narratives' %}"{% endif %}
 >
     <section class="programme-metrics" data-metrics-url="{% url 'dashboard:programme-metrics' %}">
@@ -334,5 +336,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260415-accordion-fix01"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260416-programme-drilldown20"></script>
 {% endblock %}

@@ -162,12 +162,10 @@ class CompletionAnalysis {
     updateMetricValue(key, value) {
         const element = document.querySelector(`[data-metric-key="${key}"]`);
         if (element) {
-            element.classList.remove('is-loading');
-
             if (key.includes('rate')) {
                 element.textContent = `${Math.round(value)}%`;
             } else {
-                element.textContent = this.formatNumber(value);
+                element.textContent = value;
             }
         }
     }
@@ -210,13 +208,16 @@ class CompletionAnalysis {
 
         const charts = this.currentData.charts;
 
-        if (charts.cohort_completion && this.charts.cohort) {
-            this.renderCohortChart(charts.cohort_completion);
-        }
+        // Use requestAnimationFrame for non-blocking rendering
+        requestAnimationFrame(() => {
+            if (charts.cohort_completion && this.charts.cohort) {
+                this.renderCohortChart(charts.cohort_completion);
+            }
 
-        if (charts.programme_completion && this.charts.programme) {
-            this.renderProgrammeChart(charts.programme_completion);
-        }
+            if (charts.programme_completion && this.charts.programme) {
+                this.renderProgrammeChart(charts.programme_completion);
+            }
+        });
     }
 
     renderCohortChart(data) {
@@ -340,12 +341,17 @@ class CompletionAnalysis {
         const sortedStudents = this.getSortedStudents(filteredStudents);
         const paginatedStudents = this.getPaginatedStudents(sortedStudents);
 
-        tbody.innerHTML = '';
-
+        // Use document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        
         paginatedStudents.forEach(student => {
             const row = this.createStudentRow(student);
-            tbody.appendChild(row);
+            fragment.appendChild(row);
         });
+
+        // Single DOM operation - much faster
+        tbody.innerHTML = '';
+        tbody.appendChild(fragment);
 
         this.updatePagination(sortedStudents.length);
     }

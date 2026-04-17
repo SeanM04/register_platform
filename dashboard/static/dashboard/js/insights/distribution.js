@@ -29,7 +29,7 @@ const buildDistributionOption = (rows, width) => ({
             const row = params.data.raw;
             return buildTooltipMarkup(row.label, [
                 { label: "Students", value: row.count },
-                { label: "Share of visible cohort", value: `${row.percent}%` },
+                { label: "Share of active cohort", value: `${row.percent}%` },
             ]);
         },
     },

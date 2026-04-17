@@ -145,7 +145,7 @@ export const renderProgrammeRegister = (body, metaElement, rows, registerMeta) =
             <td>${escapeHtml(row.department)}</td>
             <td>${escapeHtml(row.students)}</td>
             <td>${escapeHtml(row.registrations)}</td>
-            <td>${escapeHtml(row.average_mark)}</td>
+            <td>${escapeHtml(row.average_mark)}%</td>
             <td class="programme-td-pass">${escapeHtml(row.pass_rate)}</td>
         `;
         body.appendChild(tr);

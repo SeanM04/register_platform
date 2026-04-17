@@ -4,7 +4,7 @@
 {% block title %}Graduation Analysis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260415-modern-feel01">
+<link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260416-no-loading01">
 <link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260415-fullscreen-css-fixed01">
 <link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
@@ -28,6 +28,7 @@
         <article class="graduation-metric">
             <p class="graduation-metric-label">Best Faculty Rate</p>
             <p class="graduation-metric-value is-loading" data-metric-value data-metric-key="best_faculty_rate">-</p>
+            <p class="graduation-metric-faculty" id="best-faculty-name"></p>
         </article>
         <article class="graduation-metric">
             <p class="graduation-metric-label">Graduation Periods</p>
@@ -223,11 +224,6 @@
     </section>
 </section>
 
-<!-- Loading Overlay -->
-<div class="graduation-loading-overlay" id="loading-overlay">
-    <div class="graduation-loading-spinner"></div>
-    <p>Loading graduation data...</p>
-</div>
 
 <!-- Error Modal -->
 <div class="graduation-modal" id="error-modal">
@@ -259,7 +255,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'dashboard/js/graduation.js' %}?v=20260415-modern-feel01"></script>
+<script src="{% static 'dashboard/js/graduation.js' %}?v=20260416-no-loading01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

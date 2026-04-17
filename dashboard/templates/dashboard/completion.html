@@ -4,7 +4,7 @@
 {% block title %}Completion Analysis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260415-fullscreen-css-fixed01">
+<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260416-instant-loading01">
 <link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
 
@@ -14,23 +14,23 @@
     <section class="completion-metrics">
         <article class="completion-metric">
             <p class="completion-metric-label">Total Students</p>
-            <p class="completion-metric-value is-loading" data-metric-value data-metric-key="total_students">-</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="total_students">-</p>
         </article>
         <article class="completion-metric">
             <p class="completion-metric-label">Total Cohorts</p>
-            <p class="completion-metric-value is-loading" data-metric-value data-metric-key="total_cohorts">-</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="total_cohorts">-</p>
         </article>
         <article class="completion-metric">
             <p class="completion-metric-label">Completion Rate</p>
-            <p class="completion-metric-value is-loading" data-metric-value data-metric-key="average_completion_rate">-</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="average_completion_rate">-</p>
         </article>
         <article class="completion-metric">
             <p class="completion-metric-label">Male Students</p>
-            <p class="completion-metric-value is-loading" data-metric-value data-metric-key="male_students">-</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="male_students">-</p>
         </article>
         <article class="completion-metric">
             <p class="completion-metric-label">Female Students</p>
-            <p class="completion-metric-value is-loading" data-metric-value data-metric-key="female_students">-</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="female_students">-</p>
         </article>
     </section>
 
@@ -168,7 +168,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260415-year-period-mapping01"></script>
+<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260416-performance-optimizations01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

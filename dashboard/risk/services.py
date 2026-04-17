@@ -502,6 +502,24 @@ def build_risk_drilldown_payload(request, chart_key, bucket_key, search_query=""
         title = f"{normalized_bucket} Students"
         subtitle = f"At-risk students currently attached to {normalized_bucket}."
 
+    elif normalized_chart == "programme_load":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["programme"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently attached to {normalized_bucket}."
+
+    elif normalized_chart == "departments":
+        matching_rows = [
+            row
+            for row in risk_rows
+            if row["department"] == normalized_bucket
+        ]
+        title = f"{normalized_bucket} Students"
+        subtitle = f"At-risk students currently attached to {normalized_bucket}."
+
     else:
         return None
 

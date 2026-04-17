@@ -78,8 +78,8 @@ def _build_summary_cards(total_students, total_registrations, at_risk_profiles, 
             "tone": "neutral",
         },
         {
-            "label": "Visible Cohort",
-            "value": f"{total_students:,}",
+            "label": "Active Cohort",
+            "value": f"{total_students}",
             "note": (
                 f"{top_faculty_name} carries {faculty_load_pct}% of registrations"
                 if total_registrations

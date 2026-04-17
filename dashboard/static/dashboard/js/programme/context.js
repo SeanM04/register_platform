@@ -15,6 +15,9 @@ export const createProgrammeContext = (payload = {}) => {
     const narrativeDiagnostics = payload.narrativeDiagnostics || {};
 
     return {
+        config: {
+            drilldownUrl: document.querySelector(".programme-dashboard")?.dataset?.drilldownUrl || "",
+        },
         data: {
             topLoadRows: chartPayload.topLoadRows || parseJsonScript("programme-top-load-data", []),
             departmentRows: chartPayload.departmentRows || parseJsonScript("programme-department-data", []),

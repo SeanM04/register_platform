@@ -12,6 +12,7 @@ import {
     wrapAxisLabel,
 } from "./shared.js?v=20260414-msc-support01";
 import { initialiseQualityNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
 
 export const initialiseQualitySection = (context) => {
     initialiseQualityNarrative(context.elements, context.data.lowPassRows, context.data.cardNarratives, context.flags);
@@ -116,6 +117,19 @@ export const initialiseQualitySection = (context) => {
                 },
             },
         ],
+    });
+
+    // Add drill-down click handler
+    chart.on("click", (params) => {
+        const row = sortedRows[params.dataIndex];
+        if (row && row.name) {
+            console.log("Quality chart clicked:", row);
+            openProgrammeDrillDown(context, {
+                chartKey: "programme_load",
+                bucketKey: row.name,
+                label: formatProgrammeName(row.name),
+            });
+        }
     });
 
     return {

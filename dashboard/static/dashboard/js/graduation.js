@@ -113,13 +113,9 @@ class GraduationAnalysis {
 
     async loadInitialData() {
         try {
-            this.showLoading();
-
             await this.loadData();
         } catch (error) {
             this.showError('Failed to load initial data: ' + error.message);
-        } finally {
-            this.hideLoading();
         }
     }
     
@@ -149,7 +145,6 @@ class GraduationAnalysis {
     async loadData() {
         try {
             console.log('Graduation loading data from:', this.payloadUrl);
-            this.showLoading();
             
             // Build query string
             const queryParams = new URLSearchParams();
@@ -210,7 +205,13 @@ class GraduationAnalysis {
             return (!best || rate > best.rate) ? { faculty, rate } : best;
         }, null);
         
-        this.updateMetricValue('best_faculty_rate', bestFaculty ? `${bestFaculty.faculty}: ${bestFaculty.rate}%` : 'N/A');
+        if (bestFaculty) {
+            this.updateMetricValue('best_faculty_rate', `${bestFaculty.rate}%`);
+            document.getElementById('best-faculty-name').textContent = bestFaculty.faculty;
+        } else {
+            this.updateMetricValue('best_faculty_rate', 'N/A');
+            document.getElementById('best-faculty-name').textContent = '';
+        }
         this.updateMetricValue('graduation_periods', this.calculateGraduationPeriods());
     }
 
@@ -918,14 +919,7 @@ class GraduationAnalysis {
         }, 100);
     }
 
-    showLoading() {
-        document.getElementById('loading-overlay').classList.add('active');
-    }
-
-    hideLoading() {
-        document.getElementById('loading-overlay').classList.remove('active');
-    }
-
+    
     showError(message) {
         document.getElementById('error-message').textContent = message;
         document.getElementById('error-modal').classList.add('active');

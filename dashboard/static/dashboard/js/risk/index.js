@@ -104,7 +104,7 @@ const renderRiskRegister = (context, register = {}, cohortTotalStudents = 0) => 
                 </td>
                 <td>${escapeTooltipHtml(row.programme)}</td>
                 <td>${escapeTooltipHtml(row.academic_level)}</td>
-                <td>${escapeTooltipHtml(row.average_mark)}${row.average_mark ? '%' : ''}</td>
+                <td>${escapeTooltipHtml(row.average_mark)}%</td>
                 <td>${escapeTooltipHtml(row.failed_courses)}</td>
                 <td>${escapeTooltipHtml(row.carrying)}</td>
                 <td>${escapeTooltipHtml(row.decision)}</td>

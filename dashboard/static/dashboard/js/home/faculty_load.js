@@ -9,8 +9,8 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { cancelOverviewDrillDownRequests } from "./drilldown.js?v=20260411-home-drilldown01";
-import { showDrillDownModal } from "./drilldown_modal.js?v=20260411-home-drilldown01";
+import { cancelOverviewDrillDownRequests, openOverviewDrillDown } from "./drilldown.js?v=20260416-home-drilldown02";
+import { showDrillDownModal } from "./drilldown_modal.js?v=20260416-home-drilldown02";
 import { initialiseFacultyNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 /**
@@ -123,10 +123,14 @@ export const initialiseFacultyLoadSection = (context) => {
     );
 
     chart.on("click", (params) => {
-        if (params.data && params.data.drilldown) {
-            cancelOverviewDrillDownRequests();
-            const drilldown = params.data.drilldown;
-            showDrillDownModal(drilldown.name, drilldown.items);
+        const row = rows[params.dataIndex];
+        if (row && row.key) {
+            console.log("Faculty chart clicked:", row);
+            openOverviewDrillDown(context, {
+                chartKey: "faculty_load",
+                bucketKey: row.key,
+                label: row.label,
+            });
         }
     });
 

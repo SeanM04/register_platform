@@ -427,3 +427,134 @@ def build_programme_dashboard_data(request, search_query=""):
         "low_pass_rows": _build_low_pass_rows(programme_rows),
         "performance_rows": _build_performance_rows(programme_rows),
     }
+
+
+def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
+    """Return student rows for programme chart drill-downs based on academic data."""
+    
+    from urllib.parse import unquote_plus
+    from ..models import Registration, Student, Programme
+    
+    # URL decode the bucket key to handle special characters
+    bucket_key = unquote_plus(bucket_key)
+    
+    try:
+        # Debug: Log the request parameters
+        print(f"DEBUG: Programme drilldown request - chart_key: {chart_key}, bucket_key: {bucket_key}")
+        
+        if chart_key == "programme_load":
+            # Get students in the specified programme
+            registrations = Registration.objects.filter(
+                programme__name__iexact=bucket_key
+            ).select_related('student', 'programme', 'programme__department')[:page_size]
+            
+            print(f"DEBUG: Found {len(registrations)} registrations for programme '{bucket_key}'")
+            
+        elif chart_key == "departments":
+            # Get students in the specified department
+            registrations = Registration.objects.filter(
+                programme__department__name__iexact=bucket_key
+            ).select_related('student', 'programme', 'programme__department')[:page_size]
+            
+            print(f"DEBUG: Found {len(registrations)} registrations for department '{bucket_key}'")
+            
+        else:
+            raise ValueError("Unsupported programme drill-down chart.")
+        
+        # Build student rows
+        student_rows = []
+        for i, registration in enumerate(registrations):
+            student = registration.student
+            programme = registration.programme
+            row_data = {
+                "name": student.full_name,
+                "registration_number": student.registration_number,
+                "programme": programme.name if programme else "Unassigned",
+                "department": programme.department.name if programme and programme.department else "Unassigned",
+                "decision": registration.decision or "Unknown",
+                "carrying": registration.carrying or 0,
+                "detail_url": f"/students/{student.registration_number}/",
+            }
+            student_rows.append(row_data)
+            
+            # Debug: Log first few rows
+            if i < 3:
+                print(f"DEBUG: Student {i+1}: {row_data['name']} - {row_data['programme']} - {row_data['department']}")
+        
+        print(f"DEBUG: Built {len(student_rows)} student rows for response")
+        
+        return {
+            "title": f"{bucket_key} Students",
+            "subtitle": f"Students currently registered in {bucket_key}.",
+            "columns": [
+                {"key": "name", "label": "Student Name"},
+                {"key": "registration_number", "label": "Registration Number"},
+                {"key": "programme", "label": "Programme"},
+                {"key": "department", "label": "Department"},
+                {"key": "decision", "label": "Decision"},
+                {"key": "carrying", "label": "Carrying"},
+            ],
+            "rows": student_rows,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_items": len(student_rows),
+                "total_pages": 1,
+                "has_next": False,
+                "has_previous": False,
+            },
+        }
+        
+    except Exception as e:
+        # Log the error and re-raise to show real issues
+        print(f"ERROR: Programme drilldown failed - {str(e)}")
+        raise e
+
+
+def _build_programme_student_drilldown_payload(request, registrations, title, subtitle, page=1, page_size=10):
+    """Build student drill-down payload for programme charts."""
+    
+    # Simple pagination without complex filtering for now
+    total_count = registrations.count()
+    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+    
+    # Pagination
+    offset = (page - 1) * page_size
+    paginated_registrations = registrations[offset:offset + page_size]
+    
+    # Build student rows
+    student_rows = []
+    for registration in paginated_registrations:
+        student = registration.student
+        programme = registration.programme
+        student_rows.append({
+            "name": student.full_name,
+            "registration_number": student.registration_number,
+            "programme": programme.name if programme else "Unassigned",
+            "department": programme.department.name if programme and programme.department else "Unassigned",
+            "decision": registration.decision or "Unknown",
+            "carrying": registration.carrying or 0,
+            "detail_url": f"/students/{student.slug}/",
+        })
+    
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": [
+            {"key": "name", "label": "Student Name"},
+            {"key": "registration_number", "label": "Registration Number"},
+            {"key": "programme", "label": "Programme"},
+            {"key": "department", "label": "Department"},
+            {"key": "decision", "label": "Decision"},
+            {"key": "carrying", "label": "Carrying"},
+        ],
+        "rows": student_rows,
+        "pagination": {
+            "current_page": page,
+            "page_size": page_size,
+            "total_items": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_previous": page > 1,
+        },
+    }

@@ -66,3 +66,26 @@ def programme_narratives(request):
     search_query = request.GET.get("q", "").strip()
     programme_data = build_programme_dashboard_data(request, search_query)
     return JsonResponse(get_programme_card_narratives_result(programme_data))
+
+
+@ajax_login_required
+@require_GET
+def programme_drilldown(request):
+    """Return on-demand student rows for the requested programme chart bucket."""
+
+    from .services import build_programme_drilldown_data
+    
+    chart_key = str(request.GET.get("chart", "")).strip().lower()
+    bucket_key = str(request.GET.get("bucket", "")).strip()
+    page = int(request.GET.get("page", 1))
+    page_size = int(request.GET.get("page_size", 10))
+    
+    if not chart_key or not bucket_key:
+        return JsonResponse({"error": "Both chart and bucket are required."}, status=400)
+
+    try:
+        payload = build_programme_drilldown_data(request, chart_key, bucket_key, page, page_size)
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+
+    return JsonResponse(payload)

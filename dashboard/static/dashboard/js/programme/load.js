@@ -10,6 +10,7 @@ import {
     setChartFallback,
 } from "./shared.js?v=20260414-msc-support01";
 import { initialiseLoadNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
 
 export const initialiseLoadSection = (context) => {
     initialiseLoadNarrative(context.elements, context.data.topLoadRows, context.data.cardNarratives, context.flags);
@@ -117,6 +118,19 @@ export const initialiseLoadSection = (context) => {
                 },
             },
         ],
+    });
+
+    // Add drill-down click handler
+    chart.on("click", (params) => {
+        const row = sortedRows[params.dataIndex];
+        if (row && row.name) {
+            console.log("Programme load chart clicked:", row);
+            openProgrammeDrillDown(context, {
+                chartKey: "programme_load",
+                bucketKey: row.name,
+                label: formatProgrammeName(row.name),
+            });
+        }
     });
 
     return {

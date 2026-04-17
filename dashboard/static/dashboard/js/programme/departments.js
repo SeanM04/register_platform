@@ -9,6 +9,7 @@ import {
     setChartFallback,
 } from "./shared.js?v=20260405-programmes-progressive01";
 import { initialiseDepartmentNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
 
 export const initialiseDepartmentSection = (context) => {
     initialiseDepartmentNarrative(context.elements, context.data.departmentRows, context.data.cardNarratives, context.flags);
@@ -115,6 +116,19 @@ export const initialiseDepartmentSection = (context) => {
                 },
             },
         ],
+    });
+
+    // Add drill-down click handler
+    chart.on("click", (params) => {
+        const row = rows[params.dataIndex];
+        if (row && row.department) {
+            console.log("Department chart clicked:", row);
+            openProgrammeDrillDown(context, {
+                chartKey: "departments",
+                bucketKey: row.department,
+                label: row.department,
+            });
+        }
     });
 
     return {
