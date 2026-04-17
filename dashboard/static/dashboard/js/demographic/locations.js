@@ -220,10 +220,7 @@ const updateDetailNarrative = (elements, locationRow) => {
                 ? `${locationRow.place} now shows its internal gender split, led by ${leadRow.label} at ${leadRow.share}.`
                 : `No gender split is available for ${locationRow.place}.`;
     }
-
-    setHintMarkup(elements.locationHints, [
-        { label: "Back to locations to return", kind: "support" },
-    ]);
+setHintMarkup(elements.locationHints, []);
 
     setActionText(
         elements.locationNote,

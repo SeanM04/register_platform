@@ -134,34 +134,33 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
             <div class="insight-story-main">
                 <p class="insight-story-kicker">Primary Takeaway</p>
                 <h2 class="insight-story-title">No institutional insight story is available for the current filters.</h2>
-                <p class="insight-story-copy">Adjust the current filters to bring the active institutional pressure signals back into view.</p>
+                <p class="insight-story-copy">Adjust the current filters to bring the visible institutional pressure signals back into view.</p>
             </div>
         `;
         return;
     }
 
     const headline = Number(criticalRow?.count || 0) > 0
-        ? "Critical institutional pressure is already active in the current cohort."
+        ? "Critical institutional pressure is already visible in the current cohort."
         : Number(highRow?.count || 0) > 0
-            ? "the current cohort is carrying an active high-risk intervention load."
+            ? "the current cohort is carrying a visible high-risk intervention load."
             : totalWatchlist > 0
                 ? "the current cohort is showing an early watchlist signal rather than a severe risk spike."
-                : "No active watchlist pressure is active in the current cohort.";
+                : "No active watchlist pressure is visible in the current cohort.";
     const headlineCopy = totalWatchlist > 0
-        ? `${totalWatchlist} of ${totalVisible} active students are currently flagged. ${leadLoad ? `${leadLoad.label} holds the heaviest registration load at ${leadLoad.share_pct}%.` : ""}${leadDriver ? ` ${leadDriver.label} is the strongest shared trigger across flagged students.` : ""}`.trim()
-        : `All ${totalVisible} active students currently sit outside the medium and high-risk watchlist bands.`;
+        ? `${totalWatchlist} of ${totalVisible} visible students are currently flagged. ${leadLoad ? `${leadLoad.label} holds the heaviest registration load at ${leadLoad.share_pct}%.` : ""}${leadDriver ? ` ${leadDriver.label} is the strongest shared trigger across flagged students.` : ""}`.trim()
+        : `All ${totalVisible} visible students currently sit outside the medium and high-risk watchlist bands.`;
     const watchlistValue = totalWatchlist > 0
         ? `${totalWatchlist} of ${totalVisible}`
         : `0 of ${totalVisible}`;
     const watchlistCopy = totalWatchlist > 0
-        ? `${Math.round((totalWatchlist / totalVisible) * 100)}% of the active cohort currently needs closer support attention.`
-        : "the current active cohort is sitting outside the watchlist threshold.";
+        ? `${Math.round((totalWatchlist / totalVisible) * 100)}% of the visible cohort currently needs closer support attention.`
+        : "the current visible cohort is sitting outside the watchlist threshold.";
     const loadValue = leadLoad
         ? `${leadLoad.label} ${leadLoad.share_pct}%`
         : "No load cluster";
     const loadCopy = leadLoad
         ? `${leadLoad.label} currently carries ${leadLoad.registrations} registrations in scope, making it the clearest operational load centre.`
-<<<<<<< Updated upstream
         : "No faculty load concentration is visible in the current filters.";
     const driverModuleCount = Number(leadDriver?.label.match(/\d+/)?.[0] || 0);
 
@@ -170,19 +169,11 @@ const driverValue = leadDriver
     : leadPressure
         ? `${leadPressure.label} ${leadPressure.total}`
         : "No pressure lead";
-=======
-        : "No faculty load concentration is active in the current filters.";
-    const driverValue = leadDriver
-        ? `${formatChartLabel(leadDriver.label, 22)} ${leadDriver.count}`
-        : leadPressure
-            ? `${leadPressure.label} ${leadPressure.total}`
-            : "No pressure lead";
->>>>>>> Stashed changes
     const driverCopy = leadDriver
         ? `${leadDriver.label} appears in ${leadDriver.count} flagged student records and should shape the next intervention cycle.`
         : leadPressure
-            ? `${leadPressure.label} currently holds the largest flagged-student queue in the active cohort.`
-            : "No recurring intervention pattern is active in the current filters.";
+            ? `${leadPressure.label} currently holds the largest flagged-student queue in the visible cohort.`
+            : "No recurring intervention pattern is visible in the current filters.";
 
     storyBanner.innerHTML = `
         <div class="insight-story-main">
@@ -220,9 +211,9 @@ export const buildDistributionOverviewNarrative = (rows) => {
         insight: Number(criticalRow?.count || 0) > 0
             ? `${criticalRow.count} student${criticalRow.count !== 1 ? "s are" : " is"} already sitting in the critical institutional-risk band.`
             : Number(highRow?.count || 0) > 0
-                ? `${highRow.count} student${highRow.count !== 1 ? "s are" : " is"} already in the high-risk band of the active cohort.`
+                ? `${highRow.count} student${highRow.count !== 1 ? "s are" : " is"} already in the high-risk band of the visible cohort.`
                 : totalWatchlist > 0
-                    ? `${totalWatchlist} of ${totalVisible} active students are on the watchlist, but the pressure is still concentrated below the most severe band.`
+                    ? `${totalWatchlist} of ${totalVisible} visible students are on the watchlist, but the pressure is still concentrated below the most severe band.`
                     : "No institutional risk distribution insight is available for the current filters.",
         action: totalWatchlist > 0
             ? "the band view gives the fastest executive read on whether the current cohort pressure is mainly preventive work or urgent intervention."
@@ -255,9 +246,9 @@ export const buildFacultyLoadOverviewNarrative = (rows) => {
 
     return {
         insight: leadRow && secondRow
-            ? `${leadRow.label} is carrying the heaviest active registration load, ahead of ${secondRow.label}.`
+            ? `${leadRow.label} is carrying the heaviest visible registration load, ahead of ${secondRow.label}.`
             : leadRow
-                ? `${leadRow.label} is the clearest active faculty load centre in the current scope.`
+                ? `${leadRow.label} is the clearest visible faculty load centre in the current scope.`
                 : "No faculty load insight is available for the current filters.",
         action: leadRow
             ? "Use the faculty load ranking to decide where advising, staffing, and support capacity may need to stretch first."
@@ -283,7 +274,7 @@ export const buildFacultyPressureOverviewNarrative = (rows) => {
 
     return {
         insight: leadRow
-            ? `${leadRow.label} currently holds the largest flagged-student queue in the active cohort.`
+            ? `${leadRow.label} currently holds the largest flagged-student queue in the visible cohort.`
             : "No faculty pressure insight is available for the current filters.",
         action: leadRow
             ? "Keep the high-risk and medium-risk mix in one view so the next support queue is easier to prioritise."
