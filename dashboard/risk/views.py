@@ -61,13 +61,15 @@ def risk_band_drilldown(request, risk_band):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    context = build_risk_shell_context(request, search_query)
+    from ..views import build_layout_context
+    context = build_layout_context(request, RISK_ACTIVE_KEY)
     context.update({
         "page_title": f"Risk Band: {band_labels.get(risk_band, risk_band)}",
         "risk_band": risk_band,
         "risk_band_label": band_labels.get(risk_band, risk_band),
         "students": page_obj,
         "total_students": len(filtered_students),
+        "search_query": search_query,
     })
 
     return render(request, "dashboard/risk_band_drilldown.html", context)
@@ -89,12 +91,14 @@ def risk_level_drilldown(request, academic_level):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    context = build_risk_shell_context(request, search_query)
+    from ..views import build_layout_context
+    context = build_layout_context(request, RISK_ACTIVE_KEY)
     context.update({
         "page_title": f"Academic Level: {academic_level}",
         "academic_level": academic_level,
         "students": page_obj,
         "total_students": len(filtered_students),
+        "search_query": search_query,
     })
 
     return render(request, "dashboard/risk_level_drilldown.html", context)
@@ -120,13 +124,15 @@ def risk_driver_drilldown(request, risk_driver):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    context = build_risk_shell_context(request, search_query)
+    from ..views import build_layout_context
+    context = build_layout_context(request, RISK_ACTIVE_KEY)
     context.update({
         "page_title": f"Risk Driver: {driver_label}",
         "risk_driver": risk_driver,
         "risk_driver_label": driver_label,
         "students": page_obj,
         "total_students": len(filtered_students),
+        "search_query": search_query,
     })
 
     return render(request, "dashboard/risk_driver_drilldown.html", context)
@@ -148,12 +154,14 @@ def risk_programme_drilldown(request, programme):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    context = build_risk_shell_context(request, search_query)
+    from ..views import build_layout_context
+    context = build_layout_context(request, RISK_ACTIVE_KEY)
     context.update({
         "page_title": f"Programme: {programme}",
         "programme": programme,
         "students": page_obj,
         "total_students": len(filtered_students),
+        "search_query": search_query,
     })
 
     return render(request, "dashboard/risk_programme_drilldown.html", context)

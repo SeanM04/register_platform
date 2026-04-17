@@ -132,19 +132,11 @@ export const setGenderHints = (element) => {
 };
 
 export const setTopProgrammeHints = (element, isDetail) => {
-    setHintMarkup(element, isDetail ? [
-        { label: "Use Back to top 5 to compare", kind: "support" },
-    ] : [
-        { label: "Click a slice to drill down", kind: "drill" },
-    ]);
+    setHintMarkup(element, []); // No hints at all - clean interface
 };
 
 export const setPassTrendHints = (element, isDetail) => {
-    setHintMarkup(element, isDetail ? [
-        { label: "Use Find in table for exact totals", kind: "support" },
-    ] : [
-        { label: "Click a point or label to drill down", kind: "drill" },
-    ]);
+    setHintMarkup(element, []); // No hints at all - clean interface
 };
 
 export const normalizeCardSeverity = (value) => {

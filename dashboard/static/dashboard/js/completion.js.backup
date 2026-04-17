@@ -200,7 +200,10 @@ class CompletionAnalysis {
 
     createChart(containerId) {
         const container = document.getElementById(containerId);
-        if (!container) return null;
+        if (!container) {
+            console.error(`Chart container #${containerId} not found`);
+            return null;
+        }
 
         // Check if ECharts is available
         if (!window.echarts) {
@@ -214,8 +217,16 @@ class CompletionAnalysis {
             return null;
         }
 
+        // Dispose existing chart instance if it exists
+        const existingChart = window.echarts.getInstanceByDom(container);
+        if (existingChart) {
+            existingChart.dispose();
+        }
+
         // Initialize ECharts instance
         const chart = window.echarts.init(container);
+        
+        console.log(`✅ ECharts initialized for #${containerId}:`, chart);
         
         return {
             chart,
@@ -328,8 +339,21 @@ class CompletionAnalysis {
             }]
         };
 
+        // Validate chart instance before setting options
+        if (!chart.chart || typeof chart.chart.setOption !== 'function') {
+            console.error('❌ Invalid ECharts instance for cohort chart:', chart);
+            return;
+        }
+
+        console.log('🔵 Rendering cohort chart with data:', data);
+
         // Set the option and enable animation
-        chart.setOption(option, true);
+        try {
+            chart.chart.setOption(option, true);
+            console.log('✅ Cohort chart rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering cohort chart:', error);
+        }
     }
 
     renderProgrammeChart(data) {
@@ -419,8 +443,21 @@ class CompletionAnalysis {
             }]
         };
 
+        // Validate chart instance before setting options
+        if (!chart.chart || typeof chart.chart.setOption !== 'function') {
+            console.error('❌ Invalid ECharts instance for programme chart:', chart);
+            return;
+        }
+
+        console.log('🔵 Rendering programme chart with data:', data);
+
         // Set the option and enable animation
-        chart.setOption(option, true);
+        try {
+            chart.chart.setOption(option, true);
+            console.log('✅ Programme chart rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering programme chart:', error);
+        }
     }
 
     showEmptyChart(chart, message) {
@@ -686,8 +723,9 @@ class CompletionAnalysis {
 
     resizeCharts() {
         Object.values(this.charts).forEach(chart => {
-            if (chart && chart.chart) {
+            if (chart && chart.chart && typeof chart.chart.resize === 'function') {
                 chart.chart.resize();
+                console.log(' Chart resized:', chart.container.id);
             }
         });
     }

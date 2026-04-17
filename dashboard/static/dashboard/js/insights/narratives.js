@@ -161,6 +161,7 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
         : "No load cluster";
     const loadCopy = leadLoad
         ? `${leadLoad.label} currently carries ${leadLoad.registrations} registrations in scope, making it the clearest operational load centre.`
+<<<<<<< Updated upstream
         : "No faculty load concentration is visible in the current filters.";
     const driverModuleCount = Number(leadDriver?.label.match(/\d+/)?.[0] || 0);
 
@@ -170,6 +171,15 @@ const driverValue = leadDriver
         ? `${leadPressure.label} ${leadPressure.total}`
         : "No pressure lead";
     const driverCopy = leadDriver
+=======
+        : "No faculty load concentration is active in the current filters.";
+    const driverValue = leadDriver
+        ? `${formatChartLabel(leadDriver.label, 22)} ${leadDriver.count}`
+        : leadPressure
+            ? `${leadPressure.label} ${leadPressure.total}`
+            : "No pressure lead";
+const driverCopy = leadDriver
+>>>>>>> Stashed changes
         ? `${leadDriver.label} appears in ${leadDriver.count} flagged student records and should shape the next intervention cycle.`
         : leadPressure
             ? `${leadPressure.label} currently holds the largest flagged-student queue in the visible cohort.`
