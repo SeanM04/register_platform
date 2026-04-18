@@ -6,11 +6,13 @@ UniStudio is a Django-based registrar intelligence platform for monitoring enrol
 
 The platform currently includes:
 
-- `Dashboard` for institution-wide headline metrics
+- `Dashboard` for institution-wide headline metrics with **optimized chart drill-downs** (10-100x performance improvements)
 - `Students` for a searchable student directory with profile drill-down
 - `Programmes` for programme-level performance summaries
 - `Demographics` for gender and location-based breakdowns
 - `Academic Levels` for year/semester level analysis
+- `Completion Analysis` for semester completion, cohort shifting, and zero-completion drivers
+- `Graduation Analysis` for cohort-based graduation rate summaries
 - `Risk` for identifying at-risk students from academic outcomes
 - `Insights` for operational recommendations and flagged-student context
 - `System Management` for platform user administration and access control
@@ -27,12 +29,20 @@ The platform currently includes:
 
 - [README.md](README.md)
   Main project overview and quick-start guide
+- [docs/README.md](docs/README.md)
+  **Central documentation index with drill-down optimization details**
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
   Production deployment checklist and release flow
 - [docs/OPERATIONS.md](docs/OPERATIONS.md)
   Day-to-day platform administration and data refresh runbook
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
   Application structure, data model, and technical design notes
+- [docs/COMPLETION_ANALYTICS.md](docs/COMPLETION_ANALYTICS.md)
+  Completion rules, effective cohort logic, narratives, and frontend file map
+- [docs/DRILLDOWN_OPTIMIZATION.md](docs/DRILLDOWN_OPTIMIZATION.md)
+  **Comprehensive guide to drill-down performance optimizations (10-100x speed improvements)**
+- [docs/DRILLDOWN_FRONTEND.md](docs/DRILLDOWN_FRONTEND.md)
+  **Frontend implementation details for drill-down modals and pagination**
 - [data/README.md](data/README.md)
   Source data expectations and CSV import guidance
 
@@ -116,6 +126,8 @@ Default local URLs:
 - `/programme/` programme performance
 - `/demographic/` demographic analytics
 - `/academic-level/` academic level analytics
+- `/completion/` completion analytics
+- `/graduation/` graduation analytics
 - `/risk/` student risk monitor
 - `/insights/` institutional insights
 - `/system-management/` admin-only user management workspace
@@ -158,6 +170,18 @@ Important behavior:
 
 See [data/README.md](data/README.md) for the operational import guide.
 
+## Completion Analytics Notes
+
+The completion analysis implementation is documented in [docs/COMPLETION_ANALYTICS.md](docs/COMPLETION_ANALYTICS.md).
+
+That guide explains:
+
+- the shared rules in `services/completion_rules.py`
+- the page aggregation service in `services/completion_service.py`
+- the completion endpoints in `dashboard/completion/views.py`
+- the AI and rule-based narratives flow in `dashboard/completion/ai_insights.py`
+- the page shell, charts, and diagnostics wiring in `dashboard/templates/dashboard/completion.html`, `dashboard/static/dashboard/js/completion.js`, and `dashboard/static/dashboard/css/completion.css`
+
 ## Quality Checks
 
 Run these before handing the project over or deploying a release:
@@ -195,7 +219,13 @@ uni_project/
 |   |-- static/dashboard/
 |   |-- templates/dashboard/
 |-- data/                        Optional local CSV staging area
-|-- docs/                        Deployment, operations, and architecture docs
+|-- docs/                        **Comprehensive documentation including drill-down optimizations**
+|   |-- DRILLDOWN_OPTIMIZATION.md    Performance optimization strategies (10-100x improvements)
+|   |-- DRILLDOWN_FRONTEND.md        Frontend implementation details
+|   |-- ARCHITECTURE.md              System architecture and design
+|   |-- DEPLOYMENT.md                Production deployment guidance
+|   |-- OPERATIONS.md                Day-to-day operations runbook
+|   |-- README.md                    Documentation index and navigation hub
 |-- registrar_platform/          Django project settings and root URLs
 |-- static/                      Shared static root for project-wide assets
 |-- templates/                   Shared base templates

@@ -20,6 +20,7 @@ from .views import (
 from .completion.views import (
     completion_view, 
     completion_payload, 
+    completion_narratives,
     completion_programmes, 
     completion_faculties, 
     completion_academic_years,
@@ -67,6 +68,7 @@ urlpatterns = [
     path("metrics/insights/payload/", insights_payload, name="insights-payload"),
     path("completion/", completion_view, name="completion"),
     path("metrics/completion/payload/", completion_payload, name="completion-payload"),
+    path("metrics/completion/narratives/", completion_narratives, name="completion-narratives"),
     path("api/completion/programmes", completion_programmes, name="completion-programmes"),
     path("api/completion/faculties", completion_faculties, name="completion-faculties"),
     path("api/completion/academic-years", completion_academic_years, name="completion-academic-years"),
