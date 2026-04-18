@@ -14,6 +14,12 @@ class GraduationAnalysis {
         };
     }
 
+    initializeFiltersFromURL() {
+        // Update current filters from URL parameters
+        this.currentFilters = this.getFiltersFromURL();
+        console.log('Graduation filters initialized from URL:', this.currentFilters);
+    }
+
     constructor() {
         this.root = document.querySelector('.graduation-layout');
         console.log('Graduation root element found:', this.root);
@@ -38,30 +44,11 @@ class GraduationAnalysis {
     }
 
     bindEvents() {
-        // Topbar filter events - check if elements exist
-        const yearFilter = document.getElementById('year-filter');
-        if (yearFilter) {
-            yearFilter.addEventListener('change', (e) => {
-                this.currentFilters.year = e.target.value;
-                this.loadData();
-            });
-        }
-
-        const periodFilter = document.getElementById('period-filter');
-        if (periodFilter) {
-            periodFilter.addEventListener('change', (e) => {
-                this.currentFilters.period = e.target.value;
-                this.loadData();
-            });
-        }
-
-        const facultyFilter = document.getElementById('faculty-filter');
-        if (facultyFilter) {
-            facultyFilter.addEventListener('change', (e) => {
-                this.currentFilters.faculty = e.target.value;
-                this.loadData();
-            });
-        }
+        // Note: Topbar filter event listeners are now handled by the global filter system (filters.js)
+        // Custom filter handlers removed to prevent conflicts with global implementation
+        
+        // Initialize filters from URL parameters for data loading
+        this.initializeFiltersFromURL();
 
         // Search event
         document.getElementById('student-search').addEventListener('input', (e) => {

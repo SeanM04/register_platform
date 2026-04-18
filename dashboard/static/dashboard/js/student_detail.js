@@ -218,28 +218,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to handle filter changes
-    function handleFilterChange() {
-        updateUrl();
-    }
-    
     // Add event listeners to tabs
     yearTabs.forEach(tab => {
         tab.addEventListener('click', handleTabClick);
     });
     
-    // Add event listeners to filters
-    if (yearFilter) {
-        yearFilter.addEventListener('change', handleFilterChange);
-    }
-    
-    if (periodFilter) {
-        periodFilter.addEventListener('change', handleFilterChange);
-    }
-    
-    if (facultyFilter) {
-        facultyFilter.addEventListener('change', handleFilterChange);
-    }
+    // Note: Filter event listeners are now handled by the global filter system (filters.js)
+    // Custom filter handlers removed to prevent conflicts with global implementation
     
     // Auto-refresh functionality (disabled for cumulative grade accuracy)
     function setupAutoRefresh() {

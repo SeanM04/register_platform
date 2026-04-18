@@ -1095,6 +1095,14 @@ class CompletionAnalysis {
         window.URL.revokeObjectURL(url);
     }
 
+    resizeCharts() {
+        Object.values(this.charts).forEach(chart => {
+            if (chart && chart.chart) {
+                chart.chart.resize();
+            }
+        });
+    }
+
     toggleChartFullscreen(button) {
         const chartCard = button.closest(".demographic-insight-card");
         if (!chartCard) {
