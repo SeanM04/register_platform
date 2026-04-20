@@ -1174,24 +1174,33 @@ class GraduationAnalysis {
     }
 
     createStudentRow(student) {
-        const row = document.createElement("tr");
-        const rateClass = this.getRateClass(student.graduation_rate);
-        const cohortClass = student.on_time ? "is-original" : "is-shifted";
-        const onTimeClass = student.on_time ? "high" : "low";
+    const row = document.createElement("tr");
 
-        row.innerHTML = `
-            <td class="students-td-name">
-                <span class="graduation-student-name">${escapeTooltipHtml(student.student_name || "")}</span>
-                <p class="graduation-student-meta">${escapeTooltipHtml(student.regnum || "")}</p>
-            </td>
-            <td>${escapeTooltipHtml(student.programme_name || "")}</td>
-            <td>${escapeTooltipHtml(student.faculty || "")}</td>
-            <td><span class="graduation-stage-pill">${escapeTooltipHtml(student.graduation_period_label || student.graduation_stage || "")}</span></td>
-            <td><span class="completion-cohort-pill ${cohortClass}">${escapeTooltipHtml(student.effective_cohort || "")}</span></td>
-            <td><span class="completion-rate-badge ${rateClass}">${Math.round(student.graduation_rate || 0)}%</span></td>
-            <td><span class="completion-rate-badge ${onTimeClass}">${student.on_time ? "On time" : "Delayed"}</span></td>
-        `;
-        return row;
+    const graduationStage = String(
+        student.graduation_period_label || student.graduation_stage || ""
+    )
+        .replace(/,\s*/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const effectiveCohort = String(student.effective_cohort || "")
+        .replace(/^is-(original|shifted)"?>?/i, "")
+        .trim();
+
+    row.innerHTML = `
+        <td class="students-td-name">
+            <span class="graduation-student-name">${escapeTooltipHtml(student.student_name || "")}</span>
+        </td>
+        <td>${escapeTooltipHtml(student.programme_name || "")}</td>
+        <td>${escapeTooltipHtml(student.faculty || "")}</td>
+        <td>${escapeTooltipHtml(graduationStage)}</td>
+        <td>${escapeTooltipHtml(effectiveCohort)}</td>
+        <td>${Math.round(student.graduation_rate || 0)}%</td>
+        <td>${student.on_time ? "On time" : "Delayed"}</td>
+    `;
+
+    return row;
+
     }
 
     getRateClass(rate) {

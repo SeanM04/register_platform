@@ -262,7 +262,7 @@ export const renderStoryBanner = (element, outcomeRows, riskRows, facultyRows, p
     element.hidden = false;
 
     const title = leadFaculty
-        ? `${leadFaculty.label} currently carries the heaviest visible institutional load.`
+        ? `${leadFaculty.label} currently has the highest number of students. `
         : "The landing page is tracking the strongest visible academic signals in the current scope.";
     const copyParts = [];
 
