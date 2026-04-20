@@ -13,7 +13,8 @@ import {
     setActionText,
     setElementText,
     setGenderHints,
-} from "./narratives.js";
+} from "./AI_INSIGHTS_ENABLED=TGOOGLE_API_KEY=your-key
+OPENAI_API_KEY=your-key";
 
 const buildGenderChartOption = (rows, chartWidth = 0) => {
     const visibleRows = rows.filter((row) => Number(row.students) > 0);
