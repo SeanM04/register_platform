@@ -1,5 +1,18 @@
 import { escapeTooltipHtml, formatChartLabel } from "./shared.js?v=20260403-insights-story02";
 
+// Function to correct malformed driver labels like "1 carried module 837" -> "837 carried 1 module"
+const correctDriverLabel = (label) => {
+    if (!label) return label;
+    
+    // Check for pattern: "1 carried module [number]"
+    const match = label.match(/^1 carried module (\d+)$/);
+    if (match) {
+        return `${match[1]} carried 1 module`;
+    }
+    
+    return label;
+};
+
 const setElementText = (element, text) => {
     if (element) {
         element.textContent = text;
@@ -141,7 +154,7 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
     }
 
     const headline = Number(criticalRow?.count || 0) > 0
-        ? "Critical institutional pressure is already visible in the current cohort."
+        ? "Significant pressure is already evident in the current cohort."
         : Number(highRow?.count || 0) > 0
             ? "the current cohort is carrying a visible high-risk intervention load."
             : totalWatchlist > 0
@@ -163,7 +176,7 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
         ? `${leadLoad.label} currently carries ${leadLoad.registrations} registrations in scope, making it the clearest operational load centre.`
         : "No faculty load concentration is active in the current filters.";
     const driverValue = leadDriver
-        ? `${formatChartLabel(leadDriver.label, 22)} ${leadDriver.count}`
+        ? `${formatChartLabel(correctDriverLabel(leadDriver.label), 22)} ${leadDriver.count}`
         : leadPressure
             ? `${leadPressure.label} ${leadPressure.total}`
             : "No pressure lead";
@@ -175,7 +188,6 @@ const driverCopy = leadDriver
 
     storyBanner.innerHTML = `
         <div class="insight-story-main">
-            <p class="insight-story-kicker">Primary Takeaway</p>
             <h2 class="insight-story-title">${escapeTooltipHtml(headline)}</h2>
             <p class="insight-story-copy">${escapeTooltipHtml(headlineCopy)}</p>
         </div>
