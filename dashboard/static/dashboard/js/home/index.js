@@ -9,7 +9,7 @@ import {
     initialiseProgressNarrative,
     initialiseRiskNarrative,
     renderStoryBanner,
-} from "./narratives.js?v=20260411-home-top-pillless01";
+} from "./narratives.js?v=20260416-home-banner-text02";;
 import { initialiseOutcomeSection } from "./outcomes.js?v=20260411-home-drilldown01";
 import { initialiseProgressSection } from "./progress.js?v=20260411-home-drilldown01";
 import { initialiseRiskDistributionSection } from "./risk_distribution.js?v=20260411-home-drilldown01";
