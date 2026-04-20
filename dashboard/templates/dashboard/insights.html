@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260412-insights-shell01">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260420-kpi-note-fix01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -136,7 +136,7 @@
         <article class="insight-metric insight-metric-{{ card.tone }}">
             <p class="insight-metric-label">{{ card.label }}</p>
             <p class="insight-metric-value" data-metric-value data-metric-index="{{ forloop.counter0 }}">{{ card.value }}</p>
-            <p class="insight-metric-note">{{ card.note }}</p>
+            <p class="insight-metric-note" data-metric-note data-metric-index="{{ forloop.counter0 }}">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>
@@ -310,7 +310,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260417-syntax-fix01"></script>
+<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260420-kpi-note-fix01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

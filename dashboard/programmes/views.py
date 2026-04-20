@@ -36,15 +36,7 @@ def programme_payload(request):
 
     search_query = request.GET.get("q", "").strip()
     programme_data = build_programme_dashboard_data(request, search_query)
-    
-    # Debug: Log the data being returned
-    print(f"Programme payload data keys: {programme_data.keys()}")
-    print(f"Top load rows count: {len(programme_data.get('top_load_rows', []))}")
-    print(f"Department rows count: {len(programme_data.get('department_rows', []))}")
-    print(f"Low pass rows count: {len(programme_data.get('low_pass_rows', []))}")
-    print(f"Performance rows count: {len(programme_data.get('performance_rows', []))}")
-    print(f"Programme rows count: {len(programme_data.get('programme_rows', []))}")
-    
+
     return JsonResponse(
         {
             "summary_cards": programme_data["summary_cards"],

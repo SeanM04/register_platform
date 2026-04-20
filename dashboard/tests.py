@@ -15,6 +15,7 @@ from accounts.models import UserType
 
 from .models import (
     AcademicDecision,
+    AcademicPeriod,
     AttendanceType,
     Cohort,
     CompletionAnalysisRecord,
@@ -96,6 +97,64 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(alice_rows[0]["program"], self.commerce_programme.name)
         self.assertEqual(alice_rows[0]["department"], self.commerce_department.name)
         self.assertEqual(alice_rows[0]["decision"], "Pending")
+
+    def test_student_detail_scopes_topbar_filters_to_student_records(self):
+        """Student detail filters should expose only years, periods, and faculties the student has."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+            {"year": "2099", "period": "Missing", "faculty": "ENGINEERING"},
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        self.assertEqual(filters["faculty"]["options"], [self.commerce_faculty.name, self.science_faculty.name])
+        self.assertFalse(filters["faculty"]["disabled"])
+        self.assertNotIn("ENGINEERING", filters["faculty"]["options"])
+        self.assertEqual(response.context["selected_faculty"], self.science_faculty.name)
+        self.assertEqual(response.context["selected_year"], "Year 1")
+        self.assertEqual(response.context["selected_period"], "Jan - June")
+        self.assertContains(response, "Foundations of Computing")
+
+    def test_student_detail_locks_faculty_filter_for_single_faculty_student(self):
+        """A student with one faculty should have a single locked faculty option."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_secondary.registration_number.lower()]),
+            {"faculty": self.science_faculty.name},
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        self.assertEqual(filters["faculty"]["options"], [self.commerce_faculty.name])
+        self.assertTrue(filters["faculty"]["disabled"])
+        self.assertEqual(response.context["selected_faculty"], self.commerce_faculty.name)
+
+    def test_student_detail_omits_empty_result_years_from_topbar_and_tabs(self):
+        """Registrations without course rows should not appear as selectable student years."""
+
+        empty_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="2",
+            semester="1",
+            name="2027 January - June",
+        )
+        Registration.objects.create(
+            external_id=99,
+            student=self.student_primary,
+            programme=self.science_programme,
+            period=empty_period,
+            decision="pending",
+            carrying=0,
+        )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        visible_tab_years = [row["year"] for row in response.context["student"]["year_dropdown_tabs"]]
+        self.assertEqual(filters["year"]["options"], ["Year 1"])
+        self.assertEqual(visible_tab_years, [1])
+        self.assertNotContains(response, "2027 January - June")
 
     def test_student_list_paginates_in_the_database(self):
         """Students page should fetch only the requested page instead of materializing the full directory."""

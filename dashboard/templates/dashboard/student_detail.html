@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script type="module" src="{% static 'dashboard/js/student_detail.js' %}?v=20260417-filter-consistency01"></script>
+<script type="module" src="{% static 'dashboard/js/student_detail.js' %}?v=20260420-student-scoped-filters01"></script>
 {% endblock %}
 
 {% block content %}
@@ -113,7 +113,7 @@
                 <div class="year-dropdown-content" id="year-{{ year_tab.year }}-dropdown">
                     {% for semester in year_tab.semesters %}
                     <a class="year-dropdown-option{% if semester.is_active %} is-active{% endif %}" 
-                       href="?term={{ semester.id }}&year={{ student.selected_filters.year }}&period={{ student.selected_filters.period }}&faculty={{ student.selected_filters.faculty }}">
+                       href="?{{ semester.url_query }}">
                         <span class="year-dropdown-option-label">{{ semester.label }} - {{ semester.period_name }}</span>
                     </a>
                     {% endfor %}
@@ -140,13 +140,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- DEBUG: Template data verification -->
-<!-- DEBUG: student.results count: {{ student.results|length }} -->
-<!-- DEBUG: show_empty_content: {{ show_empty_content }} -->
-<!-- DEBUG: no_data_message: {{ no_data_message }} -->
-
 {% if student.results %}
-                            <!-- DEBUG: Entering results loop -->
                             {% for result in student.results %}
                             <tr>
                                 <td class="results-td-code">{{ result.code }}</td>
