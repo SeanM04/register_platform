@@ -39,6 +39,8 @@ The platform currently includes:
   Application structure, data model, and technical design notes
 - [docs/COMPLETION_ANALYTICS.md](docs/COMPLETION_ANALYTICS.md)
   Completion rules, effective cohort logic, narratives, and frontend file map
+- [docs/GRADUATION_ANALYTICS.md](docs/GRADUATION_ANALYTICS.md)
+  Graduation rules, effective cohorts, narratives, and frontend file map
 - [docs/DRILLDOWN_OPTIMIZATION.md](docs/DRILLDOWN_OPTIMIZATION.md)
   **Comprehensive guide to drill-down performance optimizations (10-100x speed improvements)**
 - [docs/DRILLDOWN_FRONTEND.md](docs/DRILLDOWN_FRONTEND.md)
@@ -103,7 +105,7 @@ Important notes:
 ### 7. Import academic data
 
 ```powershell
-python manage.py import_registrar_data "C:\Users\Mukar\Downloads\Registrations.csv" "C:\Users\Mukar\Downloads\course final marks by period.csv"
+python manage.py import_registrar_data "C:\Users\Mukar\Downloads\Registrations.csv" "C:\Users\Mukar\Downloads\course final marks by period.csv" "C:\Users\Mukar\Downloads\completion_analysis_2026-04-17.csv"
 ```
 
 ### 8. Start the development server
@@ -157,9 +159,14 @@ The registrar import command currently loads:
 - `Programme`
 - `AcademicPeriod`
 - `Student`
+- `AttendanceType`
+- `AcademicDecision`
 - `Registration`
 - `Course`
 - `CourseResult`
+- `Cohort`
+- `ZeroCompletionReason`
+- `CompletionAnalysisRecord`
 
 Important behavior:
 
@@ -167,6 +174,8 @@ Important behavior:
 - it clears previously imported academic entities before loading the new snapshot
 - authentication and platform user accounts are not cleared by the import
 - course results are matched to registrations using `registration_number + period_id`
+- student age is calculated from `date_of_birth` during import
+- the completion analysis export can be loaded as a third CSV argument and is decomposed into linked student, programme, decision, cohort, and zero-completion reason records
 
 See [data/README.md](data/README.md) for the operational import guide.
 
@@ -181,6 +190,17 @@ That guide explains:
 - the completion endpoints in `dashboard/completion/views.py`
 - the AI and rule-based narratives flow in `dashboard/completion/ai_insights.py`
 - the page shell, charts, and diagnostics wiring in `dashboard/templates/dashboard/completion.html`, `dashboard/static/dashboard/js/completion.js`, and `dashboard/static/dashboard/css/completion.css`
+
+## Graduation Analytics Notes
+
+The graduation analysis implementation is documented in [docs/GRADUATION_ANALYTICS.md](docs/GRADUATION_ANALYTICS.md).
+
+That guide explains:
+
+- the graduation aggregation service in `services/graduation_services.py`
+- the graduation endpoints in `dashboard/graduation/views.py`
+- the AI and rule-based narratives flow in `dashboard/graduation/ai_insights.py`
+- the page shell, charts, and diagnostics wiring in `dashboard/templates/dashboard/graduation.html`, `dashboard/static/dashboard/js/graduation.js`, and `dashboard/static/dashboard/css/graduation.css`
 
 ## Quality Checks
 
@@ -241,7 +261,7 @@ python manage.py runserver
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py collectstatic --noinput
-python manage.py import_registrar_data "C:\Path\To\Registrations.csv" "C:\Path\To\course final marks by period.csv"
+python manage.py import_registrar_data "C:\Path\To\Registrations.csv" "C:\Path\To\course final marks by period.csv" "C:\Path\To\completion_analysis.csv"
 python manage.py test
 python manage.py check --deploy
 ```

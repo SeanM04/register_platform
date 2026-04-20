@@ -11,6 +11,13 @@ from .constants import BIRTH_LOCATION_MAP_ALIASES, BIRTH_LOCATION_MAP_POINTS
 DEMOGRAPHIC_LOCATION_LIMIT = 10
 DEMOGRAPHIC_PROGRAMME_LIMIT = 20
 DEMOGRAPHIC_ITERATOR_CHUNK_SIZE = 2000
+AGE_GROUP_SPECS = (
+    ("Under 20", 0, 19),
+    ("20-24", 20, 24),
+    ("25-29", 25, 29),
+    ("30-34", 30, 34),
+    ("35+", 35, None),
+)
 
 
 def _format_share(count, total_students):
@@ -36,6 +43,20 @@ def _empty_gender_counts():
     return {"male": 0, "female": 0, "unspecified": 0}
 
 
+def _age_group_for_years(age):
+    """Return the configured display bucket for an age value."""
+
+    if age is None:
+        return None
+
+    for label, minimum, maximum in AGE_GROUP_SPECS:
+        if age < minimum:
+            continue
+        if maximum is None or age <= maximum:
+            return label
+    return None
+
+
 def _get_demographic_registration_rows(request, search_query=""):
     """Yield the latest filtered registration row for each visible student."""
 
@@ -53,6 +74,7 @@ def _get_demographic_registration_rows(request, search_query=""):
         registrations.order_by("student__registration_number", "-period__external_id", "-id").values(
             "student__registration_number",
             "student__gender",
+            "student__age",
             "student__place_of_birth",
             "programme__name",
             "programme__code",
@@ -77,6 +99,7 @@ def build_demographic_data(request, search_query=""):
     female_count = 0
     location_gender_counts = defaultdict(_empty_gender_counts)
     programme_gender_counts = defaultdict(_empty_gender_counts)
+    age_gender_counts = {label: _empty_gender_counts() for label, _, _ in AGE_GROUP_SPECS}
     programme_code_map = {}
     year_gender_counts = defaultdict(_empty_gender_counts)
 
@@ -90,6 +113,10 @@ def build_demographic_data(request, search_query=""):
 
         place = str(row["student__place_of_birth"] or "").strip() or "Unspecified"
         location_gender_counts[place][gender_key] += 1
+
+        age_group = _age_group_for_years(row.get("student__age"))
+        if age_group:
+            age_gender_counts[age_group][gender_key] += 1
 
         programme_name = str(row["programme__name"] or "").strip() or "Unspecified programme"
         programme_name = programme_name.replace("Bsc", "BSc").replace("Bcom", "BCom")
@@ -230,10 +257,18 @@ def build_demographic_data(request, search_query=""):
         )
     ]
 
-    # Create age distribution rows with gender breakdown
-    # Age data is not available in the current Registration model,
-    # so this returns an empty list. Data source would need to be added to Student model.
-    age_distribution_rows = []
+    age_distribution_rows = [
+        {
+            "age_group": label,
+            "male": counts["male"],
+            "female": counts["female"],
+            "male_share": _format_share(counts["male"], counts["male"] + counts["female"] + counts["unspecified"]),
+            "female_share": _format_share(counts["female"], counts["male"] + counts["female"] + counts["unspecified"]),
+            "total": counts["male"] + counts["female"] + counts["unspecified"],
+        }
+        for label, counts in age_gender_counts.items()
+        if counts["male"] or counts["female"] or counts["unspecified"]
+    ]
 
     return {
         "total_students": total_students,

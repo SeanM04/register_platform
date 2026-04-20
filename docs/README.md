@@ -21,6 +21,8 @@ This folder contains implementation notes and operational guidance for the regis
   Landing dashboard layout, filter bar, and drill-down behavior
 - [COMPLETION_ANALYTICS.md](COMPLETION_ANALYTICS.md)
   Completion rules, effective cohorts, narratives, and frontend wiring
+- [GRADUATION_ANALYTICS.md](GRADUATION_ANALYTICS.md)
+  Graduation rules, effective cohorts, narratives, and frontend wiring
 
 ### Performance And Drill-Downs
 
@@ -66,6 +68,18 @@ Covers:
 - frontend chart rendering and chart footer badge states
 - troubleshooting for stale routes, missing endpoints, and fallback guidance
 
+### Graduation Analytics
+
+File: [GRADUATION_ANALYTICS.md](GRADUATION_ANALYTICS.md)
+
+Covers:
+
+- documented graduation-stage rules by programme family
+- effective cohort use and on-time graduation logic
+- graduation payload and narratives endpoints
+- frontend ECharts rendering and chart footer badge states
+- troubleshooting for stale routes, missing endpoints, and fallback guidance
+
 ## Common Maintenance Tasks
 
 ### Add Or Update A Dashboard Feature
@@ -99,6 +113,7 @@ docs/
 |-- AI_INSIGHTS.md
 |-- DASHBOARD_HOME.md
 |-- COMPLETION_ANALYTICS.md
+|-- GRADUATION_ANALYTICS.md
 |-- DRILLDOWN_OPTIMIZATION.md
 |-- DRILLDOWN_FRONTEND.md
 |-- DEPLOYMENT.md
