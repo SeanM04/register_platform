@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
+{% url 'dashboard:completion-payload' as completion_payload_url %}
+{% url 'dashboard:completion-narratives' as completion_narratives_url %}
 
 {% block title %}Completion Analysis{% endblock %}
 
@@ -9,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="completion-layout" data-payload-url="{% url 'dashboard:completion-payload' %}">
+<section class="completion-layout" data-payload-url="{{ completion_payload_url|default:'/metrics/completion/payload/' }}" data-narratives-url="{{ completion_narratives_url|default:'/metrics/completion/narratives/' }}" data-ai-narratives-enabled="{{ completion_ai_narratives_enabled|yesno:'true,false' }}">
     <!-- Metrics Section -->
     <section class="completion-metrics">
         <article class="completion-metric">
@@ -17,27 +19,27 @@
             <p class="completion-metric-value" data-metric-value data-metric-key="total_students">-</p>
         </article>
         <article class="completion-metric">
-            <p class="completion-metric-label">Total Cohorts</p>
+            <p class="completion-metric-label">Effective Cohorts</p>
             <p class="completion-metric-value" data-metric-value data-metric-key="total_cohorts">-</p>
         </article>
         <article class="completion-metric">
-            <p class="completion-metric-label">Completion Rate</p>
+            <p class="completion-metric-label">Average Completion</p>
             <p class="completion-metric-value" data-metric-value data-metric-key="average_completion_rate">-</p>
         </article>
         <article class="completion-metric">
-            <p class="completion-metric-label">Male Students</p>
-            <p class="completion-metric-value" data-metric-value data-metric-key="male_students">-</p>
+            <p class="completion-metric-label">Zero Completion</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="zero_completion_students">-</p>
         </article>
         <article class="completion-metric">
-            <p class="completion-metric-label">Female Students</p>
-            <p class="completion-metric-value" data-metric-value data-metric-key="female_students">-</p>
+            <p class="completion-metric-label">Shifted Students</p>
+            <p class="completion-metric-value" data-metric-value data-metric-key="shifted_students">-</p>
         </article>
     </section>
 
     <section class="completion-story-banner" id="completion-story-banner" aria-live="polite">
         <div>
             <p class="completion-banner-title">Completion Analysis Overview</p>
-            <p class="completion-banner-description">Track student progress through academic programmes with comprehensive completion metrics. Analyze cohort performance, programme effectiveness, and individual student completion rates to identify trends and support academic success.</p>
+            <p class="completion-banner-description">Completion Algorithm: (1) Base calculation uses pass mark of 50% - courses with marks >=50% count as passed, (2) Zero completion rule: failing 4+ courses automatically results in 0% completion rate regardless of other course performance, (3) Special academic decisions: 8 specific decisions (e.g., Withdrawal, Discontinuation, Academic Exclusion) force 0% completion and shift student's effective cohort forward by 1-2 semesters, (4) Completion rate = (passed courses / total registered courses) × 100%, (5) Students with no marks recorded also receive 0% completion.</p>
         </div>
     </section>
     <p class="completion-narrative-status" id="completion-narrative-status" hidden></p>
@@ -55,19 +57,20 @@
             </div>
 
             <div class="demographic-accordion-content is-hidden" id="cohort-completion-content">
-                <article class="demographic-insight-card">
+                <article class="demographic-insight-card demographic-insight-card-wide">
                     <div class="demographic-insight-header">
                         <div>
                             <p class="demographic-insight-kicker">Cohort Analysis</p>
-                            <h2 class="demographic-insight-title">Cohort Completion Rates</h2>
-                            <p class="demographic-insight-copy">Track completion rates across different cohorts</p>
-                            <div class="demographic-chart-hints" aria-label="Chart interaction hints"></div>
+                            <h2 class="demographic-insight-title">Cohort Completion Heatmap</h2>
+                            <p class="demographic-insight-copy" id="completion-cohort-copy">Track each effective cohort across progression periods after decision-based shifts are applied.</p>
+                            <div class="demographic-chart-hints" id="completion-cohort-hints" aria-label="Chart interaction hints"></div>
                         </div>
-                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Completion Rates" aria-controls="cohort-completion-chart" aria-label="View Cohort Completion Rates in full screen" aria-pressed="false">Full screen</button>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Cohort Completion Heatmap" aria-controls="cohort-completion-chart" aria-label="View Cohort Completion Heatmap in full screen" aria-pressed="false">Full screen</button>
                     </div>
                     <div class="demographic-chart-stage">
                         <div class="demographic-chart-canvas" id="cohort-completion-chart" role="img" aria-label="Cohort completion rates chart"></div>
                     </div>
+                    <p class="completion-chart-note" id="completion-cohort-note"></p>
                 </article>
             </div>
         </section>
@@ -88,14 +91,43 @@
                         <div>
                             <p class="demographic-insight-kicker">Programme Analysis</p>
                             <h2 class="demographic-insight-title">Programme Completion Rates</h2>
-                            <p class="demographic-insight-copy">Compare completion rates across programmes</p>
-                            <div class="demographic-chart-hints" aria-label="Chart interaction hints"></div>
+                            <p class="demographic-insight-copy" id="completion-programme-copy">Compare average semester completion across programmes using the documented rules.</p>
+                            <div class="demographic-chart-hints" id="completion-programme-hints" aria-label="Chart interaction hints"></div>
                         </div>
                         <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programme Completion Rates" aria-controls="programme-completion-chart" aria-label="View Programme Completion Rates in full screen" aria-pressed="false">Full screen</button>
                     </div>
                     <div class="demographic-chart-stage">
                         <div class="demographic-chart-canvas" id="programme-completion-chart" role="img" aria-label="Programme completion rates chart"></div>
                     </div>
+                    <p class="completion-chart-note" id="completion-programme-note"></p>
+                </article>
+            </div>
+        </section>
+
+        <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="decision-impact">
+            <div class="demographic-flow-header">
+                <h2 class="demographic-flow-title">Zero-Completion Drivers</h2>
+                <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="decision-impact-content">
+                    <span class="demographic-accordion-toggle-text">Expand</span>
+                    <span class="demographic-accordion-toggle-icon">+</span>
+                </button>
+            </div>
+
+            <div class="demographic-accordion-content is-hidden" id="decision-impact-content">
+                <article class="demographic-insight-card">
+                    <div class="demographic-insight-header">
+                        <div>
+                            <p class="demographic-insight-kicker">Decision Impact</p>
+                            <h2 class="demographic-insight-title">Zero-Completion Drivers</h2>
+                            <p class="demographic-insight-copy" id="completion-drivers-copy">Separate special decision effects from 4+ failed-course cases so the 0% drivers are visible.</p>
+                            <div class="demographic-chart-hints" id="completion-drivers-hints" aria-label="Chart interaction hints"></div>
+                        </div>
+                        <button class="demographic-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Zero-Completion Drivers" aria-controls="decision-impact-chart" aria-label="View Zero-Completion Drivers in full screen" aria-pressed="false">Full screen</button>
+                    </div>
+                    <div class="demographic-chart-stage">
+                        <div class="demographic-chart-canvas" id="decision-impact-chart" role="img" aria-label="Zero-completion driver chart"></div>
+                    </div>
+                    <p class="completion-chart-note" id="completion-drivers-note"></p>
                 </article>
             </div>
         </section>
@@ -128,6 +160,7 @@
                             <th><span>Programme</span></th>
                             <th><span>Academic Stage</span></th>
                             <th><span>Decision</span></th>
+                            <th><span>Effective Cohort</span></th>
                             <th class="completion-rate-header">Completion Rate</th>
                         </tr>
                     </thead>
@@ -168,7 +201,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260416-performance-optimizations01"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
+<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260418-completion-narratives-url02"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

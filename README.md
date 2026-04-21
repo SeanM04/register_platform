@@ -6,11 +6,13 @@ UniStudio is a Django-based registrar intelligence platform for monitoring enrol
 
 The platform currently includes:
 
-- `Dashboard` for institution-wide headline metrics
+- `Dashboard` for institution-wide headline metrics with **optimized chart drill-downs** (10-100x performance improvements)
 - `Students` for a searchable student directory with profile drill-down
 - `Programmes` for programme-level performance summaries
 - `Demographics` for gender and location-based breakdowns
 - `Academic Levels` for year/semester level analysis
+- `Completion Analysis` for semester completion, cohort shifting, and zero-completion drivers
+- `Graduation Analysis` for cohort-based graduation rate summaries
 - `Risk` for identifying at-risk students from academic outcomes
 - `Insights` for operational recommendations and flagged-student context
 - `System Management` for platform user administration and access control
@@ -27,12 +29,22 @@ The platform currently includes:
 
 - [README.md](README.md)
   Main project overview and quick-start guide
+- [docs/README.md](docs/README.md)
+  **Central documentation index with drill-down optimization details**
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
   Production deployment checklist and release flow
 - [docs/OPERATIONS.md](docs/OPERATIONS.md)
   Day-to-day platform administration and data refresh runbook
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
   Application structure, data model, and technical design notes
+- [docs/COMPLETION_ANALYTICS.md](docs/COMPLETION_ANALYTICS.md)
+  Completion rules, effective cohort logic, narratives, and frontend file map
+- [docs/GRADUATION_ANALYTICS.md](docs/GRADUATION_ANALYTICS.md)
+  Graduation rules, effective cohorts, narratives, and frontend file map
+- [docs/DRILLDOWN_OPTIMIZATION.md](docs/DRILLDOWN_OPTIMIZATION.md)
+  **Comprehensive guide to drill-down performance optimizations (10-100x speed improvements)**
+- [docs/DRILLDOWN_FRONTEND.md](docs/DRILLDOWN_FRONTEND.md)
+  **Frontend implementation details for drill-down modals and pagination**
 - [data/README.md](data/README.md)
   Source data expectations and CSV import guidance
 
@@ -93,7 +105,7 @@ Important notes:
 ### 7. Import academic data
 
 ```powershell
-python manage.py import_registrar_data "C:\Users\Mukar\Downloads\Registrations.csv" "C:\Users\Mukar\Downloads\course final marks by period.csv"
+python manage.py import_registrar_data "C:\Users\Mukar\Downloads\Registrations.csv" "C:\Users\Mukar\Downloads\course final marks by period.csv" "C:\Users\Mukar\Downloads\completion_analysis_2026-04-17.csv"
 ```
 
 ### 8. Start the development server
@@ -116,6 +128,8 @@ Default local URLs:
 - `/programme/` programme performance
 - `/demographic/` demographic analytics
 - `/academic-level/` academic level analytics
+- `/completion/` completion analytics
+- `/graduation/` graduation analytics
 - `/risk/` student risk monitor
 - `/insights/` institutional insights
 - `/system-management/` admin-only user management workspace
@@ -145,9 +159,14 @@ The registrar import command currently loads:
 - `Programme`
 - `AcademicPeriod`
 - `Student`
+- `AttendanceType`
+- `AcademicDecision`
 - `Registration`
 - `Course`
 - `CourseResult`
+- `Cohort`
+- `ZeroCompletionReason`
+- `CompletionAnalysisRecord`
 
 Important behavior:
 
@@ -155,8 +174,33 @@ Important behavior:
 - it clears previously imported academic entities before loading the new snapshot
 - authentication and platform user accounts are not cleared by the import
 - course results are matched to registrations using `registration_number + period_id`
+- student age is calculated from `date_of_birth` during import
+- the completion analysis export can be loaded as a third CSV argument and is decomposed into linked student, programme, decision, cohort, and zero-completion reason records
 
 See [data/README.md](data/README.md) for the operational import guide.
+
+## Completion Analytics Notes
+
+The completion analysis implementation is documented in [docs/COMPLETION_ANALYTICS.md](docs/COMPLETION_ANALYTICS.md).
+
+That guide explains:
+
+- the shared rules in `services/completion_rules.py`
+- the page aggregation service in `services/completion_service.py`
+- the completion endpoints in `dashboard/completion/views.py`
+- the AI and rule-based narratives flow in `dashboard/completion/ai_insights.py`
+- the page shell, charts, and diagnostics wiring in `dashboard/templates/dashboard/completion.html`, `dashboard/static/dashboard/js/completion.js`, and `dashboard/static/dashboard/css/completion.css`
+
+## Graduation Analytics Notes
+
+The graduation analysis implementation is documented in [docs/GRADUATION_ANALYTICS.md](docs/GRADUATION_ANALYTICS.md).
+
+That guide explains:
+
+- the graduation aggregation service in `services/graduation_services.py`
+- the graduation endpoints in `dashboard/graduation/views.py`
+- the AI and rule-based narratives flow in `dashboard/graduation/ai_insights.py`
+- the page shell, charts, and diagnostics wiring in `dashboard/templates/dashboard/graduation.html`, `dashboard/static/dashboard/js/graduation.js`, and `dashboard/static/dashboard/css/graduation.css`
 
 ## Quality Checks
 
@@ -195,7 +239,13 @@ uni_project/
 |   |-- static/dashboard/
 |   |-- templates/dashboard/
 |-- data/                        Optional local CSV staging area
-|-- docs/                        Deployment, operations, and architecture docs
+|-- docs/                        **Comprehensive documentation including drill-down optimizations**
+|   |-- DRILLDOWN_OPTIMIZATION.md    Performance optimization strategies (10-100x improvements)
+|   |-- DRILLDOWN_FRONTEND.md        Frontend implementation details
+|   |-- ARCHITECTURE.md              System architecture and design
+|   |-- DEPLOYMENT.md                Production deployment guidance
+|   |-- OPERATIONS.md                Day-to-day operations runbook
+|   |-- README.md                    Documentation index and navigation hub
 |-- registrar_platform/          Django project settings and root URLs
 |-- static/                      Shared static root for project-wide assets
 |-- templates/                   Shared base templates
@@ -211,7 +261,7 @@ python manage.py runserver
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py collectstatic --noinput
-python manage.py import_registrar_data "C:\Path\To\Registrations.csv" "C:\Path\To\course final marks by period.csv"
+python manage.py import_registrar_data "C:\Path\To\Registrations.csv" "C:\Path\To\course final marks by period.csv" "C:\Path\To\completion_analysis.csv"
 python manage.py test
 python manage.py check --deploy
 ```

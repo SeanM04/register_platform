@@ -1,5 +1,10 @@
 """Dashboard view tests covering filters, summaries, and navigation state."""
 
+import csv
+import shutil
+from pathlib import Path
+
+from django.core.management import call_command
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import TestCase, override_settings
@@ -8,7 +13,15 @@ from django.urls import reverse
 
 from accounts.models import UserType
 
-from .models import Registration, Student
+from .models import (
+    AcademicDecision,
+    AttendanceType,
+    Cohort,
+    CompletionAnalysisRecord,
+    Registration,
+    Student,
+    ZeroCompletionReason,
+)
 from .test_support import DashboardFixtureMixin
 
 
@@ -191,3 +204,160 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(created_user.is_active)
         self.assertTrue(created_user.is_staff)
         self.assertEqual(created_user.user_type, self.user_type)
+
+
+class RegistrarImportCommandTests(TestCase):
+    """Verify the registrar import command decomposes CSVs into relational tables."""
+
+    def _write_csv(self, directory, filename, headers, rows):
+        path = Path(directory) / filename
+        with path.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(rows)
+        return path
+
+    def test_import_command_loads_completion_export_and_calculates_age(self):
+        temp_root = Path.cwd() / "data" / ".test_import_command"
+        temp_dir = temp_root / "case_one"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(temp_root, ignore_errors=True))
+        registrations_csv = self._write_csv(
+            temp_dir,
+            "Registrations.csv",
+            [
+                "id",
+                "regnum",
+                "firstnames",
+                "surname",
+                "programme_id",
+                "programme_code",
+                "programme_name",
+                "faculty",
+                "department",
+                "dob",
+                "gender",
+                "place_of_birth",
+                "psid",
+                "attendance_type_id",
+                "registration_id",
+                "period_id",
+                "academic_year",
+                "semester",
+                "period_name",
+                "decision",
+                "carrying",
+            ],
+            [
+                {
+                    "id": "1",
+                    "regnum": "REG100",
+                    "firstnames": "Ada",
+                    "surname": "Moyo",
+                    "programme_id": "10",
+                    "programme_code": "BSC-STAT",
+                    "programme_name": "Bachelor of Science in Statistics",
+                    "faculty": "Science",
+                    "department": "Mathematics",
+                    "dob": "2000-01-10",
+                    "gender": "Female",
+                    "place_of_birth": "Harare",
+                    "psid": "501",
+                    "attendance_type_id": "1",
+                    "registration_id": "9001",
+                    "period_id": "202601",
+                    "academic_year": "1",
+                    "semester": "1",
+                    "period_name": "2026 January - June",
+                    "decision": "Pending",
+                    "carrying": "0",
+                }
+            ],
+        )
+        marks_csv = self._write_csv(
+            temp_dir,
+            "course final marks by period.csv",
+            [
+                "code",
+                "name",
+                "period_name",
+                "period_id",
+                "regnum",
+                "programme_code",
+                "programme_name",
+                "attendance_type",
+                "mark",
+                "gradingrule",
+            ],
+            [
+                {
+                    "code": "STA101",
+                    "name": "Statistics I",
+                    "period_name": "2026 January - June",
+                    "period_id": "202601",
+                    "regnum": "REG100",
+                    "programme_code": "BSC-STAT",
+                    "programme_name": "Bachelor of Science in Statistics",
+                    "attendance_type": "Conventional",
+                    "mark": "78",
+                    "gradingrule": "100-50~P#49-0~F",
+                }
+            ],
+        )
+        completion_csv = self._write_csv(
+            temp_dir,
+            "completion_analysis.csv",
+            [
+                "Registration Number",
+                "Student Name",
+                "Programme",
+                "Academic Stage",
+                "Decision",
+                "Effective Cohort",
+                "Original Cohort",
+                "Shifted",
+                "Zero Completion Reason",
+                "Completion Rate",
+            ],
+            [
+                {
+                    "Registration Number": "REG100",
+                    "Student Name": "Ada Moyo",
+                    "Programme": "Bachelor of Science in Statistics",
+                    "Academic Stage": "Year 1, Semester 1",
+                    "Decision": "Pending",
+                    "Effective Cohort": "JANUARY 2026 - JUNE 2026",
+                    "Original Cohort": "JANUARY 2026 - JUNE 2026",
+                    "Shifted": "No",
+                    "Zero Completion Reason": "",
+                    "Completion Rate": "78%",
+                }
+            ],
+        )
+
+        call_command(
+            "import_registrar_data",
+            str(registrations_csv),
+            str(marks_csv),
+            str(completion_csv),
+        )
+
+        student = Student.objects.get(registration_number="REG100")
+        registration = Registration.objects.get()
+        self.assertEqual(student.age, student.current_age)
+        self.assertEqual(registration.source_row_id, 1)
+        self.assertEqual(registration.student_internal_id, 501)
+        self.assertEqual(registration.attendance_type_record.name, "Conventional")
+        self.assertEqual(registration.decision_record.label, "Pending")
+        self.assertTrue(AttendanceType.objects.filter(name="Conventional").exists())
+        self.assertTrue(AcademicDecision.objects.filter(label="Pending").exists())
+
+        completion_row = CompletionAnalysisRecord.objects.get()
+        self.assertEqual(completion_row.student.registration_number, "REG100")
+        self.assertEqual(completion_row.programme.code, "BSC-STAT")
+        self.assertEqual(completion_row.academic_year, "1")
+        self.assertEqual(completion_row.semester, "1")
+        self.assertEqual(str(completion_row.completion_rate), "78.00")
+        self.assertFalse(completion_row.shifted)
+        self.assertTrue(Cohort.objects.filter(name="JANUARY 2026 - JUNE 2026").exists())
+        self.assertEqual(ZeroCompletionReason.objects.count(), 0)
