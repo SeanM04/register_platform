@@ -1,4 +1,4 @@
-import { createInsightContext, updateInsightContext } from "./context.js?v=20260412-insights-shell01";
+import { createInsightContext, updateInsightContext } from "./context.js?v=20260420-kpi-note-fix01";
 import { initialiseDistributionSection } from "./distribution.js?v=20260403-insights-story02";
 import { initialiseDriversSection } from "./drivers.js?v=20260403-insights-story02";
 import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260403-insights-story02";
@@ -70,6 +70,16 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
         }
 
         element.textContent = card.value;
+    });
+
+    context.elements.metricNotes.forEach((element) => {
+        const metricIndex = Number(element.dataset.metricIndex);
+        const card = Number.isNaN(metricIndex) ? null : summaryCards[metricIndex];
+        if (!card || typeof card.note === "undefined") {
+            return;
+        }
+
+        element.textContent = card.note;
     });
 };
 

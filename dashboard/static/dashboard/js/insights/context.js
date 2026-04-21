@@ -36,6 +36,7 @@ export const createInsightContext = (payload = {}) => {
             driversNote: document.getElementById("insight-drivers-note"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
+            metricNotes: Array.from(document.querySelectorAll("[data-metric-note]")),
             recommendationList: document.querySelector(".insight-recommendation-list"),
             confidenceList: document.querySelector(".insight-confidence-list"),
             flaggedCopy: document.getElementById("insight-flagged-copy"),

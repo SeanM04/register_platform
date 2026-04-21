@@ -439,31 +439,24 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
     bucket_key = unquote_plus(bucket_key)
     
     try:
-        # Debug: Log the request parameters
-        print(f"DEBUG: Programme drilldown request - chart_key: {chart_key}, bucket_key: {bucket_key}")
-        
         if chart_key == "programme_load":
             # Get students in the specified programme
             registrations = Registration.objects.filter(
                 programme__name__iexact=bucket_key
             ).select_related('student', 'programme', 'programme__department')[:page_size]
-            
-            print(f"DEBUG: Found {len(registrations)} registrations for programme '{bucket_key}'")
-            
+
         elif chart_key == "departments":
             # Get students in the specified department
             registrations = Registration.objects.filter(
                 programme__department__name__iexact=bucket_key
             ).select_related('student', 'programme', 'programme__department')[:page_size]
-            
-            print(f"DEBUG: Found {len(registrations)} registrations for department '{bucket_key}'")
-            
+
         else:
             raise ValueError("Unsupported programme drill-down chart.")
         
         # Build student rows
         student_rows = []
-        for i, registration in enumerate(registrations):
+        for registration in registrations:
             student = registration.student
             programme = registration.programme
             row_data = {
@@ -476,13 +469,7 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
                 "detail_url": f"/students/{student.registration_number}/",
             }
             student_rows.append(row_data)
-            
-            # Debug: Log first few rows
-            if i < 3:
-                print(f"DEBUG: Student {i+1}: {row_data['name']} - {row_data['programme']} - {row_data['department']}")
-        
-        print(f"DEBUG: Built {len(student_rows)} student rows for response")
-        
+
         return {
             "title": f"{bucket_key} Students",
             "subtitle": f"Students currently registered in {bucket_key}.",
@@ -505,10 +492,8 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             },
         }
         
-    except Exception as e:
-        # Log the error and re-raise to show real issues
-        print(f"ERROR: Programme drilldown failed - {str(e)}")
-        raise e
+    except Exception:
+        raise
 
 
 def _build_programme_student_drilldown_payload(request, registrations, title, subtitle, page=1, page_size=10):

@@ -44,10 +44,10 @@ class InsightViewTests(DashboardFixtureMixin, TestCase):
         driver_rows = payload["driver_rows"]
         confidence_rows = payload["confidence_rows"]
 
-    self.assertEqual(distribution_rows[0]["key"], "low")
-    self.assertEqual(distribution_rows[1]["key"], "moderate")
-    self.assertEqual(distribution_rows[2]["key"], "high")
-    self.assertEqual(distribution_rows[3]["key"], "critical")
+        self.assertEqual(distribution_rows[0]["key"], "low")
+        self.assertEqual(distribution_rows[1]["key"], "moderate")
+        self.assertEqual(distribution_rows[2]["key"], "high")
+        self.assertEqual(distribution_rows[3]["key"], "critical")
 
         self.assertEqual(faculty_load_rows[0]["label"], self.commerce_faculty.name)
         self.assertEqual(faculty_load_rows[0]["registrations"], 2)
@@ -66,6 +66,7 @@ class InsightViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(driver_rows[0]["count"], 2)
         self.assertEqual(len(confidence_rows), 4)
         self.assertTrue(all(row["value"] > 0 for row in confidence_rows))
+        self.assertTrue(all("Loading" not in card["note"] for card in payload["summary_cards"]))
 
     def test_insights_payload_respects_faculty_filter(self):
         """Insights payload should narrow the story data to the selected faculty."""
@@ -87,9 +88,10 @@ class InsightViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(faculty_load_rows[0]["registrations"], 1)
         self.assertEqual(faculty_load_rows[0]["share_pct"], 100)
         self.assertEqual(len(faculty_pressure_rows), 0)
+        self.assertEqual(distribution_rows[0]["count"], 1)
         self.assertEqual(distribution_rows[1]["count"], 0)
         self.assertEqual(distribution_rows[2]["count"], 0)
-        self.assertEqual(distribution_rows[3]["count"], 1)
+        self.assertEqual(distribution_rows[3]["count"], 0)
         self.assertEqual(driver_rows, [])
 
     def test_insights_payload_supplies_rule_based_card_narratives_by_default(self):

@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v=20260414-dropdown-arrows01">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'dashboard/css/ai_badges.css' %}?v=20260414-rectangular-badge01">
-    <script src="{% static 'dashboard/js/filters.js' %}?v=20260409-filter-persistence-01"></script>
+    <script src="{% static 'dashboard/js/filters.js' %}?v=20260420-student-scoped-filters01"></script>
 </head>
 <body>
     <div class="app-shell">
@@ -35,8 +35,10 @@
                 {% for filter in filters %}
                 <div class="filter-box">
                     <label class="filter-label" for="filter-{{ filter.name }}">{{ filter.label }}</label>
-                    <select class="filter-select" id="filter-{{ filter.name }}" name="{{ filter.name }}">
+                    <select class="filter-select" id="filter-{{ filter.name }}" name="{{ filter.name }}"{% if filter.disabled %} disabled data-filter-locked="true"{% endif %}>
+                        {% if filter.all_label %}
                         <option value="">{{ filter.all_label }}</option>
+                        {% endif %}
                         {% for option in filter.options %}
                         <option value="{{ option }}" {% if option == filter.selected %}selected{% endif %}>{{ option }}</option>
                         {% endfor %}

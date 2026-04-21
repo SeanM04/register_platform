@@ -33,7 +33,13 @@ const restoreFilters = () => {
         const filterSelects = document.querySelectorAll('.filter-select');
         
         filterSelects.forEach(select => {
-            if (filters[select.name]) {
+            const savedValue = filters[select.name];
+            if (!savedValue || select.dataset.filterLocked === 'true') {
+                return;
+            }
+
+            const hasSavedOption = Array.from(select.options).some((option) => option.value === savedValue);
+            if (hasSavedOption) {
                 select.value = filters[select.name];
             }
         });

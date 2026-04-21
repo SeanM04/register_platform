@@ -1,41 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // DEBUG: Verify template data reached frontend
-    console.log('DEBUG: Frontend initialization');
-    console.log('DEBUG: Checking for debug comments...');
-    
-    // Look for debug comments in HTML
-    const debugComments = document.querySelectorAll('body');
-    if (debugComments.length > 0) {
-        const bodyHTML = document.body.innerHTML;
-        if (bodyHTML.includes('DEBUG: student.results count:')) {
-            console.log('DEBUG: Template debug comments found');
-            const countMatch = bodyHTML.match(/DEBUG: student\.results count: (\d+)/);
-            if (countMatch) {
-                console.log(`DEBUG: Results count from template: ${countMatch[1]}`);
-            }
-        }
-    }
-    
-    // Check for course results table
-    const resultsTable = document.querySelector('.results-table');
-    if (resultsTable) {
-        const resultRows = resultsTable.querySelectorAll('tbody tr:not(.empty-results)');
-        console.log(`DEBUG: Found ${resultRows.length} course rows in table`);
-        
-        const emptyRow = resultsTable.querySelector('.empty-results');
-        if (emptyRow) {
-            console.log('DEBUG: Empty results row found');
-            const emptyMessage = emptyRow.querySelector('p')?.textContent;
-            console.log(`DEBUG: Empty message: ${emptyMessage}`);
-        }
-    } else {
-        console.log('DEBUG: No results table found');
-    }
-    
     // Get all filter elements
-    const yearFilter = document.getElementById('year-filter');
-    const periodFilter = document.getElementById('period-filter');
-    const facultyFilter = document.getElementById('faculty-filter');
+    const yearFilter = document.getElementById('filter-year');
+    const periodFilter = document.getElementById('filter-period');
+    const facultyFilter = document.getElementById('filter-faculty');
     const yearTabs = document.querySelectorAll('.year-tab');
     const gradeValue = document.querySelector('.grade-value');
     const tableWrap = document.querySelector('.table-wrap');
