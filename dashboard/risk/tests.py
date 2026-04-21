@@ -20,9 +20,7 @@ from .services import format_risk_monitor_drivers
 class RiskViewTests(DashboardFixtureMixin, TestCase):
     """Exercise risk analytics against the shared dashboard fixture."""
 
-    def test_risk_view_lists_only_students_classified_as_at_risk(self):
-        """Risk page should surface medium/high-risk students and exclude stable ones."""
-
+    def _add_low_risk_student(self):
         low_risk_student = Student.objects.create(
             registration_number="REG003",
             first_names="Chipo",
@@ -43,12 +41,29 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
             course=self.course,
             mark=76,
         )
+        return low_risk_student
+
+    def test_risk_view_renders_lightweight_shell(self):
+        """Risk view should return a shell and defer the heavy payload."""
 
         response = self.client.get(reverse("dashboard:risk"))
 
-        risk_names = [row["name"] for row in response.context["risk_rows"]]
-        risk_levels = {row["name"]: row["risk_level"] for row in response.context["risk_rows"]}
-        active_labels = [item["label"] for item in response.context["sidebar_items"] if item["is_active"]]
+        self.assertEqual(response.context["summary_cards"][0]["value"], "--")
+        self.assertNotIn("risk_rows", response.context)
+        self.assertContains(response, reverse("dashboard:risk-payload"))
+
+    def test_risk_payload_lists_only_students_classified_as_at_risk(self):
+        """Risk payload should surface medium/high-risk students and exclude stable ones."""
+
+        low_risk_student = self._add_low_risk_student()
+
+        shell_response = self.client.get(reverse("dashboard:risk"))
+        response = self.client.get(reverse("dashboard:risk-payload"))
+        payload = response.json()
+
+        risk_names = [row["name"] for row in payload["register"]["rows"]]
+        risk_levels = {row["name"]: row["risk_level"] for row in payload["register"]["rows"]}
+        active_labels = [item["label"] for item in shell_response.context["sidebar_items"] if item["is_active"]]
 
         self.assertIn(self.student_primary.full_name, risk_names)
         self.assertIn(self.student_secondary.full_name, risk_names)
@@ -57,15 +72,16 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(risk_levels[self.student_secondary.full_name], "High Risk")
         self.assertEqual(active_labels, ["Risk"])
 
-    def test_risk_view_supplies_story_chart_rows(self):
-        """Risk page should expose the distribution, driver, level, and programme chart payloads."""
+    def test_risk_payload_supplies_story_chart_rows(self):
+        """Risk payload should expose the distribution, driver, level, and programme chart payloads."""
 
-        response = self.client.get(reverse("dashboard:risk"))
+        response = self.client.get(reverse("dashboard:risk-payload"))
+        payload = response.json()
 
-        distribution_rows = response.context["risk_distribution_rows"]
-        driver_rows = response.context["risk_driver_rows"]
-        level_rows = response.context["risk_level_rows"]
-        programme_rows = response.context["risk_programme_rows"]
+        distribution_rows = payload["risk_distribution_rows"]
+        driver_rows = payload["risk_driver_rows"]
+        level_rows = payload["risk_level_rows"]
+        programme_rows = payload["risk_programme_rows"]
 
         self.assertEqual(distribution_rows[0]["key"], "critical")
         self.assertEqual(distribution_rows[1]["key"], "high")
@@ -90,6 +106,25 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["medium_risk"], 1)
         self.assertEqual(metrics["multi_fail"], 0)
 
+    def test_risk_drilldown_payload_returns_modal_rows_for_distribution_selection(self):
+        """Risk chart drill-down should return modal-ready rows instead of requiring page navigation."""
+
+        low_risk_student = self._add_low_risk_student()
+
+        response = self.client.get(
+            reverse("dashboard:risk-drilldown"),
+            {"chart": "distribution", "bucket": "low"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+        row_names = [row["name"] for row in payload["rows"]]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["title"], "Low Risk (0-1) Students")
+        self.assertIn(low_risk_student.full_name, row_names)
+        self.assertTrue(all("detail_url" in row for row in payload["rows"]))
+
     def test_risk_driver_copy_hides_redundant_average_below_50_text(self):
         """Risk rows should omit the repeated average-below-50 phrase from the table copy."""
 
@@ -102,12 +137,13 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
             "Performance needs support",
         )
 
-    def test_risk_view_supplies_rule_based_card_narratives_by_default(self):
-        """Risk overview cards should expose deterministic narratives when AI is off."""
+    def test_risk_payload_supplies_rule_based_card_narratives_by_default(self):
+        """Risk payload should expose deterministic narratives when AI is off."""
 
-        response = self.client.get(reverse("dashboard:risk"))
+        response = self.client.get(reverse("dashboard:risk-payload"))
+        payload = response.json()
 
-        narratives = response.context["risk_card_narratives"]
+        narratives = payload["risk_card_narratives"]
 
         self.assertEqual(narratives["source"], "rules")
         self.assertIn("distribution", narratives["cards"])
@@ -126,8 +162,8 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         OPENAI_API_KEY="test-key",
     )
     @patch("dashboard.risk.ai_insights._request_risk_openai_narratives")
-    def test_risk_view_uses_ai_card_narratives_when_available(self, mock_request):
-        """Risk overview cards should prefer OpenAI copy when the provider succeeds."""
+    def test_risk_payload_uses_ai_card_narratives_when_available(self, mock_request):
+        """Risk payload should prefer OpenAI copy when the provider succeeds."""
 
         mock_request.return_value = """
         {
@@ -135,9 +171,10 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:risk"))
+        response = self.client.get(reverse("dashboard:risk-payload"))
+        payload = response.json()
 
-        narratives = response.context["risk_card_narratives"]
+        narratives = payload["risk_card_narratives"]
 
         self.assertEqual(narratives["source"], "openai")
         self.assertEqual(narratives["cards"]["distribution"]["insight"], "AI distribution insight")
@@ -149,8 +186,8 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
 
     @override_settings(AI_INSIGHTS_ENABLED=True, AI_INSIGHTS_PROVIDER="google", GOOGLE_API_KEY="test-google-key")
     @patch("dashboard.risk.ai_insights._request_risk_google_narratives")
-    def test_risk_view_can_use_google_card_narratives(self, mock_request):
-        """Risk overview cards should support Gemini-generated narratives."""
+    def test_risk_payload_can_use_google_card_narratives(self, mock_request):
+        """Risk payload should support Gemini-generated narratives."""
 
         mock_request.return_value = """
         {
@@ -168,9 +205,10 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         }
         """
 
-        response = self.client.get(reverse("dashboard:risk"))
+        response = self.client.get(reverse("dashboard:risk-payload"))
+        payload = response.json()
 
-        narratives = response.context["risk_card_narratives"]
+        narratives = payload["risk_card_narratives"]
 
         self.assertEqual(narratives["source"], "google")
         self.assertEqual(narratives["cards"]["distribution"]["insight"], "Gemini distribution insight")

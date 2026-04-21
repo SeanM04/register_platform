@@ -8,7 +8,8 @@ import {
     formatCount,
     setChartFallback,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseOutcomeNarrative } from "./narratives.js?v=20260403-home-story04";
+import { openOverviewDrillDown } from "./drilldown.js?v=20260411-home-drilldown01";
+import { initialiseOutcomeNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const OUTCOME_COLORS = {
     passed: buildGradient(HOME_COLORS.mint, "#2a8d71"),
@@ -16,6 +17,9 @@ const OUTCOME_COLORS = {
     awaiting: buildGradient("#b9cad9", "#8da3b8"),
 };
 
+/**
+ * Build the assessment-outcomes chart and sync its narrative surfaces.
+ */
 export const initialiseOutcomeSection = (context) => {
     const rows = context.data.outcomeRows || [];
     const { outcomesChart } = context.elements;
@@ -78,11 +82,23 @@ export const initialiseOutcomeSection = (context) => {
                         itemStyle: {
                             color: OUTCOME_COLORS[row.key] || HOME_COLORS.sky,
                         },
+                        drilldownKey: row.key,
                     })),
                 },
             ],
         }
     );
+
+    chart.on("click", (params) => {
+        const bucketKey = params.data?.drilldownKey;
+        if (bucketKey) {
+            openOverviewDrillDown(context, {
+                chartKey: "outcomes",
+                bucketKey,
+                label: params.name,
+            });
+        }
+    });
 
     return {
         getChart: () => chart,

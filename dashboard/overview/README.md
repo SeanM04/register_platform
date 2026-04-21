@@ -48,3 +48,29 @@ The AI-backed card keys are:
 - `risk`
 - `faculty`
 - `progress`
+
+### Drill-Down Data Endpoint
+
+The landing page supports on-demand student drill-downs from chart clicks via the `dashboard:home-drilldown` endpoint.
+
+**Parameters:**
+- `chart`: `outcomes` or `risk_distribution`
+- `bucket`: outcome status (`passed`, `failed`, `awaiting`) or risk band (`critical`, `high`, `medium`, `low`)
+- `page`: page number (default 1)
+- `page_size`: rows per page (default 100, max 100)
+
+**Response includes:**
+- `title`, `subtitle`: drill-down context
+- `columns`: minimal field list (name, registration_number, programme)
+- `rows`: paginated student records with detail_url
+- `page`, `page_size`, `page_count`, `total_count`: pagination metadata
+
+**Drill-Down Optimizations:**
+- Minimal Payload: Only three columns returned to reduce JSON size
+- Server-Side Pagination: Database-level OFFSET/LIMIT for efficient row slicing
+- Caching: 30-second TTL per filter scope, chart, bucket, page, and page_size
+
+**Implementation:**
+- Backend: `build_overview_drilldown_data()`, `_build_outcome_drilldown_payload()`, `_build_risk_drilldown_payload()`
+- Cache management: `bust_overview_drilldown_cache_for_request()`
+- Frontend: `drilldown.js`, `drilldown_modal.js`

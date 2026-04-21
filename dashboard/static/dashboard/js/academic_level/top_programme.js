@@ -29,7 +29,7 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
 
     return ({
         ...buildAnimationConfig(rows),
-        color: ["#4b66c1", "#98d978", "#ffca57", "#f26a6a", "#78c8e8"],
+       color: ["#4b66c1", "#78c8e8", "#9A60B4", "#6B7280", "#8B5CF6"],
         title: {
             text: rows.reduce((total, row) => total + row.registrations, 0).toLocaleString(),
             subtext: "top 5 registrations",
@@ -213,7 +213,7 @@ const buildTopProgrammeDetailOption = (programme, chartWidth = 0) => {
                 type: "bar",
                 barWidth: isCompact ? 18 : 22,
                 itemStyle: {
-                    borderRadius: [10, 10, 0, 0],
+                    borderRadius: [0, 0, 0, 0],
                     color: buildGradient("#d3e9f4", "#4fb0d1"),
                 },
                 data: programme.level_breakdown.map((row) => row.registrations),

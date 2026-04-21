@@ -143,9 +143,9 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
     const headline = Number(criticalRow?.count || 0) > 0
         ? "Critical institutional pressure is already visible in the current cohort."
         : Number(highRow?.count || 0) > 0
-            ? "The current cohort is carrying a visible high-risk intervention load."
+            ? "the current cohort is carrying a visible high-risk intervention load."
             : totalWatchlist > 0
-                ? "The current cohort is showing an early watchlist signal rather than a severe risk spike."
+                ? "the current cohort is showing an early watchlist signal rather than a severe risk spike."
                 : "No active watchlist pressure is visible in the current cohort.";
     const headlineCopy = totalWatchlist > 0
         ? `${totalWatchlist} of ${totalVisible} visible students are currently flagged. ${leadLoad ? `${leadLoad.label} holds the heaviest registration load at ${leadLoad.share_pct}%.` : ""}${leadDriver ? ` ${leadDriver.label} is the strongest shared trigger across flagged students.` : ""}`.trim()
@@ -155,20 +155,23 @@ export const renderStoryBanner = (storyBanner, distributionRows, facultyLoadRows
         : `0 of ${totalVisible}`;
     const watchlistCopy = totalWatchlist > 0
         ? `${Math.round((totalWatchlist / totalVisible) * 100)}% of the visible cohort currently needs closer support attention.`
-        : "The current visible cohort is sitting outside the watchlist threshold.";
+        : "the current visible cohort is sitting outside the watchlist threshold.";
     const loadValue = leadLoad
         ? `${leadLoad.label} ${leadLoad.share_pct}%`
         : "No load cluster";
     const loadCopy = leadLoad
         ? `${leadLoad.label} currently carries ${leadLoad.registrations} registrations in scope, making it the clearest operational load centre.`
-        : "No faculty load concentration is visible in the current filters.";
-    const driverValue = leadDriver
-        ? `${formatChartLabel(leadDriver.label, 22)} ${leadDriver.count}`
-        : leadPressure
-            ? `${leadPressure.label} ${leadPressure.total}`
-            : "No pressure lead";
-    const driverCopy = leadDriver
-        ? `${leadDriver.label} appears in ${leadDriver.count} flagged student records and should shape the next intervention cycle.`
+        : "No faculty load concentration is active in the current filters.";
+   const driverModuleCount = Number(leadDriver?.label.match(/\d+/)?.[0] || 0);
+
+const driverValue = leadDriver
+    ? `${leadDriver.count} students carried ${driverModuleCount} module${driverModuleCount !== 1 ? "s" : ""}`
+    : leadPressure
+        ? `${leadPressure.label} ${leadPressure.total}`
+        : "No pressure lead";
+
+      const driverCopy = leadDriver
+    ? `${leadDriver.count} flagged student records show students carrying ${driverModuleCount} module${driverModuleCount !== 1 ? "s" : ""}, so this should shape the next intervention cycle.`
         : leadPressure
             ? `${leadPressure.label} currently holds the largest flagged-student queue in the visible cohort.`
             : "No recurring intervention pattern is visible in the current filters.";
@@ -214,7 +217,7 @@ export const buildDistributionOverviewNarrative = (rows) => {
                     ? `${totalWatchlist} of ${totalVisible} visible students are on the watchlist, but the pressure is still concentrated below the most severe band.`
                     : "No institutional risk distribution insight is available for the current filters.",
         action: totalWatchlist > 0
-            ? "The band view gives the fastest executive read on whether the current cohort pressure is mainly preventive work or urgent intervention."
+            ? "the band view gives the fastest executive read on whether the current cohort pressure is mainly preventive work or urgent intervention."
             : "Adjust the current filters to bring the institutional risk distribution back into view.",
     };
 };
@@ -222,11 +225,14 @@ export const buildDistributionOverviewNarrative = (rows) => {
 export const initialiseDistributionNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
-    setElementText(elements.distributionCopy, narrative.insight);
-    setHintMarkup(elements.distributionHints, [
-        { label: "Hover or tap columns for values", kind: "inspect" },
-        { label: "Start here for severity mix", kind: "support" },
-    ]);
+    if (elements.distributionCopy) {
+        elements.distributionCopy.innerHTML = `
+            <span>${escapeTooltipHtml(narrative.insight)}</span>
+           <span class="insight-subtle-note">Values in brackets represent the number of modules.</span>
+        `.trim();
+    }
+
+    setHintMarkup(elements.distributionHints, []);
     setActionText(elements.distributionNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -255,10 +261,7 @@ export const initialiseFacultyLoadNarrative = (elements, rows, cardNarratives = 
     const narrative = getOverviewCardNarrative(cardNarratives, "faculty_load", buildFacultyLoadOverviewNarrative(rows));
 
     setElementText(elements.facultyLoadCopy, narrative.insight);
-    setHintMarkup(elements.facultyLoadHints, [
-        { label: "Hover bars for counts", kind: "inspect" },
-        { label: "Compare registration share", kind: "support" },
-    ]);
+    setHintMarkup(elements.facultyLoadHints, []);
     setActionText(elements.facultyLoadNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -284,10 +287,7 @@ export const initialiseFacultyPressureNarrative = (elements, rows, cardNarrative
     const narrative = getOverviewCardNarrative(cardNarratives, "faculty_pressure", buildFacultyPressureOverviewNarrative(rows));
 
     setElementText(elements.facultyPressureCopy, narrative.insight);
-    setHintMarkup(elements.facultyPressureHints, [
-        { label: "Hover stacks for counts", kind: "inspect" },
-        { label: "Compare medium vs high queue", kind: "support" },
-    ]);
+    setHintMarkup(elements.facultyPressureHints, []);
     setActionText(elements.facultyPressureNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -316,10 +316,7 @@ export const initialiseDriversNarrative = (elements, rows, cardNarratives = {}, 
     const narrative = getOverviewCardNarrative(cardNarratives, "drivers", buildDriversOverviewNarrative(rows));
 
     setElementText(elements.driversCopy, narrative.insight);
-    setHintMarkup(elements.driversHints, [
-        { label: "Hover bars for counts", kind: "inspect" },
-        { label: "Compare recurring triggers", kind: "support" },
-    ]);
+    setHintMarkup(elements.driversHints, []);
     setActionText(elements.driversNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,

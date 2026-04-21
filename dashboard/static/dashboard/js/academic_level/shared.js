@@ -161,13 +161,24 @@ export const formatStoryProgrammeName = (value) => {
         .replace(/^(Bachelor|Master(?:s)?) Of\s+/i, "")
         .replace(/\s+Honours Degree$/i, "")
         .trim();
-    return formatChartLabel(toTitleCase(cleanedValue || value), 34);
+    let formatted = toTitleCase(cleanedValue || value);
+    // Fix BSc and BCom after title case conversion
+    formatted = formatted.replace(/\bbsc\b/g, "BSc");
+    formatted = formatted.replace(/\bbcom\b/g, "BCom");
+    return formatChartLabel(formatted, 34);
 };
 
-export const formatLegendProgrammeName = (value) => String(value || "")
-    .replace(/^(Bachelor|Master(?:s)?) Of\s+/i, "")
-    .replace(/\s+Honours Degree$/i, "")
-    .trim();
+export const formatLegendProgrammeName = (value) => {
+    const cleanedValue = String(value || "")
+        .replace(/^(Bachelor|Master(?:s)?) Of\s+/i, "")
+        .replace(/\s+Honours Degree$/i, "")
+        .trim();
+    let formatted = toTitleCase(cleanedValue || value);
+    // Fix BSc and BCom after title case conversion
+    formatted = formatted.replace(/\bbsc\b/g, "BSc");
+    formatted = formatted.replace(/\bbcom\b/g, "BCom");
+    return formatted;
+};
 
 export const buildAnimationConfig = (rows) => ({
     animation: rows.length <= 60,

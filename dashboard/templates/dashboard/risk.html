@@ -4,11 +4,128 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260403-risk-storyflow10">
+<link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260414-risk-shell03">
+<style>
+/* Demographic Accordion Styles - Inline Implementation */
+.demographic-accordion {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.demographic-accordion-item {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+.demographic-flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.demographic-flow-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.demographic-accordion-toggle {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #b8c8d9;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover {
+    background: #f4f8fb;
+    border-color: #9cb3c8;
+    transform: translateY(-1px);
+}
+
+.demographic-accordion-toggle:focus-visible {
+    outline: 2px solid rgba(79, 176, 209, 0.45);
+    outline-offset: 2px;
+}
+
+.demographic-accordion-toggle-text {
+    display: inline;
+}
+
+.demographic-accordion-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 1px solid rgba(13, 50, 93, 0.12);
+    border-radius: 12px;
+    background: rgba(13, 50, 93, 0.06);
+    color: #123b68;
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-left: 0.35rem;
+    transition: all 0.2s ease;
+}
+
+.demographic-accordion-toggle:hover .demographic-accordion-toggle-icon {
+    background: rgba(13, 50, 93, 0.1);
+    border-color: rgba(13, 50, 93, 0.16);
+}
+
+.demographic-accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease-out;
+}
+
+.demographic-accordion-content.is-hidden {
+    display: none;
+}
+
+.demographic-accordion-toggle[aria-expanded="true"] .demographic-accordion-toggle-icon {
+    transform: rotate(45deg);
+}
+
+.demographic-accordion-content:not(.is-hidden) {
+    display: grid;
+    max-height: 5000px;
+    transition: max-height 0.3s ease-in;
+}
+
+.demographic-flow-stage-primary {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.1), transparent 32%),
+        linear-gradient(180deg, rgba(244, 250, 255, 0.99), rgba(235, 245, 252, 0.97));
+}
+
+.demographic-flow-stage-support {
+    background:
+        radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<section class="risk-layout">
+<section class="risk-layout" data-payload-url="{% url 'dashboard:risk-payload' %}" data-drilldown-url="{% url 'dashboard:risk-drilldown' %}">
     <section class="risk-metrics" data-metrics-url="{% url 'dashboard:risk-metrics' %}">
         {% for card in summary_cards %}
         <article class="risk-metric">
@@ -21,11 +138,16 @@
     <section class="risk-story-banner" id="risk-story-banner" aria-live="polite"></section>
 
     <section class="risk-story-flow" aria-label="Risk storytelling flow">
-        <section class="risk-flow-stage risk-flow-stage-primary">
-            <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 1</p>
-                <h2 class="risk-flow-title">How Big The Current Watchlist Is</h2>
-            </div>
+        <div class="demographic-accordion">
+            <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="risk-distribution">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Risk Distribution</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="risk-distribution-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+                <div class="demographic-accordion-content is-hidden" id="risk-distribution-content">
 
             <article class="risk-insight-card risk-insight-card-wide">
                 <div class="risk-insight-header">
@@ -33,8 +155,7 @@
                         <p class="risk-insight-kicker">Risk Distribution</p>
                         <h2 class="risk-insight-title">Watchlist Severity Mix</h2>
                         <p class="risk-insight-copy" id="risk-distribution-copy">The first job on this page is to show whether the current risk picture is mostly early intervention work or already concentrated in high-priority cases.</p>
-                        <div class="risk-chart-hints" id="risk-distribution-hints" aria-label="Chart interaction hints"></div>
-                    </div>
+                                            </div>
                     <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Watchlist Severity Mix" aria-controls="risk-distribution-chart" aria-label="View Watchlist Severity Mix in full screen" aria-pressed="false">Full screen</button>
                 </div>
 
@@ -43,13 +164,18 @@
                 </div>
                 <p class="risk-chart-note" id="risk-distribution-note">The band chart gives the quickest read on how urgent the visible watchlist really is.</p>
             </article>
-        </section>
-
-        <section class="risk-flow-stage risk-flow-stage-support">
-            <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 2</p>
-                <h2 class="risk-flow-title">What Is Driving The Risk</h2>
             </div>
+            </section>
+
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="risk-drivers">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Risk Drivers</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="risk-drivers-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+                <div class="demographic-accordion-content is-hidden" id="risk-drivers-content">
 
             <div class="risk-support-grid">
                 <article class="risk-insight-card">
@@ -58,8 +184,7 @@
                             <p class="risk-insight-kicker">Risk Drivers</p>
                             <h2 class="risk-insight-title">Shared Intervention Triggers</h2>
                             <p class="risk-insight-copy" id="risk-drivers-copy">This chart reveals which watchlist drivers are most common across the flagged cohort, so support work starts from the strongest recurring pattern.</p>
-                            <div class="risk-chart-hints" id="risk-drivers-hints" aria-label="Chart interaction hints"></div>
-                        </div>
+                                                    </div>
                         <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Shared Intervention Triggers" aria-controls="risk-drivers-chart" aria-label="View Shared Intervention Triggers in full screen" aria-pressed="false">Full screen</button>
                     </div>
 
@@ -74,25 +199,29 @@
                         <div>
                             <p class="risk-insight-kicker">Academic Levels</p>
                             <h2 class="risk-insight-title">Where Pressure Builds</h2>
-                            <p class="risk-insight-copy" id="risk-levels-copy">The level split shows which academic levels carry the heaviest intervention load, and whether that pressure is moderate or already high risk.</p>
-                            <div class="risk-chart-hints" id="risk-levels-hints" aria-label="Chart interaction hints"></div>
-                        </div>
+                            <p class="risk-insight-copy" id="risk-levels-copy">The level split shows which academic levels carry the heaviest intervention load, & whether that pressure is moderate or already high risk.</p>
+                                                    </div>
                         <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Where Pressure Builds" aria-controls="risk-levels-chart" aria-label="View Where Pressure Builds in full screen" aria-pressed="false">Full screen</button>
                     </div>
 
                     <div class="risk-chart-stage">
                         <div class="risk-chart-canvas" id="risk-levels-chart" role="img" aria-label="Academic level risk concentration chart"></div>
                     </div>
-                    <p class="risk-chart-note" id="risk-levels-note">The stacked level view keeps medium and high pressure in one line so intervention load is easy to compare.</p>
+                    <p class="risk-chart-note" id="risk-levels-note">The stacked level view keeps medium & high pressure in one line so intervention load is easy to compare.</p>
                 </article>
+            </div>
             </div>
         </section>
 
-        <section class="risk-flow-stage risk-flow-stage-programme">
-            <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 3</p>
-                <h2 class="risk-flow-title">Where Support Should Concentrate</h2>
-            </div>
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="programme-focus">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Programme Focus</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="programme-focus-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+                <div class="demographic-accordion-content is-hidden" id="programme-focus-content">
 
             <article class="risk-insight-card risk-insight-card-wide">
                 <div class="risk-insight-header">
@@ -100,23 +229,27 @@
                         <p class="risk-insight-kicker">Programme Focus</p>
                         <h2 class="risk-insight-title">Programmes Carrying The Largest Watchlist Load</h2>
                         <p class="risk-insight-copy" id="risk-programmes-copy">Programme concentration matters because it turns abstract risk into an actual support queue that academic teams can act on.</p>
-                        <div class="risk-chart-hints" id="risk-programmes-hints" aria-label="Chart interaction hints"></div>
-                    </div>
+                                            </div>
                     <button class="risk-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Programmes Carrying The Largest Watchlist Load" aria-controls="risk-programmes-chart" aria-label="View Programme Watchlist Load in full screen" aria-pressed="false">Full screen</button>
                 </div>
 
                 <div class="risk-chart-stage">
                     <div class="risk-chart-canvas" id="risk-programmes-chart" role="img" aria-label="Programme risk concentration chart"></div>
                 </div>
-                <p class="risk-chart-note" id="risk-programmes-note">This keeps programme concentration and severity mix together so the next intervention block can be planned from one view.</p>
+                <p class="risk-chart-note" id="risk-programmes-note">This keeps programme concentration & severity mix together so the next intervention block can be planned from one view.</p>
             </article>
+            </div>
         </section>
 
-        <section class="risk-flow-stage risk-flow-stage-register">
-            <div class="risk-flow-header">
-                <p class="risk-flow-kicker">Chapter 4</p>
-                <h2 class="risk-flow-title">Which Students Need Attention Now</h2>
-            </div>
+            <section class="demographic-flow-stage demographic-flow-stage-support demographic-accordion-item" data-accordion-section="action-register">
+                <div class="demographic-flow-header">
+                    <h2 class="demographic-flow-title">Action Register</h2>
+                    <button class="demographic-accordion-toggle" type="button" aria-expanded="false" aria-controls="action-register-content">
+                        <span class="demographic-accordion-toggle-text">Expand</span>
+                        <span class="demographic-accordion-toggle-icon">+</span>
+                    </button>
+                </div>
+                <div class="demographic-accordion-content is-hidden" id="action-register-content">
 
             <article class="risk-register-card">
                 <div class="risk-register-header">
@@ -149,87 +282,115 @@
                         </colgroup>
                         <thead>
                             <tr>
-                                <th class="risk-th-student">Student</th>
+                                <th class="risk-th-student">Name</th>
                                 <th>Programme</th>
                                 <th>Academic Level</th>
                                 <th>Average Mark</th>
                                 <th>Failed Modules</th>
                                 <th>Carrying</th>
                                 <th>Decision</th>
-                                <th class="risk-th-status">Risk Status</th>
+                                <th class="risk-th-status">Risk</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for row in risk_rows %}
+                        <tbody id="risk-register-body">
                             <tr>
-                                <td class="risk-td-student">
-                                    <a class="risk-student-link" href="{% url 'dashboard:student-detail' row.detail_slug %}" aria-label="View {{ row.name }} profile">
-                                        <span class="risk-student-name">{{ row.name }}</span>
-                                        <span class="risk-student-meta">{{ row.registration_number }}</span>
-                                    </a>
-                                </td>
-                                <td>{{ row.programme }}</td>
-                                <td>{{ row.academic_level }}</td>
-                                <td>{{ row.average_mark }}</td>
-                                <td>{{ row.failed_courses }}</td>
-                                <td>{{ row.carrying }}</td>
-                                <td>{{ row.decision }}</td>
-                                <td class="risk-td-status">
-                                    <span class="risk-status-badge risk-status-{{ row.risk_level_key }}">{{ row.risk_level }}</span>
-                                    <span class="risk-status-copy">{{ row.risk_drivers_display }}</span>
-                                </td>
+                                <td class="risk-empty" colspan="8">Loading at-risk students for the current filters.</td>
                             </tr>
-                            {% empty %}
-                            <tr>
-                                <td class="risk-empty" colspan="8">No at-risk students matched the current filters.</td>
-                            </tr>
-                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
 
                 <div class="risk-footer">
-                    <p class="risk-results-meta">
-                        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_students }} at-risk students
-                        {% if cohort_total_students %}
-                        across {{ cohort_total_students }} visible students
-                        {% endif %}
-                    </p>
-
-                    <nav class="risk-pagination" aria-label="Risk table pages">
-                        {% if page_obj.has_previous %}
-                        <a class="risk-page-link risk-page-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Prev</a>
-                        {% else %}
-                        <span class="risk-page-link risk-page-arrow is-disabled">Prev</span>
-                        {% endif %}
-
-                        {% for page_number in page_numbers %}
-                            {% if page_number == page_obj.number %}
-                            <span class="risk-page-link is-current">{{ page_number }}</span>
-                            {% else %}
-                            <a class="risk-page-link" href="?page={{ page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">{{ page_number }}</a>
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if page_obj.has_next %}
-                        <a class="risk-page-link risk-page-arrow" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}">Next</a>
-                        {% else %}
-                        <span class="risk-page-link risk-page-arrow is-disabled">Next</span>
-                        {% endif %}
-                    </nav>
+                    <p class="risk-results-meta" id="risk-results-meta">Loading at-risk student totals.</p>
+                    <nav class="risk-pagination" id="risk-pagination" aria-label="Risk table pages"></nav>
                 </div>
             </article>
-        </section>
+            </div>
+            </section>
+        </div>
     </section>
 </section>
 {% endblock %}
 
 {% block extra_js %}
-{{ risk_distribution_rows|json_script:"risk-distribution-data" }}
-{{ risk_driver_rows|json_script:"risk-driver-data" }}
-{{ risk_level_rows|json_script:"risk-level-data" }}
-{{ risk_programme_rows|json_script:"risk-programme-data" }}
-{{ risk_card_narratives|json_script:"risk-card-narratives" }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/risk.js' %}?v=20260403-risk-storyflow10"></script>
+<script type="module" src="{% static 'dashboard/js/risk.js' %}?v=20260414-risk-shell03"></script>
+<script>
+/* Demographic Accordion JavaScript - Inline Implementation */
+document.addEventListener('DOMContentLoaded', function() {
+    const initialiseAccordion = () => {
+        const accordionItems = document.querySelectorAll('.demographic-accordion-item');
+        
+        accordionItems.forEach((item) => {
+            const toggleButton = item.querySelector('.demographic-accordion-toggle');
+            const content = item.querySelector('.demographic-accordion-content');
+            
+            if (!toggleButton || !content) {
+                return;
+            }
+            
+            toggleButton.addEventListener('click', () => {
+                const isOpen = item.classList.contains('is-open');
+                const toggleText = toggleButton.querySelector('.demographic-accordion-toggle-text');
+                const toggleIcon = toggleButton.querySelector('.demographic-accordion-toggle-icon');
+                
+                // Close all other accordion items
+                accordionItems.forEach((otherItem) => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('is-open');
+                        const otherContent = otherItem.querySelector('.demographic-accordion-content');
+                        const otherToggle = otherItem.querySelector('.demographic-accordion-toggle');
+                        const otherToggleText = otherToggle?.querySelector('.demographic-accordion-toggle-text');
+                        const otherToggleIcon = otherToggle?.querySelector('.demographic-accordion-toggle-icon');
+                        
+                        if (otherContent) {
+                            otherContent.classList.add('is-hidden');
+                            otherContent.style.maxHeight = '0';
+                        }
+                        
+                        if (otherToggle) {
+                            otherToggle.setAttribute('aria-expanded', 'false');
+                        }
+                        
+                        if (otherToggleText) {
+                            otherToggleText.textContent = 'Expand';
+                        }
+                        
+                        if (otherToggleIcon) {
+                            otherToggleIcon.textContent = '+';
+                        }
+                    }
+                });
+                
+                // Toggle current item
+                if (isOpen) {
+                    item.classList.remove('is-open');
+                    content.classList.add('is-hidden');
+                    content.style.maxHeight = '0';
+                    toggleButton.setAttribute('aria-expanded', 'false');
+                    if (toggleText) {
+                        toggleText.textContent = 'Expand';
+                    }
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '+';
+                    }
+                } else {
+                    item.classList.add('is-open');
+                    content.classList.remove('is-hidden');
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    toggleButton.setAttribute('aria-expanded', 'true');
+                    if (toggleText) {
+                        toggleText.textContent = 'Collapse';
+                    }
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '−';
+                    }
+                }
+            });
+        });
+    };
+    
+    initialiseAccordion();
+});
+</script>
 {% endblock %}

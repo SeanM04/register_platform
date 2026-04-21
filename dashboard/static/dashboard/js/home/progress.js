@@ -9,7 +9,9 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseProgressNarrative } from "./narratives.js?v=20260403-home-story04";
+import { cancelOverviewDrillDownRequests, openOverviewDrillDown } from "./drilldown.js?v=20260416-home-drilldown02";
+import { showDrillDownModal } from "./drilldown_modal.js?v=20260416-home-drilldown02";
+import { initialiseProgressNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const PROGRESS_COLORS = {
     proceed: buildGradient("#276f80", "#5bc192"),
@@ -19,6 +21,9 @@ const PROGRESS_COLORS = {
     other: buildGradient(HOME_COLORS.navy, HOME_COLORS.sky),
 };
 
+/**
+ * Build the registration-decision chart and sync its narrative surfaces.
+ */
 export const initialiseProgressSection = (context) => {
     const rows = context.data.progressRows || [];
     const { progressChart } = context.elements;
@@ -103,8 +108,17 @@ export const initialiseProgressSection = (context) => {
                         itemStyle: {
                             color: PROGRESS_COLORS[row.key] || HOME_COLORS.sky,
                         },
+                        drilldown: {
+                            name: row.label,
+                            items: [
+                                { label: "Registrations", value: formatCount(row.count) },
+                                { label: "Percentage", value: `${row.share_pct || 0}%` },
+                                { label: "Status", value: row.label },
+                                { label: "Total Decisions", value: formatCount(row.total || 0) }
+                            ]
+                        }
                     })),
-                    barMaxWidth: 58,
+                    barMaxWidth: 28,
                     label: {
                         show: true,
                         position: "top",
@@ -117,6 +131,18 @@ export const initialiseProgressSection = (context) => {
             ],
         }
     );
+
+    chart.on("click", (params) => {
+        const row = rows[params.dataIndex];
+        if (row && row.key) {
+            console.log("Progress chart clicked:", row);
+            openOverviewDrillDown(context, {
+                chartKey: "progress",
+                bucketKey: row.key,
+                label: row.label,
+            });
+        }
+    });
 
     return {
         getChart: () => chart,

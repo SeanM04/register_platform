@@ -7,10 +7,41 @@ from .ai_insights import get_risk_card_narratives
 from .constants import RISK_ACTIVE_KEY, RISK_PAGE_TITLE, RISK_SUMMARY_CARD_SPECS
 
 
+RISK_SHELL_NOTES = {
+    "at_risk_students": "Loading the visible watchlist size for the selected scope.",
+    "high_risk": "Loading the count of high-priority students in the current watchlist.",
+    "medium_risk": "Loading the count of medium-priority students in the current watchlist.",
+    "multi_fail": "Loading the students with 2 or more failed modules.",
+}
+
+
+def build_risk_shell_context(request, search_query=""):
+    """Build a lightweight first-paint context for the risk dashboard page."""
+
+    context = build_layout_context(request, RISK_ACTIVE_KEY)
+    context.update(
+        {
+            "page_title": RISK_PAGE_TITLE,
+            "search_query": search_query,
+            "summary_cards": [
+                {
+                    "key": spec["key"],
+                    "label": spec["label"],
+                    "tone": spec["tone"],
+                    "value": "--",
+                    "note": RISK_SHELL_NOTES.get(spec["key"], "Loading current risk context."),
+                }
+                for spec in RISK_SUMMARY_CARD_SPECS
+            ],
+        }
+    )
+    return context
+
+
 def build_risk_page_context(request, risk_data, search_query=""):
     """Build the template context for the risk dashboard page."""
 
-    paginator = Paginator(risk_data["risk_rows"], 20)
+    paginator = Paginator(risk_data["risk_rows"], 10)
     page_obj = paginator.get_page(request.GET.get("page"))
     page_window_start = max(page_obj.number - 2, 1)
     page_window_end = min(page_obj.number + 2, paginator.num_pages)

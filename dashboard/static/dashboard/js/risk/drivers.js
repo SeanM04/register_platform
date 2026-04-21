@@ -8,6 +8,7 @@ import {
     formatChartLabel,
     initialiseChart,
 } from "./shared.js";
+import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
 
 const buildAxisMax = (value) => {
     const maxValue = Number(value?.max || 0);
@@ -80,13 +81,12 @@ const buildDriversOption = (rows) => ({
         {
             type: "bar",
             clip: false,
-            barWidth: 18,
+            barMaxWidth: 28,
             data: rows.map((row) => ({
                 value: row.count,
                 raw: row,
                 itemStyle: {
                     color: buildGradient("#0b4c6d", "#5fb7dc"),
-                    borderRadius: [0, 10, 10, 0],
                 },
             })),
             label: {
@@ -113,6 +113,19 @@ export const initialiseDriversSection = (context) => {
         "No shared driver pattern is available for the current filters.",
         (rows) => rows.some((row) => Number(row.count || 0) > 0),
     );
+
+    if (chart) {
+        chart.on("click", (params) => {
+            const row = params.data.raw;
+            if (row && row.key) {
+                openRiskDrillDown(context, {
+                    chartKey: "drivers",
+                    bucketKey: row.key,
+                    label: row.label,
+                });
+            }
+        });
+    }
 
     return {
         getChart: () => chart,

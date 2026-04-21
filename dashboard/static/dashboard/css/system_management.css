@@ -47,7 +47,7 @@ body.is-modal-open {
     position: relative;
     padding: 0.72rem 0.95rem 0.78rem;
     background: var(--panel);
-    border-radius: 14px;
+    border-radius: 12px;
     box-shadow: var(--shadow);
     overflow: hidden;
 }
@@ -154,7 +154,7 @@ body.is-modal-open {
     width: 100%;
     padding: 0.56rem 0.78rem;
     border: 1px solid #dbe4f0;
-    border-radius: 10px;
+    border-radius: 12px;
     outline: none;
     font-size: 0.84rem;
     background: #f8fbff;
@@ -179,7 +179,7 @@ body.is-modal-open {
 .system-add-button {
     padding: 0.54rem 0.84rem;
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--navy);
     color: #ffffff;
     cursor: pointer;
@@ -220,15 +220,17 @@ body.is-modal-open {
 .system-table-wrap::-webkit-scrollbar {
     width: 10px;
     height: 10px;
+    border-radius: 12px;
 }
 
 .system-table-wrap::-webkit-scrollbar-track {
-    background: transparent;
+    background: #e5edf5;
+    border-radius: 12px;
 }
 
 .system-table-wrap::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
-    border-radius: 999px;
+    border-radius: 12px;
     background: linear-gradient(180deg, #b8c5d3, #94a3b8);
     background-clip: padding-box;
 }
@@ -406,7 +408,7 @@ body.is-modal-open {
     align-items: center;
     margin-left: 0.38rem;
     padding: 0.16rem 0.4rem;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #eef6ff;
     color: #1d4ed8;
     font-size: 0.67rem;
@@ -422,7 +424,7 @@ body.is-modal-open {
     align-items: center;
     justify-content: center;
     padding: 0.26rem 0.48rem;
-    border-radius: 999px;
+    border-radius: 12px;
     font-size: 0.7rem;
     font-weight: 700;
 }
@@ -474,7 +476,7 @@ body.is-modal-open {
     box-shadow: none;
     min-height: 34px;
     padding: 0.46rem 0.66rem;
-    border-radius: 11px;
+    border-radius: 12px;
     font-size: 0.78rem;
     line-height: 1.2;
 }
@@ -521,7 +523,7 @@ body.is-modal-open {
 .system-page-links a {
     min-width: 38px;
     padding: 0.44rem 0.68rem;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #eef2f7;
     color: var(--navy);
     font-size: 0.8rem;
@@ -636,7 +638,7 @@ body.is-modal-open {
     width: 34px;
     height: 34px;
     border: 0;
-    border-radius: 999px;
+    border-radius: 12px;
     background: #edf2f7;
     color: var(--navy);
     font-size: 1.15rem;

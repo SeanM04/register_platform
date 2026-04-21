@@ -6,10 +6,11 @@ import {
     createEmptyController,
     echartsLib,
     formatCount,
+    formatProgrammeName,
     setChartFallback,
-    wrapAxisLabel,
-} from "./shared.js?v=20260405-programmes-progressive01";
+} from "./shared.js?v=20260414-msc-support01";
 import { initialiseLoadNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
 
 export const initialiseLoadSection = (context) => {
     initialiseLoadNarrative(context.elements, context.data.topLoadRows, context.data.cardNarratives, context.flags);
@@ -39,17 +40,19 @@ export const initialiseLoadSection = (context) => {
         animationDuration: 650,
         animationDurationUpdate: 250,
         grid: {
-            left: 210,
-            right: 88,
+            containLabel: true,
+            left: 82,
+            right: 108,
             top: 20,
-            bottom: 36,
+            bottom: 58,
         },
         tooltip: {
             ...buildTooltipBase("item"),
             formatter: (params) => {
                 const row = sortedRows[params.dataIndex];
-                return buildTooltipMarkup(row.name, [
+                return buildTooltipMarkup(formatProgrammeName(row.name), [
                     { label: "Registrations", value: formatCount(row.registrations) },
+                    { label: "Share", value: row.share },
                     { label: "Students", value: formatCount(row.students) },
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Department", value: row.department },
@@ -60,12 +63,18 @@ export const initialiseLoadSection = (context) => {
             type: "value",
             name: "Registrations",
             nameLocation: "middle",
-            nameGap: 28,
+            nameGap: 36,
             axisLine: { show: false },
             axisTick: { show: false },
             axisLabel: {
                 color: "#5c718f",
                 fontSize: 11,
+            },
+            nameTextStyle: {
+                color: "#5c718f",
+                fontSize: 12,
+                fontWeight: 700,
+                padding: [12, 0, 0, 0],
             },
             splitLine: {
                 lineStyle: {
@@ -81,32 +90,47 @@ export const initialiseLoadSection = (context) => {
             axisTick: { show: false },
             axisLabel: {
                 color: "#1c4573",
-                fontSize: 10.5,
+                fontSize: 11.5,
                 fontWeight: 700,
-                margin: 14,
-                formatter: (value) => wrapAxisLabel(value, { maxLineLength: 18, maxLines: 2 }),
+                margin: 12,
             },
-            data: sortedRows.map((row) => row.name),
+            data: sortedRows.map((row) => row.axis_label || row.code || formatProgrammeName(row.name)),
         },
         series: [
             {
                 type: "bar",
                 data: sortedRows.map((row) => row.registrations),
-                barWidth: 18,
+                barWidth: 22,
                 label: {
                     show: true,
                     position: "right",
                     color: PROGRAMME_COLORS.ink,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    formatter: ({ value }) => formatCount(value),
+                    fontSize: 10,
+                    fontWeight: 700,
+                    formatter: (params) => {
+                        const row = sortedRows[params.dataIndex];
+                        return `${row.pass_rate}`;
+                    },
                 },
                 itemStyle: {
-                    borderRadius: [0, 12, 12, 0],
+                    borderRadius: 0,
                     color: buildGradient(PROGRAMME_COLORS.navy, PROGRAMME_COLORS.sky, "horizontal"),
                 },
             },
         ],
+    });
+
+    // Add drill-down click handler
+    chart.on("click", (params) => {
+        const row = sortedRows[params.dataIndex];
+        if (row && row.name) {
+            console.log("Programme load chart clicked:", row);
+            openProgrammeDrillDown(context, {
+                chartKey: "programme_load",
+                bucketKey: row.name,
+                label: formatProgrammeName(row.name),
+            });
+        }
     });
 
     return {

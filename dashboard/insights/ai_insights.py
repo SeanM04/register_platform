@@ -203,9 +203,13 @@ def build_rule_based_insight_narratives(insights_data):
     lead_driver = facts["drivers"]["lead_driver"]
 
     if facts["at_risk_total"]:
+
         distribution_insight = (
-            f"{facts['at_risk_total']} students currently sit on the institutional watchlist, with {lead_band or 'the visible risk mix'} leading the current distribution."
+    f"{facts['at_risk_total']} students currently sit on the institutional watchlist, "
+    f"with {lead_band or 'the visible risk mix'} leading the current distribution. "
+   
         )
+        
         distribution_action = (
             "Action: Start with the distribution chart to separate stable cohort volume from the current intervention queue."
         )

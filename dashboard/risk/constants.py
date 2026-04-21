@@ -26,10 +26,10 @@ HIGH_RISK_DECISIONS = {
 RISK_PRIORITY = {"High Risk": 0, "Medium Risk": 1, "Low Risk": 2}
 
 RISK_BAND_DEFINITIONS = (
-    {"key": "critical", "label": "Critical (6+)", "min_score": 6, "max_score": None, "tone": "critical"},
-    {"key": "high", "label": "High (4-5)", "min_score": 4, "max_score": 5, "tone": "high"},
-    {"key": "moderate", "label": "Moderate (2-3)", "min_score": 2, "max_score": 3, "tone": "moderate"},
     {"key": "low", "label": "Low (0-1)", "min_score": 0, "max_score": 1, "tone": "low"},
+    {"key": "moderate", "label": "Moderate (2-3)", "min_score": 2, "max_score": 3, "tone": "moderate"},
+    {"key": "high", "label": "High (4-5)", "min_score": 4, "max_score": 5, "tone": "high"},
+    {"key": "critical", "label": "Critical (6+)", "min_score": 6, "max_score": None, "tone": "critical"},
 )
 
 RISK_DRIVER_LABELS = {

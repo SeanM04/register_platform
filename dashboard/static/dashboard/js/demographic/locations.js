@@ -115,7 +115,6 @@ const buildOverviewOption = (rows, chartWidth = 0) => {
                 type: "bar",
                 barWidth: isNarrow ? 20 : isCompact ? 26 : 34,
                 itemStyle: {
-                    borderRadius: [999, 999, 0, 0],
                     color: buildGradient("#0d325d", "#4fb0d1"),
                 },
                 emphasis: {
@@ -187,7 +186,6 @@ const buildDetailOption = (locationRow, chartWidth = 0) => {
                 type: "bar",
                 barWidth: isNarrow ? 26 : isCompact ? 34 : 44,
                 itemStyle: {
-                    borderRadius: [999, 999, 0, 0],
                     color: ({ dataIndex }) => detailRows[dataIndex]?.color,
                 },
                 label: {
@@ -222,11 +220,7 @@ const updateDetailNarrative = (elements, locationRow) => {
                 ? `${locationRow.place} now shows its internal gender split, led by ${leadRow.label} at ${leadRow.share}.`
                 : `No gender split is available for ${locationRow.place}.`;
     }
-
-    setHintMarkup(elements.locationHints, [
-        { label: "Hover or tap columns for values", kind: "inspect" },
-        { label: "Back to locations to return", kind: "support" },
-    ]);
+setHintMarkup(elements.locationHints, []);
 
     setActionText(
         elements.locationNote,

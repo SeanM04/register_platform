@@ -9,8 +9,13 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { initialiseFacultyNarrative } from "./narratives.js?v=20260403-home-story04";
+import { cancelOverviewDrillDownRequests, openOverviewDrillDown } from "./drilldown.js?v=20260416-home-drilldown02";
+import { showDrillDownModal } from "./drilldown_modal.js?v=20260416-home-drilldown02";
+import { initialiseFacultyNarrative } from "./narratives.js?v=20260408-home-ai02";
 
+/**
+ * Build the faculty-load chart and sync its narrative surfaces.
+ */
 export const initialiseFacultyLoadSection = (context) => {
     const rows = context.data.facultyLoadRows || [];
     const { facultyChart } = context.elements;
@@ -93,6 +98,15 @@ export const initialiseFacultyLoadSection = (context) => {
                         itemStyle: {
                             color: buildGradient(HOME_COLORS.navy, HOME_COLORS.sky, "horizontal"),
                         },
+                        drilldown: {
+                            name: row.label,
+                            items: [
+                                { label: "Registrations", value: formatCount(row.registrations) },
+                                { label: "Percentage", value: `${row.share_pct || 0}%` },
+                                { label: "Faculty", value: row.label },
+                                { label: "Total Registrations", value: formatCount(row.total || 0) }
+                            ]
+                        }
                     })),
                     barMaxWidth: 28,
                     label: {
@@ -107,6 +121,18 @@ export const initialiseFacultyLoadSection = (context) => {
             ],
         }
     );
+
+    chart.on("click", (params) => {
+        const row = rows[params.dataIndex];
+        if (row && row.key) {
+            console.log("Faculty chart clicked:", row);
+            openOverviewDrillDown(context, {
+                chartKey: "faculty_load",
+                bucketKey: row.key,
+                label: row.label,
+            });
+        }
+    });
 
     return {
         getChart: () => chart,

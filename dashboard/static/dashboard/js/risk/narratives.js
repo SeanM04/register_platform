@@ -132,9 +132,8 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
     if (!totalVisible) {
         storyBanner.innerHTML = `
             <div class="risk-story-main">
-                <p class="risk-story-kicker">Primary Takeaway</p>
                 <h2 class="risk-story-title">No risk story is available for the current filters.</h2>
-                <p class="risk-story-copy">Adjust the current filters to bring the cohort watchlist and its intervention priorities back into view.</p>
+                <p class="risk-story-copy">Adjust the current filters to bring the cohort watchlist & its intervention priorities back into view.</p>
             </div>
         `;
         return;
@@ -157,8 +156,8 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
         ? `${Math.round((totalWatchlist / totalVisible) * 100)}% of the visible cohort currently needs some level of intervention attention.`
         : "The visible cohort is currently sitting outside the watchlist threshold.";
     const driverValue = leadDriver
-        ? `${leadDriver.label} ${leadDriver.count}`
-        : "No shared driver";
+    ? `${leadDriver.count} students carried ${leadDriver.label.match(/\d+/)?.[0]} module`
+    : "No shared driver";
     const driverCopy = leadDriver
         ? `${leadDriver.count} flagged student${leadDriver.count !== 1 ? "s" : ""} currently show this driver in the watchlist mix.`
         : "The current filters do not expose a shared watchlist driver pattern.";
@@ -175,7 +174,6 @@ export const renderStoryBanner = (storyBanner, distributionRows, driverRows, lev
 
     storyBanner.innerHTML = `
         <div class="risk-story-main">
-            <p class="risk-story-kicker">Primary Takeaway</p>
             <h2 class="risk-story-title">${escapeTooltipHtml(headline)}</h2>
             <p class="risk-story-copy">${escapeTooltipHtml(headlineCopy)}</p>
         </div>
@@ -222,11 +220,16 @@ export const buildDistributionOverviewNarrative = (rows) => {
 export const initialiseDistributionNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
-    setElementText(elements.distributionCopy, narrative.insight);
-    setHintMarkup(elements.distributionHints, [
-        { label: "Hover or tap columns for values", kind: "inspect" },
-        { label: "Start here for severity mix", kind: "support" },
-    ]);
+   if (elements.distributionCopy) {
+    const noteText = "Values in brackets represent the number of modules.";
+    const insightText = String(narrative.insight || "").trim();
+
+    elements.distributionCopy.innerHTML = `
+        <span>${escapeTooltipHtml(insightText)}</span>
+        <span class="risk-subtle-note">${escapeTooltipHtml(noteText)}</span>
+    `.trim();
+}
+    setHintMarkup(elements.distributionHints, []);
     setActionText(elements.distributionNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,
         source: flags.overviewNarrativeSource,
@@ -304,7 +307,7 @@ export const buildProgrammesOverviewNarrative = (rows) => {
             ? `${formatChartLabel(leadRow.programme, 28)} currently carries the largest flagged programme cluster.`
             : "No programme concentration insight is available for the current filters.",
         action: leadRow
-            ? "This chart keeps programme concentration and severity mix in the same view so intervention planning stays operational."
+            ? "This chart keeps programme concentration & severity mix in the same view so intervention planning stays operational."
             : "Adjust the current filters to bring programme concentration back into view.",
     };
 };
@@ -315,7 +318,7 @@ export const initialiseProgrammesNarrative = (elements, rows, cardNarratives = {
     setElementText(elements.programmesCopy, narrative.insight);
     setHintMarkup(elements.programmesHints, [
         { label: "Hover columns for full labels", kind: "inspect" },
-        { label: "Compare concentration and severity", kind: "support" },
+        { label: "Compare concentration & severity", kind: "support" },
     ]);
     setActionText(elements.programmesNote, narrative.action, {
         showAiBadge: flags.overviewNarrativesAreAi,

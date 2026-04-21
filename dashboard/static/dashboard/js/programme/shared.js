@@ -29,6 +29,34 @@ export const parseJsonScript = (id, fallback = []) => {
 
 export const formatCount = (value) => numberFormatter.format(Number(value || 0));
 
+export const formatProgrammeName = (value) => {
+    const cleanedValue = String(value || "")
+        .replace(/^(Bachelor|Master(?:s)?) Of\s+/i, "")
+        .replace(/\s+Honours Degree$/i, "")
+        .trim();
+    
+    // Convert to lowercase first, then apply degree fixes, then title case
+    let formatted = cleanedValue.toLowerCase()
+        .replace(/\bsc\b/g, "BSc")
+        .replace(/\bmsc\b/g, "MSc")
+        .replace(/\bbcom\b/g, "BCom")
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+    
+    // Ensure degree abbreviations remain correct after title case
+    formatted = formatted.replace(/\bBSC\b/g, "BSc");
+    formatted = formatted.replace(/\bMSC\b/g, "MSc");
+    formatted = formatted.replace(/\bBCOM\b/g, "BCom");
+    
+    return formatted;
+};
+
+export const escapeHtml = (value) => String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 export const setChartFallback = (element, message) => {
     if (!element) {
         return;

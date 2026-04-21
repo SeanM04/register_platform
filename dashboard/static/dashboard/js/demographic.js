@@ -1,18 +1,20 @@
-import { initialiseDemographicPage } from "./demographic/index.js";
+import { initialiseDemographicPage } from "./demographic/index.js?v=20260411-demographic-narrative-status01";
+import { initialiseAccordion } from "./demographic/accordion.js";
 
 const MAX_LIBRARY_WAIT_MS = 2200;
 let hasInitialised = false;
 
-const bootstrapDemographicPage = () => {
+const bootstrapDemographicPage = async () => {
     if (hasInitialised) {
         return;
     }
 
     hasInitialised = true;
-    initialiseDemographicPage();
+    initialiseAccordion();
+    await initialiseDemographicPage();
 };
 
-const areLibrariesReady = () => Boolean(window.echarts && window.maplibregl);
+const areLibrariesReady = () => Boolean(window.echarts);
 
 const waitForLibrariesThenInitialise = (startedAt = Date.now()) => {
     if (areLibrariesReady() || Date.now() - startedAt >= MAX_LIBRARY_WAIT_MS) {

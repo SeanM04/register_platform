@@ -1,11 +1,28 @@
 """Dashboard view tests covering filters, summaries, and navigation state."""
 
+import csv
+import shutil
+from pathlib import Path
+
+from django.core.management import call_command
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from accounts.models import UserType
 
+from .models import (
+    AcademicDecision,
+    AcademicPeriod,
+    AttendanceType,
+    Cohort,
+    CompletionAnalysisRecord,
+    Registration,
+    Student,
+    ZeroCompletionReason,
+)
 from .test_support import DashboardFixtureMixin
 
 
@@ -45,7 +62,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["average_pass_rate"], "100%")
 
     def test_insights_view_renders_live_operational_context(self):
-        """Insights page should render real flagged-student and recommendation content."""
+        """Insights page should render real flagged-student & recommendation content."""
 
         response = self.client.get(reverse("dashboard:insights"))
 
@@ -68,6 +85,109 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(alice_rows[0]["program"], self.science_programme.name)
         self.assertEqual(alice_rows[0]["department"], self.science_department.name)
         self.assertEqual(alice_rows[0]["decision"], "Proceed")
+
+    def test_student_list_search_preserves_matching_registration_context(self):
+        """Students search should keep the latest registration inside the matched subset."""
+
+        response = self.client.get(reverse("dashboard:students"), {"q": "Accounting"})
+
+        students = response.context["students"]
+        alice_rows = [row for row in students if row["name"] == self.student_primary.full_name]
+        self.assertEqual(len(alice_rows), 1)
+        self.assertEqual(alice_rows[0]["program"], self.commerce_programme.name)
+        self.assertEqual(alice_rows[0]["department"], self.commerce_department.name)
+        self.assertEqual(alice_rows[0]["decision"], "Pending")
+
+    def test_student_detail_scopes_topbar_filters_to_student_records(self):
+        """Student detail filters should expose only years, periods, and faculties the student has."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+            {"year": "2099", "period": "Missing", "faculty": "ENGINEERING"},
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        self.assertEqual(filters["faculty"]["options"], [self.commerce_faculty.name, self.science_faculty.name])
+        self.assertFalse(filters["faculty"]["disabled"])
+        self.assertNotIn("ENGINEERING", filters["faculty"]["options"])
+        self.assertEqual(response.context["selected_faculty"], self.science_faculty.name)
+        self.assertEqual(response.context["selected_year"], "Year 1")
+        self.assertEqual(response.context["selected_period"], "Jan - June")
+        self.assertContains(response, "Foundations of Computing")
+
+    def test_student_detail_locks_faculty_filter_for_single_faculty_student(self):
+        """A student with one faculty should have a single locked faculty option."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_secondary.registration_number.lower()]),
+            {"faculty": self.science_faculty.name},
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        self.assertEqual(filters["faculty"]["options"], [self.commerce_faculty.name])
+        self.assertTrue(filters["faculty"]["disabled"])
+        self.assertEqual(response.context["selected_faculty"], self.commerce_faculty.name)
+
+    def test_student_detail_omits_empty_result_years_from_topbar_and_tabs(self):
+        """Registrations without course rows should not appear as selectable student years."""
+
+        empty_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="2",
+            semester="1",
+            name="2027 January - June",
+        )
+        Registration.objects.create(
+            external_id=99,
+            student=self.student_primary,
+            programme=self.science_programme,
+            period=empty_period,
+            decision="pending",
+            carrying=0,
+        )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        visible_tab_years = [row["year"] for row in response.context["student"]["year_dropdown_tabs"]]
+        self.assertEqual(filters["year"]["options"], ["Year 1"])
+        self.assertEqual(visible_tab_years, [1])
+        self.assertNotContains(response, "2027 January - June")
+
+    def test_student_list_paginates_in_the_database(self):
+        """Students page should fetch only the requested page instead of materializing the full directory."""
+
+        for index in range(3, 28):
+            student = Student.objects.create(
+                registration_number=f"REG{index:03d}",
+                first_names=f"Student{index}",
+                surname="LoadTest",
+                gender="Female",
+                place_of_birth="Windhoek",
+            )
+            Registration.objects.create(
+                external_id=100 + index,
+                student=student,
+                programme=self.science_programme,
+                period=self.period_2026,
+                decision="proceed",
+                carrying=0,
+            )
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(reverse("dashboard:students"), {"page": 2})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["students"]), 7)
+        student_queries = [
+            query["sql"]
+            for query in queries.captured_queries
+            if 'FROM "dashboard_student"' in query["sql"]
+        ]
+        self.assertTrue(student_queries)
+        self.assertTrue(any("OFFSET 20" in query.upper() for query in student_queries))
 
     def test_programme_view_respects_faculty_filter(self):
         """Programme payload should only include rows from the selected faculty."""
@@ -92,7 +212,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(active_labels, ["Demographics"])
 
     def test_admin_can_access_system_management(self):
-        """Platform admins should see and access the system management workspace."""
+        """Platform admins should see & access the system management workspace."""
 
         response = self.client.get(reverse("dashboard:system-management"))
 
@@ -143,3 +263,160 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(created_user.is_active)
         self.assertTrue(created_user.is_staff)
         self.assertEqual(created_user.user_type, self.user_type)
+
+
+class RegistrarImportCommandTests(TestCase):
+    """Verify the registrar import command decomposes CSVs into relational tables."""
+
+    def _write_csv(self, directory, filename, headers, rows):
+        path = Path(directory) / filename
+        with path.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(rows)
+        return path
+
+    def test_import_command_loads_completion_export_and_calculates_age(self):
+        temp_root = Path.cwd() / "data" / ".test_import_command"
+        temp_dir = temp_root / "case_one"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(temp_root, ignore_errors=True))
+        registrations_csv = self._write_csv(
+            temp_dir,
+            "Registrations.csv",
+            [
+                "id",
+                "regnum",
+                "firstnames",
+                "surname",
+                "programme_id",
+                "programme_code",
+                "programme_name",
+                "faculty",
+                "department",
+                "dob",
+                "gender",
+                "place_of_birth",
+                "psid",
+                "attendance_type_id",
+                "registration_id",
+                "period_id",
+                "academic_year",
+                "semester",
+                "period_name",
+                "decision",
+                "carrying",
+            ],
+            [
+                {
+                    "id": "1",
+                    "regnum": "REG100",
+                    "firstnames": "Ada",
+                    "surname": "Moyo",
+                    "programme_id": "10",
+                    "programme_code": "BSC-STAT",
+                    "programme_name": "Bachelor of Science in Statistics",
+                    "faculty": "Science",
+                    "department": "Mathematics",
+                    "dob": "2000-01-10",
+                    "gender": "Female",
+                    "place_of_birth": "Harare",
+                    "psid": "501",
+                    "attendance_type_id": "1",
+                    "registration_id": "9001",
+                    "period_id": "202601",
+                    "academic_year": "1",
+                    "semester": "1",
+                    "period_name": "2026 January - June",
+                    "decision": "Pending",
+                    "carrying": "0",
+                }
+            ],
+        )
+        marks_csv = self._write_csv(
+            temp_dir,
+            "course final marks by period.csv",
+            [
+                "code",
+                "name",
+                "period_name",
+                "period_id",
+                "regnum",
+                "programme_code",
+                "programme_name",
+                "attendance_type",
+                "mark",
+                "gradingrule",
+            ],
+            [
+                {
+                    "code": "STA101",
+                    "name": "Statistics I",
+                    "period_name": "2026 January - June",
+                    "period_id": "202601",
+                    "regnum": "REG100",
+                    "programme_code": "BSC-STAT",
+                    "programme_name": "Bachelor of Science in Statistics",
+                    "attendance_type": "Conventional",
+                    "mark": "78",
+                    "gradingrule": "100-50~P#49-0~F",
+                }
+            ],
+        )
+        completion_csv = self._write_csv(
+            temp_dir,
+            "completion_analysis.csv",
+            [
+                "Registration Number",
+                "Student Name",
+                "Programme",
+                "Academic Stage",
+                "Decision",
+                "Effective Cohort",
+                "Original Cohort",
+                "Shifted",
+                "Zero Completion Reason",
+                "Completion Rate",
+            ],
+            [
+                {
+                    "Registration Number": "REG100",
+                    "Student Name": "Ada Moyo",
+                    "Programme": "Bachelor of Science in Statistics",
+                    "Academic Stage": "Year 1, Semester 1",
+                    "Decision": "Pending",
+                    "Effective Cohort": "JANUARY 2026 - JUNE 2026",
+                    "Original Cohort": "JANUARY 2026 - JUNE 2026",
+                    "Shifted": "No",
+                    "Zero Completion Reason": "",
+                    "Completion Rate": "78%",
+                }
+            ],
+        )
+
+        call_command(
+            "import_registrar_data",
+            str(registrations_csv),
+            str(marks_csv),
+            str(completion_csv),
+        )
+
+        student = Student.objects.get(registration_number="REG100")
+        registration = Registration.objects.get()
+        self.assertEqual(student.age, student.current_age)
+        self.assertEqual(registration.source_row_id, 1)
+        self.assertEqual(registration.student_internal_id, 501)
+        self.assertEqual(registration.attendance_type_record.name, "Conventional")
+        self.assertEqual(registration.decision_record.label, "Pending")
+        self.assertTrue(AttendanceType.objects.filter(name="Conventional").exists())
+        self.assertTrue(AcademicDecision.objects.filter(label="Pending").exists())
+
+        completion_row = CompletionAnalysisRecord.objects.get()
+        self.assertEqual(completion_row.student.registration_number, "REG100")
+        self.assertEqual(completion_row.programme.code, "BSC-STAT")
+        self.assertEqual(completion_row.academic_year, "1")
+        self.assertEqual(completion_row.semester, "1")
+        self.assertEqual(str(completion_row.completion_rate), "78.00")
+        self.assertFalse(completion_row.shifted)
+        self.assertTrue(Cohort.objects.filter(name="JANUARY 2026 - JUNE 2026").exists())
+        self.assertEqual(ZeroCompletionReason.objects.count(), 0)

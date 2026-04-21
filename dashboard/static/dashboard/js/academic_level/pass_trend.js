@@ -254,7 +254,7 @@ const buildPassLevelDetailOption = (
                 type: "bar",
                 barMaxWidth: isCompact ? 18 : 22,
                 itemStyle: {
-                    borderRadius: [10, 10, 0, 0],
+                    borderRadius: [0, 0, 0, 0],
                     color: buildGradient("#d3e9f4", "#4fb0d1"),
                 },
                 data: rows.map((row) => row.registrations),
@@ -265,7 +265,7 @@ const buildPassLevelDetailOption = (
                 yAxisIndex: 1,
                 barMaxWidth: isCompact ? 18 : 22,
                 itemStyle: {
-                    borderRadius: [10, 10, 0, 0],
+                    borderRadius: [0, 0, 0, 0],
                     color: buildGradient("#0d325d", "#1f4f88"),
                 },
                 data: rows.map((row) => row.average_mark),
