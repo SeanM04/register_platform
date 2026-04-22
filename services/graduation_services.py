@@ -22,7 +22,7 @@ def _parse_int(value: Any) -> Optional[int]:
 def _safe_rate(numerator: float, denominator: float) -> float:
     if not denominator:
         return 0.0
-    return round((numerator / denominator) * 100, 1)
+    return round((numerator / denominator) * 100, 0)
 
 
 def _target_period_from_programme(programme_name: str) -> int:
@@ -345,7 +345,7 @@ def get_graduation_page_data(
     total_graduated_students = len(graduated_students)
     average_graduation_rate = round(
         sum(student["graduation_rate"] for student in graduated_students) / total_graduated_students,
-        1,
+        0,
     ) if total_graduated_students else 0.0
     on_time_graduation_rate = _safe_rate(
         sum(1 for student in graduated_students if student["on_time"]),
@@ -379,7 +379,7 @@ def get_graduation_page_data(
         {
             "programme_id": programme_id,
             "programme_name": programme_name,
-            "graduation_rate": round(sum(rates) / len(rates), 1),
+            "graduation_rate": round(sum(rates) / len(rates), 0),
             "graduated_count": len(rates),
         }
         for (programme_id, programme_name), rates in programme_rates.items()
@@ -410,7 +410,7 @@ def get_graduation_page_data(
     faculty_graduation_rate = [
         {
             "faculty": faculty_name,
-            "graduation_rate": round(rate, 1),
+            "graduation_rate": round(rate, 0),
             "graduated_count": faculty_graduated.get(faculty_name, 0),
             "enrolled_count": len(faculty_population.get(faculty_name, set())),
         }
@@ -431,7 +431,7 @@ def get_graduation_page_data(
             "total_graduated_students": total_graduated_students,
             "average_graduation_rate": average_graduation_rate,
             "on_time_graduation_rate": on_time_graduation_rate,
-            "best_faculty_rate": round(best_faculty_rate, 1),
+            "best_faculty_rate": round(best_faculty_rate, 0),
             "best_faculty_name": best_faculty_name,
             "graduation_rate_by_faculty": graduation_rate_by_faculty,
         },
