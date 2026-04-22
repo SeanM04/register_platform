@@ -49,12 +49,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const content = dropdown.querySelector('.year-dropdown-content');
             
             if (toggle && content) {
-                // Set initial state
-                const isActive = dropdown.classList.contains('is-active');
-                toggle.setAttribute('aria-expanded', isActive ? 'true' : 'false');
-                if (isActive) {
-                    content.classList.add('show');
-                }
+                // Set initial state - always start closed
+                toggle.setAttribute('aria-expanded', 'false');
+                content.classList.remove('show');
                 
                 // Handle semester selection
                 const semesterOptions = content.querySelectorAll('.year-dropdown-option');
@@ -62,6 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     option.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
+                        
+                        // Store the href for navigation after closing
+                        const targetUrl = option.href;
                         
                         // Update year tab label with year and semester
                         const semesterInfo = option.querySelector('.year-dropdown-option-label').textContent;
@@ -85,8 +85,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Mark as selected
                         dropdown.classList.add('semester-selected');
                         
-                        // Navigate to the semester URL immediately
-                        window.location.href = option.href;
+                        // Navigate to the semester URL after a brief delay to ensure dropdown closes
+                        setTimeout(() => {
+                            window.location.href = targetUrl;
+                        }, 100);
                     });
                 });
                 

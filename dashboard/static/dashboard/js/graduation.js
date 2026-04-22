@@ -19,7 +19,7 @@ class GraduationAnalysis {
         this.currentNarratives = {};
         this.narrativeDiagnostics = {};
         this.currentPage = 1;
-        this.itemsPerPage = 12;
+        this.itemsPerPage = 10;
         this.chartInstances = {};
 
         this.init();
@@ -1196,7 +1196,7 @@ class GraduationAnalysis {
         <td>${escapeTooltipHtml(graduationStage)}</td>
         <td>${escapeTooltipHtml(effectiveCohort)}</td>
         <td>${Math.round(student.graduation_rate || 0)}%</td>
-        <td>${student.on_time ? "On time" : "Delayed"}</td>
+        <td class="graduation-timing-cell ${student.on_time ? "on-time" : "delayed"}">${student.on_time ? "On time" : "Delayed"}</td>
     `;
 
     return row;

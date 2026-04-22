@@ -153,15 +153,51 @@
     text-align: left;
 }
 
-/* Ensure table is horizontally scrollable */
+/* Ensure table is horizontally scrollable with sticky header */
 .table-wrap {
     overflow-x: auto;           /* Enable horizontal scroll */
     overflow-y: auto;           /* Keep vertical scroll */
     max-height: 500px;         /* Fixed height */
+    position: relative;         /* For sticky positioning */
+}
+
+/* Make table header sticky */
+.completion-students-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--navy);
+}
+
+.completion-students-table th {
+    position: sticky;
+    top: 0;
+    z-index: 21;
+    background: var(--navy);
 }
 
 .completion-students-table {
     min-width: 1000px;        /* Ensure content is wider than container */
+}
+
+/* On Time Column Styling - Green for on-time, Red for delayed */
+.graduation-timing-cell.on-time {
+    color: #16a34a !important;        /* Green color */
+    font-weight: 600 !important;
+    text-align: center !important;
+}
+
+.graduation-timing-cell.delayed {
+    color: #dc2626 !important;        /* Red color */
+    font-weight: 600 !important;
+    text-align: center !important;
+}
+
+/* Ensure the timing column has proper styling */
+.completion-students-table th:nth-child(7),
+.completion-students-table td:nth-child(7) {
+    text-align: center !important;
+    font-weight: 600 !important;
 }
 .graduation-metrics .graduation-metric-faculty {
     margin: 0 !important;
@@ -230,22 +266,7 @@
     color: #475569;
 }
 
-.filter-select,
-.filter-input {
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: #ffffff;
-    font-size: 0.9rem;
-    transition: border-color 0.2s ease;
-}
-
-.filter-select:focus,
-.filter-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
+/* Custom filter styling removed to use default base.css dropdown arrow */
 
 /* Charts Section */
 .graduation-charts {

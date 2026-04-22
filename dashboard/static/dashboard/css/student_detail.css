@@ -434,6 +434,14 @@
     font-size: 0.9rem;
     font-weight: 400;
     transition: transform 0.2s ease;
+    /* Create dropdown arrow with CSS */
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #123b68;
+    display: inline-block;
+    margin-left: 0.5rem;
 }
 
 .year-dropdown[aria-expanded="true"] .year-dropdown-arrow {
