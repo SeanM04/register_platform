@@ -611,7 +611,7 @@ class CompletionAnalysis {
                 bottom: 0,
                 text: ["100%", "0%"],
                 inRange: {
-                    color: ["#7f1d1d", "#dc2626", "#f59e0b", "#0ea5e9", "#0f766e"],
+                    color: ["#7f1d1d", "#dc2626", "#f59e0b", "#22c55e" , "#0f766e"],
                 },
             },
             series: [
@@ -922,9 +922,7 @@ class CompletionAnalysis {
         const decisionClass = this.getDecisionClass(student);
         const rateClass = this.getRateClass(student.completion_rate);
         const cohortClass = student.is_shifted ? "is-shifted" : "is-original";
-        const zeroReason = student.zero_completion_reason
-            ? `<p class="completion-zero-note">${escapeTooltipHtml(student.zero_completion_reason)}</p>`
-            : "";
+        
 
         row.innerHTML = `
             <td class="students-td-name">
@@ -933,15 +931,22 @@ class CompletionAnalysis {
                 </a>
             </td>
             <td>${escapeTooltipHtml(student.programme_name || "")}</td>
-            <td>${escapeTooltipHtml(student.academic_stage || "")}</td>
-            <td><span class="completion-rate-badge ${decisionClass}">${escapeTooltipHtml(student.decision || "")}</span></td>
-            <td>
-                <span class="completion-cohort-pill ${cohortClass}">${escapeTooltipHtml(student.effective_cohort || "")}</span>
-            </td>
-            <td>
-                <span class="completion-rate-badge ${rateClass}">${Math.round(student.completion_rate || 0)}%</span>
-                ${zeroReason}
-            </td>
+            <td>${escapeTooltipHtml((student.academic_stage || "").replace(", ", " "))}</td>
+            <td>${escapeTooltipHtml(student.decision || "")}</td>
+
+<td>${escapeTooltipHtml(student.effective_cohort || "")}</td>
+
+<td>
+    <span 
+        class="completion-rate-value"
+        ${student.completion_rate === 0 && student.zero_completion_reason
+            ? `title="${escapeTooltipHtml(student.zero_completion_reason)}"`
+            : ""
+        }
+    >
+        ${Math.round(student.completion_rate || 0)}%
+    </span>
+</td>
         `;
         return row;
     }

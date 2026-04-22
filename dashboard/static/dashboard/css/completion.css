@@ -480,15 +480,9 @@
 
 .completion-rate-badge,
 .completion-cohort-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.28rem 0.62rem;
-    border-radius: 999px;
-    font-size: 0.73rem;
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
+    all: unset;        /* removes pill look */
+    font-weight: 400;
+    color: inherit;
 }
 
 .completion-rate-badge.high {
