@@ -84,26 +84,32 @@ const showProgrammeDrillDownModal = (payload) => {
     `;
     
     const closeButton = document.createElement('button');
-    closeButton.className = 'risk-drilldown-close';
-    closeButton.innerHTML = '×';
-    closeButton.style.cssText = `
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: #64748b;
-        cursor: pointer;
-        padding: 0.5rem;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-    `;
-  closeButton.onclick = (event) => {
+closeButton.className = 'risk-drilldown-close';
+closeButton.textContent = 'Close';
+closeButton.style.cssText = `
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    font-weight: 600;
+`;
+
+closeButton.onclick = (event) => {
     event.preventDefault();
     event.stopPropagation();
     modal.remove();
     document.body.classList.remove('has-risk-drilldown-modal');
 };
-    closeButton.onmouseover = () => closeButton.style.backgroundColor = '#f1f5f9';
-    closeButton.onmouseout = () => closeButton.style.backgroundColor = 'transparent';
+
+closeButton.onmouseover = () => {
+    closeButton.style.color = '#1e293b';
+};
+
+closeButton.onmouseout = () => {
+    closeButton.style.color = '#64748b';
+};
     
     // Create table with system styling
     const tableWrap = document.createElement('div');
