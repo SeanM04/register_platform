@@ -603,16 +603,16 @@ class CompletionAnalysis {
                 },
             },
             visualMap: {
-                min: 0,
-                max: 100,
-                calculable: true,
+                 type: "piecewise",
                 orient: "horizontal",
                 left: "center",
                 bottom: 0,
                 text: ["100%", "0%"],
-                inRange: {
-                    color: ["#7f1d1d", "#dc2626", "#f59e0b", "#22c55e" , "#0f766e"],
-                },
+                pieces: [
+        { min: 0, max: 49, label: "0% - 49%", color: "#dc2626" },
+        { min: 50, max: 74, label: "50% - 74%", color: "#f59e0b" },
+        { min: 75, max: 100, label: "75% - 100%", color: "#16a34a" },
+    ],
             },
             series: [
                 {
@@ -892,7 +892,14 @@ class CompletionAnalysis {
             return;
         }
 
-        const filteredStudents = this.getFilteredStudents(students);
+     const filteredStudents = this.getFilteredStudents(students).sort((a, b) => {
+    const getLastName = (name) => {
+        const parts = (name || "").trim().split(" ");
+        return parts[parts.length - 1].toLowerCase();
+    };
+
+    return getLastName(a.student_name).localeCompare(getLastName(b.student_name));
+});
         const paginatedStudents = this.getPaginatedStudents(filteredStudents);
 
         if (!paginatedStudents.length) {
