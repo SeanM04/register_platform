@@ -3,6 +3,13 @@
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeProgrammeDrillDownToken = 0;
 
+const removeExistingProgrammeDrillDownModal = () => {
+    document.querySelectorAll('.risk-drilldown-modal').forEach((modal) => {
+        modal.remove();
+    });
+    document.body.classList.remove('has-risk-drilldown-modal');
+};
+
 export const cancelProgrammeDrillDownRequests = () => {
     activeProgrammeDrillDownToken += 1;
 };
@@ -41,6 +48,8 @@ const fetchDrillDownPayload = async (endpoint, params = {}) => {
 };
 
 const showProgrammeDrillDownModal = (payload) => {
+      removeExistingProgrammeDrillDownModal();   // 👈 ADD THIS LINE
+
     // Create modal using system styling
     const modal = document.createElement('div');
     modal.className = 'risk-drilldown-modal';
@@ -87,10 +96,12 @@ const showProgrammeDrillDownModal = (payload) => {
         border-radius: 4px;
         transition: all 0.2s ease;
     `;
-    closeButton.onclick = () => {
-        document.body.removeChild(modal);
-        document.body.classList.remove('has-risk-drilldown-modal');
-    };
+  closeButton.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    modal.remove();
+    document.body.classList.remove('has-risk-drilldown-modal');
+};
     closeButton.onmouseover = () => closeButton.style.backgroundColor = '#f1f5f9';
     closeButton.onmouseout = () => closeButton.style.backgroundColor = 'transparent';
     
@@ -169,12 +180,13 @@ const showProgrammeDrillDownModal = (payload) => {
     document.body.classList.add('has-risk-drilldown-modal');
     
     // Close on backdrop click
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-            document.body.classList.remove('has-risk-drilldown-modal');
-        }
-    };
+   modal.onclick = (e) => {
+    if (e.target === modal) {
+        e.stopPropagation();
+        modal.remove();
+        document.body.classList.remove('has-risk-drilldown-modal');
+    }
+};
 };
 
 const showProgrammeDrillDownLoadingModal = (title, subtitle) => {
