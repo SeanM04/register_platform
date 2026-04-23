@@ -678,12 +678,12 @@ class GraduationAnalysis {
 
         chart.setOption({
             ...buildAnimationConfig(sortedRows),
-            grid: { left: 52, right: 24, top: 18, bottom: 86 },
+            grid: { left: 85, right: 24, top: 25, bottom: 95 },
             tooltip: {
                 ...buildTooltipBase("item"),
                 formatter: (params) => {
                     const row = sortedRows[params.dataIndex];
-                    return buildTooltipMarkup(row.effective_cohort_label, [
+                    return buildTooltipMarkup(`${row.original_cohort_label} Cohort`, [
                         { label: "Graduation rate", value: `${row.graduation_rate}%` },
                         { label: "Graduated", value: `${row.graduated_count}` },
                         { label: "Enrolled", value: `${row.enrolled_count}` },
@@ -701,6 +701,14 @@ class GraduationAnalysis {
                 },
                 axisLine: { lineStyle: { color: "#cbd5e1" } },
                 axisTick: { show: true, alignWithLabel: true },
+                name: "Original Cohort (Entry Year)",
+                nameLocation: "middle",
+                nameGap: 50,
+                nameTextStyle: {
+                    color: "#0f172a",
+                    fontSize: 14,
+                    fontWeight: 700,
+                },
             },
             yAxis: {
                 type: "value",
@@ -708,6 +716,15 @@ class GraduationAnalysis {
                 max: 100,
                 axisLabel: { color: "#475569", formatter: "{value}%" },
                 splitLine: { lineStyle: { color: "rgba(148, 163, 184, 0.2)" } },
+                name: "Graduation Rate (%)",
+                nameLocation: "middle",
+                nameGap: 45,
+                nameRotate: 90,
+                nameTextStyle: {
+                    color: "#0f172a",
+                    fontSize: 14,
+                    fontWeight: 700,
+                },
             },
             dataZoom: sortedRows.length > 8 ? [
                 {
@@ -752,6 +769,7 @@ class GraduationAnalysis {
                         position: "top",
                         color: "#0f172a",
                         fontWeight: 700,
+                        fontSize: 11,
                         formatter: "{c}%",
                     },
                 },
@@ -1189,7 +1207,9 @@ class GraduationAnalysis {
 
     row.innerHTML = `
         <td class="students-td-name">
-            <span class="graduation-student-name">${escapeTooltipHtml(student.student_name || "")}</span>
+            <a class="student-link" href="/students/${student.detail_slug || student.regnum}/" aria-label="View ${escapeTooltipHtml(student.student_name)} profile">
+                ${escapeTooltipHtml(student.student_name || "")}
+            </a>
         </td>
         <td>${escapeTooltipHtml(student.programme_name || "")}</td>
         <td>${escapeTooltipHtml(student.faculty || "")}</td>

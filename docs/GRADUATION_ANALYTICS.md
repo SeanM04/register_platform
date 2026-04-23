@@ -32,37 +32,48 @@ The graduation page depends on the shared completion logic and then applies grad
 
 ### Target graduation stage
 
-`_target_period_from_programme()` resolves the documented stage:
+`_target_period_from_programme()` resolves the documented stage with attendance type awareness:
 
-- programme name contains `masters` or `master` -> period `4` -> `Year 2, Semester 2`
-- programme name contains `engineering` -> period `10` -> `Year 5, Semester 2`
-- all other programmes -> period `8` -> `Year 4, Semester 2`
+- Masters programmes -> period `3` -> `Year 1, Semester 3`
+- Engineering programmes:
+  - Visiting students -> period `8` -> `Year 4, Semester 2`
+  - Conventional students -> period `10` -> `Year 5, Semester 2`
+- All other programmes:
+  - Visiting students -> period `6` -> `Year 3, Semester 2`
+  - Conventional students -> period `8` -> `Year 4, Semester 2`
 
-### Effective cohort
+### Original Cohort Isolation
 
-Graduation uses the student's effective cohort after all completion-side decision shifts. This means the page inherits:
+**Critical Change:** All graduation rate calculations now use **strict original cohort isolation** instead of effective cohort mixing:
 
-- zero-completion decisions from `services/completion_rules.py`
-- effective cohort shifting from `services/completion_service.py`
-
-### Graduate rate for one graduate
-
-`_graduate_rate()` averages the completion rate of the graduate's effective cohort from chronological progression period `1` through the programme target period. Missing cohort periods are treated as `0%` because the documented formula averages every period from `1` to the target.
-
-### On-time graduation
-
-A graduate is marked on time when:
-
-- `effective_cohort == original_cohort`
-
-Any shift makes the graduate delayed.
+- **Original cohort:** Student's first registration period (true academic entry point)
+- **Effective cohort:** Used only for on-time vs delayed graduation classification
+- **No cohort mixing:** Students from different original cohorts are never combined in rate calculations
 
 ### Graduation qualification check
 
-The page only counts a visible student as graduated when one of these is true:
+A student is counted as graduated when **BOTH** conditions are met:
 
-- the latest visible decision explicitly indicates graduation, completion, or award
-- the student's latest visible record reaches the programme target period in that student's chronological registration sequence
+1. **Progression requirement:** Student's chronological progression ≥ target period for their programme
+2. **Decision requirement:** Latest visible decision indicates graduation (graduat, complet, award, pending, proceed, or resubmit dissertation)
+
+### On-time graduation
+
+A graduate is marked **on-time** when:
+- `effective_cohort_label == original_cohort_label`
+
+Any cohort shift makes the graduate **delayed**. This classification is used for timing analysis only.
+
+### Individual Student Indicators
+
+Each student record now provides meaningful indicators instead of misleading individual rates:
+
+- `is_graduated`: Boolean graduation status
+- `on_time`: Boolean on-time vs delayed classification
+- `target_period`: Programme-specific graduation target
+- `actual_progression`: Current chronological progression
+- `steps_remaining`: Steps until graduation target
+- `graduation_rate`: 100% for graduated, 0% for non-graduated (backward compatibility)
 
 That chronological check matters because some source files store raw academic-year labels that jump or arrive out of order, for example `1.2`, `3.2`, then `3.1`. The page must not manufacture missing semesters from those labels. A master's student with only three visible registration periods is therefore one step from the documented period-4 target unless an explicit graduation-like decision exists.
 
@@ -121,17 +132,17 @@ This lookup powers the graduation-rate calculation for each graduate.
 #### Charts
 
 - `programme_graduation_rate`
-  Average graduate-rate score by programme
+  Graduation rate by programme using original cohort isolation
 - `cohort_graduation_rate`
-  `(graduated / enrolled) * 100` by effective cohort
+  `(graduated / enrolled) * 100` by original cohort
 - `faculty_graduation_rate`
-  Graduation rate by faculty
+  Weighted graduation rate by faculty using original cohort aggregation
 - `graduation_timing`
   `On-time` versus `Delayed` graduate counts
 - `readiness_programmes`
   Programmes with students who are one visible step from the documented graduation target
 - `readiness_cohorts`
-  Effective cohorts with students who are one visible step from the documented graduation target
+  Original cohorts with students who are one visible step from the documented graduation target
 
 #### Meta
 
@@ -156,7 +167,41 @@ The table uses each visible graduate and shows:
 - effective cohort
 - original cohort
 - on-time flag
-- graduation rate
+- individual indicators (is_graduated, target_period, actual_progression, steps_remaining)
+- graduation_rate (100% for graduates, 0% for non-graduates - backward compatibility)
+
+## Graduation Rate Calculations
+
+### Cohort Level Graduation Rate
+
+```
+Cohort Rate = (Number of Graduated Students in Original Cohort) ÷ (Total Students in Original Cohort) × 100
+```
+
+### Faculty Level Graduation Rate
+
+```
+Faculty Rate = (Total Graduated Students Across All Original Cohorts in Faculty) ÷ (Total Students Across All Original Cohorts in Faculty) × 100
+```
+
+### Average Graduation Rate
+
+```
+Average Rate = (Total Graduated Students Across All Original Cohorts) ÷ (Total Students Across All Original Cohorts) × 100
+```
+
+### On-Time Graduation Rate
+
+```
+On-Time Rate = (Number of Graduates with effective_cohort == original_cohort) ÷ (Total Graduated Students) × 100
+```
+
+### Key Calculation Principles
+
+1. **Strict Original Cohort Isolation:** No mixing of students from different original entry periods
+2. **Weighted Aggregation:** Faculty rates use weighted sums, not averaged percentages
+3. **Academic Accuracy:** Rates represent true graduation performance, not distorted cohort mixing
+4. **Backward Compatibility:** Individual graduation_rate field maintained for frontend compatibility
 
 ## Views Layer
 
@@ -293,6 +338,16 @@ If the graduation page shows very few or zero graduates, verify the data before 
 2. Check whether the dataset actually reaches the terminal target periods required by the documented rules
 3. Confirm the latest visible records are being evaluated relative to the student's programme start, not against raw academic-year labels alone
 4. Use the readiness charts to confirm whether the snapshot is close to producing graduates but is still one or two visible steps short
+5. Verify that original cohort isolation is working correctly - students should be grouped by their first registration period
+6. Check that faculty rates are using weighted aggregation, not simple averaging of cohort rates
+7. Confirm that individual student indicators (is_graduated, on_time, target_period) are properly calculated
+
+### Common Issues After Refactor
+
+1. **Low graduation rates:** This is expected! The new cohort-based system shows true academic performance
+2. **Missing graduates:** Check that both progression AND decision requirements are met
+3. **Faculty rate discrepancies:** Verify weighted aggregation is used instead of averaging
+4. **Frontend errors:** Ensure backward compatibility graduation_rate field is present in student records
 
 ## Tests
 
