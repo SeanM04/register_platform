@@ -268,30 +268,6 @@
 
 /* Custom filter styling removed to use default base.css dropdown arrow */
 
-/* Student Link Styles */
-.students-td-name .student-link {
-    display: block;
-    color: var(--navy);
-    text-decoration-line: underline;
-    text-decoration-color: rgba(79, 176, 209, 0.4);
-    text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
-    font-weight: 600;
-    transition: color 0.2s ease, text-decoration-color 0.2s ease;
-}
-
-.students-td-name .student-link:hover,
-.students-td-name .student-link:focus-visible {
-    color: var(--navy-soft);
-    text-decoration-color: rgba(79, 176, 209, 0.72);
-}
-
-.students-td-name .student-link:focus-visible {
-    outline: 2px solid var(--navy-soft);
-    outline-offset: 2px;
-    border-radius: 2px;
-}
-
 /* Charts Section */
 .graduation-charts {
     display: grid;
