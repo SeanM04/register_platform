@@ -568,7 +568,7 @@ class CompletionAnalysis {
                 formatter: (params) => buildTooltipMarkup(
                     `${params.data.name} · ${params.data.progressionLabel}`,
                     [
-                        { label: "Average completion", value: `${params.data.completionRate}%` },
+                        { label: "Average completion", value: `${Math.round(params.data.completionRate)}%` },
                         { label: "Visible records", value: `${params.data.studentCount}` },
                         { label: "Zero completion", value: `${params.data.zeroCompletionCount}` },
                         { label: "Non-zero share", value: `${Math.round(params.data.passShareRate)}%` },
@@ -670,7 +670,7 @@ class CompletionAnalysis {
                 formatter: (params) => {
                     const row = topRows[params.dataIndex];
                     return buildTooltipMarkup(row.programme_name, [
-                        { label: "Average completion", value: `${row.completion_rate}%` },
+                        { label: "Average completion", value: `${Math.round(row.completion_rate)}%` },
                         { label: "Students", value: `${row.student_count}` },
                         { label: "Semester records", value: `${row.record_count}` },
                         { label: "Zero-completion share", value: `${Math.round(row.zero_completion_rate)}%` },
@@ -683,7 +683,7 @@ class CompletionAnalysis {
                 max: 100,
                 axisLabel: {
                     color: "#475569",
-                    formatter: "{value}%",
+                    formatter: (value) => `${Math.round(value)}%`,
                 },
                 splitLine: {
                     lineStyle: { color: "rgba(148, 163, 184, 0.2)" },
@@ -724,7 +724,7 @@ class CompletionAnalysis {
                         position: "right",
                         color: "#0f172a",
                         fontWeight: 700,
-                        formatter: "{c}%",
+                        formatter: (params) => `${Math.round(params.value)}%`,
                     },
                 },
             ],

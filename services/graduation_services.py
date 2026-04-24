@@ -83,7 +83,7 @@ def _build_completion_lookup(student_histories: List[Dict[str, Any]]) -> Dict[tu
             )
 
     return {
-        key: round(sum(values) / len(values), 1)
+        key: round(sum(values) / len(values))
         for key, values in grouped_records.items()
         if values
     }
@@ -96,7 +96,7 @@ def _graduate_rate(effective_cohort_label: str, target_period: int, completion_l
     ]
     if not completion_values:
         return 0.0
-    return round(sum(completion_values) / target_period, 1)
+    return round(sum(completion_values) / target_period)
 
 
 def _relative_programme_progression(record: Dict[str, Any], start_progression_period: Optional[int]) -> Optional[int]:
