@@ -36,7 +36,22 @@ const buildPaginationHtml = (payload = {}) => {
 
 const buildTableBodyHtml = (payload = {}) => {
     const columns = Array.isArray(payload.columns) ? payload.columns : [];
-    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+
+    const firstColumnKey = columns[0]?.key;
+
+    const rows = Array.isArray(payload.rows)
+        ? [...payload.rows].sort((a, b) => {
+            const getLastName = (row) => {
+                const fullName = String(row?.[firstColumnKey] || "").trim();
+                const parts = fullName.split(/\s+/);
+                return parts[parts.length - 1].toLowerCase();
+            };
+
+            return getLastName(a).localeCompare(getLastName(b));
+        })
+        : [];
+
+    
     if (!columns.length) {
         return `
             <div class="risk-drilldown-state">
@@ -52,7 +67,18 @@ const buildTableBodyHtml = (payload = {}) => {
     const rowsHtml = rows.length
         ? rows.map((row) => {
             const cellsHtml = columns.map((column, columnIndex) => {
-                const cellValue = escapeTooltipHtml(getDisplayValue(row?.[column.key]));
+                let value = getDisplayValue(row?.[column.key]);
+
+// If it's the FIRST column (student name), swap to "Last First"
+if (columnIndex === 0) {
+    const parts = String(value || "").trim().split(/\s+/);
+    if (parts.length > 1) {
+        const lastName = parts.pop();
+        value = `${lastName} ${parts.join(" ")}`;
+    }
+}
+
+const cellValue = escapeTooltipHtml(value);
                 const detailUrl = String(row?.detail_url || "").trim();
                 if (columnIndex === 0 && detailUrl) {
                     return `

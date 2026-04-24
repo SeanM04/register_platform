@@ -1144,12 +1144,22 @@ class GraduationAnalysis {
 
     updateStudentsTable() {
         const students = this.currentData?.students || [];
+
+        const sortedStudents = [...students].sort((a, b) => {
+    const getLastName = (name) => {
+        const parts = (name || "").trim().split(" ");
+        return parts[parts.length - 1].toLowerCase();
+    };
+
+    return getLastName(a.student_name).localeCompare(getLastName(b.student_name));
+});
+
         const tbody = document.getElementById("students-tbody");
         if (!tbody) {
             return;
         }
 
-        const filteredStudents = this.getFilteredStudents(students);
+        const filteredStudents = this.getFilteredStudents(sortedStudents);
         const paginatedStudents = this.getPaginatedStudents(filteredStudents);
 
         if (!paginatedStudents.length) {
