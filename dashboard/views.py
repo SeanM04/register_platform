@@ -777,7 +777,7 @@ def student_detail(request, slug):
     filtered_registrations = []
     for registration in all_registrations:
         # Calculate progression year based on actual enrollment timeline
-        progression_year = calculate_academic_year(all_registrations, registration)
+        progression_year = calculate_academic_progression_year(all_registrations, registration)
         calculated_semester = calculate_academic_semester(all_registrations, registration)
         semester_label = format_semester_label(calculated_semester)
         faculty_name = registration.programme.department.faculty.name
