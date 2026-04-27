@@ -5,4 +5,5 @@ urlpatterns = [
     path('', include('dashboard.urls')),
     path("", include("accounts.urls")),
     path('admin/', admin.site.urls),
+    path('api/chatbot/', include('chatbot.urls', namespace='chatbot')),
 ]
