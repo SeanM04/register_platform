@@ -434,36 +434,73 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
     
     from urllib.parse import unquote_plus
     from ..models import Registration, Student, Programme
+    from ..views import build_registration_filter_q
     
     # URL decode the bucket key to handle special characters
     bucket_key = unquote_plus(bucket_key)
     
+    # Debug logging
+    print(f"DEBUG: Programme drilldown - chart_key='{chart_key}', bucket_key='{bucket_key}'")
+    
     try:
-        # Debug: Log the request parameters
-        print(f"DEBUG: Programme drilldown request - chart_key: {chart_key}, bucket_key: {bucket_key}")
+        # Build base registration filter
+        base_filter = build_registration_filter_q(request)
+        registrations = Registration.objects.filter(base_filter)
+        
+        print(f"DEBUG: Base registrations count: {registrations.count()}")
         
         if chart_key == "programme_load":
-            # Get students in the specified programme
-            registrations = Registration.objects.filter(
+            # Get students in the specified programme - use name field for matching
+            registrations = registrations.filter(
                 programme__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department')[:page_size]
+            ).select_related('student', 'programme', 'programme__department')
             
-            print(f"DEBUG: Found {len(registrations)} registrations for programme '{bucket_key}'")
+            print(f"DEBUG: Programme load filtered count: {registrations.count()}")
+            # Let's also check what programmes exist
+            from ..models import Programme
+            programmes = Programme.objects.filter(name__iexact=bucket_key)
+            print(f"DEBUG: Programmes found with name='{bucket_key}': {programmes.count()}")
+            for prog in programmes[:3]:
+                print(f"DEBUG: Programme - name: '{prog.name}', normalized_name: '{prog.normalized_name}'")
             
         elif chart_key == "departments":
             # Get students in the specified department
-            registrations = Registration.objects.filter(
+            registrations = registrations.filter(
                 programme__department__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department')[:page_size]
+            ).select_related('student', 'programme', 'programme__department')
             
-            print(f"DEBUG: Found {len(registrations)} registrations for department '{bucket_key}'")
+            print(f"DEBUG: Department filtered count: {registrations.count()}")
+            
+        elif chart_key == "low_pass":
+            # Get students in programmes with low pass rates - use name field for matching
+            registrations = registrations.filter(
+                programme__name__iexact=bucket_key
+            ).select_related('student', 'programme', 'programme__department')
+            
+            print(f"DEBUG: Low pass filtered count: {registrations.count()}")
+            
+        elif chart_key == "performance":
+            # Get students in performance chart programmes - use name field for matching
+            registrations = registrations.filter(
+                programme__name__iexact=bucket_key
+            ).select_related('student', 'programme', 'programme__department')
+            
+            print(f"DEBUG: Performance filtered count: {registrations.count()}")
             
         else:
-            raise ValueError("Unsupported programme drill-down chart.")
+            raise ValueError(f"Unsupported programme drill-down chart: {chart_key}")
+        
+        # Get total count for pagination
+        total_count = registrations.count()
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+        
+        # Apply pagination
+        offset = (page - 1) * page_size
+        paginated_registrations = registrations[offset:offset + page_size]
         
         # Build student rows
         student_rows = []
-        for i, registration in enumerate(registrations):
+        for i, registration in enumerate(paginated_registrations):
             student = registration.student
             programme = registration.programme
             row_data = {
@@ -477,12 +514,7 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             }
             student_rows.append(row_data)
             
-            # Debug: Log first few rows
-            if i < 3:
-                print(f"DEBUG: Student {i+1}: {row_data['name']} - {row_data['programme']} - {row_data['department']}")
-        
-        print(f"DEBUG: Built {len(student_rows)} student rows for response")
-        
+                    
         return {
             "title": f"{bucket_key} Students",
             "subtitle": f"Students currently registered in {bucket_key}.",
@@ -498,16 +530,14 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             "pagination": {
                 "current_page": page,
                 "page_size": page_size,
-                "total_items": len(student_rows),
-                "total_pages": 1,
-                "has_next": False,
-                "has_previous": False,
+                "total_items": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
             },
         }
         
     except Exception as e:
-        # Log the error and re-raise to show real issues
-        print(f"ERROR: Programme drilldown failed - {str(e)}")
         raise e
 
 

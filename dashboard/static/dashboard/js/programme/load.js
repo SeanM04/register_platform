@@ -123,13 +123,19 @@ export const initialiseLoadSection = (context) => {
     // Add drill-down click handler
     chart.on("click", (params) => {
         const row = sortedRows[params.dataIndex];
+        console.log("Programme load chart clicked:", row);
+        console.log("Row data keys:", Object.keys(row));
+        console.log("Row name:", row.name);
+        console.log("Row axis_label:", row.axis_label);
+        
         if (row && row.name) {
-            console.log("Programme load chart clicked:", row);
             openProgrammeDrillDown(context, {
                 chartKey: "programme_load",
                 bucketKey: row.name,
                 label: formatProgrammeName(row.name),
             });
+        } else {
+            console.log("No row.name found, row data:", row);
         }
     });
 

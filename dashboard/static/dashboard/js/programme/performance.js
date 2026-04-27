@@ -146,7 +146,7 @@ export const initialisePerformanceSection = (context) => {
         if (row && row.name) {
             console.log("Performance chart clicked:", row);
             openProgrammeDrillDown(context, {
-                chartKey: "programme_load",
+                chartKey: "performance",
                 bucketKey: row.name,
                 label: formatProgrammeName(row.name),
             });

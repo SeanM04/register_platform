@@ -125,7 +125,7 @@ export const initialiseQualitySection = (context) => {
         if (row && row.name) {
             console.log("Quality chart clicked:", row);
             openProgrammeDrillDown(context, {
-                chartKey: "programme_load",
+                chartKey: "low_pass",
                 bucketKey: row.name,
                 label: formatProgrammeName(row.name),
             });
