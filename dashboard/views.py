@@ -1010,7 +1010,7 @@ def student_detail(request, slug):
         if selected_year and selected_year != "All":
             registration_year = _registration_progression_year_label(all_registrations, registration)
             
-            if registration_year != calendar_year:
+            if registration_year != selected_year:
                 year_match = False
         
         # Check Period filter against actual enrollment
@@ -1291,7 +1291,7 @@ def student_detail(request, slug):
     
     # Group validated registrations by academic progression year
     year_groups = {}
-    for registration in display_registrations:
+    for registration in validated_registrations:
         progression_year = calculate_academic_progression_year(validated_registrations, registration)
         if progression_year not in year_groups:
             year_groups[progression_year] = []

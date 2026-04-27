@@ -275,6 +275,10 @@ def _build_outcome_student_profiles(registrations, request=None):
                 "name": registration.student.full_name,
                 "registration_number": registration.student.registration_number,
                 "programme": registration.programme.normalized_name if registration.programme else "Unassigned",
+                "department": registration.programme.department.name if registration.programme and registration.programme.department else "Unassigned",
+                "faculty": _get_registration_faculty_name(registration),
+                "decision": registration.decision or "Unknown",
+                "carrying": registration.carrying or 0,
                 "average_mark": average_mark,
                 "status_key": status_key,
                 "status_label": status_label,
@@ -563,6 +567,7 @@ def _build_faculty_load_rows(registrations):
     total_registrations = len(registrations)
     rows = [
         {
+            "key": faculty_name,
             "label": faculty_name,
             "registrations": count,
             "share_pct": _pct(count, total_registrations),
@@ -743,6 +748,163 @@ def _build_overview_drilldown_cache_key(request, chart_key, bucket_key, page, pa
     return f"dashboard:overview:drilldown:{chart_key}:{bucket_key}:page={page}:size={page_size}:{query_string or 'all'}"
 
 
+def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, page_size):
+    """Build hierarchical drilldown data for faculty load (faculty → department → programme → students)."""
+    from urllib.parse import unquote_plus
+    
+    # Decode URL-encoded bucket key
+    bucket_key = unquote_plus(bucket_key)
+    print(f"DEBUG: Faculty drilldown - decoded bucket_key: {bucket_key}")
+    
+    # Check if this is a hierarchical navigation request
+    if "|" in bucket_key:
+        # Handle department or programme level drilldown
+        parts = bucket_key.split("|", 1)
+        faculty_name = parts[0]
+        target_name = parts[1]
+        
+        # Filter registrations by faculty first
+        faculty_registrations = [
+            reg for reg in registrations
+            if _get_registration_faculty_name(reg).lower() == faculty_name.lower()
+        ]
+        
+        # Check if this is department level (faculty|department) or programme level (faculty|department|programme)
+        # Split the full bucket_key to determine the level
+        full_parts = bucket_key.split("|")
+        
+        if len(full_parts) == 3:
+            # Programme level - show students (faculty|department|programme)
+            faculty_name, dept_name, prog_name = full_parts
+            print(f"DEBUG: Looking for programme: '{prog_name}' in department: '{dept_name}'")
+            
+            # Debug: Show all programmes in this department
+            dept_programmes = set()
+            for reg in faculty_registrations:
+                if reg.programme and reg.programme.department and reg.programme.department.name.lower() == dept_name.lower():
+                    dept_programmes.add(reg.programme.name)
+            print(f"DEBUG: Available programmes in '{dept_name}': {sorted(dept_programmes)}")
+            
+            programme_registrations = [
+                reg for reg in faculty_registrations
+                if (reg.programme and reg.programme.department and 
+                    reg.programme.department.name.lower() == dept_name.lower() and
+                    (reg.programme.normalized_name.lower() == prog_name.lower() or 
+                     reg.programme.name.lower() == prog_name.lower()))
+            ]
+            
+            print(f"DEBUG: Found {len(programme_registrations)} matching registrations for programme '{prog_name}'")
+            if programme_registrations:
+                print(f"DEBUG: First programme reg: {programme_registrations[0].programme.name if programme_registrations else 'None'}")
+            else:
+                print(f"DEBUG: No matching registrations found for programme '{prog_name}'")
+            
+            student_profiles = _build_outcome_student_profiles(programme_registrations, request)
+            
+            # Apply pagination
+            total_count = len(student_profiles)
+            start_index = (page - 1) * page_size
+            end_index = start_index + page_size
+            paginated_profiles = student_profiles[start_index:end_index]
+            
+            payload = {
+                "title": f"{prog_name} Students",
+                "subtitle": f"Students currently enrolled in {prog_name} programme.",
+                "columns": [
+                    {"key": "name", "label": "Student Name"},
+                    {"key": "registration_number", "label": "Registration Number"},
+                    {"key": "programme", "label": "Programme"},
+                    {"key": "department", "label": "Department"},
+                    {"key": "faculty", "label": "Faculty"},
+                    {"key": "decision", "label": "Decision"},
+                    {"key": "carrying", "label": "Carrying"},
+                ],
+                "rows": paginated_profiles,
+                "type": "students",
+                "pagination": {
+                    "current_page": page,
+                    "page_size": page_size,
+                    "total_count": total_count,
+                    "total_pages": (total_count + page_size - 1) // page_size,
+                    "has_next": page * page_size < total_count,
+                    "has_previous": page > 1,
+                }
+            }
+            return payload
+            
+        else:
+            # Department level - show programmes
+            dept_registrations = [
+                reg for reg in faculty_registrations
+                if (reg.programme and reg.programme.department and 
+                    reg.programme.department.name.lower() == target_name.lower())
+            ]
+            
+            # Group by programme
+            programme_counts = {}
+            for reg in dept_registrations:
+                prog_name = reg.programme.name if reg.programme else "Unassigned"
+                prog_key = reg.programme.normalized_name if reg.programme else "unassigned"
+                if prog_key not in programme_counts:
+                    programme_counts[prog_key] = {
+                        "name": prog_name,
+                        "student_count": 0,
+                        "department": reg.programme.department.name if reg.programme and reg.programme.department else "Unassigned"
+                    }
+                programme_counts[prog_key]["student_count"] += 1
+            
+            return {
+                "type": "programmes",
+                "title": f"{target_name} - Programmes",
+                "subtitle": f"Programmes within the {target_name} department.",
+                "data": [
+                    {
+                        "label": data["name"],  # Use the display name with BSc/BCom
+                        "key": prog_key,        # Use normalized name for navigation
+                        "count": data["student_count"],
+                        "department": data["department"]
+                    }
+                    for prog_key, data in sorted(programme_counts.items(), key=lambda x: (-x[1]["student_count"], x[0]))
+                ]
+            }
+    
+    else:
+        # Faculty level - show departments
+        faculty_registrations = [
+            reg for reg in registrations
+            if _get_registration_faculty_name(reg).lower() == bucket_key.lower()
+        ]
+        
+        # Group by department
+        department_counts = {}
+        for reg in faculty_registrations:
+            dept_name = reg.programme.department.name if reg.programme and reg.programme.department else "Unassigned"
+            if dept_name not in department_counts:
+                department_counts[dept_name] = {
+                    "name": dept_name,
+                    "student_count": 0,
+                    "programmes": set()
+                }
+            department_counts[dept_name]["student_count"] += 1
+            if reg.programme:
+                department_counts[dept_name]["programmes"].add(reg.programme.normalized_name)
+        
+        return {
+            "type": "departments",
+            "title": f"{bucket_key} - Departments",
+            "subtitle": f"Departments within the {bucket_key} faculty.",
+            "data": [
+                {
+                    "label": dept_name,
+                    "count": data["student_count"],
+                    "programme_count": len(data["programmes"])
+                }
+                for dept_name, data in sorted(department_counts.items(), key=lambda x: (-x[1]["student_count"], x[0]))
+                if dept_name != "Unassigned"
+            ]
+        }
+
+
 def _build_overview_drilldown_data(request, chart_key, bucket_key, page, page_size):
     """Return on-demand student rows for a landing-page chart drill-down."""
 
@@ -754,6 +916,10 @@ def _build_overview_drilldown_data(request, chart_key, bucket_key, page, page_si
     if chart_key == "risk_distribution":
         risk_profiles = build_student_risk_profiles_from_registrations(registrations)
         return _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_key, page, page_size)
+
+    if chart_key == "faculty_load":
+        # Handle hierarchical drilldown for faculty load
+        return _build_faculty_drilldown_payload(request, registrations, bucket_key, page, page_size)
 
     raise ValueError("Unsupported overview drill-down chart.")
 

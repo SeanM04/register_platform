@@ -915,6 +915,83 @@ body.has-home-drilldown-modal {
     text-decoration: underline;
 }
 
+/* Hierarchical drilldown styles */
+.home-drilldown-hierarchical-list {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.home-drilldown-hierarchical-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(184, 200, 217, 0.72);
+    border-radius: 8px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.home-drilldown-hierarchical-item:hover {
+    background: #fbfdff;
+    border-color: rgba(13, 50, 93, 0.24);
+    transform: translateY(-1px);
+}
+
+.home-drilldown-item-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.home-drilldown-item-label {
+    color: var(--home-ink, #0f2b4c);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.home-drilldown-item-count {
+    color: #4d6178;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.home-drilldown-item-subcount {
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 0.1rem;
+}
+
+.home-drilldown-navigate-button {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid rgba(13, 50, 93, 0.16);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--home-teal, #2d83ab);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+}
+
+.home-drilldown-navigate-button:hover {
+    background: #f4f8fb;
+    border-color: rgba(13, 50, 93, 0.24);
+    transform: translateY(-1px);
+}
+
+.home-drilldown-navigate-button:active {
+    transform: translateY(0);
+}
+
 .home-drilldown-pagination {
     display: flex;
     flex-wrap: wrap;
