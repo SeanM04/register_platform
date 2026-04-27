@@ -16,7 +16,6 @@ export const createAcademicLevelContext = (payload = {}) => {
         .slice(0, 5);
 
     const levelTableBody = document.querySelector(".level-table tbody");
-    console.log('[Academic Level Context] Table body found:', !!levelTableBody, 'Selector used:', '.level-table tbody');
 
     return {
         data: {

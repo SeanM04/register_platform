@@ -122,7 +122,6 @@ export const initialiseDepartmentSection = (context) => {
     chart.on("click", (params) => {
         const row = rows[params.dataIndex];
         if (row && row.department) {
-            console.log("Department chart clicked:", row);
             openProgrammeDrillDown(context, {
                 chartKey: "departments",
                 bucketKey: row.department,

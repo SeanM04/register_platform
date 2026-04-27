@@ -135,7 +135,6 @@ export const initialiseProgressSection = (context) => {
     chart.on("click", (params) => {
         const row = rows[params.dataIndex];
         if (row && row.key) {
-            console.log("Progress chart clicked:", row);
             openOverviewDrillDown(context, {
                 chartKey: "progress",
                 bucketKey: row.key,

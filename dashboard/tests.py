@@ -3,6 +3,7 @@
 import csv
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.contrib.auth import get_user_model
@@ -61,18 +62,29 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["students"], 1)
         self.assertEqual(metrics["average_pass_rate"], "100%")
 
-    def test_insights_view_renders_live_operational_context(self):
-        """Insights page should render real flagged-student & recommendation content."""
+    def test_insights_view_renders_lightweight_shell(self):
+        """Insights page should render the shared shell and defer heavy payloads."""
 
         response = self.client.get(reverse("dashboard:insights"))
 
         active_labels = [item["label"] for item in response.context["sidebar_items"] if item["is_active"]]
         self.assertEqual(response.status_code, 200)
         self.assertEqual(active_labels, ["Insights"])
-        self.assertEqual(response.context["flagged_total"], 2)
-        self.assertEqual(len(response.context["recommendations"]), 3)
-        self.assertEqual(response.context["insight_summary_cards"][0]["label"], "At-Risk Students")
-        self.assertNotIn("average below 50%", response.context["flagged_students"][0]["meta"].lower())
+        self.assertEqual(len(response.context["summary_cards"]), 4)
+        self.assertTrue(all(card["value"] == "--" for card in response.context["summary_cards"]))
+        self.assertContains(response, reverse("dashboard:insights-payload"))
+
+    def test_layout_context_exposes_chatbot_bootstrap(self):
+        """Shared dashboard context should expose chatbot config to the base template."""
+
+        response = self.client.get(reverse("dashboard:insights"))
+
+        chatbot_bootstrap = response.context["chatbot_bootstrap"]
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(chatbot_bootstrap["enabled"])
+        self.assertEqual(chatbot_bootstrap["page_key"], "insights")
+        self.assertEqual(chatbot_bootstrap["endpoint"], reverse("chatbot:message"))
+        self.assertTrue(chatbot_bootstrap["suggestions"])
 
     def test_student_list_shows_each_student_once_with_latest_registration_details(self):
         """Students page should collapse multiple registrations into one latest row per student."""
@@ -155,6 +167,35 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(filters["year"]["options"], ["Year 1"])
         self.assertEqual(visible_tab_years, [1])
         self.assertNotContains(response, "2027 January - June")
+
+    @override_settings(
+        CHATBOT_ENABLED=True,
+        CHATBOT_PROVIDER="google",
+        GOOGLE_API_KEY="test-google-key",
+    )
+    @patch("services.chatbot_service._request_google_chatbot_response")
+    def test_chatbot_message_endpoint_returns_google_reply(self, mock_request):
+        """The chatbot endpoint should return provider-generated copy when AI succeeds."""
+
+        mock_request.return_value = (
+            '{"candidates":[{"content":{"parts":[{"text":"AI summary for the current scope."}]}}]}'
+        )
+
+        response = self.client.post(
+            reverse("chatbot:message"),
+            data={
+                "message": "Summarize the current scope.",
+                "filters": {"year": "2026", "faculty": self.science_faculty.name},
+                "history": [{"role": "user", "content": "Hello"}],
+            },
+            content_type="application/json",
+        )
+
+        payload = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["source"], "google")
+        self.assertEqual(payload["reply"], "AI summary for the current scope.")
+        self.assertEqual(payload["diagnostics"]["returned_source"], "google")
 
     def test_student_list_paginates_in_the_database(self):
         """Students page should fetch only the requested page instead of materializing the full directory."""

@@ -15,8 +15,12 @@ This folder contains implementation notes and operational guidance for the regis
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
   Django app structure, models, and platform design notes
+- [pages/README.md](pages/README.md)
+  Sidebar page-by-page documentation for non-technical users and maintainers
 - [AI_INSIGHTS.md](AI_INSIGHTS.md)
   Shared AI narrative generation patterns across dashboards
+- [CHATBOT.md](CHATBOT.md)
+  UniStudio chatbot widget architecture, provider flow, and prototype notes
 - [DASHBOARD_HOME.md](DASHBOARD_HOME.md)
   Landing dashboard layout, filter bar, and drill-down behavior
 - [COMPLETION_ANALYTICS.md](COMPLETION_ANALYTICS.md)
@@ -32,6 +36,23 @@ This folder contains implementation notes and operational guidance for the regis
   Frontend drill-down rendering, pagination, and interactions
 
 ## Feature Guides
+
+### Sidebar Page Guides
+
+Folder: [pages/](pages/README.md)
+
+Covers every sidebar destination:
+
+- [Dashboard](pages/dashboard.md)
+- [Students](pages/students.md)
+- [Programmes](pages/programmes.md)
+- [Demographics](pages/demographics.md)
+- [Academic Levels](pages/academic-levels.md)
+- [Completion Analysis](pages/completion-analysis.md)
+- [Graduation Analysis](pages/graduation-analysis.md)
+- [Risk Analysis](pages/risk-analysis.md)
+- [Insights](pages/insights.md)
+- [System Management](pages/system-management.md)
 
 ### Landing Dashboard
 
@@ -112,6 +133,18 @@ docs/
 |-- ARCHITECTURE.md
 |-- AI_INSIGHTS.md
 |-- DASHBOARD_HOME.md
+|-- pages/
+|   |-- README.md
+|   |-- dashboard.md
+|   |-- students.md
+|   |-- programmes.md
+|   |-- demographics.md
+|   |-- academic-levels.md
+|   |-- completion-analysis.md
+|   |-- graduation-analysis.md
+|   |-- risk-analysis.md
+|   |-- insights.md
+|   `-- system-management.md
 |-- COMPLETION_ANALYTICS.md
 |-- GRADUATION_ANALYTICS.md
 |-- DRILLDOWN_OPTIMIZATION.md

@@ -124,7 +124,6 @@ export const initialiseLoadSection = (context) => {
     chart.on("click", (params) => {
         const row = sortedRows[params.dataIndex];
         if (row && row.name) {
-            console.log("Programme load chart clicked:", row);
             openProgrammeDrillDown(context, {
                 chartKey: "programme_load",
                 bucketKey: row.name,

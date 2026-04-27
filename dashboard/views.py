@@ -19,6 +19,7 @@ from accounts.decorators import (
 )
 from accounts.forms import SystemManagementUserForm
 from accounts.models import LoginLockout
+from services.chatbot_service import get_chatbot_provider_status
 from .models import AcademicPeriod, CourseResult, Faculty, Programme, Registration, Student
 
 SIDEBAR_ITEMS = [
@@ -73,6 +74,58 @@ GENDER_BUCKETS = (
     ("female", "Female"),
     ("unspecified", "Unspecified"),
 )
+CHATBOT_SUGGESTIONS = {
+    "dashboard": [
+        "Summarize the current dashboard scope.",
+        "Which faculty looks most pressured right now?",
+        "What is the current pass rate in this scope?",
+    ],
+    "students": [
+        "Summarize the student record I am viewing.",
+        "Explain the current period and decision.",
+        "What should I pay attention to in this record?",
+    ],
+    "programmes": [
+        "Which programme is strongest in this scope?",
+        "Compare the top visible programmes.",
+        "What does the programme chart mean?",
+    ],
+    "demographics": [
+        "Summarize the demographic picture in this scope.",
+        "Which demographic pattern stands out most?",
+        "What does the origin map tell us?",
+    ],
+    "academic-levels": [
+        "Which academic level is under the most pressure?",
+        "Summarize academic performance by level.",
+        "What does this level distribution mean?",
+    ],
+    "completion": [
+        "Explain the completion rules.",
+        "What causes zero completion?",
+        "Summarize the current completion scope.",
+    ],
+    "graduation": [
+        "Explain the graduation rules.",
+        "What does on-time graduation mean?",
+        "Summarize the current graduation scope.",
+    ],
+    "risk": [
+        "How should I read the risk bands?",
+        "What is the main driver of risk here?",
+        "Summarize the current watchlist.",
+    ],
+    "insights": [
+        "Summarize the current insights page.",
+        "What action should the institution take next?",
+        "Which trigger is driving the watchlist?",
+    ],
+    "system-management": [
+        "Explain what this admin page is for.",
+        "How do platform roles work here?",
+        "What should administrators review first?",
+    ],
+}
 
 
 def extract_period_year(period_name):
@@ -344,8 +397,18 @@ def build_layout_context(request, active_key):
         )
 
     context = build_filters(request)
+    chatbot_status = get_chatbot_provider_status()
     context.update({
         "sidebar_items": items,
+        "chatbot_bootstrap": {
+            "enabled": chatbot_status["enabled"],
+            "ai_available": chatbot_status["ai_available"],
+            "provider": chatbot_status["provider"],
+            "endpoint": reverse("chatbot:message"),
+            "page_key": active_key,
+            "page_label": next((item["label"] for item in SIDEBAR_ITEMS if item["key"] == active_key), "Workspace"),
+            "suggestions": CHATBOT_SUGGESTIONS.get(active_key, CHATBOT_SUGGESTIONS["dashboard"]),
+        },
     })
     return context
 
@@ -1108,36 +1171,11 @@ def student_detail(request, slug):
             display_empty_message = True
             empty_state_message = f"No courses found — student not yet in Year {selected_academic_year}."
         else:
-            # TEMP: Disable validation for debugging
-            # is_semester_valid, semester_message = validate_semester_period_alignment(selected_registration)
-            # 
-            # if not is_semester_valid:
-            #     # Critical data integrity violation - semester misaligned with period
-            #     display_empty_message = True
-            #     empty_state_message = "No courses found for this semester due to mismatched academic data."
-            #     print(f"CRITICAL ERROR: {semester_message} - Registration ID: {selected_registration.id}")
-            # else:
-                # Valid semester-period alignment - get results with strict filter application
-                registration_results = selected_registration.course_results.all()
+            registration_results = selected_registration.course_results.all()
                 
-                # Apply faculty filter (if not "All")
-                if selected_faculty and selected_faculty != "All":
-                    if selected_registration.programme.department.faculty.name == selected_faculty:
-                        results = [
-                            {
-                                "code": result.course.code,
-                                "course": result.course.name,
-                                "period": selected_registration.period.external_id,
-                                "mark": round(result.mark or 0),
-                            }
-                            for result in registration_results
-                        ]
-                    else:
-                        # Faculty filter doesn't match - no results
-                        display_empty_message = True
-                        empty_state_message = f"No courses found for the selected filters."
-                else:
-                    # No faculty filter or "All" selected - show all results
+            # Apply faculty filter (if not "All")
+            if selected_faculty and selected_faculty != "All":
+                if selected_registration.programme.department.faculty.name == selected_faculty:
                     results = [
                         {
                             "code": result.course.code,
@@ -1147,6 +1185,21 @@ def student_detail(request, slug):
                         }
                         for result in registration_results
                     ]
+                else:
+                    # Faculty filter doesn't match - no results
+                    display_empty_message = True
+                    empty_state_message = f"No courses found for the selected filters."
+            else:
+                # No faculty filter or "All" selected - show all results
+                results = [
+                    {
+                        "code": result.course.code,
+                        "course": result.course.name,
+                        "period": selected_registration.period.external_id,
+                        "mark": round(result.mark or 0),
+                    }
+                    for result in registration_results
+                ]
     
     elif filtered_registrations:
         # Filter-based rendering with strict validation

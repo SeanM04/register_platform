@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniStudio Chatbot — Architecture &amp; Documentation</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  /* ── Reset & base ─────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f4f9;
+    color: #1a2535;
+    line-height: 1.6;
+  }
+
+  /* ── Tokens ───────────────────────────────────────────────────────── */
+  :root {
+    --blue-deep:  #0d325d;
+    --blue-mid:   #1a6da8;
+    --blue-light: #4fb0d1;
+    --blue-pale:  #e8f2fb;
+    --green:      #27ae60;
+    --orange:     #e67e22;
+    --red:        #e74c3c;
+    --purple:     #8e44ad;
+    --surface:    #ffffff;
+    --border:     rgba(13,50,93,.1);
+    --radius:     12px;
+    --shadow-sm:  0 2px 8px rgba(13,50,93,.08);
+    --shadow-md:  0 8px 24px rgba(13,50,93,.12);
+    --shadow-lg:  0 16px 48px rgba(13,50,93,.16);
+  }
+
+  /* ── Hero ─────────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, var(--blue-deep) 0%, #1a5a94 60%, #1a84c8 100%);
+    color: #fff;
+    padding: 3.5rem 2rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 70% 30%, rgba(79,176,209,.25) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 999px;
+    padding: .35rem 1rem;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .hero h1 { font-size: clamp(1.8rem,4vw,3rem); font-weight: 800; line-height: 1.15; }
+  .hero h1 span { color: var(--blue-light); }
+  .hero-sub {
+    margin-top: .75rem;
+    font-size: 1.05rem;
+    color: rgba(255,255,255,.8);
+    max-width: 560px;
+    margin-inline: auto;
+  }
+  .hero-meta {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .hero-pill {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 8px;
+    padding: .4rem .9rem;
+    font-size: .8rem;
+    font-weight: 600;
+  }
+
+  /* ── Nav tabs ─────────────────────────────────────────────────────── */
+  .tab-bar {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    gap: .25rem;
+    padding: 0 1rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    font: inherit; font-size: .85rem; font-weight: 600;
+    color: #5a7a9a;
+    padding: .9rem 1.1rem;
+    border-bottom: 3px solid transparent;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--blue-mid); }
+  .tab-btn.active { color: var(--blue-deep); border-bottom-color: var(--blue-mid); }
+
+  /* ── Layout ───────────────────────────────────────────────────────── */
+  .page { max-width: 1120px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Section header ───────────────────────────────────────────────── */
+  .section-header { margin-bottom: 2rem; }
+  .section-header h2 {
+    font-size: 1.6rem; font-weight: 800; color: var(--blue-deep);
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .section-header h2 .ico {
+    width: 2rem; height: 2rem; border-radius: 8px;
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: .9rem; flex-shrink: 0;
+  }
+  .section-header p { margin-top: .5rem; color: #5a7a9a; font-size: .95rem; }
+
+  /* ── Cards grid ───────────────────────────────────────────────────── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .card-icon {
+    width: 2.25rem; height: 2.25rem; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; margin-bottom: .75rem; flex-shrink: 0;
+  }
+  .card h3 { font-size: .92rem; font-weight: 700; margin-bottom: .35rem; }
+  .card p { font-size: .8rem; color: #5a7a9a; line-height: 1.45; }
+  .card .example {
+    margin-top: .6rem; padding: .4rem .6rem;
+    background: var(--blue-pale); border-radius: 6px;
+    font-size: .75rem; color: var(--blue-deep); font-style: italic;
+  }
+
+  /* colour variants */
+  .c-blue   { background: #dbeafe; color: #1d4ed8; }
+  .c-teal   { background: #d1fae5; color: #065f46; }
+  .c-orange { background: #ffedd5; color: #9a3412; }
+  .c-purple { background: #ede9fe; color: #5b21b6; }
+  .c-pink   { background: #fce7f3; color: #9d174d; }
+  .c-yellow { background: #fef3c7; color: #92400e; }
+  .c-red    { background: #fee2e2; color: #991b1b; }
+  .c-sky    { background: #e0f2fe; color: #075985; }
+  .c-lime   { background: #ecfccb; color: #365314; }
+  .c-indigo { background: #e0e7ff; color: #3730a3; }
+  .c-gray   { background: #f1f5f9; color: #334155; }
+
+  /* ── Mode toggle ──────────────────────────────────────────────────── */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+  .mode-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .mode-card.ai   { border-color: var(--blue-mid); }
+  .mode-card.rules{ border-color: var(--green); }
+  .mode-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+  .mode-card.ai   h3 { color: var(--blue-mid); }
+  .mode-card.rules h3 { color: var(--green); }
+  .mode-card ul { padding-left: 1.2rem; font-size: .85rem; color: #5a7a9a; }
+  .mode-card ul li { margin-bottom: .35rem; }
+
+  /* ── Diagram wrapper ──────────────────────────────────────────────── */
+  .diagram-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1rem;
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+  }
+  .diagram-card + .diagram-card { margin-top: 1.5rem; }
+
+  /* ── Diagram explainer block ──────────────────────────────────────── */
+  .diagram-explainer {
+    margin-top: 1.25rem;
+    display: grid;
+    gap: .75rem;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  .explainer-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--blue-mid);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .explainer-item.c-green  { border-left-color: var(--green);  }
+  .explainer-item.c-orange { border-left-color: var(--orange); }
+  .explainer-item.c-purple { border-left-color: var(--purple); }
+  .explainer-item.c-red    { border-left-color: var(--red);    }
+  .explainer-item h4 {
+    font-size: .85rem; font-weight: 700; color: var(--blue-deep);
+    margin-bottom: .4rem; display: flex; align-items: center; gap: .4rem;
+  }
+  .explainer-item p {
+    font-size: .83rem; color: #4a6278; line-height: 1.55; margin: 0;
+  }
+  .explainer-item code {
+    background: var(--blue-pale); color: var(--blue-deep);
+    padding: .1em .35em; border-radius: 4px; font-size: .8em;
+  }
+
+  .diagram-label {
+    font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8898aa; margin-bottom: 1rem;
+    padding-bottom: .5rem; border-bottom: 1px solid var(--border);
+  }
+  .mermaid { display: flex; justify-content: center; }
+
+  /* ── File table ───────────────────────────────────────────────────── */
+  .file-group { margin-bottom: 1.75rem; }
+  .file-group h3 {
+    font-size: .8rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--blue-mid);
+    margin-bottom: .75rem; padding-bottom: .4rem;
+    border-bottom: 2px solid var(--blue-pale);
+  }
+  .file-list { display: flex; flex-direction: column; gap: .5rem; }
+  .file-row {
+    display: grid; grid-template-columns: minmax(200px,1fr) 1fr;
+    gap: 1rem; align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .15s;
+  }
+  .file-row:hover { border-color: var(--blue-light); }
+  .file-path {
+    font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    font-size: .78rem; color: var(--blue-deep); font-weight: 600;
+    word-break: break-all;
+  }
+  .file-desc { font-size: .82rem; color: #5a7a9a; }
+
+  /* ── DB model ─────────────────────────────────────────────────────── */
+  .model-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; }
+  .model-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+  }
+  .model-header {
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    color: #fff; padding: .75rem 1rem;
+    font-size: .9rem; font-weight: 700;
+  }
+  .model-body { padding: .75rem 1rem; }
+  .field-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .35rem 0; border-bottom: 1px solid var(--border); font-size: .8rem;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { font-family: monospace; color: var(--blue-deep); font-weight: 600; }
+  .field-type { color: #8898aa; font-size: .72rem; }
+  .field-badge {
+    font-size: .65rem; font-weight: 700; padding: .1rem .4rem;
+    border-radius: 4px; margin-left: .4rem;
+  }
+  .pk  { background: #fef3c7; color: #92400e; }
+  .fk  { background: #dbeafe; color: #1d4ed8; }
+  .uk  { background: #d1fae5; color: #065f46; }
+
+  /* ── Dispatch table ───────────────────────────────────────────────── */
+  .dispatch-list { display: flex; flex-direction: column; gap: .5rem; }
+  .dispatch-row {
+    display: flex; align-items: flex-start; gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .15s;
+  }
+  .dispatch-row:hover { border-color: var(--blue-light); }
+  .dispatch-num {
+    width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    background: var(--blue-deep); color: #fff;
+    font-size: .72rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .dispatch-title { font-weight: 700; font-size: .87rem; margin-bottom: .2rem; }
+  .dispatch-desc  { font-size: .8rem; color: #5a7a9a; }
+  .dispatch-trigger {
+    display: inline-block; margin-top: .35rem;
+    font-size: .7rem; font-weight: 700;
+    padding: .15rem .5rem; border-radius: 4px;
+    background: var(--blue-pale); color: var(--blue-deep);
+  }
+
+  /* ── Config table ─────────────────────────────────────────────────── */
+  .config-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .config-table thead th {
+    background: var(--blue-deep); color: #fff;
+    padding: .65rem 1rem; text-align: left; font-weight: 700;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .config-table tbody tr { border-bottom: 1px solid var(--border); }
+  .config-table tbody tr:hover { background: var(--blue-pale); }
+  .config-table td { padding: .65rem 1rem; vertical-align: top; }
+  .config-table td:first-child { font-family: monospace; color: var(--blue-deep); font-weight: 600; }
+  .config-table td:nth-child(2) { color: #5a7a9a; font-style: italic; font-family: monospace; }
+  .table-wrap { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+
+  /* ── Security list ────────────────────────────────────────────────── */
+  .security-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; }
+  .security-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+    display: flex; gap: .75rem; align-items: flex-start;
+  }
+  .security-icon {
+    width: 2rem; height: 2rem; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+    background: #d1fae5; color: #065f46;
+  }
+  .security-item h4 { font-size: .87rem; font-weight: 700; margin-bottom: .25rem; }
+  .security-item p  { font-size: .78rem; color: #5a7a9a; }
+
+  /* ── Alignment table ──────────────────────────────────────────────── */
+  .align-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .align-table thead th {
+    background: var(--blue-deep); color: #fff;
+    padding: .65rem 1rem; text-align: left; font-weight: 700;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .align-table tbody tr:nth-child(odd) { background: var(--blue-pale); }
+  .align-table td { padding: .65rem 1rem; font-size: .82rem; vertical-align: top; }
+  .align-table td:first-child { font-family: monospace; color: var(--blue-deep); font-weight: 600; }
+  .align-table td:last-child   { color: #5a7a9a; }
+
+  /* ── Callout ──────────────────────────────────────────────────────── */
+  .callout {
+    display: flex; gap: .75rem; align-items: flex-start;
+    padding: 1rem 1.25rem; border-radius: var(--radius);
+    border-left: 4px solid; margin-bottom: 1.5rem;
+  }
+  .callout-info  { background: #e0f2fe; border-color: #0284c7; color: #0c4a6e; }
+  .callout-warn  { background: #fef9c3; border-color: #ca8a04; color: #713f12; }
+  .callout p { font-size: .85rem; }
+
+  /* ── Business value strip ─────────────────────────────────────────── */
+  .value-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: .75rem; margin-top: 1.25rem;
+  }
+  .value-item {
+    background: var(--blue-pale); border-radius: var(--radius);
+    padding: .9rem 1rem; display: flex; gap: .7rem; align-items: flex-start;
+  }
+  .value-item .vi-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: .1rem; }
+  .value-item p { font-size: .82rem; color: var(--blue-deep); line-height: 1.5; margin: 0; }
+  .value-item strong { display: block; margin-bottom: .2rem; }
+
+  /* ── UI Mockup ────────────────────────────────────────────────────── */
+  .mockup-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem; margin-top: 1.25rem;
+  }
+  .mockup-wrap { text-align: center; }
+  .mockup-label {
+    font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8898aa; margin-bottom: .75rem;
+  }
+  .mockup-frame {
+    background: #f0f4f9; border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem;
+    box-shadow: var(--shadow-sm); position: relative;
+    min-height: 240px; display: flex; align-items: flex-end; justify-content: flex-end;
+  }
+  /* FAB button mockup */
+  .mock-fab {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(13,50,93,.35); color: #fff; font-size: 1.3rem;
+  }
+  /* Chat panel mockup */
+  .mock-panel {
+    background: var(--surface); border-radius: 16px;
+    box-shadow: var(--shadow-lg); width: 100%; max-width: 300px;
+    overflow: hidden; border: 1px solid var(--border);
+  }
+  .mock-header {
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    padding: .7rem 1rem; color: #fff;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .mock-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255,255,255,.2); display: flex;
+    align-items: center; justify-content: center; font-weight: 700; font-size: .85rem;
+  }
+  .mock-header-meta .mock-name { font-size: .85rem; font-weight: 700; line-height: 1.1; }
+  .mock-header-meta .mock-status { font-size: .7rem; color: rgba(255,255,255,.75); }
+  .mock-messages { padding: .75rem; min-height: 120px; display: flex; flex-direction: column; gap: .5rem; }
+  .mock-bubble {
+    padding: .45rem .7rem; border-radius: 10px; font-size: .75rem; max-width: 80%;
+    line-height: 1.45;
+  }
+  .mock-bubble.user { background: var(--blue-mid); color: #fff; align-self: flex-end; }
+  .mock-bubble.bot  { background: var(--blue-pale); color: var(--blue-deep); align-self: flex-start; }
+  .mock-input-bar {
+    border-top: 1px solid var(--border); padding: .5rem .75rem;
+    display: flex; gap: .5rem; align-items: center;
+  }
+  .mock-input {
+    flex: 1; background: var(--blue-pale); border-radius: 8px;
+    padding: .35rem .6rem; font-size: .75rem; color: #8898aa;
+  }
+  .mock-send {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--blue-mid); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: .8rem;
+  }
+
+  /* ── Code block ───────────────────────────────────────────────────── */
+  .code-block {
+    background: #0d1117; color: #e6edf3; border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; font-family: "Consolas", "Fira Code", monospace;
+    font-size: .78rem; line-height: 1.7; overflow-x: auto;
+    margin-top: .75rem; box-shadow: var(--shadow-sm);
+  }
+  .code-block .cm  { color: #8b949e; }  /* comment */
+  .code-block .ck  { color: #ff7b72; }  /* keyword */
+  .code-block .cs  { color: #79c0ff; }  /* string */
+  .code-block .cf  { color: #d2a8ff; }  /* function */
+  .code-block .cn  { color: #ffa657; }  /* name/var */
+
+  /* ── Known limitations callout ────────────────────────────────────── */
+  .callout-limit { background: #fdf4ff; border-color: var(--purple); color: #4a1772; }
+
+  /* ── Changelog ────────────────────────────────────────────────────── */
+  .changelog { margin-top: 1.25rem; }
+  .changelog-row {
+    display: grid; grid-template-columns: 110px 1fr;
+    gap: 1rem; padding: .85rem 0; border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .changelog-row:last-child { border-bottom: none; }
+  .cl-date {
+    font-size: .78rem; font-weight: 700; color: #8898aa;
+    font-family: monospace; padding-top: .15rem;
+  }
+  .cl-body h4 { font-size: .85rem; font-weight: 700; color: var(--blue-deep); margin-bottom: .25rem; }
+  .cl-body p  { font-size: .82rem; color: #5a7a9a; margin: 0; }
+  .cl-tag {
+    display: inline-block; font-size: .68rem; font-weight: 700;
+    padding: .1em .55em; border-radius: 4px; margin-right: .35rem; text-transform: uppercase;
+  }
+  .cl-tag.new     { background: #dcfce7; color: #166534; }
+  .cl-tag.changed { background: #dbeafe; color: #1e40af; }
+  .cl-tag.fixed   { background: #fef9c3; color: #713f12; }
+
+  /* ── Management banner ────────────────────────────────────────────── */
+  .mgmt-banner {
+    background: linear-gradient(90deg, #e8f2fb, #f0f4f9);
+    border: 1px solid var(--blue-pale); border-left: 4px solid var(--blue-mid);
+    border-radius: var(--radius); padding: .9rem 1.25rem;
+    margin-bottom: 2rem; display: flex; gap: .75rem; align-items: center;
+  }
+  .mgmt-banner p { font-size: .85rem; color: var(--blue-deep); margin: 0; }
+  .mgmt-banner .dev-note {
+    margin-top: .3rem; font-size: .78rem; color: #5a7a9a;
+  }
+
+  /* ── API schema table ─────────────────────────────────────────────── */
+  .api-schema { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.25rem; }
+  @media (max-width: 760px) { .api-schema { grid-template-columns: 1fr; } }
+  .api-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+  }
+  .api-box-header {
+    background: var(--blue-deep); color: #fff;
+    padding: .6rem 1rem; font-size: .78rem; font-weight: 700;
+    letter-spacing: .04em; display: flex; align-items: center; gap: .5rem;
+  }
+  .api-box table { width: 100%; border-collapse: collapse; }
+  .api-box th {
+    background: var(--blue-pale); padding: .5rem .85rem; text-align: left;
+    font-size: .72rem; font-weight: 700; color: var(--blue-deep);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .api-box td {
+    padding: .55rem .85rem; font-size: .8rem; border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .api-box tr:last-child td { border-bottom: none; }
+  .api-box td:first-child { font-family: monospace; color: var(--blue-deep); font-weight: 600; }
+  .api-box td .req { color: var(--red); font-size: .7rem; font-weight: 700; }
+  .api-box td .opt { color: var(--green); font-size: .7rem; font-weight: 700; }
+
+  /* ── Responsive ───────────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .modes { grid-template-columns: 1fr; }
+    .file-row { grid-template-columns: 1fr; }
+    .tab-btn { font-size: .78rem; padding: .75rem .65rem; }
+    .mockup-row { grid-template-columns: 1fr; }
+  }
+
+  /* ── Print stylesheet ─────────────────────────────────────────────── */
+  @media print {
+    .tab-bar, .hero-meta { display: none !important; }
+    .hero { padding: 1.5rem; background: var(--blue-deep) !important; print-color-adjust: exact; }
+    .section { display: block !important; page-break-before: always; }
+    .section:first-child { page-break-before: avoid; }
+    .diagram-card { page-break-inside: avoid; }
+    .mermaid svg { max-width: 100% !important; }
+    body { background: #fff; }
+    a { text-decoration: none; color: inherit; }
+    .callout, .explainer-item, .value-item { page-break-inside: avoid; }
+    .code-block { border: 1px solid #ccc; background: #f8f8f8 !important; color: #333 !important; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── HERO ─────────────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-badge">UniStudio Platform · April 2026</div>
+  <h1>Chatbot <span>Architecture</span> &amp; Documentation</h1>
+  <p class="hero-sub">
+    A complete reference for the UniStudio assistant — covering the management
+    overview, developer architecture, data models, and configuration.
+  </p>
+  <div class="hero-meta">
+    <span class="hero-pill">🏫 MSUAS · Mutare, Zimbabwe</span>
+    <span class="hero-pill">🐍 Django + PostgreSQL</span>
+    <span class="hero-pill">🤖 Google Gemini / OpenAI</span>
+    <span class="hero-pill">📄 Audience: Developers &amp; Management</span>
+  </div>
+</div>
+
+<!-- ─── NAV TABS ─────────────────────────────────────────────────────── -->
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+  <button class="tab-btn" onclick="showTab('architecture',this)">Architecture</button>
+  <button class="tab-btn" onclick="showTab('layers',this)">Layers</button>
+  <button class="tab-btn" onclick="showTab('request-flow',this)">Request Flow</button>
+  <button class="tab-btn" onclick="showTab('files',this)">Files &amp; Models</button>
+  <button class="tab-btn" onclick="showTab('dispatch',this)">Reply Dispatch</button>
+  <button class="tab-btn" onclick="showTab('config',this)">Config &amp; Security</button>
+</nav>
+
+<!-- ─── PAGE WRAPPER ─────────────────────────────────────────────────── -->
+<div class="page">
+
+  <!-- ══ OVERVIEW ═══════════════════════════════════════════════════════ -->
+  <div id="overview" class="section active">
+
+    <!-- Management / developer orientation banner -->
+    <div class="mgmt-banner">
+      <span style="font-size:1.4rem;">👋</span>
+      <div>
+        <p><strong>For Management:</strong> This page (Overview) is for you. It explains what the chatbot does, how staff use it, and what value it delivers — no technical knowledge needed.</p>
+        <p class="dev-note">For Developers: The Architecture, Request Flow, Files &amp; Models, Reply Dispatch, and Config &amp; Security tabs contain the full technical reference.</p>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h2><span class="ico">💬</span> What the Chatbot Does</h2>
+      <p>A floating assistant embedded on every dashboard page. Works in full AI mode or falls back to live-database Guidance mode with no AI key required.</p>
+    </div>
+
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-icon c-blue">🎓</div>
+        <h3>Student Lookup</h3>
+        <p>Full academic profile — marks, classification, risk score, per-period completion, graduation rate.</p>
+        <div class="example">"What is the status of M22ABC?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-red">⚠️</div>
+        <h3>At-Risk Students</h3>
+        <p>Lists top students by risk score with band breakdown (Moderate / High / Critical) and risk drivers.</p>
+        <div class="example">"Which students are at risk in this scope?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-teal">📊</div>
+        <h3>Programme Analytics</h3>
+        <p>Pass rate, average mark, enrolment, and faculty for any programme in the current scope.</p>
+        <div class="example">"How is BSc Computer Science performing?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-purple">⚖️</div>
+        <h3>Programme Comparison</h3>
+        <p>Side-by-side comparison of multiple programmes ranked by pass rate.</p>
+        <div class="example">"Compare ACCT vs BMAN vs INSY"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-orange">📉</div>
+        <h3>Course Difficulty</h3>
+        <p>Hardest and easiest courses by average mark across students in scope (min 5 students).</p>
+        <div class="example">"What are the hardest courses this semester?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-yellow">🧮</div>
+        <h3>Completion &amp; Graduation</h3>
+        <p>Explains official MSUAS completion rules and graduation stage logic with exact formula.</p>
+        <div class="example">"How is completion percentage calculated?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-sky">📋</div>
+        <h3>Decision Breakdown</h3>
+        <p>Distribution of academic decisions (Proceed, Retake, Repeat, etc.) with adverse totals.</p>
+        <div class="example">"Show me academic decisions for this faculty"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-pink">👥</div>
+        <h3>Demographics</h3>
+        <p>Gender breakdown by programme, faculty, or overall scope from live registration data.</p>
+        <div class="example">"What is the gender split for Engineering?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-lime">📝</div>
+        <h3>Admissions</h3>
+        <p>Entry requirements by faculty, postgraduate requirements, and application portal links.</p>
+        <div class="example">"What are the entry requirements for Engineering?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-indigo">🏫</div>
+        <h3>University Info</h3>
+        <p>Location, directions, contacts, portals, founded year, new 2026 programmes, short courses.</p>
+        <div class="example">"Where is MSUAS? What are the contact details?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-gray">🏢</div>
+        <h3>Faculty Overview</h3>
+        <p>Students, registrations, average mark, and pass rate for any named faculty in scope.</p>
+        <div class="example">"How is the Faculty of Engineering performing?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-teal">📚</div>
+        <h3>Course Lookup</h3>
+        <p>Average mark and pass rate for a specific course code across all students in scope.</p>
+        <div class="example">"How are students doing in CSC301?"</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon c-sky">📅</div>
+        <h3>Period Performance</h3>
+        <p>Full analytics for a named academic period — totals, average mark, pass/fail rate, decision breakdown, and per-programme summary.</p>
+        <div class="example">"How did students perform in August 2025?"</div>
+      </div>
+
+    </div>
+
+    <!-- UI Mockups -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🖥️</span> What It Looks Like</h2>
+      <p>The assistant lives in the bottom-right corner of every dashboard page and in the top toolbar.</p>
+    </div>
+    <div class="mockup-row">
+
+      <div class="mockup-wrap">
+        <div class="mockup-label">Closed — FAB button visible</div>
+        <div class="mockup-frame" style="justify-content:flex-end; align-items:flex-end; min-height:200px;">
+          <div style="position:absolute; top:1rem; left:1rem; right:1rem; background:#0d325d; border-radius:8px; padding:.5rem .75rem; display:flex; align-items:center; justify-content:space-between;">
+            <span style="color:#fff; font-size:.75rem; font-weight:700;">UniStudio Dashboard</span>
+            <span style="color:rgba(255,255,255,.6); font-size:.7rem;">💬</span>
+          </div>
+          <div style="padding:.75rem;">
+            <div class="mock-fab">💬</div>
+          </div>
+        </div>
+        <p style="font-size:.78rem; color:#5a7a9a; margin-top:.5rem;">Click the button to open the assistant</p>
+      </div>
+
+      <div class="mockup-wrap">
+        <div class="mockup-label">Open — guidance mode</div>
+        <div class="mockup-frame" style="align-items:flex-end; justify-content:flex-end; min-height:200px;">
+          <div class="mock-panel">
+            <div class="mock-header">
+              <div class="mock-avatar">U</div>
+              <div class="mock-header-meta">
+                <div class="mock-name">UniStudio</div>
+                <div class="mock-status">Guidance mode</div>
+              </div>
+            </div>
+            <div class="mock-messages">
+              <div class="mock-bubble user">Which students are at risk?</div>
+              <div class="mock-bubble bot">3 students are in Critical band: M22ABC (score 72), M21XYZ (score 68)…</div>
+            </div>
+            <div class="mock-input-bar">
+              <div class="mock-input">Ask about a student or programme…</div>
+              <div class="mock-send">➤</div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:.78rem; color:#5a7a9a; margin-top:.5rem;">Live answers from the database — no AI key needed</p>
+      </div>
+
+      <div class="mockup-wrap">
+        <div class="mockup-label">Open — AI mode (Gemini)</div>
+        <div class="mockup-frame" style="align-items:flex-end; justify-content:flex-end; min-height:200px;">
+          <div class="mock-panel">
+            <div class="mock-header">
+              <div class="mock-avatar">U</div>
+              <div class="mock-header-meta">
+                <div class="mock-name">UniStudio</div>
+                <div class="mock-status">Google Gemini</div>
+              </div>
+            </div>
+            <div class="mock-messages">
+              <div class="mock-bubble user">How is BSc CS performing?</div>
+              <div class="mock-bubble bot">BSc CS has 142 students with a 78% pass rate. The top concern is CSC401 where 23% of students scored below 50…</div>
+            </div>
+            <div class="mock-input-bar">
+              <div class="mock-input">Ask about a student or programme…</div>
+              <div class="mock-send">➤</div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:.78rem; color:#5a7a9a; margin-top:.5rem;">AI enriches the answer — status badge shows the source</p>
+      </div>
+
+    </div>
+
+    <!-- Business value -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">💡</span> Why It Matters</h2>
+      <p>How the chatbot saves time and improves decisions for registrar staff and academic management.</p>
+    </div>
+    <div class="value-strip">
+      <div class="value-item">
+        <span class="vi-icon">⏱️</span>
+        <p><strong>Faster answers</strong> Staff get student risk profiles, pass rates, and decision breakdowns in seconds — without running a report or waiting for IT.</p>
+      </div>
+      <div class="value-item">
+        <span class="vi-icon">📊</span>
+        <p><strong>Always live data</strong> Every answer comes from the current database scope. No stale exports, no manual pulling — the numbers are always up-to-date.</p>
+      </div>
+      <div class="value-item">
+        <span class="vi-icon">🔒</span>
+        <p><strong>Secure by default</strong> Only authenticated users can access the chatbot. Scope filters (year, period, faculty) are enforced on every query — staff only see what they're allowed to see.</p>
+      </div>
+      <div class="value-item">
+        <span class="vi-icon">🌐</span>
+        <p><strong>No AI cost required</strong> The chatbot works fully in Guidance mode with no API subscription. AI enrichment is optional and can be switched on when a key is available.</p>
+      </div>
+      <div class="value-item">
+        <span class="vi-icon">📱</span>
+        <p><strong>Zero training needed</strong> Staff ask questions in plain language — "Who is failing in Engineering this semester?" — and get a structured answer immediately.</p>
+      </div>
+      <div class="value-item">
+        <span class="vi-icon">🔧</span>
+        <p><strong>Extensible by developers</strong> New question categories can be added without touching the frontend or changing the database schema — just add a branch in the service file.</p>
+      </div>
+    </div>
+
+    <!-- Operating modes -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">⚡</span> Two Operating Modes</h2>
+      <p>The chatbot works with or without an AI API key configured.</p>
+    </div>
+    <div class="modes">
+      <div class="mode-card ai">
+        <h3>🤖 AI Mode</h3>
+        <ul>
+          <li>Google Gemini (primary) or OpenAI (fallback) configured via API key</li>
+          <li>Live scoped DB data sent as grounding context</li>
+          <li>Deterministic baseline answer always computed first</li>
+          <li>AI enriches, explains, and contextualises the answer</li>
+          <li>Status indicator shows "Google Gemini" or "OpenAI" in the chat header</li>
+        </ul>
+      </div>
+      <div class="mode-card rules">
+        <h3>📐 Guidance Mode</h3>
+        <ul>
+          <li>No API key required — works fully offline from the DB</li>
+          <li>Every analytical question still returns a real answer from live data</li>
+          <li>Rule-based replies are identical to the AI baseline — just without enrichment</li>
+          <li>Identical questions are cached for 1 hour to skip re-computation</li>
+          <li>Status indicator shows "Guidance mode" in the chat header</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Example questions -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">❓</span> Example Questions by Category</h2>
+      <p>Ready-to-use questions covering every capability of the chatbot.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="config-table">
+        <thead>
+          <tr><th>Category</th><th>Example questions you can ask</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>🎓 Student Lookup</strong></td>
+            <td>"What is the status of M22ABC?" &nbsp;·&nbsp; "Show me the profile for M21XYZ" &nbsp;·&nbsp; "Is M23DEF at risk?"</td>
+          </tr>
+          <tr>
+            <td><strong>⚠️ At-Risk Students</strong></td>
+            <td>"Which students are at risk in this scope?" &nbsp;·&nbsp; "Show me the watchlist" &nbsp;·&nbsp; "Who is failing?"</td>
+          </tr>
+          <tr>
+            <td><strong>📊 Programme Analytics</strong></td>
+            <td>"How is BSc Computer Science performing?" &nbsp;·&nbsp; "What is the pass rate for INSY?" &nbsp;·&nbsp; "Show Engineering programme stats"</td>
+          </tr>
+          <tr>
+            <td><strong>⚖️ Programme Comparison</strong></td>
+            <td>"Compare ACCT vs BMAN vs INSY pass rates" &nbsp;·&nbsp; "Which programme has the highest average mark?"</td>
+          </tr>
+          <tr>
+            <td><strong>📉 Course Difficulty</strong></td>
+            <td>"What are the hardest courses this semester?" &nbsp;·&nbsp; "Which courses have the lowest pass rate?" &nbsp;·&nbsp; "List easiest courses"</td>
+          </tr>
+          <tr>
+            <td><strong>🧮 Completion &amp; Graduation Rules</strong></td>
+            <td>"How is completion percentage calculated?" &nbsp;·&nbsp; "Explain the graduation stage logic" &nbsp;·&nbsp; "What does zero completion mean?"</td>
+          </tr>
+          <tr>
+            <td><strong>📋 Academic Decisions</strong></td>
+            <td>"Show me the academic decisions for this faculty" &nbsp;·&nbsp; "How many students are repeating?" &nbsp;·&nbsp; "What is the discontinuation rate?"</td>
+          </tr>
+          <tr>
+            <td><strong>👥 Demographics</strong></td>
+            <td>"What is the gender split for this programme?" &nbsp;·&nbsp; "Show me demographic breakdown" &nbsp;·&nbsp; "How many female students are enrolled?"</td>
+          </tr>
+          <tr>
+            <td><strong>📝 Admissions</strong></td>
+            <td>"What are the entry requirements for Engineering?" &nbsp;·&nbsp; "How do I apply to MSUAS?" &nbsp;·&nbsp; "What are the postgraduate requirements?"</td>
+          </tr>
+          <tr>
+            <td><strong>🏫 University Info</strong></td>
+            <td>"Where is MSUAS?" &nbsp;·&nbsp; "What are the contact details?" &nbsp;·&nbsp; "What new programmes are offered in 2026?" &nbsp;·&nbsp; "When was MSUAS founded?"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /overview -->
+
+
+  <!-- ══ ARCHITECTURE ════════════════════════════════════════════════════ -->
+  <div id="architecture" class="section">
+
+    <div class="section-header">
+      <h2><span class="ico">🏗️</span> High-Level Architecture</h2>
+      <p>How the browser, Django platform, database, and AI providers connect.</p>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">System Architecture</div>
+      <div class="mermaid">
+flowchart TD
+    subgraph Browser["Browser"]
+        FAB["FAB / Topbar button"]
+        UI["chatbot.js + chatbot.css"]
+        FAB --> UI
+    end
+
+    subgraph Django["Django Platform"]
+        VIEW["chatbot/views.py"]
+        SERVICE["chatbot_service.py"]
+        MODELS["ChatSession, ChatMessage, Cache"]
+    end
+
+    subgraph Data["Data Layer"]
+        ORM["Student, Registration, CourseResult, Programme"]
+        RULES["completion_rules.py + risk/constants.py"]
+    end
+
+    subgraph AIprov["AI Providers"]
+        GOOGLE["Google Gemini"]
+        OPENAI["OpenAI"]
+    end
+
+    DB[("PostgreSQL")]
+
+    UI -->|POST /api/chatbot/message/| VIEW
+    VIEW --> MODELS
+    VIEW --> SERVICE
+    MODELS --> DB
+    SERVICE --> ORM
+    SERVICE --> RULES
+    ORM --> DB
+    SERVICE -->|GOOGLE_API_KEY| GOOGLE
+    SERVICE -->|OPENAI_API_KEY| OPENAI
+    SERVICE -->|fallback| FALLBACK["Rule-based reply"]
+    GOOGLE --> RESP["JSON response"]
+    OPENAI --> RESP
+    FALLBACK --> RESP
+    RESP --> VIEW --> UI
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>🌐 Browser Layer</h4>
+        <p>The FAB (floating action button) and topbar toggle open the chat panel. All UI logic lives in <code>chatbot.js</code> — no page reload needed. Messages are sent via <code>fetch()</code> with the CSRF token attached.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>🐍 Django Platform</h4>
+        <p><code>chatbot/views.py</code> handles authentication, session management, and caching. It delegates all analytics to <code>chatbot_service.py</code> — the view itself never queries the ORM directly for data.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>🗄️ Data Layer</h4>
+        <p>The service queries <code>Student</code>, <code>Registration</code>, and <code>CourseResult</code> via the Django ORM — the same models used by every other dashboard page. Completion and risk logic is imported from authoritative service files, not duplicated.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>🤖 AI Providers (optional)</h4>
+        <p>Google Gemini is tried first, OpenAI second, rule-based fallback third. The chatbot is fully functional with no API key configured — AI enriches answers but never replaces the live database data.</p>
+      </div>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">AI Provider Routing Decision Tree</div>
+      <div class="mermaid">
+flowchart TD
+    START["get_chatbot_reply()"]
+    START --> EN{"CHATBOT_ENABLED?"}
+    EN -->|No| RULES["Rule-based reply"]
+    EN -->|Yes| G{"GOOGLE_API_KEY set?"}
+    G -->|Yes| GCALL["Call Google Gemini"]
+    GCALL --> GOK{"Non-empty response?"}
+    GOK -->|Yes| GREPLY["source: google"]
+    GOK -->|No| O{"OPENAI_API_KEY set?"}
+    G -->|No| O
+    O -->|Yes| OCALL["Call OpenAI"]
+    OCALL --> OOK{"Non-empty response?"}
+    OOK -->|Yes| OREPLY["source: openai"]
+    OOK -->|No| RULES
+    O -->|No| RULES
+    GCALL -->|HTTP error| RULES
+    OCALL -->|HTTP error| RULES
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>⚙️ Master Switch</h4>
+        <p><code>CHATBOT_ENABLED</code> in <code>settings.py</code> is the top-level gate. Set it to <code>False</code> to hide the widget entirely across the whole platform — no API key needed, no UI rendered.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>✅ Gemini First</h4>
+        <p>If <code>GOOGLE_API_KEY</code> is configured, Google Gemini is called first. The response is only accepted if it is non-empty. An HTTP timeout or connection error automatically triggers the fallback — no crash, no user-visible error.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>🔄 OpenAI Fallback</h4>
+        <p>If Gemini is not configured or its response is empty, OpenAI is tried next. The same acceptance logic applies — non-empty response wins, any failure drops to the rules engine.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>📋 Rules Always Work</h4>
+        <p>The rule-based engine is never skipped — it computes a deterministic answer from live database data regardless of AI availability. When AI is configured, this baseline answer is passed to the AI as grounding context.</p>
+      </div>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">Context Building — What Gets Queried Per Message</div>
+      <div class="mermaid">
+flowchart LR
+    MSG["User message"]
+    MSG --> SC["_summarize_scope\nalways runs"]
+    MSG --> STU["_build_student_context\nif reg-number found"]
+    MSG --> PROG["_build_programme_context\nif programme named"]
+    MSG --> FAC["_build_faculty_context\nif faculty named"]
+    MSG --> COURSE["_build_course_context\nif course code found"]
+    MSG --> RISK["_build_at_risk_context\nif risk keyword"]
+    MSG --> DIFF["_build_course_difficulty_context\nif hardest/easiest keyword"]
+    MSG --> PER["_build_period_performance_context\nif period name detected"]
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>📊 Always Runs: Scope Summary</h4>
+        <p><code>_summarize_scope()</code> fires on every single message. Returns totals, pass rate, <strong>median mark</strong>, gender breakdown (with counts and percentages), watchlist counts, <strong>proceeding count/pct</strong>, <strong>at_risk_pct</strong>, and the top faculties, programmes, and decisions — giving every reply a rich live baseline.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>🎓 Student Lookup (conditional)</h4>
+        <p>Triggered only when the message contains a registration number pattern (e.g. <code>M22ABC</code>). Pulls the full student profile: all marks, classification, risk score, per-period completion percentage (with <code>zero_reason</code> and <code>working</code> formula fields), and graduation status.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>⚠️ At-Risk Context (conditional)</h4>
+        <p>Triggered by keywords like <em>risk</em>, <em>watchlist</em>, or <em>failing</em>. Queries candidates with adverse decisions or carrying status, scores each one, and returns the top 10 with band counts (moderate / high / critical).</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>📚 Course Difficulty (conditional)</h4>
+        <p>Triggered by <em>hardest</em>, <em>easiest</em>, or <em>difficult</em>. Aggregates <code>CourseResult</code> records per course (minimum 5 students), then returns the 8 hardest and 8 easiest courses ranked by average mark.</p>
+      </div>
+      <div class="explainer-item c-red">
+        <h4>🏛️ Programme / Faculty / Course (conditional)</h4>
+        <p><code>_build_programme_context</code> (now includes <code>fail_rate</code> and <code>carrying_count</code>), <code>_build_faculty_context</code>, and <code>_build_course_context</code> each run only when the message names a matching entity. This keeps every response fast — expensive queries are never run unless the message warrants them.</p>
+      </div>
+      <div class="explainer-item">
+        <h4>📅 Period Performance (conditional)</h4>
+        <p><code>_build_period_performance_context()</code> activates when the message names a specific academic period (e.g. <em>"August 2025"</em> or <em>"Semester 1"</em>). Returns per-period totals, average mark, pass/fail rate, decision distribution, and a breakdown by programme — mirroring the prototype's full period analytics tool.</p>
+      </div>
+    </div>
+
+  </div><!-- /architecture -->
+
+
+  <!-- ══ LAYERS ══════════════════════════════════════════════════════════ -->
+  <div id="layers" class="section">
+
+    <div class="section-header">
+      <h2><span class="ico">🧱</span> 5-Layer Architecture</h2>
+      <p>The chatbot is built in five discrete layers, each with a single responsibility. They are independently testable and degrade gracefully — removing an optional component (e.g. AI providers) never breaks the layers below it.</p>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">Layer Stack — All Components</div>
+      <div class="mermaid">
+flowchart TB
+    subgraph L1["Layer 1 - Browser UI"]
+        FA["FAB and Topbar toggle"]
+        JS["chatbot.js"]
+        STO["sessionStorage history"]
+    end
+
+    subgraph L5["Layer 5 - Safety and Cache"]
+        AUT["@ajax_login_required + CSRF"]
+        CAC["ChatResponseCache - MD5, 1 hour TTL"]
+        SAF["SENSITIVE_PATTERNS gate"]
+    end
+
+    subgraph L2["Layer 2 - Intent Detection"]
+        DET["_detect_intent() - 80 token AI call"]
+        INT["11 intent categories"]
+        ENT["Entity extraction - regnum, programme, period"]
+    end
+
+    subgraph L3["Layer 3 - Context Engine"]
+        SCO["_summarize_scope() - always runs"]
+        CON["Conditional builders - student, at-risk, course"]
+        RUL["_build_rule_based_reply() - 18 branches"]
+    end
+
+    subgraph L4["Layer 4 - Data"]
+        ORM["Django ORM - Student, Registration, CourseResult"]
+        SRV["completion_rules.py + risk/constants.py"]
+        PG[("PostgreSQL")]
+    end
+
+    subgraph AIL["AI Providers - optional"]
+        GEM["Google Gemini - full enriched reply"]
+        OAI["OpenAI - gpt-4o-mini intent + main reply"]
+    end
+
+    L1 -->|"POST /api/chatbot/message/"| L5
+    L5 -->|verified message| L2
+    L2 -->|"greeting or out_of_scope - no DB"| L1
+    L2 -->|data intents| L3
+    L3 --> L4
+    L3 -->|baseline reply| AIL
+    AIL -->|enriched reply| L1
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>Layer 1 — Browser UI</h4>
+        <p><code>chatbot.js</code> and <code>chatbot.css</code> form the entire front-end. The FAB and topbar button both toggle the same panel. Message history is stored in <code>sessionStorage</code> for instant re-render on panel open — the authoritative copy lives in <code>ChatMessage</code> rows in the database.</p>
+      </div>
+      <div class="explainer-item c-red">
+        <h4>Layer 5 — Safety and Cache</h4>
+        <p>Every request is authenticated via <code>@ajax_login_required</code> and validated for CSRF. <code>ChatResponseCache</code> short-circuits identical rule-based queries within a 1-hour window. <code>SENSITIVE_PATTERNS</code> blocks injection, jailbreak, and credential-extraction attempts before any database query or AI call runs.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>Layer 2 — Intent Detection</h4>
+        <p>A dedicated lightweight AI call (max 80 tokens, 5 s timeout, temperature 0) classifies the message into one of 11 intents and extracts entities — registration number, programme codes, period, faculty, risk band. <em>Greeting</em> and <em>out_of_scope</em> are returned immediately with no database query. Any failure silently falls back to <code>general_info</code>.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>Layer 3 — Context Engine</h4>
+        <p><code>_summarize_scope()</code> always runs, giving every reply live scoped data as a baseline (now including median mark, proceeding count/pct, at_risk_pct, and gender percentages). Seven additional context builders fire conditionally based on the intent and entities detected in Layer 2. <code>_build_rule_based_reply()</code> dispatches across 18 named branches to produce a deterministic, grounded answer.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>Layer 4 — Data</h4>
+        <p>All queries use the same Django ORM models as the rest of the dashboard — <code>Student</code>, <code>Registration</code>, <code>CourseResult</code>, <code>Programme</code>, <code>Faculty</code>. Completion percentage and risk scoring are imported directly from <code>completion_rules.py</code> and <code>risk/constants.py</code> — never duplicated in the chatbot service.</p>
+      </div>
+      <div class="explainer-item">
+        <h4>AI Providers — optional</h4>
+        <p>Google Gemini handles both the intent call and the full reply when configured. OpenAI uses <code>gpt-4o-mini</code> via the Chat Completions API for intent, and the configured main model via the Responses API for the full reply. If neither is configured, the rule-based reply from Layer 3 is returned directly — the platform is fully functional without any API key.</p>
+      </div>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">Intent Detection — 11 Intents and Their Routing</div>
+      <div class="mermaid">
+flowchart TD
+    MSG["User Message"]
+    MSG --> DET["_detect_intent() - 80 token AI call"]
+    DET --> Q{"Detected intent"}
+
+    Q -->|greeting| GR["GREETING_REPLY - no DB"]
+    Q -->|out_of_scope| OO["OUT_OF_SCOPE_REPLY - no DB"]
+    Q -->|student_lookup| S1["DB: full student profile"]
+    Q -->|at_risk| S2["DB: risk scoring top 10"]
+    Q -->|comparison| S3["DB: programme ranking"]
+    Q -->|calculation| S4["DB: scope + completion rules"]
+    Q -->|demographic| S5["DB: gender breakdown"]
+    Q -->|decision_analysis| S6["DB: decision distribution"]
+    Q -->|data_query| S7["DB: scope summary"]
+    Q -->|admissions| S8["ADMISSIONS_SUMMARY constant"]
+    Q -->|general_info| S9["UNIVERSITY_FACTS constant"]
+
+    GR --> REPLY["Reply returned to browser"]
+    OO --> REPLY
+    S1 --> RULE["Rule-based baseline"]
+    S2 --> RULE
+    S3 --> RULE
+    S4 --> RULE
+    S5 --> RULE
+    S6 --> RULE
+    S7 --> RULE
+    S8 --> RULE
+    S9 --> RULE
+    RULE --> CHK{"AI available?"}
+    CHK -->|Yes| AIR["AI-enriched reply"]
+    CHK -->|No| REPLY
+    AIR --> REPLY
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>Zero-DB Short-Circuits</h4>
+        <p>When intent is <em>greeting</em> or <em>out_of_scope</em>, the function returns immediately after the intent call — <code>_build_scope_context()</code> is never called. This saves 5–10 database queries per greeting message and keeps response time under 100 ms for those cases.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>Graceful Fallback Chain</h4>
+        <p>If the intent detection call fails for any reason (timeout, malformed JSON, HTTP error), the service silently falls back to <code>"general_info"</code> and continues. The keyword-based branches in <code>_build_rule_based_reply()</code> also catch greetings and out-of-scope questions as a secondary net when no AI key is configured.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>CACHEABLE_INTENTS</h4>
+        <p>Intents whose rule-based replies contain no personal student data are marked cacheable: <code>data_query</code>, <code>admissions</code>, <code>general_info</code>, <code>comparison</code>, <code>demographic</code>, <code>decision_analysis</code>, <code>calculation</code>. Student-specific replies (<code>student_lookup</code>, <code>at_risk</code>) are never cached — data freshness is critical for those.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>Entity Extraction</h4>
+        <p>Alongside the intent, the AI extracts five structured entities: registration number (<code>regnum</code>), programme codes (e.g. <code>ACCT</code>, <code>BMAN</code>, <code>INSY</code>), the named academic period, faculty name, and risk band. These are stored on the context dict as <code>_intent_entities</code> and passed through to the AI's full reply prompt.</p>
+      </div>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">Layer 2 — How Intent Detection Uses Each AI Provider</div>
+      <div class="mermaid">
+flowchart LR
+    MSG["80-token message payload"]
+
+    subgraph GOOG["Google Gemini - preferred"]
+        GP["systemInstruction: INTENT_PROMPT"]
+        GC["contents: message text"]
+        GR["generationConfig: temp 0, maxTokens 80"]
+    end
+
+    subgraph OAI["OpenAI - fallback"]
+        OP["system: INTENT_PROMPT"]
+        OC["user: message text"]
+        OR["model: gpt-4o-mini, temp 0, max_tokens 80"]
+        OU["Chat Completions API - not Responses API"]
+    end
+
+    subgraph OUT["Output"]
+        JSON["JSON: intent + entities"]
+        FB["Fallback: general_info on any error"]
+    end
+
+    MSG --> GOOG
+    MSG --> OAI
+    GOOG -->|5s timeout| OUT
+    OAI -->|5s timeout| OUT
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>Why a Separate Intent Call?</h4>
+        <p>The intent call is distinct from the main reply call. It uses temperature 0 and a hard 80-token cap — it needs to return only a small JSON object, not prose. This keeps it fast (typically 200–400 ms) and cheap. The main reply call that follows uses the full context window and higher token limits.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>Why gpt-4o-mini for OpenAI Intent?</h4>
+        <p>The intent call always uses <code>gpt-4o-mini</code> regardless of <code>CHATBOT_OPENAI_MODEL</code>. This is intentional: intent classification is a structured extraction task where a small, fast model outperforms a large reasoning model. The main reply uses whatever model is configured in settings.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>Why Chat Completions for Intent, Responses for Reply?</h4>
+        <p>The OpenAI Responses API (used for the main reply) supports reasoning models like <code>o4-mini</code> and structured outputs. The Chat Completions API (used for intent) is simpler, supports <code>gpt-4o-mini</code> directly, and returns JSON more predictably for classification tasks.</p>
+      </div>
+    </div>
+
+  </div><!-- /layers -->
+
+
+  <!-- ══ REQUEST FLOW ════════════════════════════════════════════════════ -->
+  <div id="request-flow" class="section">
+
+    <div class="section-header">
+      <h2><span class="ico">🔄</span> Request Flow</h2>
+      <p>Step-by-step lifecycle of a single user message from browser to response.</p>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-label">Sequence Diagram — Full Request Lifecycle</div>
+      <div class="mermaid">
+sequenceDiagram
+    actor User
+    participant JS as chatbot.js
+    participant View as views.py
+    participant Cache as ResponseCache
+    participant Svc as chatbot_service
+    participant Intent as Intent AI call
+    participant DB as PostgreSQL
+    participant AI as AI Provider
+
+    User->>JS: Send message
+    JS->>JS: Show typing dots
+    JS->>View: POST /api/chatbot/message/
+
+    View->>View: Validate and auth check
+    View->>DB: Get or create ChatSession
+    View->>DB: Load last 16 messages
+    View->>Cache: Check cache key
+
+    alt Cache hit
+        Cache-->>View: Cached reply
+        View-->>JS: Return cached reply
+    else Cache miss
+        View->>Svc: get_chatbot_reply()
+
+        Svc->>Svc: Normalize filters and safety gate
+
+        alt AI provider configured
+            Svc->>Intent: _detect_intent() - 80 token call
+            Intent-->>Svc: intent + entities JSON
+
+            alt intent is greeting or out_of_scope
+                Svc-->>View: Constant reply - no DB query
+            else data intent
+                Svc->>DB: summarize scope - always runs
+                Svc->>DB: conditional builders - student, at-risk, course
+                Svc->>Svc: build rule-based reply
+                Svc->>AI: Send full prompt with context
+                AI-->>Svc: AI enriched reply
+                Svc-->>View: Reply - source google or openai
+            end
+        else No AI configured
+            Svc->>DB: summarize scope - always runs
+            Svc->>DB: conditional builders - keyword triggered
+            Svc->>Svc: build rule-based reply
+            Svc-->>View: Reply - source rules
+        end
+
+        View->>DB: Save user and assistant messages
+        View->>Cache: Cache reply if intent is cacheable
+        View-->>JS: Return reply, source, and intent
+    end
+
+    JS->>JS: Remove typing dots
+    JS-->>User: Show reply bubble
+      </div>
+    </div>
+
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>1️⃣ Optimistic UI</h4>
+        <p>The moment the user hits Send, <code>chatbot.js</code> immediately shows the user's message and the animated typing dots — before any server response. The input is disabled to prevent double-sends while the request is in-flight.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>2️⃣ Session &amp; Auth Gate</h4>
+        <p>Every request passes through <code>@ajax_login_required</code>. The view creates or retrieves a <code>ChatSession</code> tied to the browser session key, then loads the last 16 messages as the AI conversation history window.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>3️⃣ Response Cache (1 hour)</h4>
+        <p>Before hitting the service, the view checks <code>ChatResponseCache</code> using an MD5 hash of the message text. If a matching rule-based reply exists and is less than 1 hour old, it is returned immediately — no DB analytics queries run.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>4️⃣ Safety Gate &amp; Intent Detection</h4>
+        <p>The service normalises scope filters, then runs <code>SENSITIVE_PATTERNS</code> regex checks. If the message is safe and an AI provider is configured, <code>_detect_intent()</code> fires — an 80-token call that classifies the message into one of 11 intents. <em>Greeting</em> and <em>out_of_scope</em> are returned immediately with no database query at all.</p>
+      </div>
+      <div class="explainer-item c-red">
+        <h4>5️⃣ Persist &amp; Cache</h4>
+        <p>After the reply is produced, the view writes both the user turn and the assistant turn to <code>ChatMessage</code> in a single <code>bulk_create</code> call. Only rule-based replies (<code>source == "rules"</code>) are written to the response cache — AI and per-student replies are never cached.</p>
+      </div>
+      <div class="explainer-item">
+        <h4>6️⃣ Source Badge</h4>
+        <p>The JSON response includes a <code>source</code> field: <em>google</em>, <em>openai</em>, <em>rules</em>, or <em>cache</em>. The chat widget uses this to display a labelled badge on AI-sourced replies and to update the status indicator in the chat header.</p>
+      </div>
+    </div>
+
+  </div><!-- /request-flow -->
+
+
+  <!-- ══ FILES & MODELS ══════════════════════════════════════════════════ -->
+  <div id="files" class="section">
+
+    <div class="section-header">
+      <h2><span class="ico">📁</span> Files &amp; Modules</h2>
+      <p>Every file involved in the chatbot, grouped by layer.</p>
+    </div>
+
+    <div class="file-group">
+      <h3>Django App — chatbot/</h3>
+      <div class="file-list">
+        <div class="file-row"><div class="file-path">chatbot/models.py</div><div class="file-desc">Three DB models: <strong>ChatSession</strong>, <strong>ChatMessage</strong>, <strong>ChatResponseCache</strong>. Replaces the prototype's SQLite MemoryDB.</div></div>
+        <div class="file-row"><div class="file-path">chatbot/views.py</div><div class="file-desc">Two AJAX endpoints: <code>chatbot_message</code> (POST) and <code>chatbot_clear</code> (POST). Handles session lifecycle, history loading, and caching.</div></div>
+        <div class="file-row"><div class="file-path">chatbot/urls.py</div><div class="file-desc">URL routes under namespace <code>chatbot</code>. Two paths: <code>/api/chatbot/message/</code> and <code>/api/chatbot/clear/</code>.</div></div>
+        <div class="file-row"><div class="file-path">chatbot/admin.py</div><div class="file-desc">Django admin with inline message display per session, and a <strong>purge_expired</strong> action for the response cache.</div></div>
+        <div class="file-row"><div class="file-path">chatbot/migrations/</div><div class="file-desc">Django migrations creating the three tables in PostgreSQL.</div></div>
+      </div>
+    </div>
+
+    <div class="file-group">
+      <h3>Service Layer</h3>
+      <div class="file-list">
+        <div class="file-row"><div class="file-path">services/chatbot_service.py</div><div class="file-desc">All analytics computation, context building, rule-based reply dispatch, and AI provider routing. The main service file.</div></div>
+        <div class="file-row"><div class="file-path">services/completion_rules.py</div><div class="file-desc">Authoritative completion percentage formula. Imported directly — not duplicated.</div></div>
+        <div class="file-row"><div class="file-path">dashboard/risk/constants.py</div><div class="file-desc"><code>HIGH_RISK_DECISIONS</code>, <code>RISK_BAND_DEFINITIONS</code>, <code>RISK_DRIVER_LABELS</code>. Imported directly — not duplicated.</div></div>
+      </div>
+    </div>
+
+    <div class="file-group">
+      <h3>Frontend</h3>
+      <div class="file-list">
+        <div class="file-row"><div class="file-path">templates/base.html</div><div class="file-desc">Chat panel HTML, FAB button, and topbar toggle button rendered on every page. Controlled by <code>chatbot_bootstrap.enabled</code>.</div></div>
+        <div class="file-row"><div class="file-path">dashboard/static/dashboard/css/chatbot.css</div><div class="file-desc">All <code>usc-*</code> component styles. Panel, FAB, message bubbles, typing indicator, suggestion chips, topbar button.</div></div>
+        <div class="file-row"><div class="file-path">dashboard/static/dashboard/js/chatbot.js</div><div class="file-desc">Panel open/close, message send, optimistic UI, typing indicator, history render, auto-grow textarea, keyboard shortcuts.</div></div>
+      </div>
+    </div>
+
+    <!-- DB Models -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🗄️</span> Database Models</h2>
+      <p>Three PostgreSQL tables replacing the prototype's SQLite MemoryDB.</p>
+    </div>
+
+    <div class="model-cards">
+      <div class="model-card">
+        <div class="model-header">ChatSession</div>
+        <div class="model-body">
+          <div class="field-row"><span class="field-name">id<span class="field-badge pk">PK</span></span><span class="field-type">AutoField</span></div>
+          <div class="field-row"><span class="field-name">session_key<span class="field-badge uk">UK</span></span><span class="field-type">CharField</span></div>
+          <div class="field-row"><span class="field-name">user<span class="field-badge fk">FK</span></span><span class="field-type">→ AUTH_USER (nullable)</span></div>
+          <div class="field-row"><span class="field-name">started_at</span><span class="field-type">DateTimeField</span></div>
+          <div class="field-row"><span class="field-name">last_active</span><span class="field-type">DateTimeField (auto_now)</span></div>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-header">ChatMessage</div>
+        <div class="model-body">
+          <div class="field-row"><span class="field-name">id<span class="field-badge pk">PK</span></span><span class="field-type">AutoField</span></div>
+          <div class="field-row"><span class="field-name">session<span class="field-badge fk">FK</span></span><span class="field-type">→ ChatSession</span></div>
+          <div class="field-row"><span class="field-name">role</span><span class="field-type">CharField  user | assistant</span></div>
+          <div class="field-row"><span class="field-name">content</span><span class="field-type">TextField</span></div>
+          <div class="field-row"><span class="field-name">created_at</span><span class="field-type">DateTimeField (auto_now_add)</span></div>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-header">ChatResponseCache</div>
+        <div class="model-body">
+          <div class="field-row"><span class="field-name">id<span class="field-badge pk">PK</span></span><span class="field-type">AutoField</span></div>
+          <div class="field-row"><span class="field-name">cache_key<span class="field-badge uk">UK</span></span><span class="field-type">CharField (MD5 hash)</span></div>
+          <div class="field-row"><span class="field-name">response</span><span class="field-type">TextField</span></div>
+          <div class="field-row"><span class="field-name">created_at</span><span class="field-type">DateTimeField (auto_now_add)</span></div>
+          <div class="field-row"><span class="field-name">expires_at</span><span class="field-type">DateTimeField (TTL 1 hr)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ER Diagram -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🔀</span> Model Relationships</h2>
+      <p>How the three chatbot tables relate to each other and to the Django auth user.</p>
+    </div>
+    <div class="diagram-card">
+      <div class="diagram-label">Entity Relationship Diagram</div>
+      <div class="mermaid">
+erDiagram
+    AUTH_USER {
+        int id PK
+        string username
+        string email
+    }
+    ChatSession {
+        int id PK
+        string session_key UK
+        int user_id FK
+        datetime started_at
+        datetime last_active
+    }
+    ChatMessage {
+        int id PK
+        int session_id FK
+        string role
+        text content
+        datetime created_at
+    }
+    ChatResponseCache {
+        int id PK
+        string cache_key UK
+        text response
+        datetime created_at
+        datetime expires_at
+    }
+
+    AUTH_USER ||--o{ ChatSession : "has"
+    ChatSession ||--o{ ChatMessage : "contains"
+      </div>
+    </div>
+    <div class="diagram-explainer">
+      <div class="explainer-item">
+        <h4>🔑 ChatSession</h4>
+        <p>One row per browser session per user, keyed on Django's <code>request.session.session_key</code>. Created automatically on the user's first message. The <code>user</code> FK is nullable — sessions can exist before a user is associated.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>💬 ChatMessage</h4>
+        <p>One row per turn — user and assistant messages stored as separate rows with a <code>role</code> field (<code>"user"</code> or <code>"assistant"</code>). The view loads the last 16 rows as the AI's conversation history window.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>⚡ ChatResponseCache</h4>
+        <p>MD5-keyed cache for rule-based replies. TTL is 1 hour (<code>expires_at</code>). The same cache entry is shared across all users asking identical questions. Only <code>source == "rules"</code> replies are cached — AI and per-student replies are never cached.</p>
+      </div>
+    </div>
+
+    <!-- Computation alignment -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🔗</span> Computation Alignment</h2>
+      <p>The chatbot imports from authoritative platform services — no duplicated logic.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="align-table">
+        <thead><tr><th>Chatbot function</th><th>Authoritative source</th></tr></thead>
+        <tbody>
+          <tr><td>student_completion_percentage()</td><td>services/completion_rules.py</td></tr>
+          <tr><td>_risk_score_for_chat()</td><td>Exact mirror of risk/services.py assess_student_risk()</td></tr>
+          <tr><td>_classify_mark() + GRADING_SCALE</td><td>Platform academic rules (1st Class, 2.1, 2.2, 3rd, Fail)</td></tr>
+          <tr><td>_target_period() + PROGRAMME_DURATIONS</td><td>Mirrors graduation_services._target_period_from_programme()</td></tr>
+          <tr><td>_graduation_rate()</td><td>Mirrors graduation services rate calculation (with padding)</td></tr>
+          <tr><td>HIGH_RISK_DECISIONS</td><td>dashboard/risk/constants.py — same set, exact match</td></tr>
+          <tr><td>RISK_BAND_DEFINITIONS, RISK_DRIVER_LABELS</td><td>dashboard/risk/constants.py — same definitions</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /files -->
+
+
+  <!-- ══ DISPATCH ════════════════════════════════════════════════════════ -->
+  <div id="dispatch" class="section">
+
+    <div class="section-header">
+      <h2><span class="ico">🔀</span> Reply Dispatch Order</h2>
+      <p>
+        When the AI is unavailable — or as the deterministic baseline sent to the AI —
+        <code>_build_rule_based_reply</code> evaluates branches in this order and returns on the first match.
+      </p>
+    </div>
+
+    <div class="callout callout-info">
+      <span>ℹ️</span>
+      <p>Every branch below uses <strong>live database data</strong> from the current topbar scope (year / period / faculty). The AI model receives this deterministic answer as a baseline and enriches it — it cannot hallucinate numbers the service hasn't provided.</p>
+    </div>
+
+    <!-- Keyword quick-reference -->
+    <div class="section-header" style="margin-top:2rem; margin-bottom:1rem;">
+      <h2><span class="ico">🔍</span> Keyword Trigger Quick Reference</h2>
+      <p>What to say to reach each branch. Branches are evaluated top-to-bottom; first match wins.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="config-table">
+        <thead>
+          <tr><th>#</th><th>Branch</th><th>Trigger keywords / pattern</th><th>Example question</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>🛡️ Safety Gate</td><td>credential, API key, injection, override phrases</td><td><em>(blocked — no example)</em></td></tr>
+          <tr><td>2</td><td>🎓 Student Lookup</td><td>Reg-number pattern e.g. <code>M22ABC</code></td><td>"What is the status of M22ABC?" — includes <code>zero_reason</code> and <code>working</code> formula per period</td></tr>
+          <tr><td>3</td><td>⚠️ At-Risk Listing</td><td>risk · at-risk · watchlist · failing · struggling</td><td>"Which students are at risk?"</td></tr>
+          <tr><td>4</td><td>⚖️ Programme Compare</td><td>2+ programme names/codes in one message</td><td>"Compare ACCT vs BMAN vs INSY pass rates"</td></tr>
+          <tr><td>5</td><td>📉 Course Difficulty</td><td>hardest · easiest · difficult · tough · course rank</td><td>"What are the hardest courses this semester?"</td></tr>
+          <tr><td>6</td><td>🧮 Completion Rules</td><td>completion + rule/explain/mean/how/calculate</td><td>"How is completion percentage calculated?"</td></tr>
+          <tr><td>7</td><td>🎓 Graduation Rules</td><td>graduation + rule/explain/how/calculate/stage</td><td>"How does graduation stage logic work?"</td></tr>
+          <tr><td>8</td><td>📝 Admissions</td><td>apply · admission · entry requirement · enrol</td><td>"What are the entry requirements for Engineering?"</td></tr>
+          <tr><td>9</td><td>🏥 Student Services</td><td>service · accommodation · health · short course · new programme · 2026</td><td>"What new programmes are offered in 2026?"</td></tr>
+          <tr><td>10</td><td>📍 Contact &amp; Portals</td><td>phone · email · location · portal · direction · timetable · founded</td><td>"Where is MSUAS located?"</td></tr>
+          <tr><td>11</td><td>📅 Period Performance</td><td>Month+year pattern e.g. <em>August 2025</em> or <em>Semester 1</em></td><td>"How did students perform in August 2025?"</td></tr>
+          <tr><td>12</td><td>📊 Single Programme</td><td>One programme name or code matched</td><td>"How is BSc Computer Science performing?"</td></tr>
+          <tr><td>13</td><td>🏢 Faculty Overview</td><td>Faculty name matched in message</td><td>"Show me Engineering faculty stats"</td></tr>
+          <tr><td>14</td><td>📚 Single Course</td><td>Course code pattern e.g. <code>CSC301</code></td><td>"What is the pass rate for CSC301?"</td></tr>
+          <tr><td>15</td><td>⚠️ Risk Summary</td><td>risk · at-risk · watchlist · failing (lightweight)</td><td>"Give me a risk summary"</td></tr>
+          <tr><td>16</td><td>📋 Decision Analysis</td><td>decision · proceed · retake · repeat · deferred · discontinue</td><td>"Show academic decisions" — includes <code>proceeding_pct</code></td></tr>
+          <tr><td>17</td><td>👥 Demographics</td><td>gender · male · female · demographic</td><td>"What is the gender split?" — gender counts and percentages</td></tr>
+          <tr><td>18</td><td>📈 Default Summary</td><td><em>anything else</em></td><td>"How are students doing overall?"</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="dispatch-list">
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">1</div>
+        <div>
+          <div class="dispatch-title">🛡️ Safety Gate</div>
+          <div class="dispatch-desc">Blocks credentials, API key requests, injection attempts, and jailbreak patterns before any DB query or AI call.</div>
+          <span class="dispatch-trigger">SENSITIVE_PATTERNS regex</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">2</div>
+        <div>
+          <div class="dispatch-title">🎓 Student Lookup</div>
+          <div class="dispatch-desc">Full profile: average mark, degree classification, risk score + band + drivers, per-period completion % with <code>zero_reason</code> and <code>working</code> formula fields, graduation rate, recent course marks.</div>
+          <span class="dispatch-trigger">reg-number regex (e.g. M22ABC)</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">3</div>
+        <div>
+          <div class="dispatch-title">⚠️ At-Risk Student Listing</div>
+          <div class="dispatch-desc">Top 10 students by risk score with band breakdown (Moderate / High / Critical) and risk drivers. Pulls real DB data only when triggered.</div>
+          <span class="dispatch-trigger">"risk" · "at-risk" · "watchlist" · "failing" · "struggling"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">4</div>
+        <div>
+          <div class="dispatch-title">⚖️ Programme Comparison</div>
+          <div class="dispatch-desc">Side-by-side comparison of all matched programmes ranked by pass rate with average mark and student count.</div>
+          <span class="dispatch-trigger">2 or more programme names/codes detected in message</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">5</div>
+        <div>
+          <div class="dispatch-title">📉 Course Difficulty Ranking</div>
+          <div class="dispatch-desc">Top 8 hardest and easiest courses by average mark. Minimum 5 students per course to qualify.</div>
+          <span class="dispatch-trigger">"hardest" · "easiest" · "difficult" · "tough" · "course rank"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">6</div>
+        <div>
+          <div class="dispatch-title">🧮 Completion Rules</div>
+          <div class="dispatch-desc">Textual explanation of the official MSUAS completion formula — pass mark 50, 4+ failures = 0%, zero-completion decisions.</div>
+          <span class="dispatch-trigger">"completion" + "rule/explain/mean/how/calculate"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">7</div>
+        <div>
+          <div class="dispatch-title">🎓 Graduation Rules</div>
+          <div class="dispatch-desc">Explains graduation stage logic — Masters (4 sem), Engineering (10 sem), Standard (8 sem) programme durations.</div>
+          <span class="dispatch-trigger">"graduation" + "rule/explain/how/calculate/stage"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">8</div>
+        <div>
+          <div class="dispatch-title">📝 Admissions &amp; Entry Requirements</div>
+          <div class="dispatch-desc">Full entry requirements by faculty, postgraduate requirements, application portal, August 2026 intake status.</div>
+          <span class="dispatch-trigger">"apply" · "admission" · "entry requirement" · "enrol" · "requirement"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">9</div>
+        <div>
+          <div class="dispatch-title">🏥 Student Services &amp; New Programmes</div>
+          <div class="dispatch-desc">Campus services, 2026 new programme list, short courses, certificate verification.</div>
+          <span class="dispatch-trigger">"service" · "accommodation" · "health" · "short course" · "new programme" · "2026"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">10</div>
+        <div>
+          <div class="dispatch-title">📍 Contact, Location &amp; Portals</div>
+          <div class="dispatch-desc">Full address, directions from Harare, all portal URLs, phone, email, founded year, certificate verification.</div>
+          <span class="dispatch-trigger">"phone" · "email" · "location" · "portal" · "direction" · "timetable" · "founded"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">11</div>
+        <div>
+          <div class="dispatch-title">📅 Period Performance</div>
+          <div class="dispatch-desc">Full analytics for a named academic period — total students, average mark, pass/fail rate, decision breakdown, and per-programme summary. Triggered by a month+year pattern (<em>August 2025</em>) or semester reference (<em>Semester 1</em>).</div>
+          <span class="dispatch-trigger">Month+year regex or "semester/sem 1/2" in message</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">12</div>
+        <div>
+          <div class="dispatch-title">📊 Single Programme</div>
+          <div class="dispatch-desc">Students, registrations, average mark, pass rate, fail rate, and carrying count for a matched programme within scope.</div>
+          <span class="dispatch-trigger">Programme name or code detected, only one match</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">13</div>
+        <div>
+          <div class="dispatch-title">🏢 Faculty Overview</div>
+          <div class="dispatch-desc">Students, registrations, average mark, pass rate for a matched faculty.</div>
+          <span class="dispatch-trigger">Faculty name detected in message</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">14</div>
+        <div>
+          <div class="dispatch-title">📚 Single Course</div>
+          <div class="dispatch-desc">Average mark and pass rate for a specific course code across students in scope.</div>
+          <span class="dispatch-trigger">Course code pattern detected (e.g. CSC301)</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">15</div>
+        <div>
+          <div class="dispatch-title">⚠️ Risk Watchlist Summary</div>
+          <div class="dispatch-desc">Watchlist count breakdown: multi-fail / carrying / adverse decisions + gender breakdown.</div>
+          <span class="dispatch-trigger">"risk" · "at-risk" · "watchlist" · "failing" (no detailed context built)</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">16</div>
+        <div>
+          <div class="dispatch-title">📋 Decision Analysis</div>
+          <div class="dispatch-desc">Full decision distribution with counts, adverse decision total, proceeding count, and <code>proceeding_pct</code>.</div>
+          <span class="dispatch-trigger">"decision" · "proceed" · "retake" · "repeat" · "deferred" · "discontinue"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">17</div>
+        <div>
+          <div class="dispatch-title">👥 Demographics</div>
+          <div class="dispatch-desc">Gender breakdown across total students in scope — each gender returns count and percentage.</div>
+          <span class="dispatch-trigger">"gender" · "male" · "female" · "demographic"</span>
+        </div>
+      </div>
+
+      <div class="dispatch-row">
+        <div class="dispatch-num">18</div>
+        <div>
+          <div class="dispatch-title">📈 Default Scope Summary</div>
+          <div class="dispatch-desc">Full summary: student count, median + average marks, pass rate, at_risk_pct, proceeding_pct, watchlist breakdown, gender percentages, top faculty and programme.</div>
+          <span class="dispatch-trigger">No other branch matched</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /dispatch -->
+
+
+  <!-- ══ CONFIG & SECURITY ═══════════════════════════════════════════════ -->
+  <div id="config" class="section">
+
+    <div class="section-header">
+      <h2><span class="ico">⚙️</span> Configuration Reference</h2>
+      <p>All settings in <code>registrar_platform/settings.py</code>. API keys must be stored in environment variables — never committed to source control.</p>
+    </div>
+
+    <div class="callout callout-warn">
+      <span>⚠️</span>
+      <p><strong>Security:</strong> <code>GOOGLE_API_KEY</code> and <code>OPENAI_API_KEY</code> must come from environment variables or a <code>.env</code> file excluded from git. Setting either key to an empty string disables that provider gracefully.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="config-table">
+        <thead>
+          <tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CHATBOT_ENABLED</td><td>True</td><td>Master switch. Set to <code>False</code> to hide the widget and disable all endpoints.</td></tr>
+          <tr><td>CHATBOT_PROVIDER</td><td>"auto"</td><td><code>"auto"</code> tries Google first, then OpenAI. Set to <code>"google"</code> or <code>"openai"</code> to force a provider.</td></tr>
+          <tr><td>GOOGLE_API_KEY</td><td>""</td><td>Google Gemini API key. Read from environment variable.</td></tr>
+          <tr><td>CHATBOT_GOOGLE_MODEL</td><td>"gemini-2.0-flash"</td><td>Gemini model name. Can be updated to newer Gemini releases.</td></tr>
+          <tr><td>OPENAI_API_KEY</td><td>""</td><td>OpenAI API key. Read from environment variable.</td></tr>
+          <tr><td>CHATBOT_OPENAI_MODEL</td><td>"o4-mini"</td><td>OpenAI model name.</td></tr>
+          <tr><td>CHATBOT_TIMEOUT_SECONDS</td><td>15</td><td>HTTP timeout for AI provider calls. Falls back to rule-based reply on timeout.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Service constants reference -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">📦</span> Service Constants</h2>
+      <p>Key constants defined in <code>services/chatbot_service.py</code> that control AI prompts and caching behaviour.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="config-table">
+        <thead>
+          <tr><th>Constant</th><th>Type</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>COMPLETION_RULES_SUMMARY</td><td>str</td><td>Injected into every AI prompt. Explains the pass mark (50), zero-completion decisions (Repeat, Deferred, Discontinue, Expelled, Results Nullified/Suppressed, Suspended), the 4-failure rule, and <em>Proceed Carrying</em> semantics.</td></tr>
+          <tr><td>RISK_BANDS_SUMMARY</td><td>str</td><td>Injected into every AI prompt. Defines all four risk bands — Low (0–1), Moderate (2–3), High (4–5), Critical (6+) — and lists all seven risk driver labels.</td></tr>
+          <tr><td>CACHEABLE_INTENTS</td><td>frozenset</td><td>Intents whose rule-based replies are safe to cache: <code>data_query</code>, <code>admissions</code>, <code>general_info</code>, <code>comparison</code>, <code>demographic</code>, <code>decision_analysis</code>, <code>calculation</code>. Student-specific intents (<code>student_lookup</code>, <code>at_risk</code>) are excluded.</td></tr>
+          <tr><td>INTENT_PROMPT</td><td>str</td><td>System instruction for the Layer 2 intent detection call. Defines 11 intent categories and 5 entity types. Sent as <code>systemInstruction</code> to Gemini and as the <code>system</code> message to OpenAI.</td></tr>
+          <tr><td>_PERIOD_MONTH_RE</td><td>compiled regex</td><td>Module-level compiled regex matching month+year patterns (e.g. <em>August 2025</em>). Used by <code>_build_period_performance_context()</code> to detect a named period in the message without recompiling on every call.</td></tr>
+          <tr><td>_SEMESTER_RE</td><td>compiled regex</td><td>Module-level compiled regex matching <em>Semester 1</em> / <em>Sem 2</em> patterns. Companion to <code>_PERIOD_MONTH_RE</code> for period detection.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- API Endpoint Reference -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🔌</span> API Endpoint Reference</h2>
+      <p>Two AJAX endpoints. Both require an active session (<code>@ajax_login_required</code>) and a valid CSRF token.</p>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <div style="background:var(--blue-deep); color:#fff; border-radius:8px 8px 0 0; padding:.6rem 1rem; font-size:.78rem; font-weight:700; font-family:monospace;">POST &nbsp;/api/chatbot/message/</div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; padding:1rem;">
+        <div class="api-schema">
+          <div class="api-box">
+            <div class="api-box-header">📥 Request Body (JSON)</div>
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>message <span class="req">required</span></td><td>string</td><td>Max 1200 characters. Truncated server-side.</td></tr>
+                <tr><td>filters <span class="opt">optional</span></td><td>object</td><td><code>{year, period, faculty}</code> — empty string means "all". Defaults to current topbar selection.</td></tr>
+                <tr><td>page_key <span class="opt">optional</span></td><td>string</td><td>Identifies the page context. Used for future page-specific behaviour.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="api-box">
+            <div class="api-box-header">📤 Response (JSON)</div>
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>reply</td><td>string</td><td>The assistant's answer text.</td></tr>
+                <tr><td>source</td><td>string</td><td><code>"google"</code> / <code>"openai"</code> / <code>"rules"</code> / <code>"cache"</code></td></tr>
+                <tr><td>diagnostics</td><td>object</td><td>Debug info (provider latency, filter state). Omitted in production.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p style="font-size:.78rem; color:#5a7a9a; margin-top:.75rem;">HTTP 401 if unauthenticated. HTTP 400 if JSON is malformed. HTTP 500 if service throws an unhandled exception.</p>
+      </div>
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <div style="background:var(--blue-mid); color:#fff; border-radius:8px 8px 0 0; padding:.6rem 1rem; font-size:.78rem; font-weight:700; font-family:monospace;">POST &nbsp;/api/chatbot/clear/</div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; padding:1rem;">
+        <p style="font-size:.82rem; color:#5a7a9a; margin:0;">No request body required. Deletes all <code>ChatMessage</code> rows for the current session. Returns <code>{status: "ok"}</code>. Triggered when the user clicks "New conversation".</p>
+      </div>
+    </div>
+
+    <!-- Known Limitations -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">⚠️</span> Known Limitations</h2>
+      <p>Constraints developers and administrators should be aware of.</p>
+    </div>
+    <div class="callout callout-limit">
+      <span>🔍</span>
+      <div>
+        <p><strong>Response cache is shared across users.</strong> Two different staff members asking the same rule-based question within the same 1-hour window receive the same cached reply. This is intentional for performance, but means per-user personalisation is not applied to cached responses.</p>
+      </div>
+    </div>
+    <div class="diagram-explainer" style="margin-top:.75rem;">
+      <div class="explainer-item c-red">
+        <h4>⏱️ 15-second AI timeout</h4>
+        <p><code>CHATBOT_TIMEOUT_SECONDS = 15</code>. If the AI provider does not respond within 15 seconds, the service automatically falls back to the rule-based reply. The user sees a valid answer, but the source badge will show "Guidance" instead of "Google Gemini".</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>💬 16-message history window</h4>
+        <p>The AI receives only the last 16 messages (8 turns) as conversation history. Older messages in the session are not sent to the AI, though they remain stored in <code>ChatMessage</code> rows in the database.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>✂️ 1200-character input limit</h4>
+        <p>The textarea enforces <code>maxlength="1200"</code> on the client. The server also truncates to <code>MAX_MESSAGE_LENGTH</code> before processing. Very long questions are silently truncated — the user is not warned.</p>
+      </div>
+      <div class="explainer-item">
+        <h4>🗄️ Cache is not scope-aware</h4>
+        <p>The MD5 cache key is computed from the message text only — not from the active scope filters (year, period, faculty). If a user changes the topbar filters and asks the same question, they may receive a cached reply from the previous scope if it was cached within the last hour.</p>
+      </div>
+    </div>
+
+    <!-- Local dev / testing guide -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🧪</span> Local Development &amp; Testing</h2>
+      <p>How to run and test the chatbot without an AI key configured.</p>
+    </div>
+    <div class="callout callout-info">
+      <span>ℹ️</span>
+      <p>In Guidance mode (no API key) the chatbot still answers every analytical question using live database data. This is the fastest way to test new reply branches without incurring AI API costs.</p>
+    </div>
+    <div class="diagram-explainer" style="margin-top:.75rem;">
+      <div class="explainer-item">
+        <h4>1. Run with no AI key</h4>
+        <p>Leave <code>GOOGLE_API_KEY</code> and <code>OPENAI_API_KEY</code> empty in your <code>.env</code> file. The service will route directly to the rule-based engine. Every branch in <code>_build_rule_based_reply</code> can be tested this way.</p>
+      </div>
+      <div class="explainer-item c-green">
+        <h4>2. Test a specific branch</h4>
+        <p>Send a message that matches the trigger keywords for the branch you added. Check the <code>source</code> field in the JSON response — it should be <code>"rules"</code>. The <code>diagnostics</code> object shows which context functions ran.</p>
+      </div>
+      <div class="explainer-item c-orange">
+        <h4>3. Clear the cache during testing</h4>
+        <p>Rule-based replies are cached for 1 hour. During development, click "New conversation" in the chat panel or call <code>POST /api/chatbot/clear/</code> to clear the session. To clear the response cache entirely, use the Django admin → ChatResponseCache → purge_expired action.</p>
+      </div>
+      <div class="explainer-item c-purple">
+        <h4>4. Standalone prototype</h4>
+        <p>For testing prompt changes without the full Django stack, use the standalone terminal prototype at <code>registrar_platform/unistudio_chatbot.py</code>. Run it with <code>python unistudio_chatbot.py</code>. It uses SQLite and does not require a running server.</p>
+      </div>
+    </div>
+
+    <!-- Security -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🔒</span> Security Controls</h2>
+      <p>Layers of protection applied on every request.</p>
+    </div>
+
+    <div class="security-grid">
+      <div class="security-item">
+        <div class="security-icon">🔐</div>
+        <div>
+          <h4>Authentication</h4>
+          <p><code>@ajax_login_required</code> decorator on both endpoints. Unauthenticated requests receive HTTP 401.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🛡️</div>
+        <div>
+          <h4>CSRF Protection</h4>
+          <p><code>X-CSRFToken</code> header sent with every fetch request. Validated by Django's middleware.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">✂️</div>
+        <div>
+          <h4>Input Length Limit</h4>
+          <p><code>maxlength="1200"</code> on the textarea. Server truncates to <code>MAX_MESSAGE_LENGTH</code> before any processing.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🚫</div>
+        <div>
+          <h4>Injection &amp; Jailbreak Gate</h4>
+          <p><code>SENSITIVE_PATTERNS</code> regex blocks credential requests, prompt injection, and instruction-override attacks before any DB query.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🔑</div>
+        <div>
+          <h4>API Key Protection</h4>
+          <p>Keys read from environment variables — never embedded in code, templates, or version control.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🔭</div>
+        <div>
+          <h4>Scope Enforcement</h4>
+          <p>All DB queries respect the topbar filters (year / period / faculty) — the same scope enforced across the rest of the platform.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- How to extend -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">🔧</span> How to Extend</h2>
+    </div>
+
+    <div class="cards" style="grid-template-columns: repeat(auto-fill, minmax(300px,1fr));">
+      <div class="card">
+        <div class="card-icon c-blue">➕</div>
+        <h3>Add a reply branch</h3>
+        <p>Add keyword detection in <code>_build_rule_based_reply</code>. For new DB data, add a <code>_build_*_context()</code> function and call it conditionally in <code>_build_scope_context</code> — only when message keywords warrant the extra query.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon c-purple">🤖</div>
+        <h3>Add an AI provider</h3>
+        <p>Add a <code>_request_&lt;provider&gt;_chatbot_response(prompt)</code> function, a <code>&lt;provider&gt;_ready</code> flag in <code>get_chatbot_provider_status()</code>, and insert the provider into the routing chain in <code>get_chatbot_reply()</code>.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon c-teal">💬</div>
+        <h3>Change suggestion chips</h3>
+        <p>Update the <code>suggestions</code> list inside the <code>chatbot_bootstrap</code> context dictionary in <code>dashboard/views.py</code>. Chips are shown only before the first message in a session.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon c-orange">🚫</div>
+        <h3>Disable on a specific page</h3>
+        <p>Pass <code>chatbot_enabled=False</code> in the page view's context. The base template checks <code>chatbot_bootstrap.enabled</code> before rendering the widget HTML or loading the JS file.</p>
+      </div>
+    </div>
+
+    <!-- Code example -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">📝</span> Code Example — Adding a New Reply Branch</h2>
+      <p>A complete skeleton for adding a new question category. Copy, rename, and fill in the DB query.</p>
+    </div>
+    <div class="code-block">
+<span class="cm"># ── Step 1: Add a context builder in chatbot_service.py ───────────────────</span>
+<span class="ck">def</span> <span class="cf">_build_timetable_context</span>(filters):
+    <span class="cs">"""Return timetable info for the current scope. Called only when triggered."""</span>
+    base = _base_registrations(filters)
+    <span class="cm"># ... your ORM query here ...</span>
+    <span class="ck">return</span> {<span class="cs">"timetable_summary"</span>: <span class="cs">"..."</span>}
+
+
+<span class="cm"># ── Step 2: Call it conditionally in _build_scope_context() ──────────────</span>
+<span class="ck">def</span> <span class="cf">_build_scope_context</span>(message, filters):
+    ctx = {}
+    ctx[<span class="cs">"scope"</span>] = _summarize_scope(filters)           <span class="cm"># always runs</span>
+
+    msg_lower = message.lower()
+
+    <span class="cm"># ... existing conditional context calls ...</span>
+
+    <span class="ck">if</span> <span class="cn">any</span>(kw <span class="ck">in</span> msg_lower <span class="ck">for</span> kw <span class="ck">in</span> [<span class="cs">"timetable"</span>, <span class="cs">"schedule"</span>, <span class="cs">"class time"</span>]):
+        ctx[<span class="cs">"timetable"</span>] = _build_timetable_context(filters)   <span class="cm"># only when needed</span>
+
+    <span class="ck">return</span> ctx
+
+
+<span class="cm"># ── Step 3: Add a dispatch branch in _build_rule_based_reply() ───────────</span>
+<span class="cm">#   Branches are checked top-to-bottom; put more specific checks first.</span>
+<span class="ck">def</span> <span class="cf">_build_rule_based_reply</span>(message, ctx):
+    msg_lower = message.lower()
+
+    <span class="cm"># ... existing branches (safety gate, student lookup, at-risk, etc.) ...</span>
+
+    <span class="cm"># NEW: timetable branch</span>
+    <span class="ck">if</span> <span class="cn">any</span>(kw <span class="ck">in</span> msg_lower <span class="ck">for</span> kw <span class="ck">in</span> [<span class="cs">"timetable"</span>, <span class="cs">"schedule"</span>, <span class="cs">"class time"</span>]):
+        data = ctx.get(<span class="cs">"timetable"</span>, {})
+        <span class="ck">if not</span> data:
+            <span class="ck">return</span> <span class="cs">"No timetable data is available for the current scope."</span>
+        <span class="ck">return</span> <span class="cn">f</span><span class="cs">"Timetable summary: {data['timetable_summary']}"</span>
+
+    <span class="cm"># ... remaining branches (default summary at the very end) ...</span>
+    </div>
+    <div class="callout callout-info" style="margin-top:1rem;">
+      <span>💡</span>
+      <p><strong>Test without AI:</strong> Leave both API keys empty. Send a message containing "timetable" or "schedule". The <code>source</code> field in the JSON response will be <code>"rules"</code> — confirming your branch is hit. Check the Django dev server console for any ORM errors.</p>
+    </div>
+
+    <!-- Changelog -->
+    <div class="section-header" style="margin-top:2.5rem;">
+      <h2><span class="ico">📋</span> Changelog</h2>
+      <p>Version history of the UniStudio chatbot integration on this platform.</p>
+    </div>
+    <div class="changelog">
+      <div class="changelog-row">
+        <div class="cl-date">Apr 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> 5-layer architecture + 10 service enhancements</h4>
+          <p>Layer 2 intent detection added (80-token AI call, 11 intents, zero-DB short-circuits for greeting/out_of_scope). New <code>_build_period_performance_context()</code> for named-period analytics. <code>_summarize_scope()</code> extended with median mark, proceeding count/pct, at_risk_pct, and gender percentages. <code>_build_programme_context()</code> now returns fail_rate and carrying_count. Per-period completion enriched with <code>zero_reason</code> and <code>working</code> formula fields. <code>RISK_BANDS_SUMMARY</code> and updated <code>COMPLETION_RULES_SUMMARY</code> (Proceed Carrying) injected into AI prompts. <code>_build_programme_table()</code> added to AI system prompt. Module-level compiled <code>_PERIOD_MONTH_RE</code> and <code>_SEMESTER_RE</code> replace inline recompilation. Total reply branches: 17 → 18.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">Apr 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> Full platform integration</h4>
+          <p>Chatbot migrated from standalone SQLite prototype to full Django app (<code>chatbot/</code>). Three PostgreSQL models replacing MemoryDB. <code>services/chatbot_service.py</code> ported and aligned with authoritative platform service files.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">Apr 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> 17-branch reply dispatch</h4>
+          <p>Added programme comparison, course difficulty ranking, admissions, student services, contact/portals, decision analysis, and demographics branches. At-risk listing now pulls live DB data with per-student risk scoring.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">Apr 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> Dual AI provider routing</h4>
+          <p>Google Gemini (primary) and OpenAI (fallback) with automatic rule-based fallback on timeout or error. <code>CHATBOT_PROVIDER</code> setting allows forcing a specific provider.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">Apr 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> Response cache</h4>
+          <p>MD5-keyed 1-hour TTL cache for rule-based replies. Cache purge action available in Django admin.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">Apr 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag changed">Changed</span> Computation alignment</h4>
+          <p>Risk scoring, completion percentage, classification, and graduation rate now import directly from <code>completion_rules.py</code> and <code>risk/constants.py</code> — no duplicated logic.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">Pre-2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag fixed">Prototype</span> Standalone terminal chatbot</h4>
+          <p>Original <code>unistudio_chatbot.py</code> — SQLite MemoryDB, terminal interface. Not used in production. Retained as a sandbox for prompt and AI provider testing.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /config -->
+
+</div><!-- /page -->
+
+<!-- ─── SCRIPTS ───────────────────────────────────────────────────────── -->
+<script>
+  // Init Mermaid — must run before DOMContentLoaded fires
+  mermaid.initialize({
+    startOnLoad: false,   // we call mermaid.run() manually so hidden sections don't fail
+    theme: 'base',
+    themeVariables: {
+      primaryColor:        '#0d325d',
+      primaryTextColor:    '#ffffff',
+      primaryBorderColor:  '#1a6da8',
+      lineColor:           '#1a6da8',
+      secondaryColor:      '#e8f2fb',
+      tertiaryColor:       '#f0f4f9',
+      noteBkgColor:        '#e8f2fb',
+      noteTextColor:       '#0d325d',
+      /* sequence diagram — keep message labels dark so they're readable */
+      signalColor:         '#1a6da8',
+      signalTextColor:     '#1a2535',
+      actorTextColor:      '#ffffff',
+      actorBkg:            '#0d325d',
+      actorBorder:         '#1a6da8',
+      actorLineColor:      '#1a6da8',
+      labelBoxBkgColor:    '#e8f2fb',
+      labelTextColor:      '#0d325d',
+      loopTextColor:       '#0d325d',
+      fontFamily:          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSize:            '13px',
+    },
+    flowchart: { curve: 'basis', padding: 20 },
+    sequence:  { actorMargin: 60, mirrorActors: false },
+  });
+
+  // Tab switching — render Mermaid diagrams only once the section is visible
+  function showTab(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const section = document.getElementById(id);
+    section.classList.add('active');
+    btn.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Process any unrendered Mermaid diagrams now that the section is displayed
+    const pending = section.querySelectorAll('.mermaid:not([data-processed])');
+    if (pending.length) { mermaid.run({ nodes: pending }); }
+  }
+
+  // Render diagrams in the initially visible section (Overview has none; safe to call)
+  document.addEventListener('DOMContentLoaded', function () {
+    const active = document.querySelector('.section.active');
+    if (active) {
+      const pending = active.querySelectorAll('.mermaid:not([data-processed])');
+      if (pending.length) { mermaid.run({ nodes: pending }); }
+    }
+  });
+</script>
+</body>
+</html>

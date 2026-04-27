@@ -93,17 +93,7 @@ Enhance the student results dashboard to implement cumulative progression logic 
 - **Formula**: `(registration_index // 2) + 1`
 - **Mapping**: Positions 0-1 = Year 1, 2-3 = Year 2, 4-5 = Year 3, 6-7 = Year 4
 
-## 🔍 Debug Features
-
-### Comprehensive Logging
-```python
-print(f"DEBUG: Enrollment-based filtering for {student_name}:")
-print(f"  - Selected filters: Year='{year}', Period='{period}', Faculty='{faculty}'")
-print(f"  - Total available registrations: {len(all_registrations)}")
-print(f"  - Final filtered count: {len(filtered_registrations)}")
-```
-
-### Filter Validation
+## Filter Validation
 - **Year Check**: Calendar year extraction and matching
 - **Period Check**: Period name comparison with formatted labels
 - **Faculty Check**: Department faculty name validation

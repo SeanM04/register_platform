@@ -152,22 +152,13 @@ export const initialiseProgrammePage = async () => {
     const shellContext = createProgrammeContext();
     const root = shellContext.elements.root;
 
-    console.log('Programme page initialization started');
-    console.log('Root element:', root);
-    console.log('Story banner element:', shellContext.elements.storyBanner);
-
     if (!root || !shellContext.elements.storyBanner) {
-        console.log('Missing required elements, aborting initialization');
         return;
     }
 
-    console.log('Payload URL:', root.dataset.payloadUrl);
-
     let chartPayload = null;
     try {
-        console.log('Fetching payload from:', root.dataset.payloadUrl);
         const payloadResponse = await fetchJson(root.dataset.payloadUrl);
-        console.log('Payload response received:', payloadResponse);
         
         chartPayload = {
             topLoadRows: payloadResponse?.top_load_rows || [],
@@ -184,7 +175,6 @@ export const initialiseProgrammePage = async () => {
                 has_next: false,
             },
         };
-        console.log('Chart payload created:', chartPayload);
         hydrateSummaryCards(shellContext, payloadResponse?.summary_cards || []);
     } catch (error) {
         console.error('Error fetching payload:', error);

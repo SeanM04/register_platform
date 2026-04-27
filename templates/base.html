@@ -7,6 +7,7 @@
     <title>{% block title %}{{ page_title|default:"Registrar Platform" }}{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'dashboard/images/favicon.svg' %}">
     <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v=20260414-dropdown-arrows01">
+    <link rel="stylesheet" href="{% static 'dashboard/css/chatbot.css' %}?v=20260425-chatbot01">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'dashboard/css/ai_badges.css' %}?v=20260414-rectangular-badge01">
     <script src="{% static 'dashboard/js/filters.js' %}?v=20260420-student-scoped-filters01"></script>
@@ -56,6 +57,22 @@
                         alt="MSUAS logo"
                     >
                 </div>
+                {% if chatbot_bootstrap.enabled %}
+                <button
+                    type="button"
+                    class="usc-topbar-btn"
+                    id="usc-topbar-toggle"
+                    aria-expanded="false"
+                    aria-controls="usc-panel"
+                    aria-label="Open UniStudio assistant"
+                    title="UniStudio Assistant"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                {% endif %}
                 <form method="post" action="{% url 'logout' %}" class="logout-form">
                     {% csrf_token %}
                     <button type="submit" class="logout-button">Logout</button>
@@ -93,11 +110,83 @@
                         <p class="filter-loading-title" id="filter-loading-title">Applying filters</p>
                         <p class="filter-loading-text" id="filter-loading-text">Updating the dashboard with your selected scope.</p>
                     </div>
+                 </div>
+             </div>
+
+    {% if chatbot_bootstrap.enabled %}
+    {{ chatbot_bootstrap|json_script:"unistudio-chatbot-config" }}
+    <section class="usc" id="usc" aria-label="UniStudio chatbot assistant">
+
+        <!-- Chat panel — must come first in DOM so it stacks above the FAB -->
+        <div class="usc-panel" id="usc-panel" hidden role="dialog" aria-label="UniStudio assistant">
+
+            <!-- Header -->
+            <div class="usc-header">
+                <div class="usc-header-avatar" aria-hidden="true">U</div>
+                <div class="usc-header-meta">
+                    <span class="usc-header-name">UniStudio</span>
+                    <span class="usc-header-status" id="usc-status">
+                        {% if chatbot_bootstrap.ai_available %}Online{% else %}Guidance mode{% endif %}
+                    </span>
+                </div>
+                <div class="usc-header-actions">
+                    <button type="button" class="usc-icon-btn" id="usc-clear" title="New conversation" aria-label="Clear conversation">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button type="button" class="usc-icon-btn" id="usc-close" aria-label="Close assistant">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                    </button>
                 </div>
             </div>
 
+            <!-- Message thread -->
+            <div class="usc-messages" id="usc-messages" aria-live="polite" aria-atomic="false"></div>
+
+            <!-- Suggestion chips (hidden after first message) -->
+            <div class="usc-suggestions" id="usc-suggestions" aria-label="Suggested questions"></div>
+
+            <!-- Input bar -->
+            <form class="usc-form" id="usc-form" autocomplete="off">
+                <textarea
+                    class="usc-input"
+                    id="usc-input"
+                    rows="1"
+                    maxlength="1200"
+                    placeholder="Ask about a student, programme, or rule…"
+                    aria-label="Message"
+                ></textarea>
+                <button type="submit" class="usc-send" aria-label="Send message">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </form>
+
+        </div>
+
+        <!-- FAB toggle — comes after panel in DOM so it sits below it visually -->
+        <button
+            type="button"
+            class="usc-fab"
+            id="usc-toggle"
+            aria-expanded="false"
+            aria-controls="usc-panel"
+            aria-label="Open UniStudio assistant"
+        >
+            <!-- Chat icon -->
+            <svg class="usc-fab-icon usc-fab-icon--chat" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <!-- Close icon (shown when open) -->
+            <svg class="usc-fab-icon usc-fab-icon--close" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+        </button>
+
+    </section>
+    {% endif %}
+
     <script src="{% static 'dashboard/js/base.js' %}?v=20260408-topbar-design01"></script>
     <script src="{% static 'dashboard/js/metrics.js' %}"></script>
+    <script src="{% static 'dashboard/js/chatbot.js' %}?v=20260425-chatbot03"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

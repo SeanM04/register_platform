@@ -3,16 +3,12 @@ export const initialiseAcademicLevelSearch = (elements) => {
     let levelSearchTimer = null;
 
     if (!levelSearchForm || !levelSearchInput) {
-        console.log('[Academic Level Search] Form or input not found, skipping initialization');
         return;
     }
-
-    console.log('[Academic Level Search] Initializing search functionality');
 
     // Listen for form submission to refresh data with new filters
     levelSearchForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        console.log('[Academic Level Search] Form submitted, refreshing data');
         
         // Get current filter values from the form
         const formData = new FormData(levelSearchForm);
@@ -31,8 +27,6 @@ export const initialiseAcademicLevelSearch = (elements) => {
         newUrl.search = searchParams.toString();
         window.history.pushState({}, '', newUrl);
         
-        console.log('[Academic Level Search] Updated URL:', newUrl.toString());
-        
         // Fetch fresh data with current filters
         await refreshTableDataWithFilters();
     });
@@ -40,7 +34,6 @@ export const initialiseAcademicLevelSearch = (elements) => {
     levelSearchInput.addEventListener("input", () => {
         window.clearTimeout(levelSearchTimer);
         levelSearchTimer = window.setTimeout(() => {
-            console.log('[Academic Level Search] Input changed, submitting form');
             levelSearchForm.requestSubmit();
         }, 450);
     });

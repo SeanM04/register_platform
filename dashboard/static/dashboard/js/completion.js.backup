@@ -17,12 +17,9 @@ class CompletionAnalysis {
 
     constructor() {
         this.root = document.querySelector('.completion-layout');
-        console.log('Root element found:', this.root);
         this.payloadUrl = this.root?.dataset.payloadUrl || '/metrics/completion/payload/';
-        console.log('Payload URL:', this.payloadUrl);
         this.currentData = null;
         this.currentFilters = this.getFiltersFromURL();
-        console.log('Current filters:', this.currentFilters);
         this.currentPage = 1;
         this.itemsPerPage = 10;
         this.sortColumn = null;
@@ -124,8 +121,6 @@ class CompletionAnalysis {
 
     async loadData() {
         try {
-            console.log('Loading data from:', this.payloadUrl);
-
             const queryParams = new URLSearchParams();
             Object.entries(this.currentFilters).forEach(([key, value]) => {
                 if (value) {
@@ -134,10 +129,8 @@ class CompletionAnalysis {
             });
 
             const fullUrl = `${this.payloadUrl}?${queryParams}`;
-            console.log('Full request URL:', fullUrl);
             
             const response = await fetch(fullUrl);
-            console.log('Response status:', response.status);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -226,7 +219,6 @@ class CompletionAnalysis {
         // Initialize ECharts instance
         const chart = window.echarts.init(container);
         
-        console.log(`✅ ECharts initialized for #${containerId}:`, chart);
         
         return {
             chart,
@@ -345,12 +337,9 @@ class CompletionAnalysis {
             return;
         }
 
-        console.log('🔵 Rendering cohort chart with data:', data);
-
         // Set the option and enable animation
         try {
             chart.chart.setOption(option, true);
-            console.log('✅ Cohort chart rendered successfully');
         } catch (error) {
             console.error('❌ Error rendering cohort chart:', error);
         }
@@ -449,12 +438,9 @@ class CompletionAnalysis {
             return;
         }
 
-        console.log('🔵 Rendering programme chart with data:', data);
-
         // Set the option and enable animation
         try {
             chart.chart.setOption(option, true);
-            console.log('✅ Programme chart rendered successfully');
         } catch (error) {
             console.error('❌ Error rendering programme chart:', error);
         }
@@ -725,7 +711,6 @@ class CompletionAnalysis {
         Object.values(this.charts).forEach(chart => {
             if (chart && chart.chart && typeof chart.chart.resize === 'function') {
                 chart.chart.resize();
-                console.log(' Chart resized:', chart.container.id);
             }
         });
     }
@@ -785,13 +770,9 @@ class CompletionAnalysis {
     }
 }
 
-console.log('Completion.js loaded and DOM ready');
-
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
     try {
         new CompletionAnalysis();
-        console.log('CompletionAnalysis instance created');
     } catch (error) {
         console.error('Error creating CompletionAnalysis:', error);
     }

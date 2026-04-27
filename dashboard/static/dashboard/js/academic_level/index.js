@@ -207,8 +207,6 @@ const changePageSize = (newSize) => {
 };
 
 const renderPaginatedTable = () => {
-    console.log('[Academic Level] renderPaginatedTable called');
-    
     // Wait a bit to ensure DOM is ready after accordion animation
     setTimeout(() => {
         const { start, end } = calculatePagination(
@@ -219,12 +217,8 @@ const renderPaginatedTable = () => {
 
         const paginatedRows = paginationState.allRows.slice(start, end);
         
-        console.log('[Academic Level] About to render', paginatedRows.length, 'rows');
-        
         // Get fresh context with current DOM references
         const context = createAcademicLevelContext();
-        
-        console.log('[Academic Level] Fresh context created, tableBody exists:', !!context.elements.levelTableBody);
         
         renderLevelTable({
             ...context,
@@ -283,7 +277,6 @@ const renderTableImmediately = (rows) => {
                 <td class="level-empty" colspan="6">No academic level data matched the current filters.</td>
             </tr>
         `.trim();
-        console.log('[Academic Level] Rendered empty state');
         return;
     }
 
@@ -309,12 +302,10 @@ const renderTableImmediately = (rows) => {
         </tr>
     `).join("").trim();
 
-    console.log(`[Academic Level] Table rendered immediately with ${paginatedRows.length} rows (page ${paginationState.currentPage})`);
 };
 
 // Simplified re-render for accordion expand - just call immediate render
 const handleAccordionExpand = () => {
-    console.log('[Academic Level] Accordion expanded, refreshing table display');
     if (initialTableData && initialTableData.length > 0) {
         renderTableImmediately(initialTableData);
         renderPaginationControls();
@@ -330,11 +321,8 @@ const renderLevelTable = (context) => {
         return;
     }
 
-    console.log('[Academic Level] Found tableBody element:', tableBody);
-
     const rows = context.data.levelRows || [];
     if (!rows.length) {
-        console.log('[Academic Level] No rows to render');
         tableBody.innerHTML = `
             <tr>
                 <td class="level-empty" colspan="6">No academic level data matched the current filters.</td>
@@ -343,7 +331,6 @@ const renderLevelTable = (context) => {
         return;
     }
 
-    console.log('[Academic Level] Rendering table with', rows.length, 'rows into tbody');
     tableBody.innerHTML = rows.map((row) => `
         <tr data-level-row="${escapeTooltipHtml(row.level)}">
             <td class="level-td-key">${escapeTooltipHtml(row.level)}</td>
@@ -357,8 +344,6 @@ const renderLevelTable = (context) => {
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
     `).join("").trim();
-    
-    console.log('[Academic Level] Table rendered successfully, tbody innerHTML length:', tableBody.innerHTML.length);
 };
 
 const setAcademicLevelShellErrorState = (context) => {
@@ -414,13 +399,6 @@ export const initialiseAcademicLevelPage = () => {
                 return;
             }
 
-            console.log('[Academic Level] Payload received:', {
-                hasLevelRows: !!payloadResponse?.level_rows,
-                levelRowsCount: payloadResponse?.level_rows?.length || 0,
-                hasMetrics: !!payloadResponse?.metrics,
-                levelRows: payloadResponse?.level_rows
-            });
-
             const context = updateAcademicLevelContext(shellContext, {
                 chartPayload: {
                     levelRows: payloadResponse?.level_chart_rows || [],
@@ -441,11 +419,6 @@ export const initialiseAcademicLevelPage = () => {
             
             // Store globally for immediate access
             initialTableData = allLevelRows;
-            
-            console.log('[Academic Level] Storing table data:', {
-                totalRows: allLevelRows.length,
-                stored: !!initialTableData
-            });
             
             // Render table IMMEDIATELY - don't wait for anything
             renderTableImmediately(allLevelRows);
@@ -478,7 +451,6 @@ export const initialiseAcademicLevelPage = () => {
 
             // Simple event listener - just re-render when accordion opens
             document.addEventListener('academic-level:table-visibility-changed', () => {
-                console.log('[Academic Level] Table visibility changed - refreshing display');
                 handleAccordionExpand();
             });
         })

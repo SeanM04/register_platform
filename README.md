@@ -16,6 +16,7 @@ The platform currently includes:
 - `Risk` for identifying at-risk students from academic outcomes
 - `Insights` for operational recommendations and flagged-student context
 - `System Management` for platform user administration and access control
+- `UniStudio Chatbot` as a floating in-platform assistant for scoped academic questions
 
 ## Technology Stack
 
@@ -37,6 +38,11 @@ The platform currently includes:
   Day-to-day platform administration and data refresh runbook
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
   Application structure, data model, and technical design notes
+- [docs/CHATBOT.md](docs/CHATBOT.md)
+  Chatbot widget architecture, provider flow, and prototype cleanup notes
+- [docs/pages/README.md](docs/pages/README.md)
+  Page-by-page sidebar documentation with user explanations, architecture
+  diagrams, file maps, and maintenance checks
 - [docs/COMPLETION_ANALYTICS.md](docs/COMPLETION_ANALYTICS.md)
   Completion rules, effective cohort logic, narratives, and frontend file map
 - [docs/GRADUATION_ANALYTICS.md](docs/GRADUATION_ANALYTICS.md)

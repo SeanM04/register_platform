@@ -196,8 +196,6 @@ export const initialiseOriginMapSection = (context) => {
             resize: () => {},
         };
     }
-    console.log("Map created successfully:", map);
-
     const markers = [];
     const maxCount = Math.max(...locationMapRows.map((row) => Number(row.count || 0)), 1);
     const sortedRows = [...locationMapRows].sort((left, right) => right.count - left.count || left.place.localeCompare(right.place));

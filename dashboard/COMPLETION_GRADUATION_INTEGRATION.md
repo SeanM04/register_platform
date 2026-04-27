@@ -295,16 +295,6 @@ Both pages use the existing authentication system:
 3. **Filter Problems**: Ensure backend services handle filter parameters
 4. **Export Issues**: Check data formatting and CSV generation
 
-### Debug Mode
-
-Enable debug mode by adding console.log statements in JavaScript files:
-
-```javascript
-// In completion.js or graduation.js
-console.log('Data loaded:', this.currentData);
-console.log('Filters applied:', this.currentFilters);
-```
-
 ## Future Enhancements
 
 1. **Real-time Updates**: WebSocket integration for live data

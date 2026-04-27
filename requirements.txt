@@ -2,3 +2,8 @@ Django==6.0.3
 psycopg[binary]==3.3.3
 python-dotenv==1.2.2
 pandas==3.0.1
+# OpenAI API client — for GPT-4o and intent detection
+openai>=1.30.0
+
+# Rich — for the terminal UI (coloured output, panels, tables)
+rich>=13.0.0

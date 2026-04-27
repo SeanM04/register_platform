@@ -125,7 +125,6 @@ export const initialiseFacultyLoadSection = (context) => {
     chart.on("click", (params) => {
         const row = rows[params.dataIndex];
         if (row && row.key) {
-            console.log("Faculty chart clicked:", row);
             openOverviewDrillDown(context, {
                 chartKey: "faculty_load",
                 bucketKey: row.key,
