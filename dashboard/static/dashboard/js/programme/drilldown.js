@@ -3,6 +3,13 @@
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeProgrammeDrillDownToken = 0;
 
+const removeExistingProgrammeDrillDownModal = () => {
+    document.querySelectorAll('.risk-drilldown-modal').forEach((modal) => {
+        modal.remove();
+    });
+    document.body.classList.remove('has-risk-drilldown-modal');
+};
+
 export const cancelProgrammeDrillDownRequests = () => {
     activeProgrammeDrillDownToken += 1;
 };
@@ -40,7 +47,9 @@ const fetchDrillDownPayload = async (endpoint, params = {}) => {
     return response.json();
 };
 
-const showProgrammeDrillDownModal = (payload) => {
+const showProgrammeDrillDownModal = (payload, onPageChange = null) => {
+    removeExistingProgrammeDrillDownModal();
+
     // Create modal using system styling
     const modal = document.createElement('div');
     modal.className = 'risk-drilldown-modal';
@@ -76,23 +85,31 @@ const showProgrammeDrillDownModal = (payload) => {
     
     const closeButton = document.createElement('button');
     closeButton.className = 'risk-drilldown-close';
-    closeButton.innerHTML = '×';
+    closeButton.textContent = 'Close';
     closeButton.style.cssText = `
         background: none;
         border: none;
-        font-size: 1.5rem;
+        font-size: 0.9rem;
         color: #64748b;
         cursor: pointer;
-        padding: 0.5rem;
-        border-radius: 4px;
-        transition: all 0.2s ease;
+        padding: 0;
+        font-weight: 600;
     `;
-    closeButton.onclick = () => {
-        document.body.removeChild(modal);
+
+    closeButton.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        modal.remove();
         document.body.classList.remove('has-risk-drilldown-modal');
     };
-    closeButton.onmouseover = () => closeButton.style.backgroundColor = '#f1f5f9';
-    closeButton.onmouseout = () => closeButton.style.backgroundColor = 'transparent';
+
+    closeButton.onmouseover = () => {
+        closeButton.style.color = '#1e293b';
+    };
+
+    closeButton.onmouseout = () => {
+        closeButton.style.color = '#64748b';
+    };
     
     // Create table with system styling
     const tableWrap = document.createElement('div');
@@ -154,6 +171,86 @@ const showProgrammeDrillDownModal = (payload) => {
     }
     table.appendChild(tbody);
     
+    // Create pagination controls if available
+    let paginationControls = '';
+    if (payload.pagination && onPageChange) {
+        const { current_page, page_size, total_items, total_pages, has_next, has_previous } = payload.pagination;
+        
+        paginationControls = document.createElement('div');
+        paginationControls.className = 'risk-drilldown-pagination';
+        paginationControls.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            color: #64748b;
+        `;
+        
+        // Page info
+        const pageInfo = document.createElement('div');
+        pageInfo.textContent = total_items > 0 
+            ? `Showing ${page_size * (current_page - 1) + 1}-${Math.min(page_size * current_page, total_items)} of ${total_items} students`
+            : 'No students found';
+        paginationControls.appendChild(pageInfo);
+        
+        // Page navigation buttons
+        const navButtons = document.createElement('div');
+        navButtons.style.cssText = `
+            display: flex;
+            gap: 0.5rem;
+        `;
+        
+        // Previous button
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Previous';
+        prevButton.disabled = !has_previous;
+        prevButton.style.cssText = `
+            padding: 0.25rem 0.75rem;
+            border: 1px solid #d1d5db;
+            background: ${has_previous ? '#ffffff' : '#f9fafb'};
+            color: ${has_previous ? '#374151' : '#9ca3af'};
+            cursor: ${has_previous ? 'pointer' : 'not-allowed'};
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        `;
+        if (has_previous) {
+            prevButton.onclick = () => onPageChange(current_page - 1);
+        }
+        navButtons.appendChild(prevButton);
+        
+        // Page indicator
+        const pageIndicator = document.createElement('span');
+        pageIndicator.textContent = `Page ${current_page} of ${total_pages}`;
+        pageIndicator.style.cssText = `
+            padding: 0.25rem 0.75rem;
+            color: #6b7280;
+            font-weight: 500;
+        `;
+        navButtons.appendChild(pageIndicator);
+        
+        // Next button
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        nextButton.disabled = !has_next;
+        nextButton.style.cssText = `
+            padding: 0.25rem 0.75rem;
+            border: 1px solid #d1d5db;
+            background: ${has_next ? '#ffffff' : '#f9fafb'};
+            color: ${has_next ? '#374151' : '#9ca3af'};
+            cursor: ${has_next ? 'pointer' : 'not-allowed'};
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        `;
+        if (has_next) {
+            nextButton.onclick = () => onPageChange(current_page + 1);
+        }
+        navButtons.appendChild(nextButton);
+        
+        paginationControls.appendChild(navButtons);
+    }
+    
     // Assemble modal
     heading.appendChild(title);
     heading.appendChild(subtitle);
@@ -162,6 +259,11 @@ const showProgrammeDrillDownModal = (payload) => {
     tableWrap.appendChild(table);
     dialog.appendChild(header);
     dialog.appendChild(tableWrap);
+    
+    if (paginationControls) {
+        dialog.appendChild(paginationControls);
+    }
+    
     modal.appendChild(dialog);
     
     // Add to page and prevent body scroll
@@ -171,7 +273,8 @@ const showProgrammeDrillDownModal = (payload) => {
     // Close on backdrop click
     modal.onclick = (e) => {
         if (e.target === modal) {
-            document.body.removeChild(modal);
+            e.stopPropagation();
+            modal.remove();
             document.body.classList.remove('has-risk-drilldown-modal');
         }
     };
@@ -243,7 +346,7 @@ export const openProgrammeDrillDown = async (context, { chartKey, bucketKey, lab
                 return;
             }
 
-            showProgrammeDrillDownModal(payload);
+            showProgrammeDrillDownModal(payload, loadPage);
 
         } catch (error) {
             console.error("Programme drill-down error:", error);

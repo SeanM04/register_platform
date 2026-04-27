@@ -145,7 +145,7 @@ export const initialisePerformanceSection = (context) => {
         const row = params.data.row;
         if (row && row.name) {
             openProgrammeDrillDown(context, {
-                chartKey: "programme_load",
+                chartKey: "performance",
                 bucketKey: row.name,
                 label: formatProgrammeName(row.name),
             });

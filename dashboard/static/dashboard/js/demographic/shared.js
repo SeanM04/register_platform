@@ -56,13 +56,13 @@ export const buildAnimationConfig = (rows) => ({
 export const buildTooltipBase = (trigger = "item") => ({
     trigger,
     triggerOn: "mousemove|click",
-    backgroundColor: "rgba(8, 35, 64, 0.94)",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderWidth: 0,
     padding: [6, 8],
     confine: true,
     extraCssText: "max-width: 260px; border-radius: 10px; box-shadow: 0 10px 24px rgba(8, 35, 64, 0.2); white-space: normal;",
     textStyle: {
-        color: "#ffffff",
+        color: "#000000",
         fontSize: 11,
         fontWeight: 600,
         lineHeight: 16,

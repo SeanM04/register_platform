@@ -124,7 +124,7 @@ export const initialiseQualitySection = (context) => {
         const row = sortedRows[params.dataIndex];
         if (row && row.name) {
             openProgrammeDrillDown(context, {
-                chartKey: "programme_load",
+                chartKey: "low_pass",
                 bucketKey: row.name,
                 label: formatProgrammeName(row.name),
             });

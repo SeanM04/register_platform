@@ -568,7 +568,7 @@ class CompletionAnalysis {
                 formatter: (params) => buildTooltipMarkup(
                     `${params.data.name} · ${params.data.progressionLabel}`,
                     [
-                        { label: "Average completion", value: `${params.data.completionRate}%` },
+                        { label: "Average completion", value: `${Math.round(params.data.completionRate)}%` },
                         { label: "Visible records", value: `${params.data.studentCount}` },
                         { label: "Zero completion", value: `${params.data.zeroCompletionCount}` },
                         { label: "Non-zero share", value: `${Math.round(params.data.passShareRate)}%` },
@@ -603,16 +603,16 @@ class CompletionAnalysis {
                 },
             },
             visualMap: {
-                min: 0,
-                max: 100,
-                calculable: true,
+                 type: "piecewise",
                 orient: "horizontal",
                 left: "center",
                 bottom: 0,
                 text: ["100%", "0%"],
-                inRange: {
-                    color: ["#7f1d1d", "#dc2626", "#f59e0b", "#0ea5e9", "#0f766e"],
-                },
+                pieces: [
+        { min: 0, max: 49, label: "0% - 49%", color: "#dc2626" },
+        { min: 50, max: 74, label: "50% - 74%", color: "#f59e0b" },
+        { min: 75, max: 100, label: "75% - 100%", color: "#16a34a" },
+    ],
             },
             series: [
                 {
@@ -670,7 +670,7 @@ class CompletionAnalysis {
                 formatter: (params) => {
                     const row = topRows[params.dataIndex];
                     return buildTooltipMarkup(row.programme_name, [
-                        { label: "Average completion", value: `${row.completion_rate}%` },
+                        { label: "Average completion", value: `${Math.round(row.completion_rate)}%` },
                         { label: "Students", value: `${row.student_count}` },
                         { label: "Semester records", value: `${row.record_count}` },
                         { label: "Zero-completion share", value: `${Math.round(row.zero_completion_rate)}%` },
@@ -683,7 +683,7 @@ class CompletionAnalysis {
                 max: 100,
                 axisLabel: {
                     color: "#475569",
-                    formatter: "{value}%",
+                    formatter: (value) => `${Math.round(value)}%`,
                 },
                 splitLine: {
                     lineStyle: { color: "rgba(148, 163, 184, 0.2)" },
@@ -724,7 +724,7 @@ class CompletionAnalysis {
                         position: "right",
                         color: "#0f172a",
                         fontWeight: 700,
-                        formatter: "{c}%",
+                        formatter: (params) => `${Math.round(params.value)}%`,
                     },
                 },
             ],
@@ -892,7 +892,14 @@ class CompletionAnalysis {
             return;
         }
 
-        const filteredStudents = this.getFilteredStudents(students);
+     const filteredStudents = this.getFilteredStudents(students).sort((a, b) => {
+    const getLastName = (name) => {
+        const parts = (name || "").trim().split(" ");
+        return parts[parts.length - 1].toLowerCase();
+    };
+
+    return getLastName(a.student_name).localeCompare(getLastName(b.student_name));
+});
         const paginatedStudents = this.getPaginatedStudents(filteredStudents);
 
         if (!paginatedStudents.length) {
@@ -922,9 +929,7 @@ class CompletionAnalysis {
         const decisionClass = this.getDecisionClass(student);
         const rateClass = this.getRateClass(student.completion_rate);
         const cohortClass = student.is_shifted ? "is-shifted" : "is-original";
-        const zeroReason = student.zero_completion_reason
-            ? `<p class="completion-zero-note">${escapeTooltipHtml(student.zero_completion_reason)}</p>`
-            : "";
+        
 
         row.innerHTML = `
             <td class="students-td-name">
@@ -933,15 +938,22 @@ class CompletionAnalysis {
                 </a>
             </td>
             <td>${escapeTooltipHtml(student.programme_name || "")}</td>
-            <td>${escapeTooltipHtml(student.academic_stage || "")}</td>
-            <td><span class="completion-rate-badge ${decisionClass}">${escapeTooltipHtml(student.decision || "")}</span></td>
-            <td>
-                <span class="completion-cohort-pill ${cohortClass}">${escapeTooltipHtml(student.effective_cohort || "")}</span>
-            </td>
-            <td>
-                <span class="completion-rate-badge ${rateClass}">${Math.round(student.completion_rate || 0)}%</span>
-                ${zeroReason}
-            </td>
+            <td>${escapeTooltipHtml((student.academic_stage || "").replace(", ", " "))}</td>
+            <td>${escapeTooltipHtml(student.decision || "")}</td>
+
+<td>${escapeTooltipHtml(student.effective_cohort || "")}</td>
+
+<td>
+    <span 
+        class="completion-rate-value"
+        ${student.completion_rate === 0 && student.zero_completion_reason
+            ? `title="${escapeTooltipHtml(student.zero_completion_reason)}"`
+            : ""
+        }
+    >
+        ${Math.round(student.completion_rate || 0)}%
+    </span>
+</td>
         `;
         return row;
     }

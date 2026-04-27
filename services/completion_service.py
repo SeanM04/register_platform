@@ -23,7 +23,7 @@ def _parse_int(value: Any) -> Optional[int]:
 def _safe_rate(numerator: float, denominator: float) -> float:
     if not denominator:
         return 0.0
-    return round((numerator / denominator) * 100, 1)
+    return round((numerator / denominator) * 100)
 
 
 def _normalise_gender(value: str) -> str:

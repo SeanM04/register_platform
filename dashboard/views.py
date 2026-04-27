@@ -1002,7 +1002,6 @@ def student_detail(request, slug):
     selected_faculty = student_filter_context["selected_faculty"]
     
     filtered_registrations = []
-    
     for registration in all_registrations:
         faculty_name = registration.programme.department.faculty.name
         
@@ -1011,14 +1010,14 @@ def student_detail(request, slug):
         if selected_year and selected_year != "All":
             registration_year = _registration_progression_year_label(all_registrations, registration)
             
-            if registration_year != selected_year:
+            if registration_year != calendar_year:
                 year_match = False
         
         # Check Period filter against actual enrollment
         period_match = True
         if selected_period and selected_period != "All":
             # Check if this registration's period name matches the selected period
-            registration_period_label = _registration_period_label(registration)
+            registration_period_label = format_period_label(registration.period.name)
             if registration_period_label.lower() != selected_period.lower():
                 period_match = False
         
@@ -1054,7 +1053,7 @@ def student_detail(request, slug):
             empty_state_message = f"Student not found for {selected_period}. Try selecting a different period."
         else:
             empty_state_message = "No records found for the selected filters. Try adjusting your filters."
-    
+            
     # Determine selected registration based on filters and tab selection
     latest_registration = all_registrations[-1] if all_registrations else None
     selected_registration = latest_registration
@@ -1145,7 +1144,6 @@ def student_detail(request, slug):
             weighted_average = total_weighted_marks / total_weights
             # Round to nearest whole number
             average_mark = round(weighted_average)
-            
         else:
             average_mark = 0
     else:
@@ -1283,12 +1281,13 @@ def student_detail(request, slug):
     
     # Build year-based dropdown tabs with STRICT semester ordering
     year_dropdown_tabs = []
-    validated_registrations = all_registrations
-    display_registrations = [
-        registration
-        for registration in validated_registrations
-        if _registration_has_course_results(registration)
-    ] or validated_registrations
+    # TEMP: Disable strict validation for debugging
+    validated_registrations = all_registrations  # TEMP: Use all registrations
+    
+    # TEMP: Skip chronological validation for debugging
+    # is_order_valid, order_message = validate_semester_chronological_order(validated_registrations)
+    # if not is_order_valid:
+    #     pass
     
     # Group validated registrations by academic progression year
     year_groups = {}
@@ -1391,7 +1390,8 @@ def student_detail(request, slug):
             "semester_selected": bool(active_semester),
             "semesters": semester_options
         })
-    
+        
+            
     # For backward compatibility, create flat term_tabs from dropdown tabs (for existing template logic)
     term_tabs = []
     for year_tab in year_dropdown_tabs:
@@ -1404,6 +1404,8 @@ def student_detail(request, slug):
                 "period_name": semester["period_name"],
                 "is_active": semester["is_active"],
             })
+    
+    
     student = {
         "name": student_record.full_name,
         "student_number": student_record.registration_number,

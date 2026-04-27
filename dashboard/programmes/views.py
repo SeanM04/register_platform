@@ -36,7 +36,8 @@ def programme_payload(request):
 
     search_query = request.GET.get("q", "").strip()
     programme_data = build_programme_dashboard_data(request, search_query)
-
+    
+        
     return JsonResponse(
         {
             "summary_cards": programme_data["summary_cards"],

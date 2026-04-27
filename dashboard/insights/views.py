@@ -9,7 +9,10 @@ from accounts.decorators import login_required_except_domains
 
 from .ai_insights import get_insight_card_narratives
 from .presenters import build_insight_shell_context
-from .services import get_cached_insights_dashboard_data
+from .services import (
+    build_insights_drilldown_payload,
+    get_cached_insights_dashboard_data,
+)
 
 
 @login_required_except_domains()
@@ -43,3 +46,40 @@ def insights_payload(request):
             "insight_card_narratives": get_insight_card_narratives(insights_data),
         }
     )
+
+
+@ajax_login_required
+@require_GET
+def insights_drilldown_payload(request):
+    """Return modal drill-down rows for an interactive insights chart selection."""
+
+    search_query = request.GET.get("q", "").strip()
+    chart_key = request.GET.get("chart", "").strip()
+    bucket_key = request.GET.get("bucket", "").strip()
+    drilldown_type = request.GET.get("type", "students")  # students, departments, programmes
+
+    # Handle hierarchical drilldown for faculty load and faculty pressure
+    if (chart_key == "faculty_load" or chart_key == "faculty_pressure" or chart_key == "faculty_department") and drilldown_type != "students":
+        from .services import build_hierarchical_drilldown_data
+        payload = build_hierarchical_drilldown_data(request, chart_key, bucket_key, search_query)
+        if payload is None:
+            return JsonResponse({"detail": "Unknown drill-down selection."}, status=400)
+        return JsonResponse(payload)
+
+    try:
+        page_size = int(request.GET.get("page_size") or 10)
+    except (TypeError, ValueError):
+        page_size = 10
+
+    payload = build_insights_drilldown_payload(
+        request,
+        chart_key,
+        bucket_key,
+        search_query=search_query,
+        page_number=request.GET.get("page"),
+        page_size=max(1, min(page_size, 100)),
+    )
+    if payload is None:
+        return JsonResponse({"detail": "Unknown drill-down selection."}, status=400)
+
+    return JsonResponse(payload)

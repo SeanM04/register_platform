@@ -99,7 +99,7 @@
 
             <aside class="grade-card">
                 <span class="grade-label">Cumulative Grade</span>
-                <strong class="grade-value">{{ student.cumulative_grade }}</strong>
+                <strong class="grade-value{% if student.cumulative_grade < 50 %} failing-grade{% endif %}">{{ student.cumulative_grade }}</strong>
             </aside>
         </section>
 
@@ -108,7 +108,7 @@
             <div class="year-dropdown{% if year_tab.is_active %} is-active{% endif %}{% if year_tab.semester_selected %} semester-selected{% endif %}">
                 <button class="year-dropdown-toggle" type="button" aria-expanded="false" aria-controls="year-{{ year_tab.year }}-dropdown">
                     <span class="year-dropdown-label">{{ year_tab.year_label }}</span>
-                    <span class="year-dropdown-arrow">+</span>
+                    <span class="year-dropdown-arrow"></span>
                 </button>
                 <div class="year-dropdown-content" id="year-{{ year_tab.year }}-dropdown">
                     {% for semester in year_tab.semesters %}
@@ -146,7 +146,7 @@
                                 <td class="results-td-code">{{ result.code }}</td>
                                 <td class="results-td-course">{{ result.course }}</td>
                                 <td>{{ result.period }}</td>
-                                <td class="results-td-mark">{{ result.mark }}%</td>
+                                <td class="results-td-mark{% if result.mark < 50 %} failing-mark{% endif %}">{{ result.mark }}%</td>
                             </tr>
                             {% endfor %}
                         {% else %}

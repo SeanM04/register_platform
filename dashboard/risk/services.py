@@ -21,6 +21,7 @@ RISK_DRILLDOWN_COLUMNS = (
     {"key": "academic_level", "label": "Academic Level"},
     {"key": "average_mark", "label": "Average Mark"},
     {"key": "failed_courses", "label": "Failed Modules"},
+    {"key": "total_modules", "label": "Total Modules"},
     {"key": "carrying", "label": "Carrying"},
     {"key": "decision", "label": "Decision"},
     {"key": "risk_level", "label": "Risk Status"},
@@ -64,9 +65,11 @@ def assess_student_risk(registrations):
     latest_registration = max(registrations, key=lambda registration: (registration.period.external_id, registration.id))
     mark_values = []
     failed_courses = 0
+    total_modules = 0
 
     for registration in registrations:
         for result in registration.course_results.all():
+            total_modules += 1
             if result.mark is None:
                 continue
             mark_value = float(result.mark)
@@ -131,6 +134,7 @@ def assess_student_risk(registrations):
         "latest_registration": latest_registration,
         "average_mark": average_mark,
         "failed_courses": failed_courses,
+        "total_modules": total_modules,
         "carrying": carrying,
         "risk_score": risk_score,
         "decision": decision_label,
@@ -172,6 +176,7 @@ def build_student_risk_profiles_from_registrations(registrations):
                 "average_mark": assessment["average_mark"] if assessment["average_mark"] is not None else "-",
                 "average_mark_sort": assessment["average_mark"] if assessment["average_mark"] is not None else 999,
                 "failed_courses": assessment["failed_courses"],
+                "total_modules": assessment["total_modules"],
                 "carrying": assessment["carrying"],
                 "risk_score": assessment["risk_score"],
                 "decision": assessment["decision"],
@@ -427,6 +432,7 @@ def _build_risk_drilldown_rows(source_rows):
             "academic_level": row["academic_level"],
             "average_mark": row["average_mark"],
             "failed_courses": row["failed_courses"],
+            "total_modules": row["total_modules"],
             "carrying": row["carrying"],
             "decision": row["decision"],
             "risk_level": row["risk_level"],

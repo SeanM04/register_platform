@@ -368,3 +368,220 @@ def get_cached_insights_dashboard_data(request):
         lambda: build_insights_dashboard_data(request),
         INSIGHTS_CACHE_TTL_SECONDS,
     )
+
+
+# Drilldown functionality for insights
+INSIGHTS_DRILLDOWN_COLUMNS = (
+    {"key": "name", "label": "Student"},
+    {"key": "programme", "label": "Programme"},
+    {"key": "academic_level", "label": "Academic Level"},
+    {"key": "average_mark", "label": "Average Mark"},
+    {"key": "failed_courses", "label": "Failed Modules"},
+    {"key": "total_modules", "label": "Total Modules"},
+    {"key": "carrying", "label": "Carrying"},
+    {"key": "decision", "label": "Decision"},
+    {"key": "risk_level", "label": "Risk Status"},
+)
+
+
+def _match_band(score, band):
+    """Check whether a numeric risk score belongs to a configured band."""
+    min_score = int(band.get("min_score", 0) or 0)
+    max_score = band.get("max_score")
+    if max_score is None:
+        return score >= min_score
+    return min_score <= score <= int(max_score)
+
+
+def build_hierarchical_drilldown_data(request, chart_key, bucket_key, search_query=""):
+    """Build hierarchical drilldown data for faculty load (faculty → department → programme → students)."""
+    
+    risk_profiles = build_student_risk_profiles(request, search_query)
+    
+    if chart_key == "faculty_load" or chart_key == "faculty_pressure":
+        # Return departments for a faculty
+        # For faculty_pressure, only include at-risk students
+        departments = {}
+        for row in risk_profiles:
+            if row.get("faculty", "").lower() == bucket_key.lower():
+                # For faculty_pressure, only count at-risk students
+                if chart_key == "faculty_pressure" and row.get("risk_level") == "Low Risk":
+                    continue
+                    
+                dept = row.get("department", "Unassigned")
+                if dept not in departments:
+                    departments[dept] = {
+                        "name": dept,
+                        "student_count": 0,
+                        "programmes": set()
+                    }
+                departments[dept]["student_count"] += 1
+                departments[dept]["programmes"].add(row.get("programme", ""))
+        
+        title_suffix = "At-Risk Students" if chart_key == "faculty_pressure" else "Departments"
+        return {
+            "type": "departments",
+            "title": f"{bucket_key} - {title_suffix}",
+            "subtitle": f"At-risk departments within {bucket_key} faculty" if chart_key == "faculty_pressure" else f"Departments within {bucket_key} faculty",
+            "data": [
+                {
+                    "label": dept_name,
+                    "count": dept_data["student_count"],
+                    "programme_count": len(dept_data["programmes"])
+                }
+                for dept_name, dept_data in departments.items()
+                if dept_name != "Unassigned"
+            ]
+        }
+    
+    elif chart_key == "faculty_department":
+        # Return programmes for a department
+        programmes = {}
+        for row in risk_profiles:
+            if (row.get("faculty", "").lower() == bucket_key.split("|")[0].lower() and 
+                row.get("department", "").lower() == bucket_key.split("|")[1].lower()):
+                prog = row.get("programme", "")
+                if prog not in programmes:
+                    programmes[prog] = 0
+                programmes[prog] += 1
+        
+        return {
+            "type": "programmes", 
+            "title": f"{bucket_key.split('|')[1]} - Programmes",
+            "subtitle": f"Programmes within {bucket_key.split('|')[1]} department",
+            "data": [
+                {
+                    "label": prog_name,
+                    "count": student_count
+                }
+                for prog_name, student_count in programmes.items()
+                if prog_name
+            ]
+        }
+    
+    return None
+
+
+def build_insights_drilldown_payload(request, chart_key, bucket_key, search_query="", page_number=None, page_size=10):
+    """Build modal-ready drill-down payloads for insights charts."""
+
+    risk_profiles = build_student_risk_profiles(request, search_query)
+    risk_rows = [
+        row
+        for row in risk_profiles
+        if row["risk_level"] != "Low Risk"
+    ]
+
+    normalized_chart = str(chart_key or "").strip().lower()
+    normalized_bucket = str(bucket_key or "").strip()
+    if not normalized_chart or not normalized_bucket:
+        return None
+
+    title = "Insights Drill-Down"
+    subtitle = "No drill-down data is available for the current selection."
+    matching_rows = []
+
+    if normalized_chart == "risk_distribution":
+        # Handle risk band drilldown similar to risk page
+        from ..risk.constants import RISK_BAND_DEFINITIONS
+        from ..risk.services import RISK_DRILLDOWN_BAND_LABELS
+
+        band = next(
+            (item for item in RISK_BAND_DEFINITIONS if item["key"] == normalized_bucket.lower()),
+            None,
+        )
+        if not band:
+            return None
+
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if _match_band(int(row.get("risk_score", 0) or 0), band)
+        ]
+        band_label = RISK_DRILLDOWN_BAND_LABELS.get(band["key"], band["label"])
+        title = f"{band_label} Students"
+        subtitle = f"Students currently classified inside the {band_label.lower()} band for the selected scope."
+
+    elif normalized_chart == "faculty_pressure":
+        # Handle faculty pressure drilldown
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if row.get("faculty", "").lower() == normalized_bucket.lower()
+        ]
+        faculty_label = normalized_bucket.replace("_", " ").title()
+        title = f"{faculty_label} Students"
+        subtitle = f"At-risk students currently in the {faculty_label.lower()} faculty."
+
+    elif normalized_chart == "drivers":
+        # Handle risk drivers drilldown
+        matching_rows = [
+            row
+            for row in risk_rows
+            if normalized_bucket in row.get("risk_driver_tags", [])
+        ]
+        driver_label = RISK_DRIVER_LABELS.get(normalized_bucket, normalized_bucket.replace("_", " ").title())
+        title = f"{driver_label} Students"
+        subtitle = f"At-risk students currently linked to the {driver_label.lower()} driver."
+
+    elif normalized_chart == "faculty_load":
+        # Handle faculty load drilldown
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if row.get("faculty", "").lower() == normalized_bucket.lower()
+        ]
+        faculty_label = normalized_bucket.replace("_", " ").title()
+        title = f"{faculty_label} Students"
+        subtitle = f"Students currently enrolled in the {faculty_label.lower()} faculty."
+
+    elif normalized_chart == "faculty_pressure":
+        # Handle faculty pressure drilldown (at-risk students only)
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if (row.get("faculty", "").lower() == normalized_bucket.lower() and 
+                row.get("risk_level") != "Low Risk")
+        ]
+        faculty_label = normalized_bucket.replace("_", " ").title()
+        title = f"{faculty_label} - At-Risk Students"
+        subtitle = f"At-risk students currently enrolled in the {faculty_label.lower()} faculty."
+
+    elif normalized_chart == "faculty_department":
+        # Handle department drilldown from faculty hierarchy
+        faculty_name, department_name = normalized_bucket.split("|", 1)
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if (row.get("faculty", "").lower() == faculty_name.lower() and 
+                row.get("department", "").lower() == department_name.lower())
+        ]
+        department_label = department_name.replace("_", " ").title()
+        title = f"{department_label} - Programmes"
+        subtitle = f"Programmes within the {department_label.lower()} department."
+
+    elif normalized_chart == "faculty_programme":
+        # Handle programme drilldown from faculty hierarchy
+        matching_rows = [
+            row
+            for row in risk_profiles
+            if row.get("programme", "").lower() == normalized_bucket.lower()
+        ]
+        programme_label = normalized_bucket.replace("_", " ").title()
+        title = f"{programme_label} Students"
+        subtitle = f"Students currently enrolled in the {programme_label.lower()} programme."
+
+    else:
+        return None
+
+    # Normalize and paginate results
+    from ..risk.services import _build_risk_drilldown_rows, paginate_risk_rows
+    normalized_rows = _build_risk_drilldown_rows(matching_rows)
+    paginated_rows = paginate_risk_rows(normalized_rows, page_number or 1, page_size=page_size)
+    
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": list(INSIGHTS_DRILLDOWN_COLUMNS),
+        **paginated_rows,
+    }

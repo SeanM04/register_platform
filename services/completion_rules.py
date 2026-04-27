@@ -116,4 +116,4 @@ def student_completion_percentage(
     if failed_courses >= (max_fails + 1):
         return 0.0
 
-    return round((passed_courses / total_courses) * 100.0, 1)
+    return round((passed_courses / total_courses) * 100.0)

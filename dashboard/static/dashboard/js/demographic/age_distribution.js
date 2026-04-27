@@ -39,15 +39,30 @@ const buildAgeDistributionOption = (rows, chartWidth = 0) => {
             containLabel: true,
         },
         tooltip: {
-            ...buildTooltipBase("axis"),
-            axisPointer: buildAxisPointerConfig("shadow"),
+            trigger: "item",
+            backgroundColor: "rgba(255, 255, 255, 0.95)",
+            borderWidth: 1,
+            borderColor: "#ccc",
+            padding: [8, 12],
+            textStyle: {
+                color: "#000000",
+                fontSize: 12,
+                fontWeight: 600,
+            },
             formatter: (params) => {
-                const row = rows[params[0].dataIndex];
-                return buildTooltipMarkup(row.age_group, [
-                    { label: "Male", value: `${row.male} (${row.male_share})` },
-                    { label: "Female", value: `${row.female} (${row.female_share})` },
-                    { label: "Total", value: row.total },
-                ]);
+                console.log('Age tooltip triggered:', params);
+                const dataIndex = params.dataIndex;
+                const row = rows[dataIndex];
+                console.log('Selected age row:', row);
+                if (!row) return '';
+                
+                const seriesName = params.seriesName;
+                if (seriesName === 'Male') {
+                    return `Male: ${row.male} (${row.male_share})`;
+                } else if (seriesName === 'Female') {
+                    return `Female: ${row.female} (${row.female_share})`;
+                }
+                return '';
             },
         },
         xAxis: {
@@ -85,14 +100,7 @@ const buildAgeDistributionOption = (rows, chartWidth = 0) => {
                         color: buildGradient("#082340", "#2d8db6"),
                     },
                 },
-                label: {
-                    show: true,
-                    position: "inside",
-                    color: "#ffffff",
-                    fontWeight: 700,
-                    formatter: ({ dataIndex }) => rows[dataIndex]?.male_share ?? "",
-                },
-                data: rows.map((row) => row.male),
+                                data: rows.map((row) => row.male),
             },
             {
                 name: "Female",
@@ -107,14 +115,7 @@ const buildAgeDistributionOption = (rows, chartWidth = 0) => {
                         color: buildGradient("#2b7ea2", "#6fc3e3"),
                     },
                 },
-                label: {
-                    show: true,
-                    position: "inside",
-                    color: "#ffffff",
-                    fontWeight: 700,
-                    formatter: ({ dataIndex }) => rows[dataIndex]?.female_share ?? "",
-                },
-                data: rows.map((row) => row.female),
+                                data: rows.map((row) => row.female),
             },
         ],
     };

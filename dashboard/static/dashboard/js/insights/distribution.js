@@ -1,4 +1,5 @@
 import { initialiseDistributionNarrative } from "./narratives.js?v=20260403-insights-story02";
+import { openInsightsDrillDown } from "./drilldown.js?v=20260427-insights-drilldown01";
 import {
     buildAnimationConfig,
     buildGradient,
@@ -108,6 +109,20 @@ export const initialiseDistributionSection = (context) => {
         "No institutional risk distribution is available for the current filters.",
         (rows) => rows.some((row) => Number(row.count || 0) > 0),
     );
+
+    // Add drilldown click handler
+    if (chart) {
+        chart.on("click", (params) => {
+            const row = params.data.raw;
+            if (row && row.key) {
+                openInsightsDrillDown(context, {
+                    chartKey: "risk_distribution",
+                    bucketKey: row.key,
+                    label: row.label,
+                });
+            }
+        });
+    }
 
     return {
         getChart: () => chart,
