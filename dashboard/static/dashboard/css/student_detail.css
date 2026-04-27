@@ -305,6 +305,11 @@
     color: var(--sky);
 }
 
+.grade-value.failing-grade {
+    color: #d32f2f;
+    font-weight: 600;
+}
+
 .results-th-mark,
 .results-td-mark {
     position: sticky;
@@ -341,6 +346,11 @@
 
 .results-td-mark {
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.96), #ffffff 22px);
+}
+
+.results-td-mark.failing-mark {
+    color: #d32f2f;
+    font-weight: 600;
 }
 
 .results-table tbody td {

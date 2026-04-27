@@ -1,4 +1,5 @@
 import { initialiseFacultyPressureNarrative } from "./narratives.js?v=20260403-insights-story02";
+import { openInsightsDrillDown } from "./drilldown.js?v=20260427-insights-drilldown01";
 import {
     buildAnimationConfig,
     buildGradient,
@@ -239,6 +240,26 @@ export const initialiseFacultyPressureSection = (context) => {
             chart.setOption(buildPressureLegendPatch(data.facultyPressureRows, event.selected), {
                 silent: true,
             });
+        });
+
+        // Add drilldown click handler
+        chart.on("click", (params) => {
+            console.log("Faculty pressure chart clicked!", params);
+            const row = params.data.raw;
+            console.log("Row data:", row);
+            console.log("Row keys:", Object.keys(row));
+            console.log("Full params data:", params.data);
+            if (row && row.label) {
+                console.log("Opening faculty pressure drilldown for:", row.label);
+                openInsightsDrillDown(context, {
+                    chartKey: "faculty_pressure",
+                    bucketKey: row.label,
+                    label: row.label,
+                    drilldownType: "departments",  // Start with departments
+                });
+            } else {
+                console.log("No label data found in row");
+            }
         });
     }
 

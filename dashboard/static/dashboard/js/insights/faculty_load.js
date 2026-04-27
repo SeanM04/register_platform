@@ -1,4 +1,5 @@
 import { initialiseFacultyLoadNarrative } from "./narratives.js?v=20260403-insights-story02";
+import { openInsightsDrillDown } from "./drilldown.js?v=20260427-insights-drilldown01";
 import {
     buildAnimationConfig,
     buildGradient,
@@ -112,6 +113,21 @@ export const initialiseFacultyLoadSection = (context) => {
         "No faculty load concentration is available for the current filters.",
         (rows) => rows.some((row) => Number(row.registrations || 0) > 0),
     );
+
+    // Add drilldown click handler
+    if (chart) {
+        chart.on("click", (params) => {
+            const row = params.data.raw;
+            if (row && row.label) {
+                openInsightsDrillDown(context, {
+                    chartKey: "faculty_load",
+                    bucketKey: row.label,
+                    label: row.label,
+                    drilldownType: "departments",  // Start with departments
+                });
+            }
+        });
+    }
 
     return {
         getChart: () => chart,

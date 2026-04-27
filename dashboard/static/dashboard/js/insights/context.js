@@ -6,8 +6,13 @@ export const createInsightContext = (payload = {}) => {
     const chartPayload = payload.chartPayload || {};
     const cardNarratives = payload.cardNarratives || parseJsonScript("insight-card-narratives", {});
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
+    const root = document.querySelector(".insight-layout");
 
     return {
+        config: {
+            payloadUrl: root?.dataset?.payloadUrl,
+            drilldownUrl: root?.dataset?.drilldownUrl,
+        },
         data: {
             distributionRows: chartPayload.distributionRows || parseJsonScript("insight-distribution-data", []),
             facultyLoadRows: chartPayload.facultyLoadRows || parseJsonScript("insight-faculty-load-data", []),
@@ -20,7 +25,7 @@ export const createInsightContext = (payload = {}) => {
             overviewNarrativesAreAi: isTrustedAiNarrativeSource(overviewNarrativeSource),
         },
         elements: {
-            root: document.querySelector(".insight-layout"),
+            root,
             storyBanner: document.getElementById("insight-story-banner"),
             distributionCopy: document.getElementById("insight-distribution-copy"),
             distributionHints: document.getElementById("insight-distribution-hints"),

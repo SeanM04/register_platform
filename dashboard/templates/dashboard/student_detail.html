@@ -99,7 +99,7 @@
 
             <aside class="grade-card">
                 <span class="grade-label">Cumulative Grade</span>
-                <strong class="grade-value">{{ student.cumulative_grade }}</strong>
+                <strong class="grade-value{% if student.cumulative_grade < 50 %} failing-grade{% endif %}">{{ student.cumulative_grade }}</strong>
             </aside>
         </section>
 
@@ -152,7 +152,7 @@
                                 <td class="results-td-code">{{ result.code }}</td>
                                 <td class="results-td-course">{{ result.course }}</td>
                                 <td>{{ result.period }}</td>
-                                <td class="results-td-mark">{{ result.mark }}%</td>
+                                <td class="results-td-mark{% if result.mark < 50 %} failing-mark{% endif %}">{{ result.mark }}%</td>
                             </tr>
                             {% endfor %}
                         {% else %}
