@@ -226,3 +226,41 @@ def completion_periods_by_year(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+
+@require_GET
+def completion_drilldown(request):
+    """
+    Return drilldown data for completion analysis charts.
+    Supports hierarchical navigation: Faculty → Department → Programme → Students
+    """
+    try:
+        from urllib.parse import unquote_plus
+        from .services import build_completion_drilldown_data
+        
+        # Get drilldown parameters
+        chart_key = request.GET.get('chart_key', '')
+        bucket_key = unquote_plus(request.GET.get('bucket_key', ''))
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+        
+        # Build drilldown payload using completion service
+        payload = build_completion_drilldown_data(
+            request=request,
+            chart_key=chart_key,
+            bucket_key=bucket_key,
+            page=page,
+            page_size=page_size
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': payload
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in completion_drilldown: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

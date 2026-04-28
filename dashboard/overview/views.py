@@ -78,5 +78,6 @@ def dashboard_home_drilldown(request):
 
     try:
         payload = build_overview_drilldown_data(request, chart_key, bucket_key)
+        return JsonResponse(payload)
     except ValueError as error:
         return JsonResponse({"error": str(error)}, status=400)

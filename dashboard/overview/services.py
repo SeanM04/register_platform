@@ -921,7 +921,52 @@ def _build_overview_drilldown_data(request, chart_key, bucket_key, page, page_si
         # Handle hierarchical drilldown for faculty load
         return _build_faculty_drilldown_payload(request, registrations, bucket_key, page, page_size)
 
+    if chart_key == "progress":
+        # Handle progress drilldown
+        return _build_progress_drilldown_payload(request, registrations, bucket_key, page, page_size)
+
     raise ValueError("Unsupported overview drill-down chart.")
+
+
+def _build_progress_drilldown_payload(request, registrations, bucket_key, page, page_size):
+    """Return student rows for progress status drill-down."""
+    
+    # Filter registrations by progress status
+    filtered_registrations = []
+    for registration in registrations:
+        decision_label = normalize_decision_label(registration.decision)
+        status = _classify_progress_status(decision_label)
+        if status == bucket_key:
+            filtered_registrations.append(registration)
+    
+    # Build student rows
+    student_rows = []
+    for registration in filtered_registrations:
+        student = registration.student
+        student_rows.append({
+            "name": student.full_name,
+            "registration_number": student.registration_number,
+            "programme": registration.programme.name if registration.programme else "Unassigned",
+            "decision": normalize_decision_label(registration.decision),
+            "detail_url": reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+        })
+    
+    # Sort by name
+    student_rows.sort(key=lambda x: x["name"])
+    
+    # Apply pagination
+    total_count = len(student_rows)
+    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+    offset = (page - 1) * page_size
+    paginated_rows = student_rows[offset:offset + page_size]
+    
+    return {
+        "rows": paginated_rows,
+        "total_count": total_count,
+        "page": page,
+        "page_size": page_size,
+        "page_count": total_pages,
+    }
 
 
 def build_overview_drilldown_data(request, chart_key, bucket_key):
@@ -951,8 +996,8 @@ def bust_overview_drilldown_cache_for_request(request):
     page = _parse_positive_int(request.GET.get("page"), 1)
     page_size = _parse_positive_int(request.GET.get("page_size"), DEFAULT_DRILLDOWN_PAGE_SIZE)
 
-    for chart_key in ["outcomes", "risk_distribution"]:
-        for bucket_key in ["passed", "failed", "awaiting", "critical", "high", "medium", "low"]:
+    for chart_key in ["outcomes", "risk_distribution", "progress"]:
+        for bucket_key in ["passed", "failed", "awaiting", "critical", "high", "medium", "low", "proceed", "retake", "pending", "exit", "other"]:
             cache_key = _build_overview_drilldown_cache_key(request, chart_key, bucket_key, page, page_size)
             cache.delete(cache_key)
 

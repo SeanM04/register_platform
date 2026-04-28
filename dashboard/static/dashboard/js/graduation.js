@@ -9,6 +9,7 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
+import { showGraduationDrillDownModal } from "./graduation/drilldown_modal.js?v=20260428-graduation-drilldown09";
 
 class GraduationAnalysis {
     constructor() {
@@ -23,6 +24,52 @@ class GraduationAnalysis {
         this.chartInstances = {};
 
         this.init();
+    }
+
+    async openDrillDown(chartKey, bucketKey, page = 1) {
+        try {
+            console.log("DEBUG: openDrillDown called with:", { chartKey, bucketKey, page });
+            
+            // Build drilldown request URL
+            const drilldownUrl = new URL("/metrics/graduation/drilldown/", window.location.origin);
+            
+            // Add current filters
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.forEach((value, key) => {
+                if (key === 'year' || key === 'period' || key === 'faculty') {
+                    drilldownUrl.searchParams.set(key, value);
+                }
+            });
+            
+            // Add drilldown parameters
+            drilldownUrl.searchParams.set('chart_key', chartKey);
+            drilldownUrl.searchParams.set('bucket_key', bucketKey);
+            drilldownUrl.searchParams.set('page', page);
+            
+            console.log("DEBUG: drilldownUrl:", drilldownUrl.toString());
+            
+            // Fetch drilldown data
+            const response = await fetch(drilldownUrl.toString());
+            if (!response.ok) {
+                throw new Error(`Drilldown request failed: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log("DEBUG: drilldown response:", result);
+            
+            if (result.status === 'success' && result.data) {
+                showGraduationDrillDownModal(result.data, (page) => {
+                    this.openDrillDown(chartKey, bucketKey, page);
+                });
+            } else {
+                throw new Error(result.message || 'No drilldown data available');
+            }
+            
+        } catch (error) {
+            console.error("Error opening drilldown:", error);
+            // Show error modal or notification
+            alert(`Error loading drilldown data: ${error.message}`);
+        }
     }
 
     async init() {
@@ -636,6 +683,7 @@ class GraduationAnalysis {
                     },
                     data: topRows.map((row) => ({
                         value: row.graduation_rate,
+                        raw: { programme_name: row.programme_name },
                         itemStyle: {
                             borderRadius: [0, barCornerRadius, barCornerRadius, 0],
                             color: buildGradient("#0d4c92", "#67c1e1"),
@@ -651,6 +699,17 @@ class GraduationAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: programme graduation chart clicked:", params);
+            if (params.dataIndex !== undefined && topRows[params.dataIndex]) {
+                const programme = topRows[params.dataIndex];
+                if (programme.programme_name) {
+                    this.openDrillDown('programme_load', programme.programme_name);
+                }
+            }
+        });
     }
 
     renderCohortChart(rows) {
@@ -742,6 +801,7 @@ class GraduationAnalysis {
                     barWidth: 22,
                     data: sortedRows.map((row) => ({
                         value: row.graduation_rate,
+                        raw: { effective_cohort_label: row.effective_cohort_label },
                         itemStyle: {
                             borderRadius: [barCornerRadius, barCornerRadius, 0, 0],
                             color: buildGradient("#0f4c81", "#50b0d1", "vertical"),
@@ -757,6 +817,14 @@ class GraduationAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: cohort graduation chart clicked:", params);
+            if (params.data && params.data.raw && params.data.raw.effective_cohort_label) {
+                this.openDrillDown('cohorts', params.data.raw.effective_cohort_label);
+            }
+        });
     }
 
     renderFacultyChart(rows) {
@@ -784,10 +852,17 @@ class GraduationAnalysis {
                 ...buildTooltipBase("item"),
                 formatter: (params) => {
                     const row = sortedRows[params.dataIndex];
+                    const hierarchy = row.hierarchy || {};
+                    const deptCount = hierarchy.departments ? hierarchy.departments.length : 0;
+                    const progCount = hierarchy.programmes ? hierarchy.programmes.length : 0;
+                    
                     return buildTooltipMarkup(row.faculty, [
                         { label: "Graduation rate", value: `${row.graduation_rate}%` },
                         { label: "Graduated", value: `${row.graduated_count}` },
                         { label: "Enrolled", value: `${row.enrolled_count}` },
+                        { label: "Departments", value: `${deptCount}` },
+                        { label: "Programmes", value: `${progCount}` },
+                        { label: "Click to drill down", value: "View departments/programmes" },
                     ]);
                 },
             },
@@ -821,6 +896,7 @@ class GraduationAnalysis {
                     },
                     data: sortedRows.map((row) => ({
                         value: row.graduation_rate,
+                        raw: { faculty_name: row.faculty_name },
                         itemStyle: {
                             borderRadius: [barCornerRadius, barCornerRadius, 0, 0],
                             color: buildGradient("#0c7489", "#74d2e7", "vertical"),
@@ -836,6 +912,167 @@ class GraduationAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: faculty graduation chart clicked:", params);
+            if (params.dataIndex !== undefined && sortedRows[params.dataIndex]) {
+                const faculty = sortedRows[params.dataIndex];
+                this.showHierarchicalDrilldown(faculty);
+            }
+        });
+    }
+
+    showHierarchicalDrilldown(faculty) {
+        const hierarchy = faculty.hierarchy || {};
+        const departments = hierarchy.departments || [];
+        const programmes = hierarchy.programmes || [];
+        
+        // Create modal content
+        const modalContent = `
+            <div class="hierarchical-drilldown-modal">
+                <div class="hierarchical-header">
+                    <h3>Drilldown: ${faculty.faculty}</h3>
+                    <p>Choose a level to explore:</p>
+                </div>
+                <div class="hierarchical-options">
+                    <div class="hierarchical-section">
+                        <h4>Departments (${departments.length})</h4>
+                        <div class="hierarchical-grid">
+                            ${departments.map(dept => `
+                                <div class="hierarchical-item" onclick="window.graduationAnalysis.openDrillDown('departments', '${dept.department.replace(/'/g, "\\'")}')">
+                                    <div class="hierarchical-name">${dept.department}</div>
+                                    <div class="hierarchical-stats">
+                                        <span>${dept.graduation_rate}%</span>
+                                        <span>${dept.graduated_count}/${dept.enrolled_count}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="hierarchical-section">
+                        <h4>Programmes (${programmes.length})</h4>
+                        <div class="hierarchical-grid">
+                            ${programmes.map(prog => `
+                                <div class="hierarchical-item" onclick="window.graduationAnalysis.openDrillDown('programmes', '${prog.programme.replace(/'/g, "\\'")}')">
+                                    <div class="hierarchical-name">${prog.programme}</div>
+                                    <div class="hierarchical-stats">
+                                        <span>${prog.graduation_rate}%</span>
+                                        <span>${prog.graduated_count}/${prog.enrolled_count}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="hierarchical-actions">
+                    <button class="btn btn-secondary" onclick="this.closest('.hierarchical-drilldown-overlay').remove()">Close</button>
+                    <button class="btn btn-primary" onclick="window.graduationAnalysis.openDrillDown('faculties', '${faculty.faculty.replace(/'/g, "\\'")}')">View All Students</button>
+                </div>
+            </div>
+        `;
+        
+        // Create and show modal
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay hierarchical-drilldown-overlay';
+        modal.innerHTML = modalContent;
+        document.body.appendChild(modal);
+        
+        // Add styles if not already present
+        if (!document.querySelector('#hierarchical-drilldown-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'hierarchical-drilldown-styles';
+            styles.textContent = `
+                .hierarchical-drilldown-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                }
+                .hierarchical-drilldown-modal {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 24px;
+                    max-width: 800px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    width: 90%;
+                }
+                .hierarchical-header h3 {
+                    margin: 0 0 8px 0;
+                    color: #1f2937;
+                }
+                .hierarchical-header p {
+                    margin: 0 0 24px 0;
+                    color: #6b7280;
+                }
+                .hierarchical-section {
+                    margin-bottom: 32px;
+                }
+                .hierarchical-section h4 {
+                    margin: 0 0 16px 0;
+                    color: #374151;
+                    font-size: 16px;
+                }
+                .hierarchical-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 12px;
+                }
+                .hierarchical-item {
+                    border: 1px solid #e5e7eb;
+                    border-radius: 6px;
+                    padding: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .hierarchical-item:hover {
+                    border-color: #3b82f6;
+                    background: #f8fafc;
+                }
+                .hierarchical-name {
+                    font-weight: 600;
+                    color: #1f2937;
+                    margin-bottom: 8px;
+                }
+                .hierarchical-stats {
+                    display: flex;
+                    justify-content: space-between;
+                    color: #6b7280;
+                    font-size: 14px;
+                }
+                .hierarchical-actions {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: flex-end;
+                    margin-top: 24px;
+                    padding-top: 24px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .btn {
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 14px;
+                }
+                .btn-primary {
+                    background: #3b82f6;
+                    color: white;
+                }
+                .btn-secondary {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+            `;
+            document.head.appendChild(styles);
+        }
     }
 
     renderTimingChart(rows) {
@@ -905,6 +1142,17 @@ class GraduationAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: graduation timing chart clicked:", params);
+            if (params.dataIndex !== undefined && rows[params.dataIndex]) {
+                const timing = rows[params.dataIndex];
+                if (timing.label) {
+                    this.openDrillDown('timing', timing.label);
+                }
+            }
+        });
     }
 
     renderReadinessProgrammeChart(rows) {
@@ -984,6 +1232,17 @@ class GraduationAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: readiness programme chart clicked:", params);
+            if (params.dataIndex !== undefined && topRows[params.dataIndex]) {
+                const programme = topRows[params.dataIndex];
+                if (programme.programme_name) {
+                    this.openDrillDown('programme_load', programme.programme_name);
+                }
+            }
+        });
     }
 
     renderReadinessCohortChart(rows) {
@@ -1093,6 +1352,17 @@ class GraduationAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: readiness cohort chart clicked:", params);
+            if (params.dataIndex !== undefined && sortedRows[params.dataIndex]) {
+                const cohort = sortedRows[params.dataIndex];
+                if (cohort.effective_cohort_label) {
+                    this.openDrillDown('cohorts', cohort.effective_cohort_label);
+                }
+            }
+        });
     }
 
     renderReadinessNotes() {
@@ -1395,5 +1665,5 @@ class GraduationAnalysis {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    new GraduationAnalysis();
+    window.graduationAnalysis = new GraduationAnalysis();
 });
