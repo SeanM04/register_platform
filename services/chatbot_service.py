@@ -994,263 +994,465 @@ def _build_scope_label(filters: dict) -> str:
     return ", ".join(parts) if parts else "All visible records"
 
 
-def _build_rule_based_reply(message: str, context: dict) -> str:  # noqa: PLR0911,PLR0912
-    message_lower = str(message or "").lower()
-    scope = context["scope_summary"]
-    scope_label = _build_scope_label(scope["filters"])
+# ---------------------------------------------------------------------------
+# Reply handlers — each returns str if it fires, None to fall through
+# Signature: (message_lower, scope, scope_label, context) -> str | None
+# ---------------------------------------------------------------------------
 
-    # --- Safety gate -------------------------------------------------------
+_COMPARE_KEYWORDS = (
+    "compare", "comparison", "versus", " vs ", "rank",
+    "strongest", "best performing", "top programme",
+)
+
+
+def _reply_safety_gate(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
     if any(re.search(pattern, message_lower) for pattern in SENSITIVE_PATTERNS):
         return (
             "I cannot help with secrets, credentials, or security bypass requests. "
             "I can help with student performance, programme analytics, admissions guidance, and platform data."
         )
+    return None
 
-    # --- Greeting -----------------------------------------------------------
-    if any(kw in message_lower for kw in (
-        "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
-        "thanks", "thank you", "greetings",
-    )):
+
+def _reply_greeting(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _greeting_kws = (
+        "hello", "hi", "hey", "good morning", "good afternoon",
+        "good evening", "thanks", "thank you", "greetings",
+    )
+    if any(re.search(rf"\b{re.escape(kw)}\b", message_lower) for kw in _greeting_kws):
         return GREETING_REPLY
+    return None
 
-    # --- Out of scope -------------------------------------------------------
-    if any(kw in message_lower for kw in (
+
+def _reply_out_of_scope(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _oos_kws = (
         "weather", "recipe", "cook", "cooking", "sport", "football", "cricket",
         "rugby", "movie", "film", "music", "song", "joke", "politics",
         "stock", "crypto", "bitcoin",
-    )):
+    )
+    if any(re.search(rf"\b{re.escape(kw)}\b", message_lower) for kw in _oos_kws):
         return OUT_OF_SCOPE_REPLY
+    return None
 
-    # --- Student lookup ----------------------------------------------------
-    if context["student_targets"]:
-        student = context["student_targets"][0]
-        recent_courses = ", ".join(
-            f"{row['course_code']} {row['mark']}"
-            for row in student["recent_courses"][:4]
-            if row["course_code"]
-        ) or "No recent course marks recorded."
-        risk = student.get("risk", {})
-        risk_drivers = ", ".join(risk.get("driver_labels", [])) or "none identified"
-        completion_summary = ", ".join(
-            (
-                f"{row['period']}: {row['completion']}%"
-                if row["completion"] > 0
-                else f"{row['period']}: 0% ({row.get('zero_reason') or 'unknown reason'})"
-            )
-            for row in student.get("period_completions", [])
-            if row.get("period")
-        ) or "No completion data."
-        avg_disp = student["average_mark"] if student["average_mark"] is not None else "N/A"
+
+def _reply_student_lookup(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    if not context["student_targets"]:
+        return None
+    student = context["student_targets"][0]
+    recent_courses = ", ".join(
+        f"{row['course_code']} {row['mark']}"
+        for row in student["recent_courses"][:4]
+        if row["course_code"]
+    ) or "No recent course marks recorded."
+    risk = student.get("risk", {})
+    risk_drivers = ", ".join(risk.get("driver_labels", [])) or "none identified"
+    completion_summary = ", ".join(
+        (
+            f"{row['period']}: {row['completion']}%"
+            if row["completion"] > 0
+            else f"{row['period']}: 0% ({row.get('zero_reason') or 'unknown reason'})"
+        )
+        for row in student.get("period_completions", [])
+        if row.get("period")
+    ) or "No completion data."
+    avg_disp = student["average_mark"] if student["average_mark"] is not None else "N/A"
+    return (
+        f"{student['registration_number']} — {student['name']} ({student['gender']}). "
+        f"Programme: {student['programme']} ({student['faculty']}). "
+        f"Latest period: {student['latest_period']}. "
+        f"Decision: {student['latest_decision'] or 'Not recorded'}, carrying: {student['carrying']}. "
+        f"Average mark: {avg_disp} — {student['classification']}. "
+        f"Risk: {risk.get('band', 'unknown').title()} (score {risk.get('score', 0)}) — {risk_drivers}. "
+        f"Graduation rate: {student.get('graduation_rate', 'N/A')}%. "
+        f"Completion by period: {completion_summary} "
+        f"Recent courses: {recent_courses}."
+    )
+
+
+def _reply_at_risk(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    arc = context.get("at_risk_context")
+    if not arc:
+        return None
+    bands = arc["band_counts"]
+    band_str = ", ".join(f"{k.title()}: {v}" for k, v in bands.items()) or "none identified"
+    top = arc["top_students"]
+    total = arc["total_at_risk"]
+    if total == 0:
         return (
-            f"{student['registration_number']} — {student['name']} ({student['gender']}). "
-            f"Programme: {student['programme']} ({student['faculty']}). "
-            f"Latest period: {student['latest_period']}. "
-            f"Decision: {student['latest_decision'] or 'Not recorded'}, carrying: {student['carrying']}. "
-            f"Average mark: {avg_disp} — {student['classification']}. "
-            f"Risk: {risk.get('band', 'unknown').title()} (score {risk.get('score', 0)}) — {risk_drivers}. "
-            f"Graduation rate: {student.get('graduation_rate', 'N/A')}%. "
-            f"Completion by period: {completion_summary} "
-            f"Recent courses: {recent_courses}."
+            f"Good news — looking at {scope_label}, I'm not seeing any students above the low-risk threshold right now. "
+            f"The watchlist still shows {scope['watchlist_count']} students flagged for multi-fail or carrying, "
+            f"so it's worth keeping an eye on those. Would you like me to pull up the full watchlist breakdown?"
         )
+    student_lines = "\n".join(
+        f"  • {s['registration_number']} — {s['name']} ({s['programme']}, {s['band'].title()} risk, score {s['score']})"
+        for s in top[:5]
+    )
+    return (
+        f"Here's what I'm seeing for {scope_label} — and it's worth paying attention to.\n\n"
+        f"There are {total} students at moderate risk or above. "
+        f"Risk band breakdown: {band_str}.\n\n"
+        f"Top students by risk score:\n{student_lines}\n\n"
+        f"Would you like me to look deeper into any of these students, or break the risk down by programme or faculty?"
+    )
 
-    # --- At-risk student listing -------------------------------------------
-    if context.get("at_risk_context"):
-        arc = context["at_risk_context"]
-        bands = arc["band_counts"]
-        band_str = ", ".join(f"{k.title()}: {v}" for k, v in bands.items()) or "none"
-        top = arc["top_students"]
-        student_lines = "; ".join(
-            f"{s['registration_number']} {s['name']} ({s['programme']}, {s['band'].title()}, score {s['score']})"
-            for s in top[:5]
-        ) or "No students above low-risk threshold."
-        return (
-            f"In the current scope ({scope_label}), {arc['total_at_risk']} students are at moderate risk or above. "
-            f"Band breakdown — {band_str}. "
-            f"Top students by risk score: {student_lines}."
-        )
 
-    # --- Programme comparison (2+ matched programmes) ----------------------
-    if len(context["programme_targets"]) >= 2:
-        programmes = context["programme_targets"]
-        ranked = sorted(programmes, key=lambda p: float(p["pass_rate"] or 0), reverse=True)
-        lines = "; ".join(
-            f"{p['name']} — pass rate {_format_pct(p['pass_rate'])}, avg {p['average_mark'] if p['average_mark'] is not None else 'N/A'}, {p['students']} students"
-            for p in ranked
-        )
-        return (
-            f"Programme comparison within scope ({scope_label}), ranked by pass rate: {lines}."
-        )
+def _reply_comparison(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    if len(context["programme_targets"]) < 2:
+        return None
+    programmes = context["programme_targets"]
+    ranked = sorted(programmes, key=lambda p: float(p["pass_rate"] or 0), reverse=True)
+    best = ranked[0]
+    worst = ranked[-1]
+    lines = "\n".join(
+        f"  {i+1}. {p['name']} — pass rate {_format_pct(p['pass_rate'])}, "
+        f"avg mark {p['average_mark'] if p['average_mark'] is not None else 'N/A'}, "
+        f"{p['students']} students"
+        for i, p in enumerate(ranked)
+    )
+    gap = (
+        round(float(best["pass_rate"] or 0) - float(worst["pass_rate"] or 0), 1)
+        if best["pass_rate"] is not None and worst["pass_rate"] is not None else None
+    )
+    gap_note = (
+        f" There's a {gap}% pass rate gap between the top and bottom programme — worth investigating."
+        if gap else ""
+    )
+    return (
+        f"Here's how those programmes compare within {scope_label}, ranked by pass rate:\n\n"
+        f"{lines}\n\n"
+        f"{best['name']} comes out on top.{gap_note}\n\n"
+        f"Would you like me to look at the at-risk students or decision breakdown for any of these?"
+    )
 
-    # --- Course difficulty ranking -----------------------------------------
-    if context.get("course_difficulty"):
-        cd = context["course_difficulty"]
-        hardest_lines = ", ".join(
-            f"{c['code']} ({c['avg_mark']})" for c in cd["hardest"][:5]
-        ) or "N/A"
-        easiest_lines = ", ".join(
-            f"{c['code']} ({c['avg_mark']})" for c in cd["easiest"][:5]
-        ) or "N/A"
-        return (
-            f"Within the current scope ({scope_label}): "
-            f"Hardest courses by average mark — {hardest_lines}. "
-            f"Easiest courses — {easiest_lines}."
-        )
 
-    # --- Completion rules explanation --------------------------------------
+def _reply_comparison_top_scope(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    """Fallback comparison when no specific programmes were named."""
+    is_compare = any(kw in message_lower for kw in _COMPARE_KEYWORDS)
+    if not is_compare or context["programme_targets"]:
+        return None
+    top = scope.get("top_programmes", [])
+    if not top:
+        return None
+    ranked = sorted(top, key=lambda p: float(p["pass_rate"] or 0), reverse=True)
+    best = ranked[0]
+    lines = "\n".join(
+        f"  {i+1}. {p['name']} ({p.get('code', '?')}) — pass rate {_format_pct(p['pass_rate'])}, "
+        f"avg {p['average_mark'] if p['average_mark'] is not None else 'N/A'}, "
+        f"{p['students']} students"
+        for i, p in enumerate(ranked)
+    )
+    return (
+        f"Here are the top programmes in {scope_label}, ranked by pass rate:\n\n"
+        f"{lines}\n\n"
+        f"{best['name']} is leading the pack right now. "
+        f"To compare specific programmes side by side, just name them — e.g. 'Compare ACCT vs BMAN vs INSY'."
+    )
+
+
+def _reply_course_difficulty(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    cd = context.get("course_difficulty")
+    if not cd:
+        return None
+    hardest_lines = ", ".join(
+        f"{c['code']} ({c['avg_mark']})" for c in cd["hardest"][:5]
+    ) or "N/A"
+    easiest_lines = ", ".join(
+        f"{c['code']} ({c['avg_mark']})" for c in cd["easiest"][:5]
+    ) or "N/A"
+    return (
+        f"Within the current scope ({scope_label}): "
+        f"Hardest courses by average mark — {hardest_lines}. "
+        f"Easiest courses — {easiest_lines}."
+    )
+
+
+def _reply_completion_rules(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
     if "completion" in message_lower and any(
         kw in message_lower for kw in ("rule", "explain", "mean", "how", "calculate")
     ):
         return COMPLETION_RULES_SUMMARY
+    return None
 
-    # --- Graduation rules explanation -------------------------------------
+
+def _reply_graduation_rules(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
     if "graduation" in message_lower and any(
         kw in message_lower for kw in ("rule", "explain", "mean", "how", "calculate", "stage")
     ):
         return GRADUATION_RULES_SUMMARY
+    return None
 
-    # --- Admissions / entry requirements ----------------------------------
-    if any(kw in message_lower for kw in ("apply", "admission", "entry requirement", "enrol", "enroll", "requirement")):
+
+def _reply_admissions(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _admission_kws = ("apply", "admission", "entry requirement", "enrol", "enroll", "requirement")
+    if any(kw in message_lower for kw in _admission_kws):
         return ADMISSIONS_SUMMARY
+    return None
 
-    # --- Student services / campus info -----------------------------------
-    if any(kw in message_lower for kw in ("service", "accommodation", "health", "sport", "disability", "short course", "new programme", "2026")):
+
+def _reply_student_services(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _services_kws = (
+        "service", "accommodation", "health", "sport", "disability",
+        "short course", "new programme", "2026",
+    )
+    if any(kw in message_lower for kw in _services_kws):
         return STUDENT_SERVICES_SUMMARY
+    return None
 
-    # --- Contact / location / directions / portals ------------------------
-    if any(kw in message_lower for kw in ("phone", "email", "contact", "where is", "location", "portal", "library", "direction", "timetable", "founded", "history", "verification")):
+
+def _reply_contact(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _contact_kws = (
+        "phone", "email", "contact", "where is", "location", "portal",
+        "library", "direction", "timetable", "founded", "history", "verification",
+    )
+    if not any(kw in message_lower for kw in _contact_kws):
+        return None
+    return (
+        f"{UNIVERSITY_FACTS['name']} — founded {UNIVERSITY_FACTS['founded']}. "
+        f"Location: {UNIVERSITY_FACTS['location']}. "
+        f"Directions: {UNIVERSITY_FACTS['directions']} "
+        f"Contact: {UNIVERSITY_FACTS['phone']} | {UNIVERSITY_FACTS['email']}. "
+        f"Website: {UNIVERSITY_FACTS['website']}. "
+        f"Portals: student {UNIVERSITY_FACTS['student_portal']}, "
+        f"timetable {UNIVERSITY_FACTS['teaching_timetable']}, "
+        f"library {UNIVERSITY_FACTS['library']}, "
+        f"certificate verification {UNIVERSITY_FACTS['certificate_verification']}."
+    )
+
+
+def _reply_single_programme(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    if not context["programme_targets"]:
+        return None
+    programme = context["programme_targets"][0]
+    return (
+        f"Within the current scope ({scope_label}), {programme['name']} ({programme['faculty']}) has "
+        f"{programme['students']} students across {programme['registrations']} registrations. "
+        f"Average mark: {programme['average_mark'] if programme['average_mark'] is not None else 'N/A'}, "
+        f"pass rate: {_format_pct(programme['pass_rate'])}."
+    )
+
+
+def _reply_faculty(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    if not context["faculty_targets"]:
+        return None
+    faculty = context["faculty_targets"][0]
+    return (
+        f"Within the current scope ({scope_label}), {faculty['faculty']} has "
+        f"{faculty['students']} students across {faculty['registrations']} registrations. "
+        f"Average mark: {faculty['average_mark'] if faculty['average_mark'] is not None else 'N/A'}, "
+        f"pass rate: {_format_pct(faculty['pass_rate'])}."
+    )
+
+
+def _reply_single_course(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    course = context.get("course_target")
+    if not course:
+        return None
+    return (
+        f"For {course['course_code']} — {course['course_name']} in scope ({scope_label}): "
+        f"average mark {course['average_mark'] if course['average_mark'] is not None else 'N/A'}, "
+        f"pass rate {_format_pct(course['pass_rate'])} across {course['students']} students."
+    )
+
+
+def _reply_risk_summary(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _risk_kws = ("risk", "at-risk", "watchlist", "failing", "struggling")
+    if not any(kw in message_lower for kw in _risk_kws):
+        return None
+    gender_str = ", ".join(
+        f"{g}: {d['count']} ({d['pct']}%)" for g, d in scope.get("gender_breakdown", {}).items()
+    )
+    return (
+        f"In the current scope ({scope_label}), {scope['watchlist_count']} students are on the watchlist "
+        f"({scope['multi_fail_count']} with 2+ failures, {scope['carrying_count']} carrying, "
+        f"{scope['adverse_decision_count']} with adverse decisions) "
+        f"out of {scope['total_students']} total."
+        + (f" Gender breakdown: {gender_str}." if gender_str else "")
+    )
+
+
+def _reply_decisions(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _decision_kws = ("decision", "proceed", "retake", "repeat", "deferred", "discontinue")
+    if not any(kw in message_lower for kw in _decision_kws):
+        return None
+    decision_lines = ", ".join(
+        f"{row['decision']} ({row['count']})" for row in scope["top_decisions"]
+    ) or "No decision data."
+    proceeding_pct = scope.get("proceeding_pct")
+    at_risk_pct = scope.get("at_risk_pct")
+    return (
+        f"Decision breakdown in scope ({scope_label}): {decision_lines}. "
+        f"Proceeding: {scope.get('proceeding_count', 0)} students"
+        + (f" ({proceeding_pct}%)" if proceeding_pct is not None else "")
+        + f". Adverse decisions: {scope['adverse_decision_count']}"
+        + (f" ({at_risk_pct}% of students)" if at_risk_pct is not None else "")
+        + "."
+    )
+
+
+def _reply_demographics(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    _demo_kws = ("gender", "male", "female", "demographic")
+    if not any(kw in message_lower for kw in _demo_kws):
+        return None
+    # Per-programme breakdown takes priority when a programme was matched
+    programme_ctx = context.get("programme_targets") or []
+    if programme_ctx:
+        lines = []
+        for prog in programme_ctx:
+            prog_gender = prog.get("gender_breakdown", {})
+            if prog_gender:
+                g_str = ", ".join(
+                    f"{g}: {d['count']} ({d['pct']}%)" for g, d in prog_gender.items()
+                )
+                lines.append(
+                    f"{prog['name']} ({prog['code']}): {prog['students']} students — {g_str}."
+                )
+        if lines:
+            return "Gender breakdown by programme:\n" + "\n".join(lines)
+    gender_str = ", ".join(
+        f"{g}: {d['count']} ({d['pct']}%)" for g, d in scope.get("gender_breakdown", {}).items()
+    )
+    total = scope["total_students"]
+    return (
+        f"Gender breakdown in scope ({scope_label}) across {total} students: "
+        f"{gender_str if gender_str else 'No gender data available'}."
+    )
+
+
+def _reply_period_performance(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    if not (_PERIOD_MONTH_RE.search(message_lower) or _SEMESTER_RE.search(message_lower)):
+        return None
+    period_ctx = context.get("period_performance")
+    if period_ctx:
+        prog_lines = "; ".join(
+            f"{code}: avg {d['avg_mark']}, pass {_format_pct(d['pass_rate'])}"
+            for code, d in list(period_ctx["by_programme"].items())[:6]
+        ) or "No programme breakdown available."
+        dec_lines = ", ".join(
+            f"{k} ({v})" for k, v in list(period_ctx["decisions"].items())[:6]
+        ) or "None."
         return (
-            f"{UNIVERSITY_FACTS['name']} — founded {UNIVERSITY_FACTS['founded']}. "
-            f"Location: {UNIVERSITY_FACTS['location']}. "
-            f"Directions: {UNIVERSITY_FACTS['directions']} "
-            f"Contact: {UNIVERSITY_FACTS['phone']} | {UNIVERSITY_FACTS['email']}. "
-            f"Website: {UNIVERSITY_FACTS['website']}. "
-            f"Portals: student {UNIVERSITY_FACTS['student_portal']}, "
-            f"timetable {UNIVERSITY_FACTS['teaching_timetable']}, "
-            f"library {UNIVERSITY_FACTS['library']}, "
-            f"certificate verification {UNIVERSITY_FACTS['certificate_verification']}."
+            f"Period '{period_ctx['period']}': "
+            f"{period_ctx['total_students']} students, {period_ctx['total_marks']} marks recorded. "
+            f"Average mark: {period_ctx['avg_mark'] if period_ctx['avg_mark'] is not None else 'N/A'}, "
+            f"pass rate: {_format_pct(period_ctx['pass_rate'])}, "
+            f"fail rate: {_format_pct(period_ctx['fail_rate'])}. "
+            f"Proceeding: {period_ctx.get('proceeding_total', 0)}, "
+            f"at-risk: {period_ctx.get('at_risk_total', 0)}. "
+            f"Decisions: {dec_lines} "
+            f"Programme breakdown: {prog_lines}."
         )
+    period_names = ", ".join(scope.get("available_periods", [])) or "not available in current scope"
+    return (
+        f"Period performance within scope ({scope_label}): "
+        f"overall average mark {scope['average_mark'] if scope['average_mark'] is not None else 'N/A'}, "
+        f"pass rate {_format_pct(scope['pass_rate'])} across {scope['total_students']} students. "
+        f"To narrow to a specific period use the Period filter in the top bar. "
+        f"Available periods in this scope: {period_names}."
+    )
 
-    # --- Single programme --------------------------------------------------
-    if context["programme_targets"]:
-        programme = context["programme_targets"][0]
-        return (
-            f"Within the current scope ({scope_label}), {programme['name']} ({programme['faculty']}) has "
-            f"{programme['students']} students across {programme['registrations']} registrations. "
-            f"Average mark: {programme['average_mark'] if programme['average_mark'] is not None else 'N/A'}, "
-            f"pass rate: {_format_pct(programme['pass_rate'])}."
-        )
 
-    # --- Faculty -----------------------------------------------------------
-    if context["faculty_targets"]:
-        faculty = context["faculty_targets"][0]
-        return (
-            f"Within the current scope ({scope_label}), {faculty['faculty']} has "
-            f"{faculty['students']} students across {faculty['registrations']} registrations. "
-            f"Average mark: {faculty['average_mark'] if faculty['average_mark'] is not None else 'N/A'}, "
-            f"pass rate: {_format_pct(faculty['pass_rate'])}."
-        )
-
-    # --- Single course -----------------------------------------------------
-    if context["course_target"]:
-        course = context["course_target"]
-        return (
-            f"For {course['course_code']} — {course['course_name']} in scope ({scope_label}): "
-            f"average mark {course['average_mark'] if course['average_mark'] is not None else 'N/A'}, "
-            f"pass rate {_format_pct(course['pass_rate'])} across {course['students']} students."
-        )
-
-    # --- Risk / watchlist summary (no specific students found) ------------
-    if any(kw in message_lower for kw in ("risk", "at-risk", "watchlist", "failing", "struggling")):
-        gender_str = ", ".join(
-            f"{g}: {d['count']} ({d['pct']}%)" for g, d in scope.get("gender_breakdown", {}).items()
-        )
-        return (
-            f"In the current scope ({scope_label}), {scope['watchlist_count']} students are on the watchlist "
-            f"({scope['multi_fail_count']} with 2+ failures, {scope['carrying_count']} carrying, "
-            f"{scope['adverse_decision_count']} with adverse decisions) "
-            f"out of {scope['total_students']} total. "
-            + (f"Gender breakdown: {gender_str}." if gender_str else "")
-        )
-
-    # --- Decision analysis -------------------------------------------------
-    if any(kw in message_lower for kw in ("decision", "proceed", "retake", "repeat", "deferred", "discontinue")):
-        decision_lines = ", ".join(
-            f"{row['decision']} ({row['count']})"
-            for row in scope["top_decisions"]
-        ) or "No decision data."
-        proceeding_pct = scope.get("proceeding_pct")
-        at_risk_pct = scope.get("at_risk_pct")
-        return (
-            f"Decision breakdown in scope ({scope_label}): {decision_lines}. "
-            f"Proceeding: {scope.get('proceeding_count', 0)} students"
-            + (f" ({proceeding_pct}%)" if proceeding_pct is not None else "")
-            + f". Adverse decisions: {scope['adverse_decision_count']}"
-            + (f" ({at_risk_pct}% of students)" if at_risk_pct is not None else "")
-            + "."
-        )
-
-    # --- Demographics ------------------------------------------------------
-    if any(kw in message_lower for kw in ("gender", "male", "female", "demographic")):
-        gender_str = ", ".join(
-            f"{g}: {d['count']} ({d['pct']}%)" for g, d in scope.get("gender_breakdown", {}).items()
-        )
-        total = scope["total_students"]
-        return (
-            f"Gender breakdown in scope ({scope_label}) across {total} students: "
-            f"{gender_str if gender_str else 'No gender data available'}."
-        )
-
-    # --- Period performance summary ---------------------------------------
-    # Triggered when the message explicitly names an academic period (e.g. "August 2025")
-    if _PERIOD_MONTH_RE.search(message_lower) or _SEMESTER_RE.search(message_lower):
-        period_ctx = context.get("period_performance")
-        if period_ctx:
-            prog_lines = "; ".join(
-                f"{code}: avg {d['avg_mark']}, pass {_format_pct(d['pass_rate'])}"
-                for code, d in list(period_ctx["by_programme"].items())[:6]
-            ) or "No programme breakdown available."
-            dec_lines = ", ".join(
-                f"{k} ({v})" for k, v in list(period_ctx["decisions"].items())[:6]
-            ) or "None."
-            return (
-                f"Period '{period_ctx['period']}': "
-                f"{period_ctx['total_students']} students, {period_ctx['total_marks']} marks recorded. "
-                f"Average mark: {period_ctx['avg_mark'] if period_ctx['avg_mark'] is not None else 'N/A'}, "
-                f"pass rate: {_format_pct(period_ctx['pass_rate'])}, "
-                f"fail rate: {_format_pct(period_ctx['fail_rate'])}. "
-                f"Proceeding: {period_ctx.get('proceeding_total', 0)}, "
-                f"at-risk: {period_ctx.get('at_risk_total', 0)}. "
-                f"Decisions: {dec_lines} "
-                f"Programme breakdown: {prog_lines}."
-            )
-        period_names = ", ".join(scope.get("available_periods", [])) or "not available in current scope"
-        return (
-            f"Period performance within scope ({scope_label}): "
-            f"overall average mark {scope['average_mark'] if scope['average_mark'] is not None else 'N/A'}, "
-            f"pass rate {_format_pct(scope['pass_rate'])} across {scope['total_students']} students. "
-            f"To narrow to a specific period use the Period filter in the top bar. "
-            f"Available periods in this scope: {period_names}."
-        )
-
-    # --- Default scope summary --------------------------------------------
+def _reply_default(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str:
     top_programme = scope["top_programmes"][0]["name"] if scope["top_programmes"] else "no dominant programme"
     top_faculty = scope["top_faculties"][0]["faculty"] if scope["top_faculties"] else "no dominant faculty"
     gender_str = ", ".join(
         f"{g}: {d['count']} ({d['pct']}%)" for g, d in scope.get("gender_breakdown", {}).items()
     )
     median_disp = scope.get("median_mark")
+    avg_disp = scope["average_mark"] if scope["average_mark"] is not None else "N/A"
     return (
-        f"Scope ({scope_label}): {scope['total_students']} students, "
-        f"{scope['total_registrations']} registrations, {scope['total_results']} recorded marks. "
-        f"Average mark: {scope['average_mark'] if scope['average_mark'] is not None else 'N/A'}"
-        + (f", median: {median_disp}" if median_disp is not None else "")
-        + f", pass rate: {_format_pct(scope['pass_rate'])}. "
-        f"Watchlist: {scope['watchlist_count']} students "
-        f"({scope['multi_fail_count']} multi-fail, {scope['carrying_count']} carrying, "
-        f"{scope['adverse_decision_count']} adverse decisions). "
-        + (f"Gender: {gender_str}. " if gender_str else "")
-        + f"Top faculty: {top_faculty}. Top programme: {top_programme}."
+        f"Here's a snapshot of what I'm seeing for {scope_label}:\n\n"
+        f"We have {scope['total_students']} students across {scope['total_registrations']} registrations, "
+        f"with {scope['total_results']} recorded marks. "
+        f"The average mark is {avg_disp}"
+        + (f" (median {median_disp})" if median_disp is not None else "")
+        + f", and the overall pass rate sits at {_format_pct(scope['pass_rate'])}.\n\n"
+        f"On the risk side, {scope['watchlist_count']} students are flagged — "
+        f"{scope['multi_fail_count']} with multiple fails, {scope['carrying_count']} carrying, "
+        f"and {scope['adverse_decision_count']} with adverse decisions.\n\n"
+        + (f"Gender breakdown: {gender_str}.\n\n" if gender_str else "")
+        + f"The busiest faculty is {top_faculty}, and the largest programme is {top_programme}.\n\n"
+        f"Is there anything specific you'd like me to dig into — a particular programme, faculty, or student?"
     )
+
+
+# Ordered list of handlers — first non-None result wins.
+_REPLY_HANDLERS = (
+    _reply_safety_gate,
+    _reply_greeting,
+    _reply_out_of_scope,
+    _reply_student_lookup,
+    _reply_at_risk,
+    _reply_comparison,
+    _reply_comparison_top_scope,
+    _reply_course_difficulty,
+    _reply_completion_rules,
+    _reply_graduation_rules,
+    _reply_admissions,
+    _reply_student_services,
+    _reply_contact,
+    _reply_single_programme,
+    _reply_faculty,
+    _reply_single_course,
+    _reply_risk_summary,
+    _reply_decisions,
+    _reply_demographics,
+    _reply_period_performance,
+)
+
+
+def _build_rule_based_reply(message: str, context: dict) -> str:
+    """Dispatch to the first matching reply handler, falling back to the default scope summary."""
+    message_lower = str(message or "").lower()
+    scope = context["scope_summary"]
+    scope_label = _build_scope_label(scope["filters"])
+    args = (message_lower, scope, scope_label, context)
+    for handler in _REPLY_HANDLERS:
+        result = handler(*args)
+        if result is not None:
+            return result
+    return _reply_default(*args)
 
 
 def _build_programme_table(context: dict) -> str:
@@ -1277,19 +1479,27 @@ def _build_programme_table(context: dict) -> str:
 def _build_prompt(message: str, context: dict, fallback_reply: str, history: list[dict] | None) -> str:
     programme_table = _build_programme_table(context)
     return (
-        "You are UniStudio Bot, the academic analytics assistant for the UniStudio registrar platform "
-        "at Manicaland State University of Applied Sciences (MSUAS), Zimbabwe.\n\n"
-        "BEHAVIOUR RULES:\n"
+        "You are UniStudio Bot — a friendly, knowledgeable academic analytics assistant for the "
+        "UniStudio registrar platform at Manicaland State University of Applied Sciences (MSUAS), Zimbabwe.\n\n"
+        "PERSONALITY:\n"
+        "- Speak in first person ('I can see...', 'Looking at the data...', 'I'd recommend...').\n"
+        "- Be warm and conversational, not robotic. Write like a helpful colleague, not a database printout.\n"
+        "- Acknowledge the question naturally before diving into data — e.g. 'Great question — here's what the numbers show:' "
+        "or 'Let me pull that up for you.'.\n"
+        "- After giving the core answer, offer one relevant follow-up — e.g. 'Would you like me to break this down "
+        "by faculty?' or 'I can also show you the at-risk students in this programme if that would help.'.\n"
+        "- When data shows something concerning (high risk, low pass rate, adverse decisions), acknowledge the "
+        "human impact briefly — e.g. 'That's worth keeping a close eye on.' — before moving to the numbers.\n"
+        "- Use short paragraphs. Never present data as one long run-on sentence.\n\n"
+        "ACCURACY RULES:\n"
         "1. Use only the supplied facts and scope context. Do not invent numbers or statistics.\n"
-        "2. If the question cannot be answered from the data, say so clearly and redirect the user to "
-        "pr@msuas.ac.zw or call +263 2063456 | +263 8677004392.\n"
-        "3. Keep responses concise, warm, and operationally useful. Avoid jargon where plain language works.\n"
-        "4. When explaining a calculation (completion %, pass rate, risk score), show the step-by-step "
-        "working using the actual numbers from the context — do not just state the result.\n"
-        "5. When comparing two or more programmes, courses, or faculties, always rank them and explain "
-        "the key difference driving the ranking (e.g. which factor most separates them).\n"
-        "6. Never discuss topics outside MSUAS academic records, student performance, university services, "
-        "admissions, or platform features. For unrelated questions, gently redirect back to what you can help with.\n\n"
+        "2. If the question cannot be answered from the data, say so honestly and redirect to "
+        "pr@msuas.ac.zw or +263 2063456 | +263 8677004392.\n"
+        "3. When explaining a calculation (completion %, pass rate, risk score), show the step-by-step "
+        "working using the actual numbers — do not just state the result.\n"
+        "4. When comparing programmes or faculties, always rank them and name the key factor driving the ranking.\n"
+        "5. Never discuss topics outside MSUAS academics, student performance, university services, or admissions. "
+        "Gently redirect off-topic questions.\n\n"
         f"University facts: {json.dumps(UNIVERSITY_FACTS, ensure_ascii=True)}\n"
         f"Admissions and entry requirements: {ADMISSIONS_SUMMARY}\n"
         f"Student services and new programmes: {STUDENT_SERVICES_SUMMARY}\n"
@@ -1299,8 +1509,8 @@ def _build_prompt(message: str, context: dict, fallback_reply: str, history: lis
         f"Programme reference table (current scope):\n{programme_table}\n"
         f"Current scoped data: {json.dumps(context, ensure_ascii=True, default=str)}\n"
         f"Conversation history:\n{_build_history_block(history)}\n\n"
-        f"Deterministic baseline answer:\n{fallback_reply}\n\n"
-        f"User question:\n{message}\n"
+        f"Baseline answer (use as the factual foundation — rewrite in a warm, conversational tone):\n{fallback_reply}\n\n"
+        f"User question: {message}\n"
     )
 
 
@@ -1308,7 +1518,7 @@ def _request_openai_chatbot_response(prompt: str) -> str:
     payload = {
         "model": settings.CHATBOT_OPENAI_MODEL,
         "reasoning": {"effort": "low"},
-        "max_output_tokens": 420,
+        "max_output_tokens": 600,
         "input": [
             {
                 "role": "system",
@@ -1349,8 +1559,8 @@ def _request_google_chatbot_response(prompt: str) -> str:
         },
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 420,
+            "temperature": 0.5,
+            "maxOutputTokens": 600,
         },
     }
     request = urllib.request.Request(
@@ -1432,7 +1642,29 @@ def _detect_intent(message: str, status: dict) -> dict:
     return _FALLBACK
 
 
-def get_chatbot_reply(message: str, filters: dict | None = None, history: list[dict] | None = None) -> dict:
+def get_chatbot_reply(
+    message: str,
+    filters: dict | None = None,
+    history: list[dict] | None = None,
+    status_callback=None,
+) -> dict:
+    """Return a chatbot reply dict.
+
+    Args:
+        message: Raw user message text.
+        filters: Topbar scope filters (year/period/faculty).
+        history: Prior conversation turns for the AI context window.
+        status_callback: Optional callable(step: str) invoked at each processing
+            stage so callers can stream progress to the user.
+    """
+
+    def _emit(step: str) -> None:
+        if callable(status_callback):
+            try:
+                status_callback(step)
+            except Exception:  # noqa: BLE001
+                pass
+
     cleaned_message = _truncate(message)
     if not cleaned_message:
         raise ValueError("A message is required.")
@@ -1454,6 +1686,7 @@ def get_chatbot_reply(message: str, filters: dict | None = None, history: list[d
     intent = "general_info"
     intent_entities: dict = {}
     if status["enabled"] and status["ai_available"]:
+        _emit("Analysing your question\u2026")
         intent_result = _detect_intent(cleaned_message, status)
         intent = intent_result.get("intent", "general_info")
         intent_entities = intent_result.get("entities", {})
@@ -1476,9 +1709,45 @@ def get_chatbot_reply(message: str, filters: dict | None = None, history: list[d
             }
 
     # --- Full context build (DB queries) ------------------------------------
+    _emit("Querying the database\u2026")
     context = _build_scope_context(cleaned_message, filters)
     context["_intent"] = intent
     context["_intent_entities"] = intent_entities
+
+    # Intent-driven context backfill — ensures context builders run even when
+    # the user's message has a typo that defeats keyword matching.
+    # The AI intent detector is typo-tolerant; keyword matching is not.
+    if intent == "at_risk" and not context.get("at_risk_context"):
+        _emit("Analysing at-risk students\u2026")
+        context["at_risk_context"] = _build_at_risk_context(filters)
+    elif context.get("at_risk_context"):
+        _emit("Analysing at-risk students\u2026")
+
+    if intent == "demographic" and not context.get("faculty_targets") and intent_entities.get("faculty"):
+        matched = _match_entities(intent_entities["faculty"], Faculty, "name")
+        if matched:
+            context["faculty_targets"] = _build_faculty_context(matched, filters)
+
+    if intent == "data_query" and not context.get("course_difficulty"):
+        # "hardest/easiest" intents sometimes come through as data_query
+        msg_lower_check = cleaned_message.lower()
+        if any(kw in msg_lower_check for kw in ("hard", "easy", "difficult", "tough")):
+            _emit("Checking course difficulty\u2026")
+            context["course_difficulty"] = _build_course_difficulty_context(
+                CourseResult.objects.filter(
+                    registration__in=_base_registrations(filters)
+                ).exclude(mark__isnull=True)
+            )
+    elif context.get("course_difficulty"):
+        _emit("Checking course difficulty\u2026")
+
+    if context.get("student_targets"):
+        _emit("Looking up student records\u2026")
+
+    if context.get("programme_targets"):
+        _emit("Looking up programme data\u2026")
+
+    _emit("Preparing your answer\u2026")
     fallback_reply = _build_rule_based_reply(cleaned_message, context)
     prompt = _build_prompt(cleaned_message, context, fallback_reply, history)
 
@@ -1493,6 +1762,7 @@ def get_chatbot_reply(message: str, filters: dict | None = None, history: list[d
 
     try:
         if status["google_ready"]:
+            _emit("Connecting to Google Gemini\u2026")
             raw_response = _request_google_chatbot_response(prompt)
             response_text = _extract_google_response_text(json.loads(raw_response))
             if response_text:
@@ -1505,6 +1775,7 @@ def get_chatbot_reply(message: str, filters: dict | None = None, history: list[d
                 }
             diagnostics["fallback_reason"] = "empty_google_response"
         elif status["openai_ready"]:
+            _emit("Connecting to OpenAI\u2026")
             raw_response = _request_openai_chatbot_response(prompt)
             response_text = _extract_response_text(json.loads(raw_response))
             if response_text:

@@ -2,6 +2,7 @@
 
 from functools import wraps
 
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
@@ -20,7 +21,21 @@ def is_platform_admin(user):
 
 
 def ajax_login_required(view_func):
-    """Return HTTP 401 JSON when an AJAX/JSON endpoint is unauthenticated."""
+    """Return HTTP 401 JSON when an AJAX/JSON endpoint is unauthenticated.
+
+    Works with both sync and async views — the wrapper returned matches the
+    coroutine-function status of the wrapped view so Django's ASGI handler
+    treats it correctly.
+    """
+    if iscoroutinefunction(view_func):
+        @wraps(view_func)
+        async def _async_wrapped(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                return JsonResponse({"error": "Authentication required."}, status=401)
+            return await view_func(request, *args, **kwargs)
+
+        markcoroutinefunction(_async_wrapped)
+        return _async_wrapped
 
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):

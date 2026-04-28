@@ -405,6 +405,7 @@ def build_layout_context(request, active_key):
             "ai_available": chatbot_status["ai_available"],
             "provider": chatbot_status["provider"],
             "endpoint": reverse("chatbot:message"),
+            "stream_endpoint": reverse("chatbot:stream"),
             "page_key": active_key,
             "page_label": next((item["label"] for item in SIDEBAR_ITEMS if item["key"] == active_key), "Workspace"),
             "suggestions": CHATBOT_SUGGESTIONS.get(active_key, CHATBOT_SUGGESTIONS["dashboard"]),

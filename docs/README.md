@@ -20,7 +20,7 @@ This folder contains implementation notes and operational guidance for the regis
 - [AI_INSIGHTS.md](AI_INSIGHTS.md)
   Shared AI narrative generation patterns across dashboards
 - [CHATBOT.md](CHATBOT.md)
-  UniStudio chatbot widget architecture, provider flow, and prototype notes
+  UniStudio chatbot widget — async SSE streaming, real-time status feedback, 20-handler dispatch, rate limiting, and provider fallback
 - [DASHBOARD_HOME.md](DASHBOARD_HOME.md)
   Landing dashboard layout, filter bar, and drill-down behavior
 - [COMPLETION_ANALYTICS.md](COMPLETION_ANALYTICS.md)

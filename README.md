@@ -16,7 +16,7 @@ The platform currently includes:
 - `Risk` for identifying at-risk students from academic outcomes
 - `Insights` for operational recommendations and flagged-student context
 - `System Management` for platform user administration and access control
-- `UniStudio Chatbot` as a floating in-platform assistant for scoped academic questions
+- `UniStudio Chatbot` as a floating in-platform assistant with real-time status feedback and async streaming
 
 ## Technology Stack
 
@@ -25,6 +25,7 @@ The platform currently includes:
 - PostgreSQL
 - Pandas for CSV ingestion support
 - Server-rendered templates with app-scoped CSS and JavaScript
+- `uvicorn` (ASGI) for async views and SSE streaming — required for the chatbot streaming endpoint
 
 ## Documentation Map
 
@@ -39,7 +40,7 @@ The platform currently includes:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
   Application structure, data model, and technical design notes
 - [docs/CHATBOT.md](docs/CHATBOT.md)
-  Chatbot widget architecture, provider flow, and prototype cleanup notes
+  Chatbot widget — async SSE streaming, real-time status feedback, 20-handler dispatch, rate limiting, and AI provider fallback
 - [docs/pages/README.md](docs/pages/README.md)
   Page-by-page sidebar documentation with user explanations, architecture
   diagrams, file maps, and maintenance checks
@@ -116,8 +117,16 @@ python manage.py import_registrar_data "C:\Users\Mukar\Downloads\Registrations.c
 
 ### 8. Start the development server
 
+**Standard (WSGI) — all features except live chatbot streaming:**
+
 ```powershell
 python manage.py runserver
+```
+
+**With async streaming — required for real-time chatbot status updates:**
+
+```powershell
+uvicorn registrar_platform.asgi:application --reload
 ```
 
 Default local URLs:
@@ -125,6 +134,8 @@ Default local URLs:
 - application home: `http://127.0.0.1:8000/`
 - login page: `http://127.0.0.1:8000/login/`
 - Django admin: `http://127.0.0.1:8000/admin/`
+
+> The chatbot works under both servers. Under `manage.py runserver` (WSGI) the client cycles through status messages client-side. Under `uvicorn` (ASGI) the server streams live step updates as they happen.
 
 ## Core Application Routes
 
@@ -141,6 +152,12 @@ Default local URLs:
 - `/system-management/` admin-only user management workspace
 - `/login/` custom session login
 - `/logout/` logout endpoint
+
+### Chatbot API Routes
+
+- `/api/chatbot/message/` JSON endpoint (sync, WSGI-compatible)
+- `/api/chatbot/stream/` SSE streaming endpoint (async, requires ASGI/uvicorn)
+- `/api/chatbot/clear/` clears the current session's conversation history
 
 ## Authentication Notes
 
@@ -239,13 +256,21 @@ Detailed production guidance lives in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 ```text
 uni_project/
 |-- accounts/                    Custom authentication app
+|-- chatbot/                     Chatbot app (models, views, middleware, URLs)
+|   |-- middleware.py            Sliding-window rate limiter (30 req/60 s)
+|   |-- views.py                 JSON endpoint + async SSE streaming endpoint
 |-- dashboard/                   Core analytics app
 |   |-- management/commands/     CSV import command
 |   |-- migrations/
 |   |-- static/dashboard/
+|   |   |-- js/chatbot.js        Chatbot widget — SSE client + client-side status cycle
+|   |   |-- css/chatbot.css      Chatbot widget styles
 |   |-- templates/dashboard/
+|-- services/
+|   |-- chatbot_service.py       20-handler dispatch + AI provider fallback + status callbacks
 |-- data/                        Optional local CSV staging area
-|-- docs/                        **Comprehensive documentation including drill-down optimizations**
+|-- docs/                        Comprehensive documentation
+|   |-- CHATBOT.md               Chatbot architecture, streaming, rate limiting, handlers
 |   |-- DRILLDOWN_OPTIMIZATION.md    Performance optimization strategies (10-100x improvements)
 |   |-- DRILLDOWN_FRONTEND.md        Frontend implementation details
 |   |-- ARCHITECTURE.md              System architecture and design
@@ -263,13 +288,21 @@ uni_project/
 ## Useful Commands
 
 ```powershell
+# Development
 python manage.py runserver
+uvicorn registrar_platform.asgi:application --reload
+
+# Database
 python manage.py migrate
 python manage.py createsuperuser
-python manage.py collectstatic --noinput
+
+# Data
 python manage.py import_registrar_data "C:\Path\To\Registrations.csv" "C:\Path\To\course final marks by period.csv" "C:\Path\To\completion_analysis.csv"
+
+# Quality
 python manage.py test
 python manage.py check --deploy
+python manage.py collectstatic --noinput
 ```
 
 ## Troubleshooting
@@ -305,3 +338,4 @@ The project is set up as a production-oriented internal analytics platform with:
 - module-specific analytics pages
 - destructive but repeatable CSV ingestion
 - documented operational workflow
+- in-platform AI chatbot with async SSE streaming, real-time status feedback, sliding-window rate limiting, and Google Gemini / OpenAI / rule-based fallback

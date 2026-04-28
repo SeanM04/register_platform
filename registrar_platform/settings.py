@@ -72,6 +72,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'accounts.middleware.SessionValidationMiddleware',
+    'chatbot.middleware.ChatbotRateLimitMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -132,6 +133,25 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_INSIGHTS_ENABLED = get_env_bool("OPENAI_INSIGHTS_ENABLED", False)
 OPENAI_INSIGHTS_MODEL = os.getenv("OPENAI_INSIGHTS_MODEL", "gpt-5.4-mini")
 OPENAI_INSIGHTS_TIMEOUT_SECONDS = get_env_int("OPENAI_INSIGHTS_TIMEOUT_SECONDS", 6)
+# ---------------------------------------------------------------------------
+# Cache — used by the chatbot response cache and the rate limiter.
+# LocMemCache is per-process and suitable for a single-worker deployment.
+# For multi-worker production (e.g. uvicorn --workers N), switch to Redis:
+#   BACKEND: "django.core.cache.backends.redis.RedisCache"
+#   LOCATION: os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1")
+# ---------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unistudio-main",
+    }
+}
+
+# Chatbot rate limiting (chatbot/middleware.py)
+# Limit each authenticated user to N requests per W seconds.
+CHATBOT_RATE_LIMIT_REQUESTS = get_env_int("CHATBOT_RATE_LIMIT_REQUESTS", 30)
+CHATBOT_RATE_LIMIT_WINDOW_SECONDS = get_env_int("CHATBOT_RATE_LIMIT_WINDOW_SECONDS", 60)
+
 CHATBOT_ENABLED = get_env_bool("CHATBOT_ENABLED", True)
 CHATBOT_PROVIDER = os.getenv("CHATBOT_PROVIDER", AI_INSIGHTS_PROVIDER or "auto").strip().lower()
 CHATBOT_GOOGLE_MODEL = os.getenv("CHATBOT_GOOGLE_MODEL", GOOGLE_INSIGHTS_MODEL)

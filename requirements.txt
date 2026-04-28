@@ -7,3 +7,9 @@ openai>=1.30.0
 
 # Rich — for the terminal UI (coloured output, panels, tables)
 rich>=13.0.0
+
+# ASGI server — required for async views and SSE streaming.
+# Run with: uvicorn registrar_platform.asgi:application --reload
+# For production with multiple workers: uvicorn ... --workers 4
+# Note: switch CACHES backend to Redis when using --workers > 1
+uvicorn[standard]>=0.29.0
