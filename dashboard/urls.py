@@ -15,6 +15,7 @@ from .risk.views import risk_band_drilldown, risk_drilldown_payload, risk_driver
 from .views import (
     student_detail,
     student_list,
+    student_transcript,
     system_management_view,
 )
 from .completion.views import (
@@ -47,6 +48,7 @@ urlpatterns = [
     path("metrics/overview/drilldown/", dashboard_home_drilldown, name="home-drilldown"),
     path("students/", student_list, name="students"),
     path("students/<slug:slug>/", student_detail, name="student-detail"),
+    path("students/<slug:slug>/transcript/", student_transcript, name="student-transcript"),
     path("programme/", programme_view, name="programme"),
     path("metrics/programme/", programme_metrics, name="programme-metrics"),
     path("metrics/programme/payload/", programme_payload, name="programme-payload"),
