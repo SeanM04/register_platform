@@ -1448,6 +1448,233 @@ def student_detail(request, slug):
 
 
 @login_required_except_domains()
+def student_transcript(request, slug):
+    """Render a comprehensive transcript page showing all student results with consistent styling."""
+    
+    try:
+        # Import required modules
+        import re
+        from datetime import datetime
+        
+        # Simple test first - just try to get the student
+        student_record = get_object_or_404(
+            Student.objects.all(),
+            registration_number__iexact=slug,
+        )
+        
+        # Test basic data access
+        all_registrations = list(student_record.registrations.all())
+        
+        # Sort registrations by academic year and semester for proper chronological order
+        def get_sort_key(registration):
+            period_name = registration.period.name if registration.period else ""
+            academic_year = 9999  # Default high value for unknown
+            semester = 999  # Default high value for unknown
+            
+            # Extract actual calendar year first
+            calendar_year_match = re.search(r'\b(20\d{2})\b', period_name)
+            if calendar_year_match:
+                academic_year = int(calendar_year_match.group(1))
+            else:
+                # Extract year number and convert to calendar year
+                year_match = re.search(r'YEAR\s*(\d+)', period_name.upper())
+                if year_match:
+                    year_num = int(year_match.group(1))
+                    # Convert Year X to actual calendar year
+                    academic_year = start_year + (year_num - 1) if start_year else year_num + 2000
+            
+            # Extract semester number
+            sem_match = re.search(r'SEM\s*(\d+)', period_name.upper())
+            if sem_match:
+                semester = int(sem_match.group(1))
+            else:
+                # Try to extract from SEMESTER or TERM
+                sem_term_match = re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper())
+                if sem_term_match:
+                    semester = int(sem_term_match.group(2))
+            
+            return (academic_year, semester)
+        
+        all_registrations.sort(key=get_sort_key)
+        
+        # Build comprehensive transcript data
+        transcript_results = []
+        total_courses = 0
+        total_passed = 0
+        total_marks = 0
+        marks_count = 0
+        
+        # Find the earliest registration to determine the starting year
+        start_year = None
+        if all_registrations:
+            # Try to extract actual year from period names
+            for reg in all_registrations:
+                period_name = reg.period.name if reg.period else ""
+                # Look for actual year patterns like 2020, 2021, etc.
+                year_match = re.search(r'\b(20\d{2})\b', period_name)
+                if year_match:
+                    start_year = int(year_match.group(1))
+                    break
+            
+            # If no explicit year found, try to infer from registration date
+            if start_year is None and all_registrations[0].created_at:
+                start_year = all_registrations[0].created_at.year
+            
+            # Default to current year if still not found
+            if start_year is None:
+                start_year = datetime.now().year
+        
+        for i, registration in enumerate(all_registrations):
+            try:
+                registration_results = registration.course_results.all()
+                for result in registration_results:
+                    total_courses += 1
+                    mark_value = round(result.mark or 0)
+                    
+                    if mark_value >= 50:
+                        total_passed += 1
+                    
+                    if mark_value > 0:
+                        total_marks += mark_value
+                        marks_count += 1
+                    # Extract academic year and semester information
+                    period_name = registration.period.name if registration.period else "Unknown"
+                    academic_year = str(start_year)  # Default to start year
+                    semester = "Semester 1"
+                    
+                    # Try to extract actual calendar year from period name first
+                    calendar_year_match = re.search(r'\b(20\d{2})\b', period_name)
+                    if calendar_year_match:
+                        academic_year = calendar_year_match.group(1)
+                    else:
+                        # Try different patterns for year and semester extraction
+                        # Pattern 1: YEAR X SEM Y - convert to actual year
+                        year_sem_match = re.search(r'YEAR\s*(\d+)\s*SEM\s*(\d+)', period_name.upper())
+                        if year_sem_match:
+                            year_num = int(year_sem_match.group(1))
+                            # Convert Year X to actual calendar year
+                            actual_year = start_year + (year_num - 1)
+                            academic_year = str(actual_year)
+                            semester = f"Semester {year_sem_match.group(2)}"
+                        # Pattern 2: YEAR X - convert to actual year
+                        elif re.search(r'YEAR\s*(\d+)', period_name.upper()):
+                            year_match = re.search(r'YEAR\s*(\d+)', period_name.upper())
+                            year_num = int(year_match.group(1))
+                            # Convert Year X to actual calendar year
+                            actual_year = start_year + (year_num - 1)
+                            academic_year = str(actual_year)
+                            if re.search(r'SEM\s*(\d+)', period_name.upper()):
+                                sem_match = re.search(r'SEM\s*(\d+)', period_name.upper())
+                                semester = f"Semester {sem_match.group(1)}"
+                        # Pattern 3: Semester X or Term X - infer year from position
+                        elif re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper()):
+                            sem_term_match = re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper())
+                            semester = f"Semester {sem_term_match.group(2)}"
+                            # Infer actual year from registration order
+                            inferred_year_offset = (i // 2)  # Assuming 2 semesters per year
+                            actual_year = start_year + inferred_year_offset
+                            academic_year = str(actual_year)
+                        # Pattern 4: Just use the period name
+                        else:
+                            # Use the period name directly for semester
+                            semester = period_name
+                            # Infer actual year from registration order
+                            inferred_year_offset = (i // 2)
+                            actual_year = start_year + inferred_year_offset
+                            academic_year = str(actual_year)
+                    
+                    # Calculate grade based on grading rules
+                    mark_value = round(result.mark or 0)
+                    grade = "F"
+                    if mark_value >= 75:
+                        grade = "1"
+                    elif mark_value >= 65:
+                        grade = "2.1"
+                    elif mark_value >= 60:
+                        grade = "2.2"
+                    elif mark_value >= 50:
+                        grade = "3"
+                    else:
+                        grade = "F"
+                    
+                    # Decision: P for pass (>=50), F for fail (<50)
+                    decision = "P" if mark_value >= 50 else "F"
+                    
+                    transcript_results.append({
+                        "academic_year": academic_year,
+                        "period": semester,
+                        "faculty": registration.programme.department.faculty.name if registration.programme and registration.programme.department and registration.programme.department.faculty else "Unknown",
+                        "programme": registration.programme.name if registration.programme else "Unknown",
+                        "course_code": result.course.code if result.course else "Unknown",
+                        "course_name": result.course.name if result.course else "Unknown",
+                        "mark": f"{mark_value}%",
+                        "mark_value": mark_value,
+                        "grade": grade,
+                        "decision": decision,
+                        "status": "Pass" if mark_value >= 50 else "Fail",
+                        "is_failing": mark_value < 50
+                    })
+            except Exception as inner_e:
+                # Skip problematic registrations
+                continue
+        
+        # Calculate summary statistics
+        average_mark = round(total_marks / marks_count, 1) if marks_count > 0 else 0
+        pass_rate = round((total_passed / total_courses) * 100, 1) if total_courses > 0 else 0
+        completion_rate = round((marks_count / total_courses) * 100, 1) if total_courses > 0 else 0
+        total_failed = total_courses - total_passed
+        
+        # Get student programme and faculty info safely
+        student_programme = "N/A"
+        student_faculty = "N/A"
+        if all_registrations and all_registrations[0].programme:
+            student_programme = all_registrations[0].programme.name
+            if all_registrations[0].programme.department and all_registrations[0].programme.department.faculty:
+                student_faculty = all_registrations[0].programme.department.faculty.name
+        
+        context = build_layout_context(request, "Student Transcript")
+        context.update(
+            {
+                "page_title": f"Transcript - {student_record.first_names} {student_record.surname}",
+                "student": {
+                    "name": f"{student_record.first_names} {student_record.surname}",
+                    "student_number": student_record.registration_number,
+                    "programme": student_programme,
+                    "faculty": student_faculty,
+                },
+                "transcript_results": transcript_results,
+                "summary": {
+                    "total_courses": total_courses,
+                    "total_passed": total_passed,
+                    "total_failed": total_failed,
+                    "average_mark": f"{average_mark}%",
+                    "pass_rate": f"{pass_rate}%",
+                    "completion_rate": f"{completion_rate}%",
+                }
+            }
+        )
+        
+        return render(request, "dashboard/student_transcript.html", context)
+        
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in student_transcript for slug {slug}: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        
+        # Return error page with actual error message for debugging
+        context = build_layout_context(request, "Error")
+        context.update({
+            "page_title": "Transcript Error",
+            "error_message": f"Error: {str(e)} (Type: {type(e).__name__})",
+        })
+        return render(request, "dashboard/student_transcript.html", context)
+
+
+@login_required_except_domains()
 def placeholder_section(request, section_name, title):
     """Render a generic placeholder page for sections still under construction."""
 
