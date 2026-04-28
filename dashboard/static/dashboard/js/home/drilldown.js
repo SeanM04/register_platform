@@ -3,7 +3,7 @@ import {
     showDrillDownErrorModal,
     showLoadingDrillDownModal,
     showDrillDownModal,
-} from "./drilldown_modal.js?v=20260411-home-drilldown01";
+} from "./drilldown_modal.js?v=20260416-home-drilldown16";
 
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeOverviewDrillDownToken = 0;
@@ -44,14 +44,14 @@ export const cancelOverviewDrillDownRequests = () => {
     activeOverviewDrillDownToken += 1;
 };
 
-export const openOverviewDrillDown = async (context, { chartKey, bucketKey, label }) => {
+export const openOverviewDrillDown = async (context, { chartKey, bucketKey, label, drilldownType }) => {
     cancelOverviewDrillDownRequests();
 
     let currentPageSize = DEFAULT_DRILLDOWN_PAGE_SIZE;
     const requestToken = activeOverviewDrillDownToken;
     const safeLabel = String(label || "Selected").trim() || "Selected";
     const title = `${safeLabel} Students`;
-    const subtitle = `Loading the students in the ${safeLabel.toLowerCase()} selection.`;
+    const subtitle = `Loading students in ${safeLabel.toLowerCase()} selection.`;
     const endpoint = context?.config?.drilldownUrl;
 
     if (!endpoint || !chartKey || !bucketKey) {
@@ -61,14 +61,25 @@ export const openOverviewDrillDown = async (context, { chartKey, bucketKey, labe
 
     showLoadingDrillDownModal(title, subtitle);
 
-    const loadPage = async (page, pageSize = currentPageSize) => {
+    const handleHierarchicalNavigation = (navigateValue) => {
+        // For faculty_load chart, build hierarchical bucket key
+        if (chartKey === "faculty_load") {
+            bucketKey = `${bucketKey}|${navigateValue}`;
+            console.log("DEBUG: Hierarchical navigation - updated bucketKey:", bucketKey, "navigateValue:", navigateValue);
+            loadPage(1, currentPageSize, bucketKey);
+        }
+    };
+
+    const loadPage = async (page, pageSize = currentPageSize, hierarchicalBucketKey = null) => {
         currentPageSize = pageSize || DEFAULT_DRILLDOWN_PAGE_SIZE;
         showLoadingDrillDownModal(title, subtitle);
+
+        const finalBucketKey = hierarchicalBucketKey || bucketKey;
 
         try {
             const payload = await fetchDrillDownPayload(endpoint, {
                 chart: chartKey,
-                bucket: bucketKey,
+                bucket: finalBucketKey,
                 page,
                 page_size: currentPageSize,
             });
@@ -78,15 +89,16 @@ export const openOverviewDrillDown = async (context, { chartKey, bucketKey, labe
             }
 
             showDrillDownModal(payload, [], {
-                onPageChange: loadPage,
-                onPageSizeChange: (newPageSize) => loadPage(1, newPageSize),
+                onPageChange: (newPage) => loadPage(newPage, currentPageSize, hierarchicalBucketKey),
+                onPageSizeChange: (newPageSize) => loadPage(1, newPageSize, hierarchicalBucketKey),
+                onNavigate: handleHierarchicalNavigation,
             });
         } catch (error) {
             if (requestToken !== activeOverviewDrillDownToken || !isDrillDownModalOpen()) {
                 return;
             }
 
-            showDrillDownErrorModal(title, `The students in the ${safeLabel.toLowerCase()} selection could not be loaded right now.`);
+            showDrillDownErrorModal(title, `The students in ${safeLabel.toLowerCase()} selection could not be loaded right now.`);
         }
     };
 
@@ -97,6 +109,6 @@ export const openOverviewDrillDown = async (context, { chartKey, bucketKey, labe
             return;
         }
 
-        showDrillDownErrorModal(title, `The students in the ${safeLabel.toLowerCase()} selection could not be loaded right now.`);
+        showDrillDownErrorModal(title, `The students in ${safeLabel.toLowerCase()} selection could not be loaded right now.`);
     }
 };

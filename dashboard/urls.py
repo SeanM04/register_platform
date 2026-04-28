@@ -15,6 +15,7 @@ from .risk.views import risk_band_drilldown, risk_drilldown_payload, risk_driver
 from .views import (
     student_detail,
     student_list,
+    student_transcript,
     system_management_view,
 )
 from .completion.views import (
@@ -25,14 +26,16 @@ from .completion.views import (
     completion_faculties, 
     completion_academic_years,
     completion_periods,
-    completion_periods_by_year
+    completion_periods_by_year,
+    completion_drilldown
 )
 from .graduation.views import (
     graduation_view, 
     graduation_payload, 
     graduation_narratives,
     graduation_programmes,
-    graduation_faculties
+    graduation_faculties,
+    graduation_drilldown
 )
 
 app_name = "dashboard"
@@ -45,6 +48,7 @@ urlpatterns = [
     path("metrics/overview/drilldown/", dashboard_home_drilldown, name="home-drilldown"),
     path("students/", student_list, name="students"),
     path("students/<slug:slug>/", student_detail, name="student-detail"),
+    path("students/<slug:slug>/transcript/", student_transcript, name="student-transcript"),
     path("programme/", programme_view, name="programme"),
     path("metrics/programme/", programme_metrics, name="programme-metrics"),
     path("metrics/programme/payload/", programme_payload, name="programme-payload"),
@@ -71,6 +75,7 @@ urlpatterns = [
     path("completion/", completion_view, name="completion"),
     path("metrics/completion/payload/", completion_payload, name="completion-payload"),
     path("metrics/completion/narratives/", completion_narratives, name="completion-narratives"),
+    path("metrics/completion/drilldown/", completion_drilldown, name="completion-drilldown"),
     path("api/completion/programmes", completion_programmes, name="completion-programmes"),
     path("api/completion/faculties", completion_faculties, name="completion-faculties"),
     path("api/completion/academic-years", completion_academic_years, name="completion-academic-years"),
@@ -79,6 +84,7 @@ urlpatterns = [
     path("graduation/", graduation_view, name="graduation"),
     path("metrics/graduation/payload/", graduation_payload, name="graduation-payload"),
     path("metrics/graduation/narratives/", graduation_narratives, name="graduation-narratives"),
+    path("metrics/graduation/drilldown/", graduation_drilldown, name="graduation-drilldown"),
     path("api/graduation/programmes", graduation_programmes, name="graduation-programmes"),
     path("api/graduation/faculties", graduation_faculties, name="graduation-faculties"),
     path("system-management/", system_management_view, name="system-management"),

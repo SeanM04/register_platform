@@ -1,7 +1,7 @@
 /* eslint-env browser */
 /* global document, HTMLElement, HTMLSelectElement */
 
-import { escapeTooltipHtml } from "./shared.js?v=20260403-home-story04";
+import { escapeTooltipHtml } from "./shared.js?v=20260416-home-drilldown08";
 
 const DRILLDOWN_MODAL_ID = "home-drilldown-modal";
 let lastFocusedElement = null;
@@ -41,6 +41,9 @@ const buildSummaryBodyHtml = (items = []) => {
 const buildTableBodyHtml = (payload = {}) => {
     const columns = Array.isArray(payload.columns) ? payload.columns : [];
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    
+    console.log("DEBUG: buildTableBodyHtml - columns:", columns.length, "rows:", rows.length);
+    
     if (!columns.length) {
         return `
             <div class="home-drilldown-state">
@@ -77,7 +80,7 @@ const buildTableBodyHtml = (payload = {}) => {
             </tr>
         `.trim();
 
-    return `
+    const result = `
         <div class="home-drilldown-table-wrap">
             <table class="home-drilldown-table">
                 <thead>
@@ -90,6 +93,9 @@ const buildTableBodyHtml = (payload = {}) => {
         </div>
         ${buildPaginationHtml(payload)}
     `.trim();
+    
+    console.log("DEBUG: buildTableBodyHtml - result length:", result.length);
+    return result;
 };
 
 const buildPaginationHtml = (payload = {}) => {
@@ -117,14 +123,54 @@ const buildPaginationHtml = (payload = {}) => {
     `.trim();
 };
 
+const buildHierarchicalListHtml = (payload = {}) => {
+    const { type, data = [] } = payload;
+    if (!data.length) {
+        return `
+            <div class="home-drilldown-state">
+                <p class="home-drilldown-state-title">No data available for this selection.</p>
+            </div>
+        `.trim();
+    }
+
+    const itemsHtml = data.map((item) => {
+        // Use key for navigation if available (for programmes), otherwise use label (for departments)
+        const navigateValue = item.key || item.label;
+        return `
+        <div class="home-drilldown-hierarchical-item">
+            <div class="home-drilldown-item-info">
+                <span class="home-drilldown-item-label">${escapeTooltipHtml(item.label)}</span>
+                <span class="home-drilldown-item-count">${getDisplayValue(item.count)}</span>
+                ${item.programme_count ? `<span class="home-drilldown-item-subcount">${item.programme_count} programmes</span>` : ''}
+            </div>
+            <button class="home-drilldown-navigate-button" data-drilldown-navigate="${escapeTooltipHtml(navigateValue)}">
+                View ${type === 'departments' ? 'Programmes' : 'Students'} →
+            </button>
+        </div>
+        `;
+    }).join("");
+
+    return `
+        <div class="home-drilldown-hierarchical-list">
+            ${itemsHtml}
+        </div>
+    `.trim();
+};
+
 const buildBodyHtml = (payloadOrTitle, legacyItems = []) => {
     if (typeof payloadOrTitle === "string") {
         return buildSummaryBodyHtml(legacyItems);
     }
 
     const payload = payloadOrTitle || {};
+    
     if (Array.isArray(payload.items) && !payload.columns) {
         return buildSummaryBodyHtml(payload.items);
+    }
+
+    // Handle hierarchical drilldown data
+    if (payload.type && (payload.type === 'departments' || payload.type === 'programmes')) {
+        return buildHierarchicalListHtml(payload);
     }
 
     return buildTableBodyHtml(payload);
@@ -169,7 +215,7 @@ export const closeDrillDownModal = () => {
     lastFocusedElement = null;
 };
 
-const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageChange = null, onPageSizeChange = null }) => {
+const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageChange = null, onPageSizeChange = null, onNavigate = null }) => {
     closeDrillDownModal();
 
     lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -227,6 +273,19 @@ const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageCha
         });
     }
 
+    // Handle hierarchical navigation buttons
+    const navigateButtons = modal.querySelectorAll("[data-drilldown-navigate]");
+    if (typeof onNavigate === "function" && navigateButtons.length) {
+        navigateButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const navigateValue = button.dataset.drilldownNavigate;
+                if (navigateValue) {
+                    onNavigate(navigateValue);
+                }
+            });
+        });
+    }
+
     document.body.appendChild(modal);
     document.body.classList.add("has-home-drilldown-modal");
     document.addEventListener("keydown", handleEscapeKey);
@@ -266,11 +325,13 @@ export const showDrillDownErrorModal = (title, subtitle = "") => {
 };
 
 export const showDrillDownModal = (payloadOrTitle, legacyItems = [], options = {}) => {
+    console.log("DEBUG: showDrillDownModal called with:", payloadOrTitle, "options:", options);
     renderModal({
         title: buildTitle(payloadOrTitle),
         subtitle: buildSubtitle(payloadOrTitle),
         bodyHtml: buildBodyHtml(payloadOrTitle, legacyItems),
         onPageChange: options.onPageChange,
         onPageSizeChange: options.onPageSizeChange,
+        onNavigate: options.onNavigate,
     });
 };

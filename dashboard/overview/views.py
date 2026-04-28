@@ -8,7 +8,7 @@ from accounts.decorators import ajax_login_required, login_required_except_domai
 
 from .ai_insights import get_overview_card_narratives_result
 from .presenters import build_overview_shell_context
-from .services import build_overview_drilldown_data, get_cached_overview_dashboard_data, get_home_summary_values
+from .services import build_overview_drilldown_data, get_cached_overview_dashboard_data, get_home_summary_values, get_filtered_registrations
 
 
 @login_required_except_domains()
@@ -59,13 +59,25 @@ def dashboard_home_drilldown(request):
     """Return on-demand student rows for the requested landing-page chart bucket."""
 
     chart_key = str(request.GET.get("chart", "")).strip().lower()
-    bucket_key = str(request.GET.get("bucket", "")).strip().lower()
+    bucket_key = str(request.GET.get("bucket", "")).strip()
     if not chart_key or not bucket_key:
         return JsonResponse({"error": "Both chart and bucket are required."}, status=400)
 
+    # Handle hierarchical drilldown for faculty load
+    if chart_key == "faculty_load":
+        from .services import _build_faculty_drilldown_payload
+        try:
+            page = int(request.GET.get("page", 1))
+            page_size = int(request.GET.get("page_size", 10))
+        except (TypeError, ValueError):
+            page = 1
+            page_size = 10
+        
+        payload = _build_faculty_drilldown_payload(request, list(get_filtered_registrations(request)), bucket_key, page, page_size)
+        return JsonResponse(payload)
+
     try:
         payload = build_overview_drilldown_data(request, chart_key, bucket_key)
+        return JsonResponse(payload)
     except ValueError as error:
         return JsonResponse({"error": str(error)}, status=400)
-
-    return JsonResponse(payload)

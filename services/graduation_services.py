@@ -654,14 +654,79 @@ def get_graduation_page_data(
         total_faculty_students = sum(len(students) for students in faculty_cohort_population[faculty_name].values())
         total_faculty_graduated = sum(faculty_cohort_graduated[faculty_name].values())
         
-        faculty_graduation_rate.append({
+        # Build hierarchical data structure
+        faculty_data = {
             "faculty": faculty_name,
             "graduation_rate": round(rate, 0),
             "graduated_count": total_faculty_graduated,
             "enrolled_count": total_faculty_students,
             "cohorts": faculty_cohort_details[faculty_name],
-            "overall_rate": round(rate, 0)
-        })
+            "overall_rate": round(rate, 0),
+            "hierarchy": {
+                "departments": [],
+                "programmes": []
+            }
+        }
+        
+        # Add department level data using student histories
+        department_stats = defaultdict(lambda: {"enrolled": set(), "graduated": set()})
+        programme_stats = defaultdict(lambda: {"enrolled": set(), "graduated": set()})
+        
+        # Get student histories for this faculty
+        faculty_histories = [h for h in student_histories if h["latest_record"]["faculty_name"] == faculty_name]
+        
+        # Create a set of graduated registration numbers for this faculty
+        graduated_regnums = set()
+        for student in graduated_students:
+            if student["faculty"] == faculty_name:
+                graduated_regnums.add(student["regnum"])
+        
+        for history in faculty_histories:
+            regnum = history["regnum"]
+            student_record = history["latest_record"]
+            
+            # Department level
+            dept_name = student_record.get("department_name", "Unknown")
+            department_stats[dept_name]["enrolled"].add(regnum)
+            
+            # Programme level  
+            prog_name = student_record.get("programme_name", "Unknown")
+            programme_stats[prog_name]["enrolled"].add(regnum)
+            
+            # Check if graduated
+            if regnum in graduated_regnums:
+                department_stats[dept_name]["graduated"].add(regnum)
+                programme_stats[prog_name]["graduated"].add(regnum)
+        
+        # Calculate department graduation rates
+        for dept_name, stats in department_stats.items():
+            dept_rate = _safe_rate(len(stats["graduated"]), len(stats["enrolled"]))
+            faculty_data["hierarchy"]["departments"].append({
+                "department": dept_name,
+                "graduation_rate": dept_rate,
+                "graduated_count": len(stats["graduated"]),
+                "enrolled_count": len(stats["enrolled"]),
+                "faculty": faculty_name
+            })
+        
+        # Calculate programme graduation rates
+        for prog_name, stats in programme_stats.items():
+            prog_rate = _safe_rate(len(stats["graduated"]), len(stats["enrolled"]))
+            
+            # Get department for this programme
+            prog_histories = [h for h in faculty_histories if h["latest_record"]["programme_name"] == prog_name]
+            dept_name = prog_histories[0]["latest_record"].get("department_name", "Unknown") if prog_histories else "Unknown"
+            
+            faculty_data["hierarchy"]["programmes"].append({
+                "programme": prog_name,
+                "graduation_rate": prog_rate,
+                "graduated_count": len(stats["graduated"]),
+                "enrolled_count": len(stats["enrolled"]),
+                "faculty": faculty_name,
+                "department": dept_name
+            })
+        
+        faculty_graduation_rate.append(faculty_data)
 
     graduation_timing = [
         {"label": label, "count": count}

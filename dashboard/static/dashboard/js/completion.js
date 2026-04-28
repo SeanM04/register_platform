@@ -9,6 +9,7 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
+import { showCompletionDrillDownModal } from "./completion/drilldown_modal.js?v=20260428-completion-drilldown08";
 
 class CompletionAnalysis {
     constructor() {
@@ -24,6 +25,52 @@ class CompletionAnalysis {
         this.currentFilters = this.getFiltersFromURL();
 
         this.init();
+    }
+
+    async openDrillDown(chartKey, bucketKey, page = 1) {
+        try {
+            console.log("DEBUG: openDrillDown called with:", { chartKey, bucketKey, page });
+            
+            // Build drilldown request URL
+            const drilldownUrl = new URL("/metrics/completion/drilldown/", window.location.origin);
+            
+            // Add current filters
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.forEach((value, key) => {
+                if (key === 'year' || key === 'period' || key === 'faculty') {
+                    drilldownUrl.searchParams.set(key, value);
+                }
+            });
+            
+            // Add drilldown parameters
+            drilldownUrl.searchParams.set('chart_key', chartKey);
+            drilldownUrl.searchParams.set('bucket_key', bucketKey);
+            drilldownUrl.searchParams.set('page', page);
+            
+            console.log("DEBUG: drilldownUrl:", drilldownUrl.toString());
+            
+            // Fetch drilldown data
+            const response = await fetch(drilldownUrl.toString());
+            if (!response.ok) {
+                throw new Error(`Drilldown request failed: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log("DEBUG: drilldown response:", result);
+            
+            if (result.status === 'success' && result.data) {
+                showCompletionDrillDownModal(result.data, (page) => {
+                    this.openDrillDown(chartKey, bucketKey, page);
+                });
+            } else {
+                throw new Error(result.message || 'No drilldown data available');
+            }
+            
+        } catch (error) {
+            console.error("Error opening drilldown:", error);
+            // Show error modal or notification
+            alert(`Error loading drilldown data: ${error.message}`);
+        }
     }
 
     getFiltersFromURL() {
@@ -634,6 +681,15 @@ class CompletionAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: cohort heatmap clicked:", params);
+            if (params.data && params.data.name) {
+                // For cohort heatmap, use the cohort name as bucketKey
+                this.openDrillDown('cohorts', params.data.name);
+            }
+        });
     }
 
     renderProgrammeChart(rows) {
@@ -714,6 +770,7 @@ class CompletionAnalysis {
                     },
                     data: topRows.map((row) => ({
                         value: row.completion_rate,
+                        raw: { programme: row.programme_name },
                         itemStyle: {
                             borderRadius: [0, barCornerRadius, barCornerRadius, 0],
                             color: buildGradient("#0d4c92", "#67c1e1"),
@@ -729,6 +786,15 @@ class CompletionAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: programme chart clicked:", params);
+            if (params.data && params.data.raw && params.data.raw.programme) {
+                // For programme chart, use the programme name as bucketKey
+                this.openDrillDown('programme_load', params.data.raw.programme);
+            }
+        });
     }
 
     formatProgrammeAxisLabel(programmeName) {
@@ -853,6 +919,7 @@ class CompletionAnalysis {
                     barWidth: 18,
                     data: sortedRows.map((row, index) => ({
                         value: row.count,
+                        raw: { key: row.label },
                         itemStyle: {
                             borderRadius: [barCornerRadius, barCornerRadius, 0, 0],
                             color: palette[index % palette.length],
@@ -868,6 +935,20 @@ class CompletionAnalysis {
                 },
             ],
         }, true);
+
+        // Add click handler for drilldown
+        chart.off('click').on('click', (params) => {
+            console.log("DEBUG: zero driver chart clicked:", params);
+            console.log("DEBUG: params.data:", params.data);
+            console.log("DEBUG: params.data.raw:", params.data?.raw);
+            if (params.data && params.data.raw && params.data.raw.key) {
+                // For zero driver chart, use the driver key as bucketKey
+                console.log("DEBUG: opening drilldown for driver:", params.data.raw.key);
+                this.openDrillDown('drivers', params.data.raw.key);
+            } else {
+                console.log("DEBUG: no raw.key found in click data");
+            }
+        });
     }
 
     getFilteredStudents(students) {
