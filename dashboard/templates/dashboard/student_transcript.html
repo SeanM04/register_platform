@@ -73,59 +73,63 @@
 }
 
 .student-info {
-    margin: 1rem 0;
-    font-size: 0.75rem;
-    border: 1px solid var(--navy);
-    border-collapse: collapse;
+    margin: 0.7rem 0 1rem;
+    font-size: 0.68rem;
 }
 
+
 .student-info-card {
-    background: #ffffff;
-    border: 2px solid var(--navy);
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    background: linear-gradient(135deg, #0f2f52 0%, #1e4f7a 60%, #2f6b96 100%);
+    border-radius: 26px;
+    padding: 1.5rem 1.8rem;
+    box-shadow: 
+        0 20px 40px rgba(10, 30, 60, 0.35),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
 }
 
 .student-details {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem 2.5rem;
 }
 
 .student-name,
 .student-number,
 .student-programme,
-.student-faculty {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem 0;
-}
-
+.student-faculty,
 .student-status {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    padding: 0.5rem 0;
+    gap: 0.5rem;
 }
 
 .label {
-    font-weight: 600;
-    color: var(--navy);
-    background: #f8f9fa;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    text-align: left;
-    min-width: 80px;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.72rem;
+    font-weight: 700;
+    min-width: 95px;
 }
 
 .value {
-    font-weight: 400;
-    color: #000;
-    background: #ffffff;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    text-align: left;
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.student-info-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.08) 0%,
+        rgba(255,255,255,0.02) 40%,
+        rgba(0,0,0,0.15) 100%
+    );
+    border-radius: 26px;
+    pointer-events: none;
 }
 
 .student-info-table {
@@ -214,12 +218,11 @@
 
 .transcript-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
     margin-bottom: 1.5rem;
     font-size: 0.81rem;
     table-layout: fixed;
-    border: 1px solid #000;
+    border-collapse: collapse;
+    border: 2px solid #000;
 }
 
 .transcript-table th,
@@ -237,8 +240,9 @@
     position: sticky;
     top: 0;
     z-index: 8;
-    background: var(--navy);
-    color: #ffffff;
+    background: #ffffff;
+    color: #000000;
+    font-weight: 800;
     font-size: 0.77rem;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -254,8 +258,9 @@
 }
 
 .transcript-table th.course-code {
-    background: var(--navy) !important;
-    color: #ffffff !important;
+    background: #ffffff;
+    color: #000;
+    font-weight: 800;
 }
 
 .transcript-table .credits,
