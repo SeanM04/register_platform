@@ -1,10 +1,10 @@
 # Graduation Analytics
 
-This document explains the current graduation analysis implementation, including the cohort-based graduation rules, the backend payload assembly, the optional AI narrative flow, and the frontend chart rendering.
+This document explains the current graduation analysis implementation, including the cohort-based graduation rules, the backend payload assembly, the optional AI narrative flow, the frontend chart rendering, and the hierarchical drilldown functionality.
 
 ## Purpose
 
-The graduation page answers five related questions:
+The graduation page answers seven related questions:
 
 - which visible students count as graduates in the current scope
 - how effective cohorts affect on-time versus delayed graduation
@@ -12,6 +12,7 @@ The graduation page answers five related questions:
 - how graduation timing is shown
 - which programmes and cohorts are closest to producing the first visible graduates when the snapshot is not yet graduate-complete
 - whether chart-level narrative copy came from an AI provider or from the local rule-based fallback
+- how hierarchical drilldown works for faculty → departments → programmes → students
 
 ## Main Routes
 
@@ -21,6 +22,8 @@ The graduation page answers five related questions:
   Main chart, KPI, and table payload
 - `/metrics/graduation/narratives/`
   Optional AI or rule-based chart narratives with diagnostics
+- `/metrics/graduation/drilldown/`
+  Drilldown endpoint for student-level data exploration
 - `/api/graduation/programmes`
   Programme filter options
 - `/api/graduation/faculties`
@@ -32,11 +35,20 @@ The graduation page depends on the shared completion logic and then applies grad
 
 ### Target graduation stage
 
-`_target_period_from_programme()` resolves the documented stage:
+`_target_period_from_programme()` resolves the documented stage based on programme type and attendance mode:
 
-- programme name contains `masters` or `master` -> period `4` -> `Year 2, Semester 2`
-- programme name contains `engineering` -> period `10` -> `Year 5, Semester 2`
-- all other programmes -> period `8` -> `Year 4, Semester 2`
+- **Masters programmes**: 3 semesters (1 year 6 months) if not delayed
+- **Engineering programmes**: 
+  - 10 semesters if conventional attendance
+  - 8 semesters if visiting attendance
+- **All other undergraduate programmes**:
+  - 8 semesters if conventional attendance
+  - 6 semesters if visiting attendance
+
+The system determines attendance type by:
+1. Checking student's course results for attendance type when student registration number is available
+2. Fallback to programme name analysis if no student registration number is provided
+3. Visiting programmes identified by keywords: "visiting", "exchange", "short"
 
 ### Effective cohort
 
@@ -65,6 +77,15 @@ The page only counts a visible student as graduated when one of these is true:
 - the student's latest visible record reaches the programme target period in that student's chronological registration sequence
 
 That chronological check matters because some source files store raw academic-year labels that jump or arrive out of order, for example `1.2`, `3.2`, then `3.1`. The page must not manufacture missing semesters from those labels. A master's student with only three visible registration periods is therefore one step from the documented period-4 target unless an explicit graduation-like decision exists.
+
+### Graduation decision recognition
+
+The system recognizes graduation decisions using `_decision_indicates_graduation()` which checks for:
+
+- "graduat", "complet", "award" (original criteria)
+- "pending", "proceed", "resubmit dissertation within 3 months" (extended criteria)
+
+This allows for more comprehensive graduation status detection.
 
 ## Backend Data Flow
 
@@ -112,26 +133,49 @@ This lookup powers the graduation-rate calculation for each graduate.
 #### KPIs
 
 - `total_graduated_students`
+  Count of all students who meet graduation criteria across all cohorts
 - `average_graduation_rate`
+  Overall institutional graduation rate: `(total_graduated / total_enrolled) * 100`
+  Calculated using cohort-based logic with all enrolled students as denominator
 - `on_time_graduation_rate`
+  Percentage of graduates who graduated on time: `(on_time_graduates / total_graduates) * 100`
+  On-time is defined as `effective_cohort == original_cohort`
 - `best_faculty_rate`
+  Highest graduation rate among all faculties
 - `best_faculty_name`
+  Name of the faculty with the highest graduation rate
 - `graduation_rate_by_faculty`
+  Dictionary mapping faculty names to their graduation rates
 
 #### Charts
 
 - `programme_graduation_rate`
-  Average graduate-rate score by programme
+  Graduation rate by programme with fields:
+  - `programme_id`, `programme_name`
+  - `graduation_rate` (percentage)
+  - `graduated_count`, `enrolled_count`
 - `cohort_graduation_rate`
-  `(graduated / enrolled) * 100` by effective cohort
+  Individual cohort graduation rates with fields:
+  - `original_cohort_label` (e.g., "May 2020 - August 2020")
+  - `effective_cohort_sort_index` (for chronological ordering)
+  - `graduation_rate` (percentage)
+  - `graduated_count`, `enrolled_count`
 - `faculty_graduation_rate`
-  Graduation rate by faculty
+  Graduation rate by faculty with hierarchical structure:
+  - `faculty` (faculty name)
+  - `graduation_rate` (percentage)
+  - `graduated_count`, `enrolled_count`
+  - `hierarchy` (nested departments and programmes data)
+    - `departments`: Array of department-level graduation stats
+    - `programmes`: Array of programme-level graduation stats
 - `graduation_timing`
-  `On-time` versus `Delayed` graduate counts
+  On-time versus delayed graduate counts with fields:
+  - `label` ("On-time" or "Delayed")
+  - `count` (number of graduates)
 - `readiness_programmes`
-  Programmes with students who are one visible step from the documented graduation target
+  Programmes with students one step from graduation target
 - `readiness_cohorts`
-  Effective cohorts with students who are one visible step from the documented graduation target
+  Cohorts with students one step from graduation target
 
 #### Meta
 
@@ -185,6 +229,24 @@ This endpoint returns:
 
 - `card_narratives`
 - `diagnostics`
+
+### `graduation_drilldown()`
+
+Calls `build_graduation_drilldown_data()` in `dashboard/graduation/services.py` to provide student-level drilldown data.
+
+Supports chart keys:
+- `programme_load` - Students in specific programme
+- `cohorts` - Students in specific cohort
+- `faculties` - Students in specific faculty
+- `departments` - Students in specific department
+- `programmes` - Students in specific programme
+
+Returns paginated student data with:
+- `rows` - Student details (name, registration number, programme, etc.)
+- `total_count` - Total matching students
+- `page` - Current page number
+- `page_size` - Items per page
+- `page_count` - Total pages
 
 ## AI Narratives
 
@@ -258,14 +320,44 @@ Responsibilities:
 Responsibilities:
 
 - fetch the graduation payload
-- render KPI values
-- render ECharts charts
+- render KPI values with safe data access (`data?.kpis?.key || default`)
+- render ECharts charts with proper backend key mapping
 - render readiness charts when the graduate set is empty or still building
 - render the student table and CSV export
 - fetch optional narratives
 - show a visible diagnostics banner for loading, AI success, fallback, or endpoint failure
 - show a visible snapshot-state message when the current dataset has progression records but no terminal graduation evidence
 - render chart-footer badges as either `AI` or `Guidance`
+- implement hierarchical drilldown for faculty charts (Faculty → Departments → Programmes → Students)
+- handle chart click events with proper data mapping
+- manage pagination with filter preservation
+- display professional hierarchical drilldown modal with interactive department/programme cards
+
+#### Chart Data Mapping
+
+The frontend correctly maps backend response keys:
+
+- `data.charts.programme_graduation_rate` → Programme chart
+- `data.charts.cohort_graduation_rate` → Cohort chart (uses `original_cohort_label`)
+- `data.charts.faculty_graduation_rate` → Faculty chart (uses `faculty` field)
+- `data.charts.graduation_timing` → Timing chart (uses `label` and `count`)
+- `data.charts.readiness_programmes` → Readiness programme chart
+- `data.charts.readiness_cohorts` → Readiness cohort chart
+
+#### Hierarchical Drilldown
+
+The faculty chart supports hierarchical drilldown:
+
+1. **Faculty Level**: Shows overall faculty graduation rate
+2. **Department Level**: Click on faculty to see departments with graduation rates
+3. **Programme Level**: Click on department to see programmes with graduation rates
+4. **Student Level**: Click on any level to see individual student details
+
+The hierarchical modal displays:
+- Department cards with graduation statistics
+- Programme cards with graduation statistics
+- Interactive navigation between levels
+- "View All Students" option for faculty-level drilldown
 
 ### CSS
 
@@ -294,6 +386,22 @@ If the graduation page shows very few or zero graduates, verify the data before 
 3. Confirm the latest visible records are being evaluated relative to the student's programme start, not against raw academic-year labels alone
 4. Use the readiness charts to confirm whether the snapshot is close to producing graduates but is still one or two visible steps short
 
+If charts are not displaying correctly:
+
+1. Check browser console for JavaScript errors
+2. Verify backend response structure matches expected keys
+3. Ensure data access uses safe navigation (`data?.charts?.key || []`)
+4. Check that chart data mapping uses correct field names (e.g., `original_cohort_label` vs `effective_cohort_label`)
+5. Verify label overflow fixes are applied (45-degree rotation, truncation)
+
+If drilldown is not working:
+
+1. Verify `/metrics/graduation/drilldown/` endpoint exists and is functional
+2. Check that chart click handlers are properly attached
+3. Ensure drilldown modal CSS is loaded
+4. Verify that `window.graduationAnalysis` is globally accessible for hierarchical drilldown
+5. Check that pagination preserves filter parameters correctly
+
 ## Tests
 
 `dashboard/graduation/tests.py` covers:
@@ -303,6 +411,45 @@ If the graduation page shows very few or zero graduates, verify the data before 
 - filter option endpoints
 - rule-based narratives
 - OpenAI narrative normalization
+
+## Key Calculation Methods
+
+### Average Graduation Rate
+
+Formula: `(total_graduated_students / total_all_students) * 100`
+
+- `total_graduated_students`: Count of all students meeting graduation criteria
+- `total_all_students`: Sum of all unique students across all original cohorts
+- Uses cohort-based logic with all enrolled students as denominator
+- Represents overall institutional effectiveness across all time
+
+### Faculty Graduation Rate
+
+Formula: `(total_faculty_graduated / total_faculty_students) * 100`
+
+- `total_faculty_graduated`: Sum of graduated students across all cohorts in faculty
+- `total_faculty_students`: Sum of enrolled students across all cohorts in faculty
+- Weighted aggregation (not simple average of cohort rates)
+- Larger cohorts have proportionally more impact on rate
+- Best faculty rate is the maximum value from `graduation_rate_by_faculty`
+
+### Individual Cohort Graduation Rate
+
+Formula: `(cohort_graduated / cohort_enrolled) * 100`
+
+- Calculated for each individual cohort separately
+- Uses `original_cohort_label` for cohort identification
+- Sorted by `effective_cohort_sort_index` for chronological display
+- Enables cohort-by-cohort performance analysis
+
+### On-Time Graduation Rate
+
+Formula: `(on_time_graduates / total_graduates) * 100`
+
+- `on_time_graduates`: Students where `effective_cohort == original_cohort`
+- `total_graduates`: All graduated students
+- Measures timeliness of graduation completion
+- Any cohort shift makes a graduate "delayed"
 
 Recommended checks after changing graduation code:
 

@@ -21,9 +21,10 @@ def _parse_int(value: Any) -> Optional[int]:
 
 
 def _safe_rate(numerator: float, denominator: float) -> float:
+    """Calculate rate safely with float precision, round only at output."""
     if not denominator:
         return 0.0
-    return round((numerator / denominator) * 100)
+    return round((numerator / denominator) * 100, 1)  # Consistent 1 decimal place
 
 
 def _normalise_gender(value: str) -> str:
@@ -107,6 +108,30 @@ def _cohort_label(period: Optional[AcademicPeriod], fallback: str = "Shifted coh
     if not period:
         return fallback
     return str(period.name or f"Cohort {period.external_id}")
+
+
+def _get_cohort_sort_index(cohort_label: str) -> int:
+    """Extract sort index from cohort label for chronological ordering."""
+    # Try to extract year from cohort label like "2023", "2023/2024", etc.
+    import re
+    year_match = re.search(r"20(\d{2})", str(cohort_label))
+    if year_match:
+        return int(year_match.group(1))
+    
+    # Fallback: use hash for consistent ordering
+    return hash(str(cohort_label)) % 10000
+
+
+def _get_all_progression_levels() -> List[tuple[int, str]]:
+    """Get all possible progression levels from Y1 S1 to Y5 S2."""
+    levels = []
+    for year in range(1, 6):  # Y1 to Y5
+        for semester in range(1, 3):  # S1 to S2
+            # Use same formula as _progression_period_index: ((year - 1) * 2) + semester
+            progression_index = ((year - 1) * 2) + semester
+            progression_label = f"Y{year} S{semester}"
+            levels.append((progression_index, progression_label))
+    return levels
 
 
 def _resolve_effective_cohort(
@@ -273,6 +298,58 @@ def _empty_completion_payload() -> Dict[str, Any]:
     }
 
 
+def count_students_in_y1s1_august_december_2025() -> Dict[str, Any]:
+    """Count students who were in Y1 S1 during August-December 2025 period."""
+    from dashboard.models import AcademicPeriod
+    
+    # Find the August-December 2025 period
+    try:
+        period_2025 = AcademicPeriod.objects.filter(
+            academic_year=2025,
+            semester__in=[1, 2]  # Both semesters of 2025
+        ).first()
+        
+        if not period_2025:
+            return {"error": "No 2025 academic period found", "count": 0}
+            
+        # Get registrations for 2025
+        registrations = Registration.objects.filter(
+            period__academic_year=2025
+        ).select_related(
+            "student",
+            "programme__department__faculty",
+            "period",
+        ).prefetch_related(
+            "course_results"
+        )
+        
+        # Count students in Y1 S1 (progression_index = 1)
+        y1s1_count = 0
+        y1s1_students = []
+        
+        for registration in registrations:
+            progression_index = _progression_period_index(registration)
+            if progression_index == 1:  # Y1 S1
+                y1s1_count += 1
+                y1s1_students.append({
+                    "regnum": registration.student.registration_number,
+                    "name": registration.student.full_name,
+                    "programme": registration.programme.normalized_name,
+                    "period": registration.period.name,
+                })
+        
+        return {
+            "period_filter": "August-December 2025",
+            "progression_level": "Y1 S1",
+            "progression_index": 1,
+            "total_students": y1s1_count,
+            "students": y1s1_students[:10],  # Show first 10 students
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "count": 0}
+
+
 def get_completion_page_data(
     year: Optional[str] = None,
     period: Optional[str] = None,
@@ -289,7 +366,6 @@ def get_completion_page_data(
     for registration in registration_history:
         registrations_by_student[registration.student.registration_number].append(registration)
 
-    all_visible_records: List[Dict[str, Any]] = []
     latest_visible_profiles: List[Dict[str, Any]] = []
 
     for student_registrations in registrations_by_student.values():
@@ -306,7 +382,7 @@ def get_completion_page_data(
         if not visible_records:
             continue
 
-        all_visible_records.extend(visible_records)
+        # Use only the latest visible record for each student (no duplication)
         latest_visible_profiles.append(
             max(
                 visible_records,
@@ -314,7 +390,7 @@ def get_completion_page_data(
             )
         )
 
-    if not all_visible_records:
+    if not latest_visible_profiles:
         return _empty_completion_payload()
 
     latest_visible_profiles.sort(key=lambda row: (row["student_name"], row["regnum"]))
@@ -323,72 +399,106 @@ def get_completion_page_data(
     for profile in latest_visible_profiles:
         gender_distribution[profile["gender_key"]] += 1
 
-    completion_average = round(
-        sum(profile["completion_rate"] for profile in latest_visible_profiles) / len(latest_visible_profiles),
-        1,
-    ) if latest_visible_profiles else 0.0
+    # Use _safe_rate for consistent statistical accuracy
+    completion_sum = sum(profile["completion_rate"] for profile in latest_visible_profiles)
+    completion_average = round(completion_sum / len(latest_visible_profiles), 1) if latest_visible_profiles else 0.0
 
-    cohort_groups: Dict[tuple[str, int, Optional[int], str], List[Dict[str, Any]]] = defaultdict(list)
-    for record in all_visible_records:
+    # Refactor: Use ORIGINAL cohort as the only cohort key - students never change cohorts
+    # Use only progression_index for lookup to avoid label matching issues
+    cohort_groups: Dict[tuple[str, int], List[Dict[str, Any]]] = defaultdict(list)
+    for profile in latest_visible_profiles:
         cohort_groups[
             (
-                record["effective_cohort_label"],
-                record["effective_cohort_sort_index"],
-                record["progression_period_index"],
-                record["progression_period_label"],
+                profile["original_cohort_label"],           # Original cohort - students stay here forever
+                profile["progression_period_index"],       # Current progression level (standardized)
             )
-        ].append(record)
+        ].append(profile)
 
+    # Get all possible progression levels (Y1 S1 to Y5 S2) for complete x-axis
+    all_progression_levels = _get_all_progression_levels()
+    
+    # Also get actual progression levels from data
+    actual_progression_levels = sorted({
+        (profile["progression_period_index"], profile["progression_period_label"])
+        for profile in latest_visible_profiles
+    })
+    
+    # Use ALL standard levels for complete x-axis, but only show data where it exists
+    combined_progression_levels = all_progression_levels
+    
+    # Get all unique cohorts from the data
+    all_cohorts = sorted({profile["original_cohort_label"] for profile in latest_visible_profiles})
+    
     cohort_completion = []
-    for (cohort_label, cohort_sort_index, progression_index, progression_label), records in sorted(
-        cohort_groups.items(),
-        key=lambda item: (item[0][1], item[0][2] or 0),
-    ):
-        completion_rate = round(
-            sum(record["completion_rate"] for record in records) / len(records),
-            1,
-        )
-        zero_completion_count = sum(1 for record in records if record["completion_rate"] == 0.0)
-        cohort_completion.append(
-            {
-                "effective_cohort_label": cohort_label,
-                "effective_cohort_sort_index": cohort_sort_index,
-                "progression_period": progression_index,
-                "progression_label": progression_label,
-                "completion_rate": completion_rate,
-                "student_count": len(records),
-                "zero_completion_count": zero_completion_count,
-                "pass_share_rate": _safe_rate(len(records) - zero_completion_count, len(records)),
-            }
-        )
+    
+    # For each cohort, include ALL progression levels (complete x-axis)
+    for cohort_label in all_cohorts:
+        cohort_sort_index = _get_cohort_sort_index(cohort_label)
+        
+        # For each progression level (complete x-axis), create a record
+        for progression_index, progression_label in combined_progression_levels:
+            # Find students at this specific level in this cohort (using simplified key)
+            profiles = cohort_groups.get((cohort_label, progression_index), [])
+            
+            # Calculate completion metrics (blank for levels without students)
+            if profiles:
+                completion_sum = sum(profile["completion_rate"] for profile in profiles)
+                completion_rate = round(completion_sum / len(profiles), 1) if profiles else 0.0
+                zero_completion_count = sum(1 for profile in profiles if profile["completion_rate"] == 0.0)
+                student_count = len(profiles)
+            else:
+                # No students at this level for this cohort - leave blank
+                completion_rate = None  # None will create blank space in heatmap
+                zero_completion_count = 0
+                student_count = 0
+            
+            cohort_completion.append(
+                {
+                    "effective_cohort_label": cohort_label,           # Keep field name for API compatibility
+                    "effective_cohort_sort_index": cohort_sort_index,  # Derive from cohort label
+                    "progression_period": progression_index,
+                    "progression_label": progression_label,
+                    "completion_rate": completion_rate,
+                    "student_count": student_count,  # 0 if no students at this level (blank cell)
+                    "zero_completion_count": zero_completion_count,
+                    "pass_share_rate": _safe_rate(student_count - zero_completion_count, student_count),
+                }
+            )
+    
+    # Sort final output: by cohort first, then by progression level
+    cohort_completion.sort(key=lambda row: (row["effective_cohort_sort_index"], row["progression_period"]))
 
+    # Refactor: Use latest_visible_profiles ONLY for consistent aggregation
     programme_groups: Dict[tuple[int, str], List[Dict[str, Any]]] = defaultdict(list)
-    for record in all_visible_records:
-        programme_groups[(record["programme_id"], record["programme_name"])].append(record)
+    for profile in latest_visible_profiles:
+        programme_groups[(profile["programme_id"], profile["programme_name"])].append(profile)
 
     programme_completion = []
-    for (programme_id, programme_name), records in programme_groups.items():
-        zero_completion_count = sum(1 for record in records if record["completion_rate"] == 0.0)
+    for (programme_id, programme_name), profiles in programme_groups.items():
+        zero_completion_count = sum(1 for profile in profiles if profile["completion_rate"] == 0.0)
+        
+        # Use float precision, round only at final output
+        completion_sum = sum(profile["completion_rate"] for profile in profiles)
+        completion_rate = round(completion_sum / len(profiles), 1) if profiles else 0.0
+        
         programme_completion.append(
             {
                 "programme_id": programme_id,
                 "programme_name": programme_name,
-                "completion_rate": round(
-                    sum(record["completion_rate"] for record in records) / len(records),
-                    1,
-                ),
-                "student_count": len({record["regnum"] for record in records}),
-                "record_count": len(records),
-                "zero_completion_rate": _safe_rate(zero_completion_count, len(records)),
+                "completion_rate": completion_rate,
+                "student_count": len(profiles),  # Each student appears exactly once
+                "record_count": len(profiles),   # Now matches student_count (no duplication)
+                "zero_completion_rate": _safe_rate(zero_completion_count, len(profiles)),
             }
         )
     programme_completion.sort(key=lambda row: row["completion_rate"], reverse=True)
 
+    # Refactor: Use latest_visible_profiles ONLY for consistent zero completion metrics
     driver_counts: Dict[str, int] = defaultdict(int)
-    for record in all_visible_records:
-        if record["completion_rate"] != 0.0:
+    for profile in latest_visible_profiles:
+        if profile["completion_rate"] != 0.0:
             continue
-        driver_counts[record["zero_completion_reason"] or "Zero completion"] += 1
+        driver_counts[profile["zero_completion_reason"] or "Zero completion"] += 1
 
     zero_completion_drivers = [
         {"label": label, "count": count}
@@ -398,10 +508,10 @@ def get_completion_page_data(
     return {
         "kpis": {
             "total_students": len(latest_visible_profiles),
-            "total_cohorts": len({row["effective_cohort_label"] for row in all_visible_records}),
+            "total_cohorts": len({profile["original_cohort_label"] for profile in latest_visible_profiles}),  # Use original cohort for consistency
             "average_completion_rate": completion_average,
-            "zero_completion_students": sum(1 for row in latest_visible_profiles if row["completion_rate"] == 0.0),
-            "shifted_students": sum(1 for row in latest_visible_profiles if row["is_shifted"]),
+            "zero_completion_students": sum(1 for profile in latest_visible_profiles if profile["completion_rate"] == 0.0),
+            "shifted_students": sum(1 for profile in latest_visible_profiles if profile["is_shifted"]),
             "gender_distribution": gender_distribution,
         },
         "charts": {

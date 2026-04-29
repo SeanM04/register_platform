@@ -9,7 +9,7 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
-import { showGraduationDrillDownModal } from "./graduation/drilldown_modal.js?v=20260428-graduation-drilldown09";
+import { showGraduationDrillDownModal } from "./graduation/drilldown_modal.js?v=20260429-graduation-refactor01";
 
 class GraduationAnalysis {
     constructor() {
@@ -625,7 +625,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No programme graduation data is available for the current filters.");
             return;
         }
@@ -668,6 +668,9 @@ class GraduationAnalysis {
                     fontWeight: 700,
                     width: 154,
                     overflow: "truncate",
+                    autoSkip: false,
+                    maxRotation: 45,
+                    minRotation: 45
                 },
                 axisLine: { lineStyle: { color: "#cbd5e1" } },
             },
@@ -717,7 +720,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No cohort graduation data is available for the current filters.");
             return;
         }
@@ -727,12 +730,7 @@ class GraduationAnalysis {
             return;
         }
 
-        const sortedRows = [...rows].sort((left, right) => {
-            if (left.effective_cohort_sort_index !== right.effective_cohort_sort_index) {
-                return left.effective_cohort_sort_index - right.effective_cohort_sort_index;
-            }
-            return String(left.effective_cohort_label || "").localeCompare(String(right.effective_cohort_label || ""));
-        });
+        const sortedRows = [...rows].sort((a, b) => a.effective_cohort_sort_index - b.effective_cohort_sort_index);
         const barCornerRadius = 5;
 
         chart.setOption({
@@ -742,7 +740,7 @@ class GraduationAnalysis {
                 ...buildTooltipBase("item"),
                 formatter: (params) => {
                     const row = sortedRows[params.dataIndex];
-                    return buildTooltipMarkup(row.effective_cohort_label, [
+                    return buildTooltipMarkup(row.original_cohort_label, [
                         { label: "Graduation rate", value: `${row.graduation_rate}%` },
                         { label: "Graduated", value: `${row.graduated_count}` },
                         { label: "Enrolled", value: `${row.enrolled_count}` },
@@ -751,12 +749,15 @@ class GraduationAnalysis {
             },
             xAxis: {
                 type: "category",
-                data: sortedRows.map((row) => formatChartLabel(row.effective_cohort_label, 18)),
+                data: sortedRows.map((row) => formatChartLabel(row.original_cohort_label, 18)),
                 axisLabel: {
                     color: "#475569",
                     fontSize: 11,
                     interval: 0,
                     rotate: sortedRows.length > 6 ? 24 : 0,
+                    autoSkip: false,
+                    maxRotation: 45,
+                    minRotation: 45
                 },
                 axisLine: { lineStyle: { color: "#cbd5e1" } },
                 axisTick: { show: true, alignWithLabel: true },
@@ -801,7 +802,7 @@ class GraduationAnalysis {
                     barWidth: 22,
                     data: sortedRows.map((row) => ({
                         value: row.graduation_rate,
-                        raw: { effective_cohort_label: row.effective_cohort_label },
+                        raw: { original_cohort_label: row.original_cohort_label },
                         itemStyle: {
                             borderRadius: [barCornerRadius, barCornerRadius, 0, 0],
                             color: buildGradient("#0f4c81", "#50b0d1", "vertical"),
@@ -821,8 +822,8 @@ class GraduationAnalysis {
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
             console.log("DEBUG: cohort graduation chart clicked:", params);
-            if (params.data && params.data.raw && params.data.raw.effective_cohort_label) {
-                this.openDrillDown('cohorts', params.data.raw.effective_cohort_label);
+            if (params.data && params.data.raw && params.data.raw.original_cohort_label) {
+                this.openDrillDown('cohorts', params.data.raw.original_cohort_label);
             }
         });
     }
@@ -832,7 +833,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No faculty graduation data is available for the current filters.");
             return;
         }
@@ -1080,7 +1081,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No graduation timing data is available for the current filters.");
             return;
         }
@@ -1160,7 +1161,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No near-graduation programme readiness data is available for the current filters.");
             return;
         }
@@ -1250,7 +1251,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No near-graduation cohort readiness data is available for the current filters.");
             return;
         }
@@ -1260,12 +1261,7 @@ class GraduationAnalysis {
             return;
         }
 
-        const sortedRows = [...rows].sort((left, right) => {
-            if (left.effective_cohort_sort_index !== right.effective_cohort_sort_index) {
-                return left.effective_cohort_sort_index - right.effective_cohort_sort_index;
-            }
-            return String(left.effective_cohort_label || "").localeCompare(String(right.effective_cohort_label || ""));
-        });
+        const sortedRows = [...rows].sort((a, b) => a.effective_cohort_sort_index - b.effective_cohort_sort_index);
         const barCornerRadius = 5;
 
         chart.setOption({

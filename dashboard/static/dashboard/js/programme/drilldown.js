@@ -134,7 +134,18 @@ const showProgrammeDrillDownModal = (payload, onPageChange = null) => {
     // Create table body
     const tbody = document.createElement('tbody');
     if (payload.rows && payload.rows.length > 0) {
-        payload.rows.forEach(row => {
+        // Sort rows by last name
+        const sortedRows = [...payload.rows].sort((a, b) => {
+            const getLastName = (row) => {
+                const fullName = String(row?.name || "").trim();
+                const parts = fullName.split(/\s+/);
+                return parts[parts.length - 1].toLowerCase();
+            };
+
+            return getLastName(a).localeCompare(getLastName(b));
+        });
+        
+        sortedRows.forEach(row => {
             const tr = document.createElement('tr');
             payload.columns.forEach(column => {
                 const td = document.createElement('td');

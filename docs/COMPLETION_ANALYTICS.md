@@ -96,6 +96,27 @@ Optional faculty filtering is applied at the query level.
 
 If a registration carries a zero-completion decision, that registration stays at `0%` and the student's future records inherit the cohort shift.
 
+### Cohort completion heatmap logic
+
+The cohort completion heatmap is generated with the following key principles:
+
+1. **Complete X-Axis**: Always shows all progression levels from Y1 S1 to Y5 S2 using `_get_all_progression_levels()`
+2. **Original Cohort Tracking**: Students are grouped by `original_cohort_label` to ensure they never change cohorts
+3. **Data-Driven Display**: 
+   - Levels with students: Show actual completion rates (rounded to 1 decimal place)
+   - Levels without students: Return `None` values for blank cells
+4. **Progression Index Calculation**: Uses formula `((year - 1) * 2) + semester` for consistent level mapping
+5. **Aggregation**: Each student contributes only once using `latest_visible_profiles`
+
+#### Heatmap Data Structure
+```python
+# For each cohort and progression level
+if profiles:
+    completion_rate = round(sum(profile["completion_rate"] for profile in profiles) / len(profiles), 1)
+else:
+    completion_rate = None  # Creates blank space in frontend
+```
+
 ### Page aggregation
 
 `get_completion_page_data()` returns a dictionary with:
@@ -116,7 +137,7 @@ If a registration carries a zero-completion decision, that registration stays at
 #### Charts
 
 - `cohort_completion`
-  Average completion by effective cohort and progression point
+  Average completion by original cohort and progression point. The heatmap displays all progression levels from Y1 S1 to Y5 S2 on the x-axis for complete timeline visibility. Cells with actual student data show real completion rates, while cells without students display as blank spaces (light gray) using `null` values.
 - `programme_completion`
   Average completion by programme, plus zero-completion share
 - `zero_completion_drivers`
@@ -237,6 +258,31 @@ Responsibilities:
 - fetch optional narratives
 - show a visible diagnostics banner for loading, AI success, fallback, or endpoint failure
 - render chart-footer badges as either `AI` or `Guidance`
+- handle cohort completion heatmap with complete x-axis and blank cells for missing data
+
+#### Heatmap Implementation
+
+The cohort completion heatmap uses ECharts with special configuration:
+
+```javascript
+// Visual map with null value handling
+visualMap: {
+    type: "piecewise",
+    pieces: [
+        { value: null, label: "No data", color: "#f1f5f9" },  // Blank cells
+        { min: 0, max: 49, label: "0% - 49%", color: "#dc2626" },
+        { min: 50, max: 74, label: "50% - 74%", color: "#f59e0b" },
+        { min: 75, max: 100, label: "75% - 100%", color: "#16a34a" },
+    ]
+}
+
+// Tooltip handling for null values
+formatter: (params) => {
+    const completionRate = params.data.completionRate;
+    const completionText = completionRate === null ? "No data" : `${Math.round(completionRate)}%`;
+    // ... rest of tooltip logic
+}
+```
 
 ### CSS
 
@@ -285,6 +331,33 @@ If the completion page shows local guidance instead of AI copy during developmen
 
 If the page shows a missing narratives endpoint error, the dev server is usually running an older URL map and needs a restart.
 
+## Heatmap Debugging and Development
+
+### Debugging Commands
+
+Several management commands are available for heatmap debugging:
+
+- `python manage.py debug_heatmap_zeros` - Shows how completion rates are calculated and verifies null vs zero values
+- `python manage.py show_heatmap_calculation` - Demonstrates the completion rate calculation process with sample data
+- `python manage.py count_y1s1_2025` - Counts students in specific progression levels and periods
+- `python manage.py check_available_years` - Lists all academic years with data distribution
+- `python manage.py find_cohort_218` - Shows cohort structure and academic year relationships
+
+### Common Issues and Solutions
+
+1. **Zeros appearing instead of blank spaces**:
+   - Backend: Ensure `completion_rate = None` for empty cells
+   - Frontend: Verify visualMap includes `{ value: null, label: "No data", color: "#f1f5f9" }`
+   - Tooltip: Check null handling in formatter function
+
+2. **Missing progression levels on x-axis**:
+   - Verify `_get_all_progression_levels()` returns all 10 levels (Y1 S1 to Y5 S2)
+   - Check that `combined_progression_levels = all_progression_levels` is used
+
+3. **Inconsistent cohort tracking**:
+   - Ensure grouping uses `original_cohort_label` not `effective_cohort_label`
+   - Verify students appear only once in aggregations
+
 ## Tests
 
 `dashboard/completion/tests.py` covers:
@@ -295,10 +368,12 @@ If the page shows a missing narratives endpoint error, the dev server is usually
 - four-failed-course zero-completion behavior
 - rule-based narratives
 - OpenAI narrative normalization
+- heatmap data structure and null value handling
 
 Recommended checks after changing completion code:
 
 ```powershell
 python manage.py test dashboard.completion.tests
 python manage.py check
+python manage.py debug_heatmap_zeros  # Verify heatmap behavior
 ```

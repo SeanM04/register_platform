@@ -9,7 +9,7 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
-import { showCompletionDrillDownModal } from "./completion/drilldown_modal.js?v=20260428-completion-drilldown08";
+import { showCompletionDrillDownModal } from "./completion/drilldown_modal.js?v=20260429-pagination-debug01";
 
 class CompletionAnalysis {
     constructor() {
@@ -593,7 +593,7 @@ class CompletionAnalysis {
             value: [
                 progressionLabels.indexOf(row.progression_label),
                 cohortLabels.indexOf(row.effective_cohort_label),
-                row.completion_rate,
+                row.completion_rate,  // Keep null for blank cells
             ],
             studentCount: row.student_count,
             zeroCompletionCount: row.zero_completion_count,
@@ -612,15 +612,21 @@ class CompletionAnalysis {
             },
             tooltip: {
                 ...buildTooltipBase("item"),
-                formatter: (params) => buildTooltipMarkup(
-                    `${params.data.name} · ${params.data.progressionLabel}`,
-                    [
-                        { label: "Average completion", value: `${Math.round(params.data.completionRate)}%` },
-                        { label: "Visible records", value: `${params.data.studentCount}` },
-                        { label: "Zero completion", value: `${params.data.zeroCompletionCount}` },
-                        { label: "Non-zero share", value: `${Math.round(params.data.passShareRate)}%` },
-                    ]
-                ),
+                formatter: (params) => {
+                    // Handle null completion rate (blank cells)
+                    const completionRate = params.data.completionRate;
+                    const completionText = completionRate === null ? "No data" : `${Math.round(completionRate)}%`;
+                    
+                    return buildTooltipMarkup(
+                        `${params.data.name} · ${params.data.progressionLabel}`,
+                        [
+                            { label: "Average completion", value: completionText },
+                            { label: "Visible records", value: `${params.data.studentCount}` },
+                            { label: "Zero completion", value: `${params.data.zeroCompletionCount}` },
+                            { label: "Non-zero share", value: params.data.studentCount > 0 ? `${Math.round(params.data.passShareRate)}%` : "N/A" },
+                        ]
+                    );
+                },
             },
             xAxis: {
                 type: "category",
@@ -656,6 +662,7 @@ class CompletionAnalysis {
                 bottom: 0,
                 text: ["100%", "0%"],
                 pieces: [
+        { value: null, label: "No data", color: "#f1f5f9" },
         { min: 0, max: 49, label: "0% - 49%", color: "#dc2626" },
         { min: 50, max: 74, label: "50% - 74%", color: "#f59e0b" },
         { min: 75, max: 100, label: "75% - 100%", color: "#16a34a" },
