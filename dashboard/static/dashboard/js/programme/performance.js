@@ -9,7 +9,7 @@ import {
     setChartFallback,
 } from "./shared.js?v=20260414-msc-support01";
 import { initialisePerformanceNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
-import { openProgrammeDrillDown } from "./drilldown.js?v=20260416-programme-drilldown19";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260430-unified-spinner01";
 
 const buildSymbolSize = (students, maxStudents) => {
     if (!maxStudents) {

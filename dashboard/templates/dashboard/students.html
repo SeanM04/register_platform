@@ -33,6 +33,7 @@
                     <col class="students-col-average">
                     <col class="students-col-decision">
                     <col class="students-col-gender">
+                    <col class="students-col-age">
                 </colgroup>
                 <thead>
                     <tr>
@@ -41,7 +42,8 @@
                         <th class="students-th-programme"><span>Programme</span></th>
                         <th><span>Average Mark</span></th>
                         <th><span>Decision</span></th>
-                        <th class="students-th-gender"><span>Student</span></th>
+                        <th class="students-th-gender"><span>Gender</span></th>
+                        <th class="students-th-age"><span>Age</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,10 +59,17 @@
                         <td>{{ student.average_mark }}%</td>
                         <td>{{ student.decision }}</td>
                         <td class="students-td-gender">{{ student.gender }}</td>
+                        <td class="students-td-age">
+                            {% if student.age %}
+                                {{ student.age }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td class="empty-state" colspan="6">No students matched your search.</td>
+                        <td class="empty-state" colspan="7">No students matched your search.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

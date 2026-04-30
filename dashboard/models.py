@@ -106,6 +106,71 @@ class Student(TimeStampedModel):
             years -= 1
         return years
 
+    @property
+    def age_with_details(self):
+        """Return age with detailed breakdown (years, months, days)."""
+        if not self.date_of_birth:
+            return None
+        
+        today = timezone.localdate()
+        birth_date = self.date_of_birth
+        
+        # Calculate years
+        years = today.year - birth_date.year
+        if (today.month, today.day) < (birth_date.month, birth_date.day):
+            years -= 1
+        
+        # Calculate months
+        months = today.month - birth_date.month
+        if months < 0:
+            months += 12
+            years -= 1
+        
+        # Calculate days
+        days = today.day - birth_date.day
+        if days < 0:
+            # Get days in previous month
+            import calendar
+            if today.month == 1:
+                prev_month = 12
+                prev_year = today.year - 1
+            else:
+                prev_month = today.month - 1
+                prev_year = today.year
+            
+            days_in_prev_month = calendar.monthrange(prev_year, prev_month)[1]
+            days += days_in_prev_month
+            months -= 1
+            if months < 0:
+                months += 12
+                years -= 1
+        
+        return {
+            'years': years,
+            'months': months,
+            'days': days,
+            'formatted': f"{years} years, {months} months, {days} days"
+        }
+
+    @property
+    def age_category(self):
+        """Categorize student by age for demographic analysis."""
+        age = self.current_age
+        if age is None:
+            return "Unknown"
+        elif age < 18:
+            return "Under 18"
+        elif age < 20:
+            return "18-19"
+        elif age < 22:
+            return "20-21"
+        elif age < 25:
+            return "22-24"
+        elif age < 30:
+            return "25-29"
+        else:
+            return "30+"
+
 
 class AttendanceType(TimeStampedModel):
     external_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)

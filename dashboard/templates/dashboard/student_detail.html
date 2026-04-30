@@ -9,6 +9,18 @@
 
 {% block extra_js %}
 <script type="module" src="{% static 'dashboard/js/student_detail.js' %}?v=20260420-student-scoped-filters01"></script>
+<script src="{% static 'dashboard/js/real_time_age.js' %}"></script>
+{% if student.date_of_birth %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add data-age-dob attribute to age display
+    const ageDisplay = document.querySelector('.age-primary');
+    if (ageDisplay) {
+        ageDisplay.setAttribute('data-age-dob', '{{ student.date_of_birth|date:"Y-m-d" }}');
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -88,7 +100,13 @@
                 </div>
                 <div>
                     <dt>Age:</dt>
-                    <dd>{{ student.age }}</dd>
+                    <dd>
+                        {% if student.age %}
+                            {{ student.age }}
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </dd>
                 </div>
                 <div>
                     <dt>Decision:</dt>

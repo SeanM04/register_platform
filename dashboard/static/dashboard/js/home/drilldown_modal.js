@@ -314,8 +314,9 @@ export const showLoadingDrillDownModal = (title, subtitle = "") => {
         toneClass: "is-loading",
         bodyHtml: `
             <div class="home-drilldown-state">
-                <p class="home-drilldown-state-title">Loading student rows...</p>
-                <p class="home-drilldown-state-copy">This drill-down is collecting the current student slice for you.</p>
+                <div class="home-drilldown-spinner"></div>
+                <p class="home-drilldown-state-title">Loading student data...</p>
+                <p class="home-drilldown-state-copy">Please wait while we gather the requested information.</p>
             </div>
         `.trim(),
     });

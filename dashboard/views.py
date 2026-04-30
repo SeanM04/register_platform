@@ -944,6 +944,7 @@ def student_list(request):
             "average_mark": round(student.scoped_average_mark or 0),
             "decision": str(student.latest_decision or "").title().replace(" And ", " & "),
             "gender": student.gender.title(),
+            "age": student.current_age,
             "detail_slug": student.registration_number.lower(),
         }
         for student in page_obj.object_list
@@ -1418,7 +1419,10 @@ def student_detail(request, slug):
         "term_name": selected_registration.period.name.title() if selected_registration else "",
         "decision": selected_registration.decision.title().replace(" And ", " & ") if selected_registration else "",
         "gender": student_record.gender.title(),
-        "age": "",
+        "age": student_record.current_age if student_record.current_age is not None else None,
+        "age_with_details": student_record.age_with_details,
+        "age_category": student_record.age_category,
+        "date_of_birth": student_record.date_of_birth.strftime('%B %d, %Y') if student_record.date_of_birth else None,
         "place_of_birth": student_record.place_of_birth,
         "cumulative_grade": round(average_mark, 1),
         "term_tabs": term_tabs,

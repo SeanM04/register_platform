@@ -533,7 +533,6 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             
             row_data = {
                 "name": student.full_name,
-                "registration_number": reg_number,
                 "programme": programme.name if programme else "Unassigned",
                 "department": programme.department.name if programme and programme.department else "Unassigned",
                 "decision": registration.decision or "Unknown",
@@ -548,7 +547,6 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             "subtitle": f"Students currently registered in {bucket_key}.",
             "columns": [
                 {"key": "name", "label": "Student Name"},
-                {"key": "registration_number", "label": "Registration Number"},
                 {"key": "programme", "label": "Programme"},
                 {"key": "department", "label": "Department"},
                 {"key": "decision", "label": "Decision"},

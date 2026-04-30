@@ -122,7 +122,6 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
             
             row_data = {
                 "name": student.full_name,
-                "registration_number": reg_number,
                 "programme": programme.name if programme else "Unassigned",
                 "department": programme.department.name if programme and programme.department else "Unassigned",
                 "faculty": programme.department.faculty.name if programme and programme.department and programme.department.faculty else "Unassigned",
@@ -138,7 +137,6 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
             "subtitle": f"Students for {chart_key}: {bucket_key}",
             "columns": [
                 {"key": "name", "label": "Student Name"},
-                {"key": "registration_number", "label": "Registration Number"},
                 {"key": "programme", "label": "Programme"},
                 {"key": "department", "label": "Department"},
                 {"key": "faculty", "label": "Faculty"},

@@ -438,6 +438,7 @@ def get_graduation_page_data(
                 "student_name": latest_visible["student_name"],
                 "programme_id": latest_visible["programme_id"],
                 "programme_name": latest_visible["programme_name"],
+                "department_name": latest_visible.get("department_name", "Unknown"),
                 "faculty": latest_visible["faculty_name"],
                 "is_graduated": True,  # This record represents a graduated student
                 "on_time": effective_cohort_label == original_cohort_label,
@@ -764,6 +765,7 @@ def get_graduation_page_data(
                 "regnum": student["regnum"],
                 "student_name": student["student_name"],
                 "programme_name": student["programme_name"],
+                "department_name": student.get("department_name", "Unknown"),
                 "faculty": student["faculty"],
                 "is_graduated": student["is_graduated"],
                 "on_time": student["on_time"],

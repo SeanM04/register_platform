@@ -649,7 +649,6 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
         "subtitle": f"{_format_count(len(outcome_profiles))} students in the {label.lower()} outcome slice.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Student Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -657,7 +656,6 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
     minimal_rows = [
         {
             "name": profile["name"],
-            "registration_number": profile["registration_number"],
             "programme": profile["programme"],
             "detail_url": profile["detail_url"],
         }
@@ -687,7 +685,6 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         minimal_rows.append(
             {
                 "name": profile["name"],
-                "registration_number": profile["registration_number"],
                 "programme": profile["programme"],
                 "detail_url": _build_student_detail_url(request, profile["detail_slug"]),
             }
@@ -698,7 +695,6 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         "subtitle": f"{_format_count(len(minimal_rows))} students in the {selected_band['label'].lower()} risk band.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Student Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -812,7 +808,6 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
                 "subtitle": f"Students currently enrolled in {prog_name} programme.",
                 "columns": [
                     {"key": "name", "label": "Student Name"},
-                    {"key": "registration_number", "label": "Registration Number"},
                     {"key": "programme", "label": "Programme"},
                     {"key": "department", "label": "Department"},
                     {"key": "faculty", "label": "Faculty"},
@@ -978,7 +973,6 @@ def _build_progress_drilldown_payload(request, registrations, bucket_key, page, 
         
         student_rows.append({
             "name": student.full_name,
-            "registration_number": reg_number,
             "programme": registration.programme.name if registration.programme else "Unassigned",
             "decision": normalize_decision_label(registration.decision),
             "detail_url": reverse("dashboard:student-detail", args=[reg_number.lower()]),

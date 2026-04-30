@@ -202,8 +202,9 @@ export const showRiskDrillDownLoadingModal = (title, subtitle = "") => {
         toneClass: "is-loading",
         bodyHtml: `
             <div class="risk-drilldown-state">
-                <p class="risk-drilldown-state-title">Loading matching students...</p>
-                <p class="risk-drilldown-state-copy">This drill-down is collecting the current student slice for you.</p>
+                <div class="risk-drilldown-spinner"></div>
+                <p class="risk-drilldown-state-title">Loading student data...</p>
+                <p class="risk-drilldown-state-copy">Please wait while we gather the requested information.</p>
             </div>
         `.trim(),
     });
