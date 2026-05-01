@@ -32,6 +32,7 @@ SIDEBAR_ITEMS = [
     {"key": "graduation", "label": "Graduation Analysis", "url_name": "dashboard:graduation"},
     {"key": "risk", "label": "Risk Analysis", "url_name": "dashboard:risk"},
     {"key": "insights", "label": "Insights", "url_name": "dashboard:insights"},
+    {"key": "reports", "label": "Reports", "url_name": "dashboard:reports", "requires_admin": True},
     {"key": "system-management", "label": "System Management", "url_name": "dashboard:system-management", "requires_admin": True},
 ]
 

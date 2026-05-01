@@ -18,6 +18,7 @@ from .views import (
     student_transcript,
     system_management_view,
 )
+from .reports.views import reports_export_csv, reports_generate, reports_periods_by_year, reports_view
 from .completion.views import (
     completion_view, 
     completion_payload, 
@@ -87,5 +88,9 @@ urlpatterns = [
     path("metrics/graduation/drilldown/", graduation_drilldown, name="graduation-drilldown"),
     path("api/graduation/programmes", graduation_programmes, name="graduation-programmes"),
     path("api/graduation/faculties", graduation_faculties, name="graduation-faculties"),
+    path("reports/", reports_view, name="reports"),
+    path("metrics/reports/generate/", reports_generate, name="reports-generate"),
+    path("metrics/reports/export/", reports_export_csv, name="reports-export"),
+    path("api/reports/periods-by-year/", reports_periods_by_year, name="reports-periods-by-year"),
     path("system-management/", system_management_view, name="system-management"),
 ]
