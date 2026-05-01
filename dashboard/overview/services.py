@@ -649,7 +649,6 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
         "subtitle": f"{_format_count(len(outcome_profiles))} students in the {label.lower()} outcome slice.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Student Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -657,7 +656,6 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
     minimal_rows = [
         {
             "name": profile["name"],
-            "registration_number": profile["registration_number"],
             "programme": profile["programme"],
             "detail_url": profile["detail_url"],
         }
@@ -687,7 +685,6 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         minimal_rows.append(
             {
                 "name": profile["name"],
-                "registration_number": profile["registration_number"],
                 "programme": profile["programme"],
                 "detail_url": _build_student_detail_url(request, profile["detail_slug"]),
             }
@@ -698,7 +695,6 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         "subtitle": f"{_format_count(len(minimal_rows))} students in the {selected_band['label'].lower()} risk band.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Student Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -812,7 +808,6 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
                 "subtitle": f"Students currently enrolled in {prog_name} programme.",
                 "columns": [
                     {"key": "name", "label": "Student Name"},
-                    {"key": "registration_number", "label": "Registration Number"},
                     {"key": "programme", "label": "Programme"},
                     {"key": "department", "label": "Department"},
                     {"key": "faculty", "label": "Faculty"},
@@ -939,26 +934,52 @@ def _build_progress_drilldown_payload(request, registrations, bucket_key, page, 
         if status == bucket_key:
             filtered_registrations.append(registration)
     
-    # Build student rows
-    student_rows = []
+    # First deduplicate students across all registrations
+    unique_students = {}
+    seen_students = set()  # Track seen registration numbers to avoid duplicates
+    
     for registration in filtered_registrations:
         student = registration.student
-        student_rows.append({
-            "name": student.full_name,
-            "registration_number": student.registration_number,
-            "programme": registration.programme.name if registration.programme else "Unassigned",
-            "decision": normalize_decision_label(registration.decision),
-            "detail_url": reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
-        })
+        reg_number = student.registration_number
+        
+        # Skip if we've already processed this student
+        if reg_number in seen_students:
+            continue
+            
+        seen_students.add(reg_number)
+        
+        # Store the latest registration for this student
+        unique_students[reg_number] = {
+            "student": student,
+            "registration": registration
+        }
     
-    # Sort by name
-    student_rows.sort(key=lambda x: x["name"])
+    # Convert to list and sort by name
+    unique_student_list = list(unique_students.values())
+    unique_student_list.sort(key=lambda x: x["student"].full_name)
     
-    # Apply pagination
-    total_count = len(student_rows)
+    # Apply pagination to unique students
+    total_count = len(unique_student_list)
     total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
     offset = (page - 1) * page_size
-    paginated_rows = student_rows[offset:offset + page_size]
+    paginated_students = unique_student_list[offset:offset + page_size]
+    
+    # Build student rows from paginated unique students
+    student_rows = []
+    for student_data in paginated_students:
+        student = student_data["student"]
+        registration = student_data["registration"]
+        reg_number = student.registration_number
+        
+        student_rows.append({
+            "name": student.full_name,
+            "programme": registration.programme.name if registration.programme else "Unassigned",
+            "decision": normalize_decision_label(registration.decision),
+            "detail_url": reverse("dashboard:student-detail", args=[reg_number.lower()]),
+        })
+    
+    # The paginated_rows variable is used for the response
+    paginated_rows = student_rows
     
     return {
         "rows": paginated_rows,

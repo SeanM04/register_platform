@@ -9,7 +9,7 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
-import { showCompletionDrillDownModal } from "./completion/drilldown_modal.js?v=20260428-completion-drilldown08";
+import { showCompletionDrillDownModal } from "./completion/drilldown_modal.js?v=20260429-pagination-debug01";
 
 class CompletionAnalysis {
     constructor() {
@@ -30,6 +30,9 @@ class CompletionAnalysis {
     async openDrillDown(chartKey, bucketKey, page = 1) {
         try {
             console.log("DEBUG: openDrillDown called with:", { chartKey, bucketKey, page });
+            
+            // Show instant loading indicator
+            this.showDrilldownLoading();
             
             // Build drilldown request URL
             const drilldownUrl = new URL("/metrics/completion/drilldown/", window.location.origin);
@@ -59,6 +62,7 @@ class CompletionAnalysis {
             console.log("DEBUG: drilldown response:", result);
             
             if (result.status === 'success' && result.data) {
+                this.hideDrilldownLoading();
                 showCompletionDrillDownModal(result.data, (page) => {
                     this.openDrillDown(chartKey, bucketKey, page);
                 });
@@ -67,6 +71,7 @@ class CompletionAnalysis {
             }
             
         } catch (error) {
+            this.hideDrilldownLoading();
             console.error("Error opening drilldown:", error);
             // Show error modal or notification
             alert(`Error loading drilldown data: ${error.message}`);
@@ -593,7 +598,7 @@ class CompletionAnalysis {
             value: [
                 progressionLabels.indexOf(row.progression_label),
                 cohortLabels.indexOf(row.effective_cohort_label),
-                row.completion_rate,
+                row.completion_rate,  // Keep null for blank cells
             ],
             studentCount: row.student_count,
             zeroCompletionCount: row.zero_completion_count,
@@ -612,15 +617,21 @@ class CompletionAnalysis {
             },
             tooltip: {
                 ...buildTooltipBase("item"),
-                formatter: (params) => buildTooltipMarkup(
-                    `${params.data.name} · ${params.data.progressionLabel}`,
-                    [
-                        { label: "Average completion", value: `${Math.round(params.data.completionRate)}%` },
-                        { label: "Visible records", value: `${params.data.studentCount}` },
-                        { label: "Zero completion", value: `${params.data.zeroCompletionCount}` },
-                        { label: "Non-zero share", value: `${Math.round(params.data.passShareRate)}%` },
-                    ]
-                ),
+                formatter: (params) => {
+                    // Handle null completion rate (blank cells)
+                    const completionRate = params.data.completionRate;
+                    const completionText = completionRate === null ? "No data" : `${Math.round(completionRate)}%`;
+                    
+                    return buildTooltipMarkup(
+                        `${params.data.name} · ${params.data.progressionLabel}`,
+                        [
+                            { label: "Average completion", value: completionText },
+                            { label: "Visible records", value: `${params.data.studentCount}` },
+                            { label: "Zero completion", value: `${params.data.zeroCompletionCount}` },
+                            { label: "Non-zero share", value: params.data.studentCount > 0 ? `${Math.round(params.data.passShareRate)}%` : "N/A" },
+                        ]
+                    );
+                },
             },
             xAxis: {
                 type: "category",
@@ -656,6 +667,7 @@ class CompletionAnalysis {
                 bottom: 0,
                 text: ["100%", "0%"],
                 pieces: [
+        { value: null, label: "No data", color: "#f1f5f9" },
         { min: 0, max: 49, label: "0% - 49%", color: "#dc2626" },
         { min: 50, max: 74, label: "50% - 74%", color: "#f59e0b" },
         { min: 75, max: 100, label: "75% - 100%", color: "#16a34a" },
@@ -1252,6 +1264,115 @@ class CompletionAnalysis {
         const modal = document.getElementById("error-modal");
         if (modal) {
             modal.classList.remove("active");
+        }
+    }
+
+    showDrilldownLoading() {
+        // Use renderModal approach for consistency
+        const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "" }) => {
+            // Close any existing modal
+            this.hideDrilldownLoading();
+            
+            const modalOverlay = document.createElement("div");
+            modalOverlay.id = "completion-drilldown-loading-modal";
+            modalOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10010;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+            
+            const modalDialog = document.createElement("div");
+            modalDialog.style.cssText = `
+                background: white;
+                padding: 30px;
+                border-radius: 8px;
+                text-align: center;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                max-width: 400px;
+                border: 1px solid rgba(184, 200, 217, 0.9);
+            `;
+            
+            const modalHeader = document.createElement("div");
+            modalHeader.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 20px;
+            `;
+            
+            const modalTitle = document.createElement("h2");
+            modalTitle.textContent = title;
+            modalTitle.style.cssText = `
+                margin: 0;
+                color: #0d2f54;
+                font-size: 1.05rem;
+                font-weight: 700;
+                line-height: 1.3;
+            `;
+            
+            const modalClose = document.createElement("button");
+            modalClose.textContent = "×";
+            modalClose.style.cssText = `
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+                padding: 0;
+                width: 24px;
+                height: 24px;
+            `;
+            
+            const modalBody = document.createElement("div");
+            modalBody.innerHTML = bodyHtml;
+            
+            modalHeader.appendChild(modalTitle);
+            modalHeader.appendChild(modalClose);
+            modalDialog.appendChild(modalHeader);
+            modalDialog.appendChild(modalBody);
+            modalOverlay.appendChild(modalDialog);
+            
+            document.body.appendChild(modalOverlay);
+            
+            // Handle close button
+            modalClose.addEventListener('click', () => {
+                this.hideDrilldownLoading();
+            });
+            
+            // Handle backdrop click
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    this.hideDrilldownLoading();
+                }
+            });
+        };
+        
+        renderModal({
+            title: "Loading Drilldown Data",
+            subtitle: "",
+            toneClass: "is-loading",
+            bodyHtml: `
+                <div class="completion-drilldown-state">
+                    <div class="completion-drilldown-spinner"></div>
+                    <p class="completion-drilldown-state-title">Loading student data...</p>
+                    <p class="completion-drilldown-state-copy">Please wait while we gather the requested information.</p>
+                </div>
+            `.trim(),
+        });
+    }
+
+    hideDrilldownLoading() {
+        const loadingOverlay = document.getElementById("completion-drilldown-loading-modal");
+        if (loadingOverlay) {
+            loadingOverlay.remove();
         }
     }
 }

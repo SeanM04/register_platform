@@ -9,7 +9,7 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
-import { showGraduationDrillDownModal } from "./graduation/drilldown_modal.js?v=20260428-graduation-drilldown09";
+import { showGraduationDrillDownModal } from "./graduation/drilldown_modal.js?v=20260429-graduation-refactor01";
 
 class GraduationAnalysis {
     constructor() {
@@ -22,6 +22,7 @@ class GraduationAnalysis {
         this.currentPage = 1;
         this.itemsPerPage = 10;
         this.chartInstances = {};
+        this.resizeTimeout = null;
 
         this.init();
     }
@@ -29,6 +30,9 @@ class GraduationAnalysis {
     async openDrillDown(chartKey, bucketKey, page = 1) {
         try {
             console.log("DEBUG: openDrillDown called with:", { chartKey, bucketKey, page });
+            
+            // Show instant loading indicator
+            this.showDrilldownLoading();
             
             // Build drilldown request URL
             const drilldownUrl = new URL("/metrics/graduation/drilldown/", window.location.origin);
@@ -48,24 +52,42 @@ class GraduationAnalysis {
             
             console.log("DEBUG: drilldownUrl:", drilldownUrl.toString());
             
-            // Fetch drilldown data
-            const response = await fetch(drilldownUrl.toString());
-            if (!response.ok) {
-                throw new Error(`Drilldown request failed: ${response.status}`);
-            }
+            // Fetch drilldown data with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
             
-            const result = await response.json();
-            console.log("DEBUG: drilldown response:", result);
-            
-            if (result.status === 'success' && result.data) {
-                showGraduationDrillDownModal(result.data, (page) => {
-                    this.openDrillDown(chartKey, bucketKey, page);
+            try {
+                const response = await fetch(drilldownUrl.toString(), {
+                    signal: controller.signal
                 });
-            } else {
-                throw new Error(result.message || 'No drilldown data available');
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`Drilldown request failed: ${response.status} ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log("DEBUG: drilldown response:", result);
+                
+                if (result.status === 'success' && result.data) {
+                    this.hideDrilldownLoading();
+                    showGraduationDrillDownModal(result.data, (page) => {
+                        this.openDrillDown(chartKey, bucketKey, page);
+                    });
+                } else {
+                    throw new Error(result.message || 'No drilldown data available');
+                }
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Drilldown request timed out. Please try again.');
+                }
+                throw fetchError;
             }
             
         } catch (error) {
+            this.hideDrilldownLoading();
             console.error("Error opening drilldown:", error);
             // Show error modal or notification
             alert(`Error loading drilldown data: ${error.message}`);
@@ -111,17 +133,17 @@ class GraduationAnalysis {
             searchInput.addEventListener("input", () => {
                 this.currentPage = 1;
                 this.updateStudentsTable();
-            });
+            }, { passive: true });
         }
 
         const exportButton = document.getElementById("export-students");
         if (exportButton) {
-            exportButton.addEventListener("click", () => this.exportStudentsData());
+            exportButton.addEventListener("click", () => this.exportStudentsData(), { passive: true });
         }
 
         const errorModalClose = document.getElementById("error-modal-close");
         if (errorModalClose) {
-            errorModalClose.addEventListener("click", () => this.hideErrorModal());
+            errorModalClose.addEventListener("click", () => this.hideErrorModal(), { passive: true });
         }
 
         const errorModal = document.getElementById("error-modal");
@@ -130,28 +152,29 @@ class GraduationAnalysis {
                 if (event.target === errorModal) {
                     this.hideErrorModal();
                 }
-            });
+            }, { passive: true });
         }
 
         document.querySelectorAll("[data-chart-fullscreen-toggle]").forEach((button) => {
-            button.addEventListener("click", (event) => this.toggleChartFullscreen(event.currentTarget));
+            button.addEventListener("click", (event) => this.toggleChartFullscreen(event.currentTarget), { passive: true });
         });
 
         document.querySelectorAll(".demographic-accordion-toggle").forEach((button) => {
             button.addEventListener("click", () => {
-                window.setTimeout(() => this.resizeCharts(), 260);
-            });
+                // Use a more efficient approach with debouncing
+                this.debouncedResizeCharts();
+            }, { passive: true });
         });
 
-        window.addEventListener("resize", () => this.resizeCharts());
+        window.addEventListener("resize", () => this.debouncedResizeCharts(), { passive: true });
         document.addEventListener("fullscreenchange", () => {
             this.syncFullscreenButtons();
-            this.resizeCharts();
-        });
+            this.debouncedResizeCharts();
+        }, { passive: true });
         document.addEventListener("webkitfullscreenchange", () => {
             this.syncFullscreenButtons();
-            this.resizeCharts();
-        });
+            this.debouncedResizeCharts();
+        }, { passive: true });
     }
 
     async loadData() {
@@ -625,7 +648,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No programme graduation data is available for the current filters.");
             return;
         }
@@ -668,6 +691,9 @@ class GraduationAnalysis {
                     fontWeight: 700,
                     width: 154,
                     overflow: "truncate",
+                    autoSkip: false,
+                    maxRotation: 45,
+                    minRotation: 45
                 },
                 axisLine: { lineStyle: { color: "#cbd5e1" } },
             },
@@ -717,7 +743,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No cohort graduation data is available for the current filters.");
             return;
         }
@@ -727,12 +753,7 @@ class GraduationAnalysis {
             return;
         }
 
-        const sortedRows = [...rows].sort((left, right) => {
-            if (left.effective_cohort_sort_index !== right.effective_cohort_sort_index) {
-                return left.effective_cohort_sort_index - right.effective_cohort_sort_index;
-            }
-            return String(left.effective_cohort_label || "").localeCompare(String(right.effective_cohort_label || ""));
-        });
+        const sortedRows = [...rows].sort((a, b) => a.effective_cohort_sort_index - b.effective_cohort_sort_index);
         const barCornerRadius = 5;
 
         chart.setOption({
@@ -742,7 +763,7 @@ class GraduationAnalysis {
                 ...buildTooltipBase("item"),
                 formatter: (params) => {
                     const row = sortedRows[params.dataIndex];
-                    return buildTooltipMarkup(row.effective_cohort_label, [
+                    return buildTooltipMarkup(row.original_cohort_label, [
                         { label: "Graduation rate", value: `${row.graduation_rate}%` },
                         { label: "Graduated", value: `${row.graduated_count}` },
                         { label: "Enrolled", value: `${row.enrolled_count}` },
@@ -751,12 +772,15 @@ class GraduationAnalysis {
             },
             xAxis: {
                 type: "category",
-                data: sortedRows.map((row) => formatChartLabel(row.effective_cohort_label, 18)),
+                data: sortedRows.map((row) => formatChartLabel(row.original_cohort_label, 18)),
                 axisLabel: {
                     color: "#475569",
                     fontSize: 11,
                     interval: 0,
                     rotate: sortedRows.length > 6 ? 24 : 0,
+                    autoSkip: false,
+                    maxRotation: 45,
+                    minRotation: 45
                 },
                 axisLine: { lineStyle: { color: "#cbd5e1" } },
                 axisTick: { show: true, alignWithLabel: true },
@@ -801,7 +825,7 @@ class GraduationAnalysis {
                     barWidth: 22,
                     data: sortedRows.map((row) => ({
                         value: row.graduation_rate,
-                        raw: { effective_cohort_label: row.effective_cohort_label },
+                        raw: { original_cohort_label: row.original_cohort_label },
                         itemStyle: {
                             borderRadius: [barCornerRadius, barCornerRadius, 0, 0],
                             color: buildGradient("#0f4c81", "#50b0d1", "vertical"),
@@ -821,8 +845,8 @@ class GraduationAnalysis {
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
             console.log("DEBUG: cohort graduation chart clicked:", params);
-            if (params.data && params.data.raw && params.data.raw.effective_cohort_label) {
-                this.openDrillDown('cohorts', params.data.raw.effective_cohort_label);
+            if (params.data && params.data.raw && params.data.raw.original_cohort_label) {
+                this.openDrillDown('cohorts', params.data.raw.original_cohort_label);
             }
         });
     }
@@ -832,7 +856,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No faculty graduation data is available for the current filters.");
             return;
         }
@@ -1080,7 +1104,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No graduation timing data is available for the current filters.");
             return;
         }
@@ -1160,7 +1184,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No near-graduation programme readiness data is available for the current filters.");
             return;
         }
@@ -1250,7 +1274,7 @@ class GraduationAnalysis {
         if (!element) {
             return;
         }
-        if (!rows.length) {
+        if (!rows || rows.length === 0) {
             setChartFallback(element, "No near-graduation cohort readiness data is available for the current filters.");
             return;
         }
@@ -1260,12 +1284,7 @@ class GraduationAnalysis {
             return;
         }
 
-        const sortedRows = [...rows].sort((left, right) => {
-            if (left.effective_cohort_sort_index !== right.effective_cohort_sort_index) {
-                return left.effective_cohort_sort_index - right.effective_cohort_sort_index;
-            }
-            return String(left.effective_cohort_label || "").localeCompare(String(right.effective_cohort_label || ""));
-        });
+        const sortedRows = [...rows].sort((a, b) => a.effective_cohort_sort_index - b.effective_cohort_sort_index);
         const barCornerRadius = 5;
 
         chart.setOption({
@@ -1564,7 +1583,7 @@ class GraduationAnalysis {
         link.addEventListener("click", (event) => {
             event.preventDefault();
             onClick();
-        });
+        }, { passive: true });
         return link;
     }
 
@@ -1645,6 +1664,18 @@ class GraduationAnalysis {
         });
     }
 
+    debouncedResizeCharts() {
+        // Clear existing timeout
+        if (this.resizeTimeout) {
+            clearTimeout(this.resizeTimeout);
+        }
+        
+        // Set new timeout with reduced delay
+        this.resizeTimeout = setTimeout(() => {
+            this.resizeCharts();
+        }, 100);
+    }
+
     showError(message) {
         const messageElement = document.getElementById("error-message");
         const modal = document.getElementById("error-modal");
@@ -1662,8 +1693,117 @@ class GraduationAnalysis {
             modal.classList.remove("active");
         }
     }
+
+    showDrilldownLoading() {
+        // Use renderModal approach for consistency
+        const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "" }) => {
+            // Close any existing modal
+            this.hideDrilldownLoading();
+            
+            const modalOverlay = document.createElement("div");
+            modalOverlay.id = "graduation-drilldown-loading-modal";
+            modalOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10010;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+            
+            const modalDialog = document.createElement("div");
+            modalDialog.style.cssText = `
+                background: white;
+                padding: 30px;
+                border-radius: 8px;
+                text-align: center;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                max-width: 400px;
+                border: 1px solid rgba(184, 200, 217, 0.9);
+            `;
+            
+            const modalHeader = document.createElement("div");
+            modalHeader.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 20px;
+            `;
+            
+            const modalTitle = document.createElement("h2");
+            modalTitle.textContent = title;
+            modalTitle.style.cssText = `
+                margin: 0;
+                color: #0d2f54;
+                font-size: 1.05rem;
+                font-weight: 700;
+                line-height: 1.3;
+            `;
+            
+            const modalClose = document.createElement("button");
+            modalClose.textContent = "×";
+            modalClose.style.cssText = `
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+                padding: 0;
+                width: 24px;
+                height: 24px;
+            `;
+            
+            const modalBody = document.createElement("div");
+            modalBody.innerHTML = bodyHtml;
+            
+            modalHeader.appendChild(modalTitle);
+            modalHeader.appendChild(modalClose);
+            modalDialog.appendChild(modalHeader);
+            modalDialog.appendChild(modalBody);
+            modalOverlay.appendChild(modalDialog);
+            
+            document.body.appendChild(modalOverlay);
+            
+            // Handle close button
+            modalClose.addEventListener('click', () => {
+                this.hideDrilldownLoading();
+            });
+            
+            // Handle backdrop click
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    this.hideDrilldownLoading();
+                }
+            });
+        };
+        
+        renderModal({
+            title: "Loading Drilldown Data",
+            subtitle: "",
+            toneClass: "is-loading",
+            bodyHtml: `
+                <div class="graduation-drilldown-state">
+                    <div class="graduation-drilldown-spinner"></div>
+                    <p class="graduation-drilldown-state-title">Loading student data...</p>
+                    <p class="graduation-drilldown-state-copy">Please wait while we gather the requested information.</p>
+                </div>
+            `.trim(),
+        });
+    }
+
+    hideDrilldownLoading() {
+        const loadingOverlay = document.getElementById("graduation-drilldown-loading-modal");
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     window.graduationAnalysis = new GraduationAnalysis();
-});
+}, { passive: true });

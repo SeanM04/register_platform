@@ -9,20 +9,22 @@ const getDisplayValue = (value) => {
 };
 
 const buildPaginationHtml = (payload = {}) => {
-    const { page = 1, page_size = 10, total_items = 0 } = payload.pagination || {};
+    const { current_page = 1, page_size = 10, total_items = 0 } = payload.pagination || {};
     const pageCount = Math.ceil(total_items / page_size);
-    const previousDisabled = page <= 1 ? "disabled" : "";
-    const nextDisabled = page >= pageCount ? "disabled" : "";
+    const previousDisabled = current_page <= 1 ? "disabled" : "";
+    const nextDisabled = current_page >= pageCount ? "disabled" : "";
+
+    console.log("DEBUG: buildPaginationHtml - current_page:", current_page, "pageCount:", pageCount, "total_items:", total_items);
 
     return `
         <div class="home-drilldown-pagination">
             <div class="home-drilldown-page-size-pill">${page_size} rows per page</div>
             <div class="home-drilldown-pagination-controls">
                 <span class="home-drilldown-pagination-info">
-                    ${total_items ? `Showing page ${page} of ${pageCount}` : "No matching students"}
+                    ${total_items ? `Showing page ${current_page} of ${pageCount}` : "No matching students"}
                 </span>
-                <button class="home-drilldown-pagination-button" type="button" data-drilldown-page="${page - 1}" ${previousDisabled}>Prev</button>
-                <button class="home-drilldown-pagination-button" type="button" data-drilldown-page="${page + 1}" ${nextDisabled}>Next</button>
+                <button class="home-drilldown-pagination-button" type="button" data-drilldown-page="${current_page - 1}" ${previousDisabled}>Prev</button>
+                <button class="home-drilldown-pagination-button" type="button" data-drilldown-page="${current_page + 1}" ${nextDisabled}>Next</button>
             </div>
         </div>
     `.trim();
@@ -30,9 +32,25 @@ const buildPaginationHtml = (payload = {}) => {
 
 const buildTableBodyHtml = (payload = {}) => {
     const columns = Array.isArray(payload.columns) ? payload.columns : [];
-    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    const rows = Array.isArray(payload.rows) 
+        ? [...payload.rows].sort((a, b) => {
+            const getLastName = (row) => {
+                const fullName = String(row?.[columns[0]?.key] || "").trim();
+                const parts = fullName.split(/\s+/);
+                return parts[parts.length - 1].toLowerCase();
+            };
+
+            return getLastName(a).localeCompare(getLastName(b));
+        })
+        : [];
     
     console.log("DEBUG: buildTableBodyHtml - columns:", columns.length, "rows:", rows.length);
+    
+    // Log first few rows for debugging
+    if (rows.length > 0) {
+        console.log("DEBUG: First row data:", rows[0]);
+        console.log("DEBUG: Last row data:", rows[rows.length - 1]);
+    }
     
     if (!columns.length) {
         return `

@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 
 from .academic_levels.views import academic_level_metrics, academic_level_payload, academic_level_view
 from .demographics.views import demographic_metrics, demographic_narratives, demographic_payload, demographic_view
@@ -93,4 +93,7 @@ urlpatterns = [
     path("metrics/reports/export/", reports_export_csv, name="reports-export"),
     path("api/reports/periods-by-year/", reports_periods_by_year, name="reports-periods-by-year"),
     path("system-management/", system_management_view, name="system-management"),
+    
+    # Age API endpoints
+    path("api/age/", include("dashboard.api.urls")),
 ]

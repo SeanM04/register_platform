@@ -490,27 +490,54 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
         else:
             raise ValueError(f"Unsupported programme drill-down chart: {chart_key}")
         
-        # Get total count for pagination
-        total_count = registrations.count()
+        # First deduplicate students across all registrations
+        unique_students = {}
+        seen_students = set()  # Track seen registration numbers to avoid duplicates
+        
+        for registration in registrations:
+            student = registration.student
+            reg_number = student.registration_number
+            
+            # Skip if we've already processed this student
+            if reg_number in seen_students:
+                continue
+                
+            seen_students.add(reg_number)
+            programme = registration.programme
+            
+            # Store the latest registration for this student
+            unique_students[reg_number] = {
+                "student": student,
+                "programme": programme,
+                "registration": registration
+            }
+        
+        # Convert to list for pagination
+        unique_student_list = list(unique_students.values())
+        
+        # Get total count for pagination (now based on unique students)
+        total_count = len(unique_student_list)
         total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
         
-        # Apply pagination
+        # Apply pagination to unique students
         offset = (page - 1) * page_size
-        paginated_registrations = registrations[offset:offset + page_size]
+        paginated_students = unique_student_list[offset:offset + page_size]
         
-        # Build student rows
+        # Build student rows from paginated unique students
         student_rows = []
-        for i, registration in enumerate(paginated_registrations):
-            student = registration.student
-            programme = registration.programme
+        for student_data in paginated_students:
+            student = student_data["student"]
+            programme = student_data["programme"]
+            registration = student_data["registration"]
+            reg_number = student.registration_number
+            
             row_data = {
                 "name": student.full_name,
-                "registration_number": student.registration_number,
                 "programme": programme.name if programme else "Unassigned",
                 "department": programme.department.name if programme and programme.department else "Unassigned",
                 "decision": registration.decision or "Unknown",
                 "carrying": registration.carrying or 0,
-                "detail_url": f"/students/{student.registration_number}/",
+                "detail_url": f"/students/{reg_number}/",
             }
             student_rows.append(row_data)
             
@@ -520,7 +547,6 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             "subtitle": f"Students currently registered in {bucket_key}.",
             "columns": [
                 {"key": "name", "label": "Student Name"},
-                {"key": "registration_number", "label": "Registration Number"},
                 {"key": "programme", "label": "Programme"},
                 {"key": "department", "label": "Department"},
                 {"key": "decision", "label": "Decision"},

@@ -134,7 +134,18 @@ const showProgrammeDrillDownModal = (payload, onPageChange = null) => {
     // Create table body
     const tbody = document.createElement('tbody');
     if (payload.rows && payload.rows.length > 0) {
-        payload.rows.forEach(row => {
+        // Sort rows by last name
+        const sortedRows = [...payload.rows].sort((a, b) => {
+            const getLastName = (row) => {
+                const fullName = String(row?.name || "").trim();
+                const parts = fullName.split(/\s+/);
+                return parts[parts.length - 1].toLowerCase();
+            };
+
+            return getLastName(a).localeCompare(getLastName(b));
+        });
+        
+        sortedRows.forEach(row => {
             const tr = document.createElement('tr');
             payload.columns.forEach(column => {
                 const td = document.createElement('td');
@@ -281,20 +292,112 @@ const showProgrammeDrillDownModal = (payload, onPageChange = null) => {
 };
 
 const showProgrammeDrillDownLoadingModal = (title, subtitle) => {
-    showProgrammeDrillDownModal({
-        title,
-        subtitle,
-        columns: [],
-        rows: [],
-        pagination: {
-            current_page: 1,
-            page_size: DEFAULT_DRILLDOWN_PAGE_SIZE,
-            total_items: 0,
-            total_pages: 0,
-            has_next: false,
-            has_previous: false,
-        },
+    // Use renderModal approach for consistency
+    const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "" }) => {
+        // Close any existing modal
+        hideProgrammeDrillDownLoadingModal();
+        
+        const modalOverlay = document.createElement("div");
+        modalOverlay.id = "programme-drilldown-loading-modal";
+        modalOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10010;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+        
+        const modalDialog = document.createElement("div");
+        modalDialog.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            max-width: 400px;
+            border: 1px solid rgba(184, 200, 217, 0.9);
+        `;
+        
+        const modalHeader = document.createElement("div");
+        modalHeader.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        `;
+        
+        const modalTitle = document.createElement("h2");
+        modalTitle.textContent = title || "Loading Drilldown Data";
+        modalTitle.style.cssText = `
+            margin: 0;
+            color: #0d2f54;
+            font-size: 1.05rem;
+            font-weight: 700;
+            line-height: 1.3;
+        `;
+        
+        const modalClose = document.createElement("button");
+        modalClose.textContent = "×";
+        modalClose.style.cssText = `
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+        `;
+        
+        const modalBody = document.createElement("div");
+        modalBody.innerHTML = bodyHtml;
+        
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(modalClose);
+        modalDialog.appendChild(modalHeader);
+        modalDialog.appendChild(modalBody);
+        modalOverlay.appendChild(modalDialog);
+        
+        document.body.appendChild(modalOverlay);
+        
+        // Handle close button
+        modalClose.addEventListener('click', () => {
+            hideProgrammeDrillDownLoadingModal();
+        });
+        
+        // Handle backdrop click
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                hideProgrammeDrillDownLoadingModal();
+            }
+        });
+    };
+    
+    renderModal({
+        title: title || "Loading Drilldown Data",
+        subtitle: subtitle,
+        toneClass: "is-loading",
+        bodyHtml: `
+            <div class="programme-drilldown-state">
+                <div class="programme-drilldown-spinner"></div>
+                <p class="programme-drilldown-state-title">Loading student data...</p>
+                <p class="programme-drilldown-state-copy">Please wait while we gather the requested information.</p>
+            </div>
+        `.trim(),
     });
+};
+
+const hideProgrammeDrillDownLoadingModal = () => {
+    const loadingModal = document.getElementById("programme-drilldown-loading-modal");
+    if (loadingModal) {
+        loadingModal.remove();
+    }
 };
 
 const showProgrammeDrillDownErrorModal = (title, message) => {
@@ -346,11 +449,13 @@ export const openProgrammeDrillDown = async (context, { chartKey, bucketKey, lab
                 return;
             }
 
+            hideProgrammeDrillDownLoadingModal();
             showProgrammeDrillDownModal(payload, loadPage);
 
         } catch (error) {
             console.error("Programme drill-down error:", error);
             if (requestToken === activeProgrammeDrillDownToken) {
+                hideProgrammeDrillDownLoadingModal();
                 showProgrammeDrillDownErrorModal(
                     `${safeLabel} Students`,
                     "Could not load the student data. Please try again."

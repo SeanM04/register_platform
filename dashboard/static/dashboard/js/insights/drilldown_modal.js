@@ -74,8 +74,20 @@ const buildTableHtml = (columns, rows, totalCount) => {
         `<th scope="col">${escapeTooltipHtml(column.label)}</th>`
     ).join("");
 
-    const bodyHtml = rows.length
-        ? rows.map((row) => {
+    const sortedRows = rows.length 
+        ? [...rows].sort((a, b) => {
+            const getLastName = (row) => {
+                const fullName = String(row?.[columns[0]?.key] || "").trim();
+                const parts = fullName.split(/\s+/);
+                return parts[parts.length - 1].toLowerCase();
+            };
+
+            return getLastName(a).localeCompare(getLastName(b));
+        })
+        : [];
+
+    const bodyHtml = sortedRows.length
+        ? sortedRows.map((row) => {
             const detailUrl = row.detail_url;
             const cells = columns.map((column, columnIndex) => {
                 const cellValue = getDisplayValue(row[column.key]);

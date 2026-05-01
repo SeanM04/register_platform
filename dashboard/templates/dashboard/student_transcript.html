@@ -7,11 +7,21 @@
 <link rel="stylesheet" href="{% static 'dashboard/css/student_detail.css' %}?v=20260428-transcript02">
 <style>
 .transcript-container {
-    max-width: 1000px;
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
     padding: 1rem;
     background: var(--panel);
-    font-family: 'Times New Roman', Times, serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.81rem;
+}
+
+.transcript-top-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 1rem;
+    width: 100%;
 }
 
 .transcript-header {
@@ -40,11 +50,12 @@
 }
 
 .university-name {
-    font-size: 1.3rem;
-    font-weight: bold;
+    font-size: 1.1rem;
+    font-weight: 600;
     color: var(--navy);
     margin-bottom: 0.2rem;
     text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 
@@ -62,37 +73,109 @@
 }
 
 .student-info {
-    margin: 1rem 0;
-    font-size: 0.75rem;
-    border: 1px solid var(--navy);
-    border-collapse: collapse;
+    margin: 0.7rem 0 1rem;
+    font-size: 0.68rem;
+}
+
+
+.student-info-card {
+    position: relative;
+    background: linear-gradient(135deg, #0f2f52 0%, #1e4f7a 60%, #2f6b96 100%);
+    border-radius: 26px;
+    padding: 1.5rem 1.8rem;
+    box-shadow: 
+        0 20px 40px rgba(10, 30, 60, 0.35),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+}
+
+.student-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem 2.5rem;
+}
+
+.student-name,
+.student-number,
+.student-programme,
+.student-faculty,
+.student-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.label {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.72rem;
+    font-weight: 700;
+    min-width: 95px;
+}
+
+.value {
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.student-info-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.08) 0%,
+        rgba(255,255,255,0.02) 40%,
+        rgba(0,0,0,0.15) 100%
+    );
+    border-radius: 26px;
+    pointer-events: none;
 }
 
 .student-info-table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid var(--navy);
+    border: 2px solid var(--navy);
+    margin: 1rem 0;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .student-info-table td {
     border: 1px solid var(--navy);
-    padding: 0.2rem 0.4rem;
-    font-size: 0.75rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.81rem;
     vertical-align: middle;
+    background: #ffffff;
 }
 
 .info-label {
     font-weight: 600;
     color: var(--navy);
-    background: #f8f8f8;
-    width: 20%;
+    background: #f8f9fa;
+    width: 25%;
     text-align: left;
+    padding-left: 1.2rem;
+    border-right: 2px solid var(--navy);
 }
 
 .info-value {
-    color: var(--ink);
-    font-weight: normal;
-    width: 30%;
+    font-weight: 400;
+    color: #000;
+    background: #ffffff;
+    padding-left: 1.2rem;
+}
+
+.student-info-table tr:hover td {
+    background: #f8f9fa;
+}
+
+.student-info-table tr:hover .info-label {
+    background: #e9ecef;
+}
+
+.student-info-table tr:hover .info-value {
+    background: #f8f9fa;
 }
 
 .transcript-content {
@@ -105,14 +188,15 @@
 }
 
 .year-header {
-    background: #0b2a44;
+    background: var(--navy);
     color: white;
-    padding: 0.3rem 1rem;
+    padding: 0.48rem 0.72rem;
     font-weight: 600;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
+    font-size: 0.77rem;
+    margin-bottom: 0.3rem;
     text-align: center;
     text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .semester-section {
@@ -121,38 +205,27 @@
 }
 
 .semester-header {
-    background: #0b2a44;
+    background: var(--navy);
     color: white;
-    padding: 0.2rem 1rem;
+    padding: 0.48rem 0.72rem;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.77rem;
     margin-bottom: 0.3rem;
     text-align: center;
     text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .transcript-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
     margin-bottom: 1.5rem;
     font-size: 0.81rem;
     table-layout: fixed;
+    border-collapse: collapse;
+    border: 2px solid #000;
 }
 
-.transcript-table th {
-    background: var(--navy);
-    color: #ffffff;
-    padding: 0.48rem 0.72rem;
-    text-align: center;
-    font-weight: 600;
-    font-size: 0.77rem;
-    letter-spacing: 0.02em;
-    position: sticky;
-    top: 0;
-    z-index: 8;
-}
-
+.transcript-table th,
 .transcript-table td {
     padding: 0.48rem 0.72rem;
     text-align: center;
@@ -160,32 +233,52 @@
     vertical-align: top;
     word-break: break-word;
     font-size: 0.81rem;
+    border: 1px solid #000;
+}
+
+.transcript-table th {
+    position: sticky;
+    top: 0;
+    z-index: 8;
     background: #ffffff;
-    box-shadow: inset 0 -1px 0 #edf2f7;
-}
-
-.transcript-table tbody tr:hover td {
-    background: #fbfdff;
-}
-
-.transcript-table tbody tr:last-child td {
-    box-shadow: none;
-}
-
-.transcript-table .course-code {
+    color: #000000;
+    font-weight: 800;
+    font-size: 0.77rem;
     font-weight: 600;
-    text-align: center;
-    font-size: 0.81rem;
+    letter-spacing: 0.02em;
+    background-clip: padding-box;
 }
+
+.transcript-table .course-code,
+.transcript-table .course-name {
+    position: sticky;
+    left: 0;
+    background-clip: padding-box;
+    text-align: left !important;
+}
+
+.transcript-table th.course-code {
+    background: #ffffff;
+    color: #000;
+    font-weight: 800;
+}
+
+.transcript-table .credits,
+.transcript-table .grade {
+    text-align: center !important;
+}
+
 
 .transcript-table .course-name {
     text-align: left;
     font-size: 0.81rem;
+    padding-left: 1.2rem;
 }
 
 .transcript-table .credits {
     text-align: center;
     font-size: 0.81rem;
+    font-weight: 500;
 }
 
 .transcript-table .grade {
@@ -197,6 +290,7 @@
 .transcript-table .grade.fail {
     color: var(--navy-soft);
     font-weight: bold;
+    background: #f0f4f8;
 }
 
 .transcript-table .grade.pass {
@@ -211,7 +305,7 @@
 }
 
 .summary-title {
-    font-size: 1.1rem;
+    font-size: 0.77rem;
     font-weight: 600;
     color: var(--navy);
     margin-bottom: 1rem;
@@ -219,6 +313,44 @@
     text-transform: uppercase;
     border-bottom: 1px solid var(--navy);
     padding-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1rem;
+    border: 1px solid #000;
+}
+
+.summary-table th,
+.summary-table td {
+    padding: 0.48rem 0.72rem;
+    text-align: center;
+    font-weight: 400;
+    vertical-align: top;
+    word-break: break-word;
+    font-size: 0.81rem;
+    border: 1px solid #000;
+}
+
+.summary-table th {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: var(--navy);
+    color: #ffffff;
+    font-size: 0.77rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background-clip: padding-box;
+}
+
+.summary-table .total-row td {
+    background: #f8f9fa;
+    font-weight: 600;
+    border-top: 2px solid var(--navy);
 }
 
 .summary-grid {
@@ -250,49 +382,151 @@
 .transcript-actions {
     text-align: center;
     margin-top: 2rem;
-    display: none;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
-.print-button {
-    background: #000;
-    color: white;
-    padding: 0.5rem 1rem;
-    border: 1px solid #000;
-    font-size: 0.8rem;
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
     font-weight: 600;
-    cursor: pointer;
     text-decoration: none;
-    display: inline-block;
-    margin: 0 0.5rem;
-    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
 }
 
-.print-button:hover {
-    background: #333;
+.btn-primary {
+    background: var(--navy);
+    color: white;
+    box-shadow: 0 4px 12px rgba(13, 50, 93, 0.3);
+}
+
+.btn-primary:hover {
+    background: var(--navy-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 50, 93, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(13, 50, 93, 0.3);
+}
+
+.print-btn {
+    background: var(--navy);
+    box-shadow: 0 4px 12px rgba(13, 50, 93, 0.3);
+}
+
+.print-btn:hover {
+    background: var(--navy-soft);
+    box-shadow: 0 6px 20px rgba(13, 50, 93, 0.4);
+}
+
+.back-btn {
+    background: var(--navy);
+}
+
+.back-btn:hover {
+    background: var(--navy-soft);
+}
+
+.transcript-bottom-actions {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .transcript-footer {
     margin-top: 2rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--navy);
+    border-top: 2px solid var(--navy);
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.81rem;
     color: #333;
 }
 
+.footer-content p {
+    margin: 0.3rem 0;
+    line-height: 1.4;
+}
+
+.footer-content p:first-child {
+    font-size: 0.81rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+}
+
+.footer-date {
+    font-style: italic;
+    color: var(--muted);
+    margin-top: 0.8rem !important;
+}
+
 @media print {
+    body {
+        margin: 0.5in;
+        background: white;
+    }
+    
+    .transcript-top-nav {
+        display: none !important;
+    }
+    
     .transcript-container {
         padding: 0;
         margin: 0;
         max-width: none;
+        background: white;
+        box-shadow: none;
+        width: 100% !important;
     }
     
-    .transcript-actions {
-        display: none;
+    .transcript-header {
+        display: block !important;
+    }
+    
+    .student-info {
+        display: block !important;
+    }
+    
+    .transcript-content {
+        display: block !important;
+    }
+    
+    .transcript-footer {
+        display: block !important;
     }
     
     .transcript-table {
         page-break-inside: avoid;
+        border: 1px solid #000;
+    }
+    
+    .transcript-table th,
+    .transcript-table td {
+        border: 1px solid #000;
+    }
+    
+    .summary-table {
+        page-break-inside: avoid;
+        border: 1px solid #000;
+    }
+    
+    .summary-table th,
+    .summary-table td {
+        border: 1px solid #000;
     }
     
     .academic-year-section {
@@ -305,10 +539,6 @@
     
     .transcript-summary {
         page-break-inside: avoid;
-    }
-    
-    body {
-        margin: 0.5in;
     }
     
     .year-header {
@@ -324,11 +554,88 @@
 
 {% block extra_js %}
 <script type="module" src="{% static 'dashboard/js/student_detail.js' %}?v=20260428-transcript02"></script>
+<script>
+function downloadTranscript() {
+    // Get the complete transcript content including all styles
+    const transcriptContainer = document.querySelector('.transcript-container');
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    
+    // Get all styles from the current page
+    const styles = Array.from(document.styleSheets).map(styleSheet => {
+        try {
+            return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('\n');
+        } catch (e) {
+            return '';
+        }
+    }).join('\n');
+    
+    // Write the complete transcript content to the new window
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Transcript - {{ student.name }}</title>
+            <style>
+                ${styles}
+                /* Additional print-specific styles */
+                @media print {
+                    body {
+                        margin: 0.5in;
+                        background: white;
+                    }
+                    .transcript-top-nav {
+                        display: none !important;
+                    }
+                    .transcript-container {
+                        padding: 0;
+                        margin: 0;
+                        max-width: none;
+                        background: white;
+                        box-shadow: none;
+                        width: 100% !important;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${transcriptContainer.outerHTML}
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    
+    // Wait for the content to load, then trigger download
+    printWindow.onload = function() {
+        printWindow.print();
+        
+        // Optional: Close the print window after printing
+        setTimeout(() => {
+            printWindow.close();
+        }, 1000);
+    };
+}
+</script>
 {% endblock %}
 
 {% block content %}
+{% if student %}
+<!-- Top Navigation - Outside Transcript Container -->
+<div class="transcript-top-nav">
+    <a href="{% url 'dashboard:student-detail' student.student_number %}" class="btn btn-primary back-btn">
+        ← Back to profile
+    </a>
+    <button onclick="window.print()" class="btn btn-primary print-btn">
+        🖨️ Print transcript
+    </button>
+    <button onclick="downloadTranscript()" class="btn btn-primary download-btn">
+        ⬇️ Download transcript
+    </button>
+</div>
+
 <div class="transcript-container">
-    {% if student %}
     <!-- Transcript Header -->
     <div class="transcript-header">
         <div class="header-top">
@@ -341,28 +648,36 @@
         </div>
         
         <div class="student-info">
-            <table class="student-info-table">
-                <tr>
-                    <td class="info-label">Name:</td>
-                    <td class="info-value">{{ student.name }}</td>
-                    <td class="info-label">Reg. Number:</td>
-                    <td class="info-value">{{ student.student_number }}</td>
-                </tr>
-                <tr>
-                    <td class="info-label">Programme:</td>
-                    <td class="info-value">{{ student.programme }}</td>
-                    <td class="info-label">Faculty:</td>
-                    <td class="info-value">{{ student.faculty }}</td>
-                </tr>
-                <tr>
-                    <td class="info-label">Status:</td>
-                    <td class="info-value">ACTIVE</td>
-                    <td colspan="2"></td>
-                </tr>
-            </table>
+            <div class="student-info-card">
+                <div class="student-details">
+                    <div class="student-name">
+                        <span class="label">Name:</span>
+                        <span class="value">{{ student.name }}</span>
+                    </div>
+                    <div class="student-number">
+                        <span class="label">Reg. Number:</span>
+                        <span class="value">{{ student.student_number }}</span>
+                    </div>
+                </div>
+                <div class="student-details">
+                    <div class="student-programme">
+                        <span class="label">Programme:</span>
+                        <span class="value">{{ student.programme }}</span>
+                    </div>
+                    <div class="student-faculty">
+                        <span class="label">Faculty:</span>
+                        <span class="value">{{ student.faculty }}</span>
+                    </div>
+                </div>
+                <div class="student-status">
+                    <span class="label">Status:</span>
+                    <span class="value">ACTIVE</span>
+                </div>
+            </div>
         </div>
     </div>
 
+    
     <!-- Transcript Content -->
     <div class="transcript-content">
         {% if transcript_results %}
@@ -373,7 +688,9 @@
         {% for year_group in year_groups|dictsort:"grouper" %}
         <div class="academic-year-section">
             <div class="year-header">
-                {{ year_group.grouper }}
+                {% with year_num=year_group.grouper %}
+                    March {{ year_num }} - July {{ year_num }}
+                {% endwith %}
             </div>
             
             <!-- Create semester groupings within each year -->
@@ -382,14 +699,26 @@
             {% for semester_group in semester_groups %}
             <div class="semester-section">
                 <div class="semester-header">
-                    {{ semester_group.grouper }}
+                    {% for result in semester_group.list|slice:":1" %}
+                        {% if "Semester 1" in result.semester %}
+                            Year 1 · Semester 1
+                        {% elif "Semester 2" in result.semester %}
+                            Year 1 · Semester 2
+                        {% elif "Semester 3" in result.semester %}
+                            Year 2 · Semester 1
+                        {% elif "Semester 4" in result.semester %}
+                            Year 2 · Semester 2
+                        {% else %}
+                            {{ semester_group.grouper }}
+                        {% endif %}
+                    {% endfor %}
                 </div>
                 
                 <table class="transcript-table">
                     <thead>
                         <tr>
                             <th class="course-code">CODE</th>
-                            <th class="course-name">TITLE</th>
+                            <th class="course-name">COURSE NAME</th>
                             <th class="credits">MARK</th>
                             <th class="grade">GRADE</th>
                             <th class="grade">DECISION</th>
@@ -418,23 +747,24 @@
         
         <!-- Transcript Summary -->
         <div class="transcript-summary">
-            <table class="transcript-table">
+            <div class="summary-title">ACADEMIC SUMMARY</div>
+            <table class="summary-table">
                 <thead>
                     <tr>
-                        <th class="course-code">SEMESTER</th>
-                        <th class="course-name">COURSES</th>
-                        <th class="credits">PASSED</th>
-                        <th class="grade">FAILED</th>
-                        <th class="grade">AVERAGE</th>
+                        <th>ACADEMIC YEAR</th>
+                        <th>COURSES</th>
+                        <th>PASSED</th>
+                        <th>FAILED</th>
+                        <th>AVERAGE</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td class="course-code"><strong>TOTAL</strong></td>
-                        <td class="course-name"><strong>{{ summary.total_courses }}</strong></td>
-                        <td class="credits"><strong>{{ summary.total_passed }}</strong></td>
-                        <td class="grade"><strong>{{ summary.total_failed }}</strong></td>
-                        <td class="grade"><strong>{{ summary.average_mark }}</strong></td>
+                                        <tr class="total-row">
+                        <td><strong>TOTAL</strong></td>
+                        <td><strong>{{ summary.total_courses }}</strong></td>
+                        <td><strong>{{ summary.total_passed }}</strong></td>
+                        <td><strong>{{ summary.total_failed }}</strong></td>
+                        <td><strong>{{ summary.average_mark }}</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -459,16 +789,15 @@
 
     <!-- Transcript Footer -->
     <div class="transcript-footer">
-        <p>This transcript is issued by the Registrar's Office and is valid only with the official seal and signature.</p>
-        <p>For verification purposes, please contact the Registrar's Office.</p>
+        <div class="footer-content">
+            <p><strong>OFFICIAL TRANSCRIPT</strong></p>
+            <p>This transcript is issued by the Registrar's Office and is valid only with the official seal and signature.</p>
+            <p>For verification purposes, please contact the Registrar's Office.</p>
+            <p class="footer-date">Issued on: {% now "d F Y" %}</p>
+        </div>
     </div>
 
-    <!-- Actions -->
-    <div class="transcript-actions">
-        <a href="#" onclick="window.print()" class="print-button">Print Transcript</a>
-        <a href="{% url 'dashboard:student-detail' student.student_number %}" class="print-button">Back to Profile</a>
-    </div>
-    {% else %}
+        {% else %}
     <!-- Error state -->
     <div class="transcript-container">
         <div class="transcript-header">

@@ -946,6 +946,7 @@ def student_list(request):
             "average_mark": round(student.scoped_average_mark or 0),
             "decision": str(student.latest_decision or "").title().replace(" And ", " & "),
             "gender": student.gender.title(),
+            "age": student.current_age,
             "detail_slug": student.registration_number.lower(),
         }
         for student in page_obj.object_list
@@ -1420,7 +1421,10 @@ def student_detail(request, slug):
         "term_name": selected_registration.period.name.title() if selected_registration else "",
         "decision": selected_registration.decision.title().replace(" And ", " & ") if selected_registration else "",
         "gender": student_record.gender.title(),
-        "age": "",
+        "age": student_record.current_age if student_record.current_age is not None else None,
+        "age_with_details": student_record.age_with_details,
+        "age_category": student_record.age_category,
+        "date_of_birth": student_record.date_of_birth.strftime('%B %d, %Y') if student_record.date_of_birth else None,
         "place_of_birth": student_record.place_of_birth,
         "cumulative_grade": round(average_mark, 1),
         "term_tabs": term_tabs,
@@ -1467,6 +1471,26 @@ def student_transcript(request, slug):
         # Test basic data access
         all_registrations = list(student_record.registrations.all())
         
+        # Find the earliest registration to determine the starting year
+        start_year = None
+        if all_registrations:
+            # Try to extract actual year from period names
+            for reg in all_registrations:
+                period_name = reg.period.name if reg.period else ""
+                # Look for actual year patterns like 2020, 2021, etc.
+                year_match = re.search(r'\b(20\d{2})\b', period_name)
+                if year_match:
+                    start_year = int(year_match.group(1))
+                    break
+            
+            # If no explicit year found, try to infer from registration date
+            if start_year is None and all_registrations[0].created_at:
+                start_year = all_registrations[0].created_at.year
+            
+            # Default to current year if still not found
+            if start_year is None:
+                start_year = datetime.now().year
+        
         # Sort registrations by academic year and semester for proper chronological order
         def get_sort_key(registration):
             period_name = registration.period.name if registration.period else ""
@@ -1506,26 +1530,6 @@ def student_transcript(request, slug):
         total_marks = 0
         marks_count = 0
         
-        # Find the earliest registration to determine the starting year
-        start_year = None
-        if all_registrations:
-            # Try to extract actual year from period names
-            for reg in all_registrations:
-                period_name = reg.period.name if reg.period else ""
-                # Look for actual year patterns like 2020, 2021, etc.
-                year_match = re.search(r'\b(20\d{2})\b', period_name)
-                if year_match:
-                    start_year = int(year_match.group(1))
-                    break
-            
-            # If no explicit year found, try to infer from registration date
-            if start_year is None and all_registrations[0].created_at:
-                start_year = all_registrations[0].created_at.year
-            
-            # Default to current year if still not found
-            if start_year is None:
-                start_year = datetime.now().year
-        
         for i, registration in enumerate(all_registrations):
             try:
                 registration_results = registration.course_results.all()
@@ -1542,48 +1546,48 @@ def student_transcript(request, slug):
                     # Extract academic year and semester information
                     period_name = registration.period.name if registration.period else "Unknown"
                     academic_year = str(start_year)  # Default to start year
-                    semester = "Semester 1"
+                    semester = period_name  # Default to period name
                     
                     # Try to extract actual calendar year from period name first
                     calendar_year_match = re.search(r'\b(20\d{2})\b', period_name)
                     if calendar_year_match:
                         academic_year = calendar_year_match.group(1)
+                    
+                    # Try different patterns for semester extraction
+                    # Pattern 1: YEAR X SEM Y - convert to actual year and semester
+                    year_sem_match = re.search(r'YEAR\s*(\d+)\s*SEM\s*(\d+)', period_name.upper())
+                    if year_sem_match:
+                        year_num = int(year_sem_match.group(1))
+                        # Convert Year X to actual calendar year
+                        actual_year = start_year + (year_num - 1)
+                        academic_year = str(actual_year)
+                        semester = f"Semester {year_sem_match.group(2)}"
+                    # Pattern 2: SEM X or Semester X
+                    elif re.search(r'SEM\s*(\d+)', period_name.upper()):
+                        sem_match = re.search(r'SEM\s*(\d+)', period_name.upper())
+                        semester = f"Semester {sem_match.group(1)}"
+                    elif re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper()):
+                        sem_term_match = re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper())
+                        semester = f"Semester {sem_term_match.group(2)}"
+                    # Pattern 3: YEAR X - convert to actual year and try to infer semester
+                    elif re.search(r'YEAR\s*(\d+)', period_name.upper()):
+                        year_match = re.search(r'YEAR\s*(\d+)', period_name.upper())
+                        year_num = int(year_match.group(1))
+                        # Convert Year X to actual calendar year
+                        actual_year = start_year + (year_num - 1)
+                        academic_year = str(actual_year)
+                        # Try to infer semester from position
+                        semester_num = (i % 2) + 1  # Alternate between 1 and 2
+                        semester = f"Semester {semester_num}"
+                    # Pattern 4: Try to infer from registration position
                     else:
-                        # Try different patterns for year and semester extraction
-                        # Pattern 1: YEAR X SEM Y - convert to actual year
-                        year_sem_match = re.search(r'YEAR\s*(\d+)\s*SEM\s*(\d+)', period_name.upper())
-                        if year_sem_match:
-                            year_num = int(year_sem_match.group(1))
-                            # Convert Year X to actual calendar year
-                            actual_year = start_year + (year_num - 1)
-                            academic_year = str(actual_year)
-                            semester = f"Semester {year_sem_match.group(2)}"
-                        # Pattern 2: YEAR X - convert to actual year
-                        elif re.search(r'YEAR\s*(\d+)', period_name.upper()):
-                            year_match = re.search(r'YEAR\s*(\d+)', period_name.upper())
-                            year_num = int(year_match.group(1))
-                            # Convert Year X to actual calendar year
-                            actual_year = start_year + (year_num - 1)
-                            academic_year = str(actual_year)
-                            if re.search(r'SEM\s*(\d+)', period_name.upper()):
-                                sem_match = re.search(r'SEM\s*(\d+)', period_name.upper())
-                                semester = f"Semester {sem_match.group(1)}"
-                        # Pattern 3: Semester X or Term X - infer year from position
-                        elif re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper()):
-                            sem_term_match = re.search(r'(SEMESTER|TERM)\s*(\d+)', period_name.upper())
-                            semester = f"Semester {sem_term_match.group(2)}"
-                            # Infer actual year from registration order
-                            inferred_year_offset = (i // 2)  # Assuming 2 semesters per year
-                            actual_year = start_year + inferred_year_offset
-                            academic_year = str(actual_year)
-                        # Pattern 4: Just use the period name
-                        else:
-                            # Use the period name directly for semester
-                            semester = period_name
-                            # Infer actual year from registration order
-                            inferred_year_offset = (i // 2)
-                            actual_year = start_year + inferred_year_offset
-                            academic_year = str(actual_year)
+                        # Infer semester from registration order
+                        semester_num = (i % 2) + 1  # Alternate between 1 and 2
+                        semester = f"Semester {semester_num}"
+                        # Infer actual year from registration order
+                        inferred_year_offset = (i // 2)
+                        actual_year = start_year + inferred_year_offset
+                        academic_year = str(actual_year)
                     
                     # Calculate grade based on grading rules
                     mark_value = round(result.mark or 0)

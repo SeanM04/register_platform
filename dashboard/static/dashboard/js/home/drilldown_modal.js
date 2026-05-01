@@ -40,7 +40,17 @@ const buildSummaryBodyHtml = (items = []) => {
 
 const buildTableBodyHtml = (payload = {}) => {
     const columns = Array.isArray(payload.columns) ? payload.columns : [];
-    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    const rows = Array.isArray(payload.rows) 
+        ? [...payload.rows].sort((a, b) => {
+            const getLastName = (row) => {
+                const fullName = String(row?.[columns[0]?.key] || "").trim();
+                const parts = fullName.split(/\s+/);
+                return parts[parts.length - 1].toLowerCase();
+            };
+
+            return getLastName(a).localeCompare(getLastName(b));
+        })
+        : [];
     
     console.log("DEBUG: buildTableBodyHtml - columns:", columns.length, "rows:", rows.length);
     
@@ -99,10 +109,11 @@ const buildTableBodyHtml = (payload = {}) => {
 };
 
 const buildPaginationHtml = (payload = {}) => {
-    const page = Number(payload.page) || 1;
+    // Handle both old and new pagination field names for compatibility
+    const page = Number(payload.current_page || payload.page) || 1;
     const pageSize = Number(payload.page_size) || 100;
-    const totalCount = Number(payload.total_count) || 0;
-    const pageCount = Number(payload.page_count) || (pageSize ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1);
+    const totalCount = Number(payload.total_items || payload.total_count) || 0;
+    const pageCount = Number(payload.total_pages || payload.page_count) || (pageSize ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1);
 
     const sizeInfoHtml = `
         <div class="home-drilldown-page-size-pill">${pageSize} rows per page</div>
@@ -303,8 +314,9 @@ export const showLoadingDrillDownModal = (title, subtitle = "") => {
         toneClass: "is-loading",
         bodyHtml: `
             <div class="home-drilldown-state">
-                <p class="home-drilldown-state-title">Loading student rows...</p>
-                <p class="home-drilldown-state-copy">This drill-down is collecting the current student slice for you.</p>
+                <div class="home-drilldown-spinner"></div>
+                <p class="home-drilldown-state-title">Loading student data...</p>
+                <p class="home-drilldown-state-copy">Please wait while we gather the requested information.</p>
             </div>
         `.trim(),
     });

@@ -173,6 +173,10 @@
     width: 6rem;
 }
 
+.students-col-age {
+    width: 5rem;
+}
+
 .students-table thead {
     background: var(--navy);
     color: #ffffff;
