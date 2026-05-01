@@ -517,57 +517,58 @@
     overflow-x: auto;
     border: 1px solid rgba(207, 207, 207, 0.6);
     border-radius: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: #9cabbc transparent;
 }
 
 .rpt-table {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 0.79rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.81rem;
+}
+
+.rpt-table thead {
+    background: var(--navy, #082340);
+    color: #ffffff;
 }
 
 .rpt-table thead th {
-    padding: 0.7rem 1rem;
+    padding: 0.48rem 0.72rem;
     text-align: left;
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted, #4b5563);
-    background: #f4f8fb;
-    border-bottom: 1px solid rgba(207,207,207,0.5);
+    font-size: 0.77rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    background: var(--navy, #082340);
     white-space: nowrap;
     cursor: pointer;
     -webkit-user-select: none;
     user-select: none;
-    transition: background 0.1s, color 0.1s;
-    position: relative;
+    position: sticky;
+    top: 0;
+    z-index: 8;
 }
 
-.rpt-table thead th:hover {
-    background: #eaf2f9;
-    color: var(--navy, #082340);
-}
+.rpt-table thead th:hover { opacity: 0.88; }
 
 .rpt-table thead th.is-sorted-asc::after  { content: " ↑"; color: #4fb0d1; }
 .rpt-table thead th.is-sorted-desc::after { content: " ↓"; color: #4fb0d1; }
 
-.rpt-table tbody tr {
-    border-bottom: 1px solid rgba(207,207,207,0.3);
-    transition: background 0.1s;
-}
-
-.rpt-table tbody tr:last-child { border-bottom: none; }
-
-.rpt-table tbody tr:hover { background: rgba(79,176,209,0.04); }
-
-.rpt-table td {
-    padding: 0.62rem 1rem;
+.rpt-table tbody td {
+    padding: 0.48rem 0.72rem;
     color: #1e3a55;
-    vertical-align: middle;
+    vertical-align: top;
+    word-break: break-word;
+    background: #ffffff;
+    box-shadow: inset 0 -1px 0 #edf2f7;
 }
 
-.rpt-table td:first-child {
-    font-weight: 600;
+.rpt-table tbody tr:hover td { background: #fbfdff; }
+.rpt-table tbody tr:last-child td { box-shadow: none; }
+
+.rpt-table tbody td:first-child {
+    font-weight: 700;
     color: var(--navy, #082340);
 }
 
@@ -579,6 +580,25 @@
     padding: 2.5rem;
     font-weight: 600;
     font-size: 0.82rem;
+    box-shadow: none !important;
+}
+
+/* Table footer (meta + pagination) --------------------------------------- */
+
+.rpt-table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.62rem 1rem 0.76rem;
+    border-top: 1px solid #edf2f7;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.rpt-results-meta {
+    margin: 0;
+    color: var(--muted, #4b5563);
+    font-size: 0.76rem;
 }
 
 /* Truncation banner ------------------------------------------------------- */
@@ -654,6 +674,50 @@
     letter-spacing: 0;
     color: #9cb3c8;
     font-size: 0.65rem;
+}
+
+/* Pagination — matches students table pattern ----------------------------- */
+
+.rpt-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.rpt-pagination .page-link {
+    min-width: 34px;
+    padding: 0.42rem 0.6rem;
+    border-radius: 10px;
+    border: none;
+    background: #eef2f7;
+    color: var(--navy, #082340);
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    font-family: inherit;
+}
+
+.rpt-pagination .page-link:hover:not(.is-current):not(.is-disabled) {
+    background: #dce8f5;
+}
+
+.rpt-pagination .page-link.is-current {
+    background: var(--navy, #082340);
+    color: #ffffff;
+    cursor: default;
+}
+
+.rpt-pagination .page-link.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.rpt-pagination .page-link-arrow {
+    min-width: 54px;
 }
 
 /* Student profile link ---------------------------------------------------- */

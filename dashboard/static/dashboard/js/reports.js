@@ -33,9 +33,12 @@
     const elTitle   = document.getElementById("rpt-output-title");
     const elMeta    = document.getElementById("rpt-output-meta");
     const elSummary = document.getElementById("rpt-summary-cards");
-    const elCount   = document.getElementById("rpt-row-count");
-    const elThead   = document.getElementById("rpt-thead");
-    const elTbody   = document.getElementById("rpt-tbody");
+    const elCount    = document.getElementById("rpt-row-count");
+    const elThead    = document.getElementById("rpt-thead");
+    const elTbody    = document.getElementById("rpt-tbody");
+    const elPagination  = document.getElementById("rpt-pagination");
+    const elResultsMeta = document.getElementById("rpt-results-meta");
+    const elTableFooter = document.getElementById("rpt-table-footer");
 
     // -------------------------------------------------------------------------
     // State
@@ -46,6 +49,8 @@
     let _sortCol    = -1;
     let _sortAsc    = true;
     let _lastParams = null;
+    let _page       = 1;
+    const PAGE_SIZE = 10;
 
     const REPORT_LABELS = {
         enrolment:   "Enrolment Summary",
@@ -157,6 +162,8 @@
             _sortCol    = -1;
             _sortAsc    = true;
             _lastParams = params;
+            _page       = 1;
+            _lastSorted = [];
 
             _renderOutput(json);
             _setState("output");
@@ -228,7 +235,7 @@
         });
         elThead.appendChild(tr);
 
-        // Body
+        // Body — current page slice only
         elTbody.innerHTML = "";
         if (!rows.length) {
             const noRow = elTbody.insertRow();
@@ -237,16 +244,20 @@
             td.colSpan = _columns.length || 1;
             td.textContent = "No results match the current filters.";
             elCount.textContent = "0 rows";
+            _renderPagination(0);
             return;
         }
 
+        const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+        _page = Math.min(_page, totalPages);
+        const start = (_page - 1) * PAGE_SIZE;
+        const pageRows = rows.slice(start, start + PAGE_SIZE);
+
         const frag = document.createDocumentFragment();
-        rows.forEach(row => {
+        pageRows.forEach(row => {
             const rowEl = document.createElement("tr");
             row.forEach((cell, colIdx) => {
                 const td = document.createElement("td");
-
-                // At-risk report: first column (Reg Number) → clickable link to student profile
                 if (_reportType === "at_risk" && colIdx === 0 && studentUrl) {
                     const a = document.createElement("a");
                     a.href = `${studentUrl}${encodeURIComponent(cell)}/`;
@@ -263,22 +274,77 @@
         });
         elTbody.appendChild(frag);
         elCount.textContent = `${rows.length.toLocaleString()} row${rows.length === 1 ? "" : "s"}`;
+        _renderPagination(rows.length);
+    }
+
+    // -------------------------------------------------------------------------
+    // Pagination
+    // -------------------------------------------------------------------------
+    function _renderPagination(total) {
+        const totalPages = Math.ceil(total / PAGE_SIZE);
+        const start      = (_page - 1) * PAGE_SIZE + 1;
+        const end        = Math.min(_page * PAGE_SIZE, total);
+
+        // Results meta — "Showing 1-10 of 139 rows"
+        elResultsMeta.textContent = total
+            ? `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${total.toLocaleString()} rows`
+            : "";
+        elTableFooter.classList.toggle("is-hidden", total === 0);
+
+        // Pagination nav — hide when everything fits on one page
+        const show = totalPages > 1;
+        elPagination.classList.toggle("is-hidden", !show);
+        if (!show) return;
+
+        // Build page links matching the students table pattern
+        elPagination.innerHTML = "";
+
+        const mkLink = (label, page, extra = "") => {
+            const el = document.createElement("button");
+            el.type = "button";
+            el.className = `page-link${extra}`;
+            el.textContent = label;
+            if (page !== null) el.addEventListener("click", () => { _page = page; _renderTable(_currentRows()); });
+            return el;
+        };
+
+        elPagination.appendChild(mkLink("Prev", _page > 1 ? _page - 1 : null,
+            ` page-link-arrow${_page <= 1 ? " is-disabled" : ""}`));
+
+        // Show up to 5 page numbers centred on current page
+        const delta = 2;
+        const lo = Math.max(1, _page - delta);
+        const hi = Math.min(totalPages, _page + delta);
+        for (let p = lo; p <= hi; p++) {
+            const btn = mkLink(p, p, p === _page ? " is-current" : "");
+            if (p === _page) btn.setAttribute("aria-current", "page");
+            elPagination.appendChild(btn);
+        }
+
+        elPagination.appendChild(mkLink("Next", _page < totalPages ? _page + 1 : null,
+            ` page-link-arrow${_page >= totalPages ? " is-disabled" : ""}`));
+    }
+
+    function _currentRows() {
+        return _sortCol >= 0 ? _lastSorted : _filtered();
     }
 
     // -------------------------------------------------------------------------
     // Sort
     // -------------------------------------------------------------------------
+    let _lastSorted = [];
     function _sortBy(colIdx, currentRows) {
         _sortAsc = (_sortCol === colIdx) ? !_sortAsc : true;
         _sortCol = colIdx;
-        const sorted = [...currentRows].sort((a, b) => {
+        _lastSorted = [...currentRows].sort((a, b) => {
             const av = a[colIdx], bv = b[colIdx];
             const cmp = (typeof av === "number" && typeof bv === "number")
                 ? av - bv
                 : String(av ?? "").localeCompare(String(bv ?? ""), undefined, { numeric: true });
             return _sortAsc ? cmp : -cmp;
         });
-        _renderTable(sorted);
+        _page = 1;
+        _renderTable(_lastSorted);
     }
 
     // -------------------------------------------------------------------------
@@ -294,6 +360,7 @@
     searchInput.addEventListener("input", () => {
         _sortCol = -1;
         _sortAsc = true;
+        _page = 1;
         _renderTable(_filtered());
     });
 

@@ -7,7 +7,7 @@
     <title>{% block title %}{{ page_title|default:"Registrar Platform" }}{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'dashboard/images/favicon.svg' %}">
     <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v=20260414-dropdown-arrows01">
-    <link rel="stylesheet" href="{% static 'dashboard/css/chatbot.css' %}?v=20260425-chatbot01">
+    <link rel="stylesheet" href="{% static 'dashboard/css/chatbot.css' %}?v=20260501-autogrow01">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'dashboard/css/ai_badges.css' %}?v=20260414-rectangular-badge01">
     <script src="{% static 'dashboard/js/filters.js' %}?v=20260420-student-scoped-filters01"></script>
@@ -50,33 +50,50 @@
             {% endif %}
 
             <div class="brand-actions">
-                <div class="school-seal">
-                    <img
-                        class="school-seal-image"
-                        src="{% static 'dashboard/images/msuas-crr.jpeg' %}"
-                        alt="MSUAS logo"
-                    >
-                </div>
-                {% if chatbot_bootstrap.enabled %}
-                <button
-                    type="button"
-                    class="usc-topbar-btn"
-                    id="usc-topbar-toggle"
-                    aria-expanded="false"
-                    aria-controls="usc-panel"
-                    aria-label="Open UniStudio assistant"
-                    title="UniStudio Assistant"
+                {# ── MSU logo ── #}
+                <img
+                    class="brand-msu-logo"
+                    src="{% static 'dashboard/images/msuas-logo.png' %}"
+                    alt="MSU"
                 >
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                {% endif %}
-                <form method="post" action="{% url 'logout' %}" class="logout-form">
-                    {% csrf_token %}
-                    <button type="submit" class="logout-button">Logout</button>
-                </form>
+
+                {# ── Profile avatar + dropdown ── #}
+                <div class="profile-menu" id="profile-menu">
+                    <button type="button" class="profile-avatar" id="profile-avatar-btn"
+                            aria-haspopup="true" aria-expanded="false" aria-controls="profile-dropdown"
+                            title="Account menu" aria-label="Open account menu">
+                        <span class="profile-initials" aria-hidden="true">
+                            {% if request.user.first_name %}{{ request.user.first_name.0|upper }}{{ request.user.last_name.0|upper }}{% else %}{{ request.user.email.0|upper }}{% endif %}
+                        </span>
+                    </button>
+
+                    <div class="profile-dropdown" id="profile-dropdown" hidden role="menu">
+                        <div class="profile-dropdown-header">
+                            <div class="profile-dropdown-avatar" aria-hidden="true">
+                                {% if request.user.first_name %}{{ request.user.first_name.0|upper }}{{ request.user.last_name.0|upper }}{% else %}{{ request.user.email.0|upper }}{% endif %}
+                            </div>
+                            <div class="profile-dropdown-info">
+                                <span class="profile-dropdown-name">
+                                    {% if request.user.first_name %}{{ request.user.first_name }} {{ request.user.last_name }}{% else %}{{ request.user.email }}{% endif %}
+                                </span>
+                                <span class="profile-dropdown-role">
+                                    {% if request.user.user_type %}{{ request.user.user_type.name }}{% elif request.user.is_superuser %}Platform Admin{% else %}Staff{% endif %}
+                                </span>
+                                <span class="profile-dropdown-email">{{ request.user.email }}</span>
+                            </div>
+                        </div>
+                        <div class="profile-dropdown-divider"></div>
+                        <form method="post" action="{% url 'logout' %}" class="profile-dropdown-logout">
+                            {% csrf_token %}
+                            <button type="submit" class="profile-dropdown-logout-btn" role="menuitem">
+                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                    <path d="M13 3h4a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-4M9 14l4-4-4-4M3 10h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Sign out
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -147,17 +164,19 @@
 
             <!-- Input bar -->
             <form class="usc-form" id="usc-form" autocomplete="off">
-                <textarea
-                    class="usc-input"
-                    id="usc-input"
-                    rows="1"
-                    maxlength="1200"
-                    placeholder="Ask about a student, programme, or rule…"
-                    aria-label="Message"
-                ></textarea>
-                <button type="submit" class="usc-send" aria-label="Send message">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
+                <div class="usc-input-wrap">
+                    <textarea
+                        class="usc-input"
+                        id="usc-input"
+                        rows="1"
+                        maxlength="1200"
+                        placeholder="Ask about a student, programme, or rule…"
+                        aria-label="Message"
+                    ></textarea>
+                    <button type="submit" class="usc-send" aria-label="Send message">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
             </form>
 
         </div>
@@ -186,7 +205,7 @@
 
     <script src="{% static 'dashboard/js/base.js' %}?v=20260408-topbar-design01"></script>
     <script src="{% static 'dashboard/js/metrics.js' %}"></script>
-    <script src="{% static 'dashboard/js/chatbot.js' %}?v=20260425-chatbot03"></script>
+    <script src="{% static 'dashboard/js/chatbot.js' %}?v=20260501-autogrow01"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

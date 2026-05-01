@@ -347,42 +347,54 @@
 
 /* --- Input bar ----------------------------------------------------------- */
 .usc-form {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-top: 1px solid rgba(13, 50, 93, 0.09);
+    padding: 0.6rem 0.75rem 0.8rem;
+    border-top: 1px solid rgba(13, 50, 93, 0.08);
     background: #ffffff;
     flex-shrink: 0;
 }
+
+/* Unified card: textarea + send button share one bordered pill */
+.usc-input-wrap {
+    display: flex;
+    align-items: flex-end;
+    border: 1.5px solid rgba(13, 50, 93, 0.18);
+    border-radius: 14px;
+    background: #f8fafd;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+}
+.usc-input-wrap:focus-within {
+    border-color: #1a6da8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(26, 109, 168, 0.11);
+}
+
 .usc-input {
     flex: 1;
-    min-height: 2.4rem;
-    max-height: 7rem;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid rgba(13, 50, 93, 0.2);
-    border-radius: 12px;
-    background: #f9fbfd;
+    /* height controlled entirely by JS _autoGrow — no min/max here */
+    height: 2.5rem;
+    max-height: 9rem;   /* ~6 lines — CSS clamp for extreme pastes */
+    padding: 0.6rem 0.75rem;
+    border: none;
+    background: transparent;
     font: inherit;
     font-size: 0.87rem;
     line-height: 1.5;
     color: #1a2535;
     resize: none;
-    overflow-y: auto;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.usc-input:focus {
+    overflow-y: hidden;  /* JS switches to auto once capped */
     outline: none;
-    border-color: #1a6da8;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(26, 109, 168, 0.12);
 }
 .usc-input::placeholder {
     color: #a0aec0;
 }
+
 .usc-send {
-    width: 2.4rem;
-    height: 2.4rem;
+    align-self: flex-end;         /* stays pinned to bottom as textarea grows */
+    margin: 0.3rem 0.35rem;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex-shrink: 0;
     border: none;
     border-radius: 10px;
     background: linear-gradient(135deg, #0d325d, #1a6da8);
@@ -391,25 +403,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
     transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-    box-shadow: 0 4px 12px rgba(13, 50, 93, 0.28);
+    box-shadow: 0 3px 10px rgba(13, 50, 93, 0.25);
 }
 .usc-send:hover,
 .usc-send:focus-visible {
-    transform: scale(1.06);
-    box-shadow: 0 6px 16px rgba(13, 50, 93, 0.38);
+    transform: scale(1.07);
+    box-shadow: 0 5px 14px rgba(13, 50, 93, 0.38);
     outline: none;
 }
 .usc-send:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: default;
     transform: none;
     box-shadow: none;
 }
 .usc-send svg {
-    width: 1rem;
-    height: 1rem;
+    width: 0.95rem;
+    height: 0.95rem;
 }
 
 /* --- Topbar trigger button ----------------------------------------------- */

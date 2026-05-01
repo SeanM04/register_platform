@@ -1,5 +1,37 @@
 document.documentElement.classList.add("js");
 
+// ── Profile avatar dropdown ───────────────────────────────────────────────
+(function () {
+    const btn      = document.getElementById("profile-avatar-btn");
+    const dropdown = document.getElementById("profile-dropdown");
+    if (!btn || !dropdown) return;
+
+    function open() {
+        dropdown.hidden = false;
+        btn.setAttribute("aria-expanded", "true");
+    }
+
+    function close() {
+        dropdown.hidden = true;
+        btn.setAttribute("aria-expanded", "false");
+    }
+
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.hidden ? open() : close();
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!dropdown.hidden && !dropdown.contains(e.target)) close();
+    });
+
+    // Close on Escape
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !dropdown.hidden) { close(); btn.focus(); }
+    });
+}());
+
 const filterForm = document.querySelector(".topbar-filters");
 const filterSelects = document.querySelectorAll(".filter-select");
 const filterLoadingOverlay = document.getElementById("filter-loading-overlay");

@@ -83,10 +83,15 @@
         if (statusEl) statusEl.textContent = text;
     }
 
-    // Auto-grow textarea (cross-browser — no field-sizing needed)
+    // Auto-grow textarea — collapses to one line, expands up to ~6 lines.
+    // Sets overflow-y only when capped so no scrollbar flashes mid-growth.
+    const MAX_INPUT_H = 144; // px — ~6 lines at 0.87rem/1.5 line-height
     function _autoGrow() {
-        input.style.height = "auto";
-        input.style.height = Math.min(input.scrollHeight, 112) + "px";
+        input.style.height = "0";          // shrink first so scrollHeight is accurate
+        const natural = input.scrollHeight;
+        const capped  = Math.min(natural, MAX_INPUT_H);
+        input.style.height = capped + "px";
+        input.style.overflowY = natural > MAX_INPUT_H ? "auto" : "hidden";
     }
 
     // -------------------------------------------------------------------------
@@ -270,7 +275,8 @@
         suggestEl.innerHTML = "";
 
         input.value = "";
-        input.style.height = "auto";
+        input.style.height = "2.5rem";
+        input.style.overflowY = "hidden";
         input.disabled = true;
         const sendBtn = form.querySelector(".usc-send");
         if (sendBtn) sendBtn.disabled = true;

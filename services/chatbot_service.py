@@ -92,6 +92,15 @@ PROGRAMME_DURATIONS = {
 REGNUM_PATTERN = re.compile(r"\b[a-z]\d[a-z0-9]{3,}\b", re.IGNORECASE)
 COURSE_CODE_PATTERN = re.compile(r"\b[a-z]{3,}\d{3,}\b", re.IGNORECASE)
 
+# Short words that strongly signal a follow-up reply rather than a new topic.
+_FOLLOWUP_TOKENS = frozenset({
+    "yes", "yeah", "yep", "yup", "sure", "ok", "okay", "alright",
+    "no", "nope", "nah", "please", "go", "ahead", "show", "tell",
+    "more", "continue", "which", "those", "them", "that", "these",
+    "it", "how", "break", "drill", "elaborate", "explain", "details",
+    "and", "also", "what", "about", "further", "deeper",
+})
+
 # Expanded safety patterns — includes jailbreak and instruction-override attacks
 SENSITIVE_PATTERNS = (
     r"\b(api[_ -]?key|secret|token|credential|password)\b",
@@ -330,10 +339,16 @@ def _truncate(value: str, limit: int = MAX_MESSAGE_LENGTH) -> str:
 
 
 def _extract_response_text(response_payload):
+    # Chat Completions format (used by the multi-turn request function)
+    choices = response_payload.get("choices", [])
+    if choices:
+        content = choices[0].get("message", {}).get("content", "")
+        if content:
+            return str(content).strip()
+    # Responses API format (legacy fallback)
     output_text = response_payload.get("output_text")
     if isinstance(output_text, str) and output_text.strip():
         return output_text.strip()
-
     for block in response_payload.get("output", []):
         for content in block.get("content", []):
             if content.get("type") in {"output_text", "text"} and content.get("text"):
@@ -983,6 +998,59 @@ def _build_history_block(history: list[dict] | None) -> str:
     return "\n".join(lines) if lines else "No prior conversation."
 
 
+def _is_contextual_reply(message: str, history: list[dict] | None) -> bool:
+    """Return True when the message is a short follow-up to an existing conversation.
+
+    Used to skip the greeting / out-of-scope short-circuits so replies like
+    'yes', 'sure', 'go ahead', or 'which ones?' are handled by the AI with
+    full conversation history rather than being mis-classified as greetings.
+    """
+    if not history:
+        return False
+    if not any(h.get("role") == "assistant" for h in history):
+        return False
+    cleaned = message.strip().lower()
+    # Very short messages are nearly always contextual when a conversation exists
+    if len(cleaned) <= 20:
+        return True
+    # Slightly longer messages — check for follow-up tokens
+    words = set(re.split(r"\W+", cleaned))
+    return bool(words & _FOLLOWUP_TOKENS) and len(cleaned) <= 120
+
+
+def _build_google_contents(history: list[dict] | None, user_turn: str) -> list[dict]:
+    """Build a multi-turn contents array for the Google Gemini API.
+
+    Sends the last N history turns as alternating user/model entries so the
+    model has genuine conversation context — not just embedded text.
+    """
+    contents = []
+    for h in (history or [])[-MAX_HISTORY_MESSAGES:]:
+        role = str(h.get("role", "")).lower()
+        text = _truncate(h.get("content", ""), 400)
+        if not text:
+            continue
+        api_role = "model" if role == "assistant" else "user"
+        contents.append({"role": api_role, "parts": [{"text": text}]})
+    contents.append({"role": "user", "parts": [{"text": user_turn}]})
+    return contents
+
+
+def _build_openai_messages(
+    system_text: str, history: list[dict] | None, user_turn: str,
+) -> list[dict]:
+    """Build a multi-turn messages list for the OpenAI Chat Completions API."""
+    messages: list[dict] = [{"role": "system", "content": system_text}]
+    for h in (history or [])[-MAX_HISTORY_MESSAGES:]:
+        role = str(h.get("role", "")).lower()
+        text = _truncate(h.get("content", ""), 400)
+        if role not in {"user", "assistant"} or not text:
+            continue
+        messages.append({"role": role, "content": text})
+    messages.append({"role": "user", "content": user_turn})
+    return messages
+
+
 def _build_scope_label(filters: dict) -> str:
     parts = []
     if filters.get("year"):
@@ -1476,67 +1544,62 @@ def _build_programme_table(context: dict) -> str:
     return "\n".join(lines)
 
 
-def _build_prompt(message: str, context: dict, fallback_reply: str, history: list[dict] | None) -> str:
+def _build_system_text(context: dict, fallback_reply: str) -> str:
+    """Return the system-level prompt: instructions + all data context + baseline.
+
+    History is intentionally excluded — it is sent as genuine conversation turns
+    via _build_google_contents / _build_openai_messages so the model maintains a
+    real thread rather than reading a flat transcript.
+    """
     programme_table = _build_programme_table(context)
     return (
         "You are UniStudio Bot — a friendly, knowledgeable academic analytics assistant for the "
         "UniStudio registrar platform at Manicaland State University of Applied Sciences (MSUAS), Zimbabwe.\n\n"
         "PERSONALITY:\n"
         "- Speak in first person ('I can see...', 'Looking at the data...', 'I'd recommend...').\n"
-        "- Be warm and conversational, not robotic. Write like a helpful colleague, not a database printout.\n"
-        "- Acknowledge the question naturally before diving into data — e.g. 'Great question — here's what the numbers show:' "
-        "or 'Let me pull that up for you.'.\n"
-        "- After giving the core answer, offer one relevant follow-up — e.g. 'Would you like me to break this down "
-        "by faculty?' or 'I can also show you the at-risk students in this programme if that would help.'.\n"
-        "- When data shows something concerning (high risk, low pass rate, adverse decisions), acknowledge the "
-        "human impact briefly — e.g. 'That's worth keeping a close eye on.' — before moving to the numbers.\n"
-        "- Use short paragraphs. Never present data as one long run-on sentence.\n\n"
+        "- Be warm and conversational, not robotic. Write like a helpful colleague.\n"
+        "- Acknowledge the question naturally before diving into data.\n"
+        "- After the core answer, offer one relevant follow-up question.\n"
+        "- CRITICAL: You are in a multi-turn conversation. If the user says 'yes', 'sure', 'go ahead', "
+        "'which ones', or any short affirmative/follow-up, you MUST deliver on the follow-up you offered "
+        "in your previous reply — do NOT start a new topic or re-introduce yourself.\n"
+        "- When data shows something concerning, acknowledge the human impact briefly.\n"
+        "- Use short paragraphs. Never write a long run-on sentence.\n\n"
         "ACCURACY RULES:\n"
-        "1. Use only the supplied facts and scope context. Do not invent numbers or statistics.\n"
-        "2. If the question cannot be answered from the data, say so honestly and redirect to "
-        "pr@msuas.ac.zw or +263 2063456 | +263 8677004392.\n"
-        "3. When explaining a calculation (completion %, pass rate, risk score), show the step-by-step "
-        "working using the actual numbers — do not just state the result.\n"
-        "4. When comparing programmes or faculties, always rank them and name the key factor driving the ranking.\n"
-        "5. Never discuss topics outside MSUAS academics, student performance, university services, or admissions. "
-        "Gently redirect off-topic questions.\n\n"
+        "1. Use only the supplied facts and scope context. Never invent numbers.\n"
+        "2. If data is unavailable, redirect to pr@msuas.ac.zw or +263 2063456.\n"
+        "3. Show step-by-step working for any calculation.\n"
+        "4. When comparing programmes or faculties, always rank them.\n"
+        "5. Stay within MSUAS academics, student performance, services, and admissions.\n\n"
         f"University facts: {json.dumps(UNIVERSITY_FACTS, ensure_ascii=True)}\n"
-        f"Admissions and entry requirements: {ADMISSIONS_SUMMARY}\n"
-        f"Student services and new programmes: {STUDENT_SERVICES_SUMMARY}\n"
+        f"Admissions: {ADMISSIONS_SUMMARY}\n"
+        f"Student services: {STUDENT_SERVICES_SUMMARY}\n"
         f"Completion rules: {COMPLETION_RULES_SUMMARY}\n"
         f"Graduation rules: {GRADUATION_RULES_SUMMARY}\n"
-        f"Risk band definitions: {RISK_BANDS_SUMMARY}\n"
-        f"Programme reference table (current scope):\n{programme_table}\n"
+        f"Risk bands: {RISK_BANDS_SUMMARY}\n"
+        f"Programme reference table:\n{programme_table}\n"
         f"Current scoped data: {json.dumps(context, ensure_ascii=True, default=str)}\n"
-        f"Conversation history:\n{_build_history_block(history)}\n\n"
-        f"Baseline answer (use as the factual foundation — rewrite in a warm, conversational tone):\n{fallback_reply}\n\n"
-        f"User question: {message}\n"
+        f"Baseline answer (factual foundation — rewrite conversationally): {fallback_reply}\n"
     )
 
 
-def _request_openai_chatbot_response(prompt: str) -> str:
+def _build_user_turn(message: str) -> str:
+    return f"User question: {message}"
+
+
+def _request_openai_chatbot_response(
+    system_text: str,
+    history: list[dict] | None,
+    user_turn: str,
+) -> str:
+    """Call OpenAI Chat Completions with a proper multi-turn message array."""
     payload = {
         "model": settings.CHATBOT_OPENAI_MODEL,
-        "reasoning": {"effort": "low"},
-        "max_output_tokens": 600,
-        "input": [
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": "Return a plain-text answer grounded only in the supplied university and analytics context.",
-                    }
-                ],
-            },
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": prompt}],
-            },
-        ],
+        "max_tokens": 600,
+        "messages": _build_openai_messages(system_text, history, user_turn),
     }
     request = urllib.request.Request(
-        OPENAI_RESPONSES_URL,
+        OPENAI_CHAT_COMPLETIONS_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -1548,16 +1611,15 @@ def _request_openai_chatbot_response(prompt: str) -> str:
         return response.read().decode("utf-8")
 
 
-def _request_google_chatbot_response(prompt: str) -> str:
+def _request_google_chatbot_response(
+    system_text: str,
+    history: list[dict] | None,
+    user_turn: str,
+) -> str:
+    """Call Google Gemini with a proper multi-turn contents array."""
     payload = {
-        "systemInstruction": {
-            "parts": [
-                {
-                    "text": "Return a plain-text answer grounded only in the supplied university and analytics context.",
-                }
-            ]
-        },
-        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system_text}]},
+        "contents": _build_google_contents(history, user_turn),
         "generationConfig": {
             "temperature": 0.5,
             "maxOutputTokens": 600,
@@ -1680,6 +1742,12 @@ def get_chatbot_reply(
         "intent": None,
     }
 
+    # Detect contextual follow-ups BEFORE intent classification.
+    # Replies like "yes", "sure", "go ahead", "which ones?" must never be
+    # short-circuited through the greeting/out-of-scope fast paths — they need
+    # the full AI path with conversation history so the thread is maintained.
+    is_contextual = _is_contextual_reply(cleaned_message, history)
+
     # --- Intent detection (Layer 2) ----------------------------------------
     # Only runs when an AI provider is configured. Uses a lightweight call
     # (max 80 tokens) to classify the message before touching the database.
@@ -1692,21 +1760,24 @@ def get_chatbot_reply(
         intent_entities = intent_result.get("entities", {})
         diagnostics["intent"] = intent
 
-        # Short-circuit: these intents need no DB query — reply immediately
-        if intent == "greeting":
-            return {
-                "reply": GREETING_REPLY,
-                "source": "rules",
-                "source_label": PROVIDER_LABELS["rules"],
-                "diagnostics": diagnostics,
-            }
-        if intent == "out_of_scope":
-            return {
-                "reply": OUT_OF_SCOPE_REPLY,
-                "source": "rules",
-                "source_label": PROVIDER_LABELS["rules"],
-                "diagnostics": diagnostics,
-            }
+        # Short-circuit only when NOT a contextual follow-up.
+        # A "yes" after the bot offered to break down gender by programme must
+        # go to the AI with history — not return GREETING_REPLY.
+        if not is_contextual:
+            if intent == "greeting":
+                return {
+                    "reply": GREETING_REPLY,
+                    "source": "rules",
+                    "source_label": PROVIDER_LABELS["rules"],
+                    "diagnostics": diagnostics,
+                }
+            if intent == "out_of_scope":
+                return {
+                    "reply": OUT_OF_SCOPE_REPLY,
+                    "source": "rules",
+                    "source_label": PROVIDER_LABELS["rules"],
+                    "diagnostics": diagnostics,
+                }
 
     # --- Full context build (DB queries) ------------------------------------
     _emit("Querying the database\u2026")
@@ -1749,7 +1820,6 @@ def get_chatbot_reply(
 
     _emit("Preparing your answer\u2026")
     fallback_reply = _build_rule_based_reply(cleaned_message, context)
-    prompt = _build_prompt(cleaned_message, context, fallback_reply, history)
 
     if not status["enabled"]:
         diagnostics["fallback_reason"] = "chatbot_disabled"
@@ -1760,10 +1830,15 @@ def get_chatbot_reply(
             "diagnostics": diagnostics,
         }
 
+    # Build system text + user turn separately so history is sent as real
+    # conversation turns (multi-turn API) rather than a flat embedded block.
+    system_text = _build_system_text(context, fallback_reply)
+    user_turn   = _build_user_turn(cleaned_message)
+
     try:
         if status["google_ready"]:
             _emit("Connecting to Google Gemini\u2026")
-            raw_response = _request_google_chatbot_response(prompt)
+            raw_response = _request_google_chatbot_response(system_text, history, user_turn)
             response_text = _extract_google_response_text(json.loads(raw_response))
             if response_text:
                 diagnostics["returned_source"] = "google"
@@ -1776,7 +1851,7 @@ def get_chatbot_reply(
             diagnostics["fallback_reason"] = "empty_google_response"
         elif status["openai_ready"]:
             _emit("Connecting to OpenAI\u2026")
-            raw_response = _request_openai_chatbot_response(prompt)
+            raw_response = _request_openai_chatbot_response(system_text, history, user_turn)
             response_text = _extract_response_text(json.loads(raw_response))
             if response_text:
                 diagnostics["returned_source"] = "openai"

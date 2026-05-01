@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/reports.css' %}?v=20260428-v3">
+<link rel="stylesheet" href="{% static 'dashboard/css/reports.css' %}?v=20260501-v4">
 {% endblock %}
 
 {% block content %}
@@ -288,6 +288,11 @@
                     <thead id="rpt-thead"></thead>
                     <tbody id="rpt-tbody"></tbody>
                 </table>
+
+                <div class="rpt-table-footer" id="rpt-table-footer">
+                    <p class="rpt-results-meta" id="rpt-results-meta"></p>
+                    <nav class="rpt-pagination is-hidden" id="rpt-pagination" aria-label="Pagination"></nav>
+                </div>
             </div>
 
         </div>
@@ -298,5 +303,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'dashboard/js/reports.js' %}?v=20260429-v4"></script>
+<script src="{% static 'dashboard/js/reports.js' %}?v=20260501-v5"></script>
 {% endblock %}
