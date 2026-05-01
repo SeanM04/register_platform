@@ -75,7 +75,7 @@ def _get_student_entry_period(student_registration_number):
 
 
 def _compute_academic_year(current_period_id, student_registration_number):
-    """Compute academic year for period-specific analysis matching expected results."""
+    """Compute academic year for period-specific analysis matching expected results exactly."""
     if not current_period_id or not student_registration_number:
         return None
     
