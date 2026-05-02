@@ -165,6 +165,9 @@ def graduation_drilldown(request):
     Return drilldown data for graduation analysis charts.
     Supports hierarchical navigation: Faculty → Department → Programme → Students
     """
+    import time
+    start_time = time.time()
+    
     try:
         from urllib.parse import unquote_plus
         from .services import build_graduation_drilldown_data
@@ -175,14 +178,34 @@ def graduation_drilldown(request):
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 10))
         
-        # Build drilldown payload using graduation service
-        payload = build_graduation_drilldown_data(
-            request=request,
-            chart_key=chart_key,
-            bucket_key=bucket_key,
-            page=page,
-            page_size=page_size
-        )
+        logger.info(f"Graduation drilldown request: chart_key={chart_key}, bucket_key={bucket_key}, page={page}")
+        
+        # Build drilldown payload using optimized graduation service
+        try:
+            from .drilldown_optimized import build_optimized_graduation_drilldown_data
+            payload = build_optimized_graduation_drilldown_data(
+                request=request,
+                chart_key=chart_key,
+                bucket_key=bucket_key,
+                page=page,
+                page_size=page_size
+            )
+            logger.info("Using optimized graduation drilldown service")
+        except ImportError:
+            # Fallback to original service if optimized version not available
+            from .services import build_graduation_drilldown_data
+            payload = build_graduation_drilldown_data(
+                request=request,
+                chart_key=chart_key,
+                bucket_key=bucket_key,
+                page=page,
+                page_size=page_size
+            )
+            logger.info("Using original graduation drilldown service")
+        
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.info(f"Graduation drilldown completed in {duration:.2f} seconds")
         
         return JsonResponse({
             'status': 'success',

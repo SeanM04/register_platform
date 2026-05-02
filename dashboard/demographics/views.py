@@ -63,3 +63,26 @@ def demographic_narratives(request):
     search_query = request.GET.get("q", "").strip()
     demographic_data = build_demographic_data(request, search_query)
     return JsonResponse(get_demographic_card_narratives_result(demographic_data))
+
+
+@ajax_login_required
+@require_GET
+def demographic_drilldown(request):
+    """Return drilldown data for demographic charts."""
+    from .drilldown_services import build_demographic_drilldown_data
+    
+    chart_key = request.GET.get("chart")
+    bucket_key = request.GET.get("bucket")
+    page = int(request.GET.get("page", 1))
+    page_size = int(request.GET.get("page_size", 10))
+    
+    if not chart_key or not bucket_key:
+        return JsonResponse({"error": "Missing required parameters: chart and bucket"}, status=400)
+    
+    try:
+        drilldown_data = build_demographic_drilldown_data(
+            request, chart_key, bucket_key, page, page_size
+        )
+        return JsonResponse(drilldown_data)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

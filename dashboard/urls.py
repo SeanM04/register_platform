@@ -1,7 +1,7 @@
 from django.urls import path, include
 
 from .academic_levels.views import academic_level_metrics, academic_level_payload, academic_level_view
-from .demographics.views import demographic_metrics, demographic_narratives, demographic_payload, demographic_view
+from .demographics.views import demographic_drilldown, demographic_metrics, demographic_narratives, demographic_payload, demographic_view
 from .insights.views import insights_drilldown_payload, insights_payload, insights_view
 from .overview.views import (
     dashboard_home,
@@ -59,6 +59,7 @@ urlpatterns = [
     path("metrics/demographic/", demographic_metrics, name="demographic-metrics"),
     path("metrics/demographic/payload/", demographic_payload, name="demographic-payload"),
     path("metrics/demographic/narratives/", demographic_narratives, name="demographic-narratives"),
+    path("metrics/demographic/drilldown/", demographic_drilldown, name="demographic-drilldown"),
     path("academic-level/", academic_level_view, name="academic-level"),
     path("metrics/academic-level/", academic_level_metrics, name="academic-level-metrics"),
     path("metrics/academic-level/payload/", academic_level_payload, name="academic-level-payload"),

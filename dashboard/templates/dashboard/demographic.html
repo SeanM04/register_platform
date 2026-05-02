@@ -4,13 +4,15 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260430-unified-spinner01">
+<link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260501-deduplication-fix01">
 {% endblock %}
 
 {% block content %}
 <section
     class="demographic-layout"
     data-payload-url="{% url 'dashboard:demographic-payload' %}"
+    data-drilldown-url="{% url 'dashboard:demographic-drilldown' %}"
     data-narratives-url="{% url 'dashboard:demographic-narratives' %}"
 >
     <section class="demographic-metrics">

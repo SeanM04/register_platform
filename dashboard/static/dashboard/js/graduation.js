@@ -54,7 +54,7 @@ class GraduationAnalysis {
             
             // Fetch drilldown data with timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
             
             try {
                 const response = await fetch(drilldownUrl.toString(), {
@@ -69,6 +69,8 @@ class GraduationAnalysis {
                 
                 const result = await response.json();
                 console.log("DEBUG: drilldown response:", result);
+                console.log("DEBUG: response status:", result.status);
+                console.log("DEBUG: response data:", result.data);
                 
                 if (result.status === 'success' && result.data) {
                     this.hideDrilldownLoading();
@@ -76,6 +78,7 @@ class GraduationAnalysis {
                         this.openDrillDown(chartKey, bucketKey, page);
                     });
                 } else {
+                    console.log("DEBUG: response format unexpected:", result);
                     throw new Error(result.message || 'No drilldown data available');
                 }
             } catch (fetchError) {

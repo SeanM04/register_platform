@@ -8,7 +8,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260414-dropdown-arrows01">
 <link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260418-readiness-shell01">
-<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260416-instant-loading01">
+<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260501-timeout-fix01">
 <link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
 
@@ -262,7 +262,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/graduation.js' %}?v=20260430-unified-spinner01"></script>
+<script type="module" src="{% static 'dashboard/js/graduation.js' %}?v=20260501-optimized-drilldown01"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const initialiseAccordion = () => {
