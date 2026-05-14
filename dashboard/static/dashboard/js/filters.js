@@ -1,67 +1,105 @@
 /**
- * Filter persistence functionality for dashboard
- * Saves filter selections to localStorage and restores them on page load
+ * Topbar filter scope: URL + localStorage stay aligned so refresh and deep links
+ * keep the same year / period / faculty, and returning from student detail
+ * restores the list scope via preserved query strings.
  */
 
-const FILTER_STORAGE_KEY = 'dashboard_filters';
+const FILTER_STORAGE_KEY = "dashboard_filters";
+const FILTER_PARAM_NAMES = ["year", "period", "faculty"];
+
+function readSavedFiltersFromStorage() {
+    try {
+        const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") {
+            return null;
+        }
+        return {
+            year: String(parsed.year || "").trim(),
+            period: String(parsed.period || "").trim(),
+            faculty: String(parsed.faculty || "").trim(),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function writeStorageFromSearchParams(searchParams) {
+    const next = {
+        year: (searchParams.get("year") || "").trim(),
+        period: (searchParams.get("period") || "").trim(),
+        faculty: (searchParams.get("faculty") || "").trim(),
+    };
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(next));
+}
+
+function hasActiveFilterScope(searchParams) {
+    return FILTER_PARAM_NAMES.some((name) => (searchParams.get(name) || "").trim());
+}
+
+function hasSavedFilterScope(saved) {
+    return Boolean(saved && (saved.year || saved.period || saved.faculty));
+}
 
 /**
- * Save filter selections to localStorage
+ * If the URL has no filter query params but localStorage holds a scope,
+ * replace the location so the server renders filtered data (avoids “All” data
+ * with filter-looking selects after refresh).
  */
-const saveFilters = () => {
-    const filters = {};
-    const filterSelects = document.querySelectorAll('.filter-select');
-    
-    filterSelects.forEach(select => {
-        if (select.value) {
-            filters[select.name] = select.value;
+function applySavedFiltersToUrlIfMissing() {
+    const params = new URLSearchParams(window.location.search);
+    if (hasActiveFilterScope(params)) {
+        writeStorageFromSearchParams(params);
+        return false;
+    }
+
+    const saved = readSavedFiltersFromStorage();
+    if (!hasSavedFilterScope(saved)) {
+        return false;
+    }
+
+    const merged = new URLSearchParams(window.location.search);
+    FILTER_PARAM_NAMES.forEach((name) => {
+        const val = saved[name];
+        if (val) {
+            merged.set(name, val);
         }
     });
-    
+
+    const next = merged.toString();
+    const curr = window.location.search.replace(/^\?/, "");
+    if (next === curr) {
+        return false;
+    }
+
+    const url = window.location.pathname + (next ? `?${next}` : "");
+    window.location.replace(url);
+    return true;
+}
+
+const saveFilters = () => {
+    const filters = { year: "", period: "", faculty: "" };
+    document.querySelectorAll(".filter-select").forEach((select) => {
+        if (Object.prototype.hasOwnProperty.call(filters, select.name)) {
+            filters[select.name] = select.value || "";
+        }
+    });
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
 };
 
-/**
- * Restore filter selections from localStorage
- */
-const restoreFilters = () => {
-    try {
-        const savedFilters = localStorage.getItem(FILTER_STORAGE_KEY);
-        if (!savedFilters) return;
-        
-        const filters = JSON.parse(savedFilters);
-        const filterSelects = document.querySelectorAll('.filter-select');
-        
-        filterSelects.forEach(select => {
-            const savedValue = filters[select.name];
-            if (!savedValue || select.dataset.filterLocked === 'true') {
-                return;
-            }
-
-            const hasSavedOption = Array.from(select.options).some((option) => option.value === savedValue);
-            if (hasSavedOption) {
-                select.value = filters[select.name];
-            }
-        });
-    } catch (error) {
-        console.error('Error restoring filters:', error);
-    }
-};
-
-/**
- * Initialize filter persistence
- */
 const initializeFilterPersistence = () => {
-    // Restore filters on page load
-    restoreFilters();
-    
-    // Add change event listeners to all filter selects
-    const filterSelects = document.querySelectorAll('.filter-select');
-    filterSelects.forEach(select => {
-        select.addEventListener('change', () => {
+    if (applySavedFiltersToUrlIfMissing()) {
+        return;
+    }
+
+    const filterSelects = document.querySelectorAll(".filter-select");
+    filterSelects.forEach((select) => {
+        select.addEventListener("change", () => {
             saveFilters();
-            // Submit form after filter change
-            const form = select.closest('form');
+            const form = select.closest("form");
             if (form) {
                 form.submit();
             }
@@ -69,9 +107,8 @@ const initializeFilterPersistence = () => {
     });
 };
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeFilterPersistence);
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeFilterPersistence);
 } else {
     initializeFilterPersistence();
 }
