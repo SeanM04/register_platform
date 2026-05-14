@@ -4,6 +4,8 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260430-unified-spinner01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
@@ -132,7 +134,7 @@
     data-narratives-url="{% url 'dashboard:home-narratives' %}"
     data-ai-narratives-enabled="{{ overview_ai_narratives_enabled|yesno:'true,false' }}"
 >
-    <section class="home-metrics">
+    <section class="home-metrics" data-metrics-url="{% url 'dashboard:home-metrics' %}">
         {% for card in summary_cards %}
         <article class="home-metric home-metric-{{ card.tone }}" data-metric-card data-metric-key="{{ card.key }}">
             <p class="home-metric-label">{{ card.label }}</p>
@@ -275,7 +277,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260416-home-drilldown16"></script>
+<script type="module" src="{% static 'dashboard/js/home.js' %}?v=20260514-home-parallel-metrics01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

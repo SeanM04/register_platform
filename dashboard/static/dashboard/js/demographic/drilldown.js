@@ -156,14 +156,14 @@ export const addDemographicDrilldownHandlers = (context) => {
         const yearDistributionChart = getEChartsInstance(yearDistributionChartElement);
         if (yearDistributionChart) {
             yearDistributionChart.on('click', (params) => {
-                console.log('Year distribution chart clicked:', params);
-                const year = params.seriesName.replace("Year ", "");
-                
-                openDemographicDrillDown(context, {
-                    chartKey: "year_distribution",
-                    bucketKey: year,
-                    label: `Year ${year} Students`,
-                });
+                const year = String(params.name ?? '').trim();
+                if (year && /^\d+$/.test(year)) {
+                    openDemographicDrillDown(context, {
+                        chartKey: "year_distribution",
+                        bucketKey: year,
+                        label: `Year ${year} students`,
+                    });
+                }
             });
         }
     }

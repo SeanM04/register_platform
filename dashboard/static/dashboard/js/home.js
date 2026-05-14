@@ -1,7 +1,24 @@
-import { initialiseOverviewPage } from "./home/index.js?v=20260416-home-drilldown16";
+import { initialiseOverviewPage } from "./home/index.js?v=20260514-home-parallel-metrics01";
+
+let hasInitialised = false;
 
 const MAX_LIBRARY_WAIT_MS = 2200;
-let hasInitialised = false;
+
+/**
+ * Resolve once ECharts is on window or the wait budget is exceeded.
+ */
+const createLibrariesReadyPromise = () =>
+    new Promise((resolve) => {
+        const startedAt = Date.now();
+        const tick = () => {
+            if (window.echarts || Date.now() - startedAt >= MAX_LIBRARY_WAIT_MS) {
+                resolve();
+                return;
+            }
+            window.setTimeout(tick, 50);
+        };
+        tick();
+    });
 
 /**
  * Keep the chapter toggle button, ARIA state, and optional chart resize signal in sync.
@@ -66,12 +83,11 @@ const initialiseCollapsibleSections = () => {
             const isExpanded = toggle.getAttribute("aria-expanded") === "true";
 
             if (!isExpanded) {
-                // If expanding this section, collapse all other sections first
                 toggles.forEach((otherToggle) => {
                     if (otherToggle !== toggle) {
                         const otherContentId = otherToggle.getAttribute("aria-controls");
                         const otherContent = document.getElementById(otherContentId);
-                        
+
                         if (otherContent && otherToggle.getAttribute("aria-expanded") === "true") {
                             syncToggleState(otherToggle, otherContent, false, true);
                         }
@@ -79,14 +95,13 @@ const initialiseCollapsibleSections = () => {
                 });
             }
 
-            // Then toggle this section
             syncToggleState(toggle, content, !isExpanded, true);
         });
     });
 };
 
 /**
- * Start the landing dashboard only once, even if library polling resolves multiple times.
+ * Start the landing dashboard only once. Chart libraries and overview payload load in parallel.
  */
 const bootstrapOverviewPage = async () => {
     if (hasInitialised) {
@@ -95,32 +110,13 @@ const bootstrapOverviewPage = async () => {
 
     hasInitialised = true;
     initialiseCollapsibleSections();
-    await initialiseOverviewPage();
-};
 
-/**
- * Guard the dashboard bootstrap until ECharts is present on the page.
- */
-const areLibrariesReady = () => Boolean(window.echarts);
-
-/**
- * Poll for shared chart libraries so the page can stay resilient to CDN latency.
- */
-const waitForLibrariesThenInitialise = (startedAt = Date.now()) => {
-    if (areLibrariesReady() || Date.now() - startedAt >= MAX_LIBRARY_WAIT_MS) {
-        bootstrapOverviewPage();
-        return;
-    }
-
-    window.setTimeout(() => {
-        waitForLibrariesThenInitialise(startedAt);
-    }, 50);
+    const librariesReady = createLibrariesReadyPromise();
+    await initialiseOverviewPage(librariesReady);
 };
 
 if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-        waitForLibrariesThenInitialise();
-    }, { once: true });
+    document.addEventListener("DOMContentLoaded", bootstrapOverviewPage, { once: true });
 } else {
-    waitForLibrariesThenInitialise();
+    bootstrapOverviewPage();
 }

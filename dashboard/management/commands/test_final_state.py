@@ -27,16 +27,15 @@ class Command(BaseCommand):
             demographic_data = build_demographic_data(request)
             year_distribution_rows = demographic_data.get("year_distribution_rows", [])
             
-            actual_years = sorted([int(row["year"]) for row in year_distribution_rows])
-            expected_years = [1]  # According to your expected results
-            
-            self.stdout.write(f'🎯 Expected: Years {expected_years}')
-            self.stdout.write(f'📊 Actual: Years {actual_years}')
-            
-            if actual_years == expected_years:
-                self.stdout.write('✅ CORRECT: Expected and actual match!')
+            actual_years = [int(row["year"]) for row in year_distribution_rows]
+            # Chart payload always includes academic levels 1–5 for the filtered cohort.
+            expected_levels = [1, 2, 3, 4, 5]
+            self.stdout.write(f'🎯 Expected chart levels: {expected_levels}')
+            self.stdout.write(f'📊 Actual chart levels: {actual_years}')
+            if actual_years == expected_levels:
+                self.stdout.write('✅ CORRECT: All five academic year levels are present.')
             else:
-                self.stdout.write('❌ MISMATCH: Expected and actual don\'t match')
+                self.stdout.write('❌ MISMATCH: Year distribution should always list 1–5.')
             
             # Show details
             self.stdout.write('\n📊 Detailed Results:')

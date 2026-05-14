@@ -7,6 +7,8 @@ from django.db.models import Q
 from dashboard.models import Registration, Student
 from dashboard.views import build_registration_filter_q
 
+from .services import build_registration_pk_to_progression_year_map
+
 
 def build_demographic_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
     """Build drilldown data for demographic charts."""
@@ -32,7 +34,21 @@ def build_demographic_drilldown_data(request, chart_key, bucket_key, page=1, pag
         student_reg_num = reg.student.registration_number
         if student_reg_num not in unique_students:
             unique_students[student_reg_num] = reg
-    
+
+    if chart_key == "year_distribution":
+        try:
+            target_year = int(str(bucket_key).strip())
+        except (TypeError, ValueError):
+            target_year = None
+        if target_year is not None and 1 <= target_year <= 5:
+            student_ids = {reg.student_id for reg in unique_students.values()}
+            reg_year = build_registration_pk_to_progression_year_map(student_ids)
+            unique_students = {
+                k: v
+                for k, v in unique_students.items()
+                if reg_year.get(v.id) == target_year
+            }
+
     # Convert to list for pagination
     unique_registrations = list(unique_students.values())
     
