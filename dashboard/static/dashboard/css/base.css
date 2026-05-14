@@ -527,7 +527,9 @@ body.is-filter-loading .topbar-filters {
     flex-direction: column;
     justify-content: space-between;
     overflow-y: auto;
-    z-index: 999;
+    /* Above .topbar (1000) so the first nav link stays clickable when the brand
+       image overflows the fixed topbar height (tall SVG / logo). */
+    z-index: 1001;
 }
 
 .sidebar-nav {
