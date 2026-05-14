@@ -315,7 +315,6 @@ const renderTableImmediately = (rows) => {
             <td>${escapeTooltipHtml(row.average_mark)}</td>
             <td class="level-td-pass">
                 <span class="level-pass-pill${row.below_target ? " is-below-target" : ""}">${escapeTooltipHtml(row.pass_rate)}</span>
-                ${row.below_target ? '<span class="level-pass-flag">Below 85% target</span>' : ""}
             </td>
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
@@ -350,7 +349,6 @@ const renderLevelTable = (context) => {
             <td>${escapeTooltipHtml(row.average_mark)}</td>
             <td class="level-td-pass">
                 <span class="level-pass-pill${row.below_target ? " is-below-target" : ""}">${escapeTooltipHtml(row.pass_rate)}</span>
-                ${row.below_target ? '<span class="level-pass-flag">Below 85% target</span>' : ""}
             </td>
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
