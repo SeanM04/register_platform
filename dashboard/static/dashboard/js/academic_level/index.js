@@ -1,4 +1,4 @@
-import { createAcademicLevelContext, updateAcademicLevelContext } from "./context.js";
+import { createAcademicLevelContext, refreshAcademicLevelTableDomRefs, updateAcademicLevelContext } from "./context.js";
 import { initialiseFullscreenControls } from "./fullscreen.js";
 import { initialiseGenderSection } from "./gender.js";
 import { renderStoryBanner } from "./narratives.js";
@@ -17,6 +17,25 @@ const paginationState = {
 
 // Store the initial table data globally so we can render it anytime
 let initialTableData = null;
+
+/** Set after charts initialise; accordion open handler triggers resize + table repaint */
+let academicLevelResizeCharts = null;
+
+document.addEventListener("academic-level:accordion-opened", () => {
+    if (!academicLevelResizeCharts) {
+        return;
+    }
+    if (initialTableData && initialTableData.length > 0) {
+        renderTableImmediately(initialTableData);
+        renderPaginationControls();
+    }
+    window.requestAnimationFrame(() => {
+        academicLevelResizeCharts();
+        window.setTimeout(() => {
+            academicLevelResizeCharts();
+        }, 400);
+    });
+});
 
 const buildRequestUrl = (endpoint) => {
     const requestUrl = new URL(endpoint, window.location.origin);
@@ -304,14 +323,6 @@ const renderTableImmediately = (rows) => {
 
 };
 
-// Simplified re-render for accordion expand - just call immediate render
-const handleAccordionExpand = () => {
-    if (initialTableData && initialTableData.length > 0) {
-        renderTableImmediately(initialTableData);
-        renderPaginationControls();
-    }
-};
-
 const renderLevelTable = (context) => {
     // Always query the DOM directly to ensure we get the current element
     const tableBody = document.querySelector('.level-table tbody');
@@ -422,7 +433,10 @@ export const initialiseAcademicLevelPage = () => {
             
             // Render table IMMEDIATELY - don't wait for anything
             renderTableImmediately(allLevelRows);
-            
+            refreshAcademicLevelTableDomRefs(context);
+
+            initialisePagination();
+
             context.data.levelRows = payloadResponse?.level_chart_rows || [];
 
             if (!storyBannerHydrated) {
@@ -446,12 +460,14 @@ export const initialiseAcademicLevelPage = () => {
                 });
             };
 
+            academicLevelResizeCharts = resizeCharts;
             initialiseChartResizeHandling(controllers, resizeCharts);
             initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
 
-            // Simple event listener - just re-render when accordion opens
-            document.addEventListener('academic-level:table-visibility-changed', () => {
-                handleAccordionExpand();
+            window.requestAnimationFrame(() => {
+                resizeCharts();
+                window.setTimeout(() => resizeCharts(), 120);
+                window.setTimeout(() => resizeCharts(), 450);
             });
         })
         .catch((error) => {

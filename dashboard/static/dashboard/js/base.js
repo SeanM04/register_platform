@@ -134,12 +134,13 @@ sidebarLinks.forEach((link) => {
 window.addEventListener("pageshow", () => {
     clearFilterLoadingState();
     
-    // Re-initialize charts after filter changes
+    // Re-initialize charts after filter changes — only dispose charts inside the
+    // home dashboard shell. Other pages (academic levels, risk, …) use the same
+    // role/aria pattern; disposing them here breaks charts after refresh because
+    // those pages do not re-run their initialisers from base.js.
     if (window.performance && window.performance.navigation.type === 1) {
-        // Page was loaded via back/forward or refresh
-        const charts = document.querySelectorAll('[role="img"][aria-label*="chart"]');
+        const charts = document.querySelectorAll('.home-layout [role="img"][aria-label*="chart"]');
         charts.forEach(chart => {
-            // Clear and re-render charts
             const chartId = chart.id;
             if (chartId && window.echarts && window.echarts.dispose) {
                 window.echarts.dispose(chartId);

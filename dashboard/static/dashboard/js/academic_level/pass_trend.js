@@ -30,13 +30,15 @@ const clearHighlightedLevelRow = (levelTableRows) => {
     });
 };
 
-const getLevelTableRow = (levelTableRows, levelName) => (
-    levelTableRows.find((row) => row.dataset.levelRow === levelName) || null
+const getLevelTableRows = () => Array.from(document.querySelectorAll("[data-level-row]"));
+
+const getLevelTableRow = (levelName) => (
+    getLevelTableRows().find((row) => row.dataset.levelRow === levelName) || null
 );
 
-const highlightLevelRow = (levelTableRows, levelName) => {
-    clearHighlightedLevelRow(levelTableRows);
-    const tableRow = getLevelTableRow(levelTableRows, levelName);
+const highlightLevelRow = (levelName) => {
+    clearHighlightedLevelRow(getLevelTableRows());
+    const tableRow = getLevelTableRow(levelName);
     if (tableRow) {
         tableRow.classList.add("is-emphasized");
     }
@@ -44,18 +46,21 @@ const highlightLevelRow = (levelTableRows, levelName) => {
 };
 
 const jumpToLevelRow = (elements, levelName) => {
-    const tableRow = highlightLevelRow(elements.levelTableRows, levelName);
+    const tableRow = highlightLevelRow(levelName);
     if (!tableRow) {
         return;
     }
 
     tableRow.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    if (elements.levelTableWrap && typeof elements.levelTableWrap.focus === "function") {
+    const tableWrap = document.querySelector(".level-table-wrap[data-scroll-region]")
+        || document.querySelector("[data-scroll-region]")
+        || elements.levelTableWrap;
+    if (tableWrap && typeof tableWrap.focus === "function") {
         window.setTimeout(() => {
             try {
-                elements.levelTableWrap.focus({ preventScroll: true });
+                tableWrap.focus({ preventScroll: true });
             } catch (error) {
-                elements.levelTableWrap.focus();
+                tableWrap.focus();
             }
         }, 180);
     }
@@ -79,7 +84,7 @@ const buildPassTrendSeriesData = (rows) => rows.map((row) => {
 const buildPassChartOption = (rows) => ({
     ...buildAnimationConfig(rows),
     axisPointer: buildHiddenAxisPointerStyle(),
-    grid: { top: 20, right: 24, bottom: rows.length > 8 ? 68 : 28, left: 48, containLabel: true },
+    grid: { top: 28, right: 28, bottom: rows.length > 8 ? 88 : 40, left: 52, containLabel: true },
     dataZoom: buildHorizontalCategoryZoom(rows),
     tooltip: {
         ...buildTooltipBase("axis"),
@@ -184,10 +189,10 @@ const buildPassLevelDetailOption = (
         ...buildAnimationConfig(rows),
         axisPointer: buildHiddenAxisPointerStyle(),
         grid: {
-            top: 20,
-            right: isCompact ? 30 : 36,
-            bottom: rows.length > 6 ? 96 : 78,
-            left: 46,
+            top: 28,
+            right: isCompact ? 34 : 40,
+            bottom: rows.length > 6 ? 112 : 92,
+            left: 52,
             containLabel: true,
         },
         dataZoom: buildHorizontalCategoryZoom(rows),
@@ -278,7 +283,6 @@ export const initialisePassTrendSection = (context) => {
     const { cardNarratives, levelRows } = context.data;
     const { overviewNarrativeSource, overviewNarrativesAreAi } = context.flags;
     const {
-        levelTableRows,
         passLegendButtons,
         passTrendCard,
         passTrendContext,
@@ -363,7 +367,7 @@ export const initialisePassTrendSection = (context) => {
         setChartClickability(chart, true);
         chart.setOption(buildPassChartOption(levelRows), true);
         setPassTrendContext(null);
-        clearHighlightedLevelRow(levelTableRows);
+        clearHighlightedLevelRow(getLevelTableRows());
         syncPassLegendState();
         setPassTrendNarrative(null);
         window.requestAnimationFrame(() => {
@@ -387,7 +391,7 @@ export const initialisePassTrendSection = (context) => {
         setPassTrendDetailState(true);
         setChartClickability(chart, false);
         setPassTrendContext(levelRow);
-        highlightLevelRow(levelTableRows, levelRow.level);
+        highlightLevelRow(levelRow.level);
         syncPassLegendState();
         chart.setOption(buildPassLevelDetailOption(levelRow, chart.getWidth(), passTrendSeriesSelection), true);
         setPassTrendNarrative(levelRow);

@@ -623,6 +623,15 @@
     max-width: 42rem;
 }
 
+.level-insight-card-pass-trend .level-chart-stage {
+    min-height: 400px;
+}
+
+.level-insight-card-pass-trend .level-chart-canvas {
+    min-height: 340px;
+    flex: 1 1 auto;
+}
+
 .level-insight-card-pass-trend.is-detail .level-chart-stage {
     padding: 0.45rem 0.55rem 0.35rem;
 }
@@ -1104,8 +1113,8 @@ outline-offset: 2px;
 .level-table-wrap {
     position: relative;
     overflow: auto;
-    min-height: 0;
-    max-height: 58vh;
+    min-height: 240px;
+    max-height: 72vh;
     scroll-behavior: smooth;
     scrollbar-gutter: stable both-edges;
     scrollbar-width: thin;
