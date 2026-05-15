@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{% static 'dashboard/css/chatbot.css' %}?v=20260501-autogrow01">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'dashboard/css/ai_badges.css' %}?v=20260414-rectangular-badge01">
-    <script src="{% static 'dashboard/js/filters.js' %}?v=20260420-student-scoped-filters01"></script>
+    <script src="{% static 'dashboard/js/filters.js' %}?v=20260514-scope-url-sync01"></script>
 </head>
 <body>
     <div class="app-shell">
@@ -18,7 +18,7 @@
             <div class="brand-block">
                 <img
                     class="brand-logo-image"
-                    src="{% static 'dashboard/images/unistudio crr.jpeg' %}"
+                    src="{% static 'dashboard/images/unistudio-logo.svg' %}"
                     alt="UniStudio"
                 >
             </div>
@@ -53,7 +53,7 @@
                 {# ── MSU logo ── #}
                 <img
                     class="brand-msu-logo"
-                    src="{% static 'dashboard/images/msuas-logo.png' %}"
+                    src="{% static 'dashboard/images/msuas.logo.png' %}"
                     alt="MSU"
                 >
 
@@ -203,8 +203,8 @@
     </section>
     {% endif %}
 
-    <script src="{% static 'dashboard/js/base.js' %}?v=20260408-topbar-design01"></script>
-    <script src="{% static 'dashboard/js/metrics.js' %}"></script>
+    <script src="{% static 'dashboard/js/base.js' %}?v=20260514-home-only-chart-dispose01"></script>
+    <script src="{% static 'dashboard/js/metrics.js' %}?v=20260514-priority-fetch01"></script>
     <script src="{% static 'dashboard/js/chatbot.js' %}?v=20260501-autogrow01"></script>
     {% block extra_js %}{% endblock %}
 </body>

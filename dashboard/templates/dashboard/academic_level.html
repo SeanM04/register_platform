@@ -455,7 +455,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260510-search-fix"></script>
+<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260514-academic-render-fix01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {
@@ -496,12 +496,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 targetToggleIcon.textContent = shouldOpen ? '-' : '+';
             }
 
-            // Re-render table when summary table accordion opens - AFTER transition completes
-            if (shouldOpen && targetItem.dataset.accordionSection === 'summary-table') {
-                // Wait for CSS transition to complete (300ms as defined in CSS)
-                setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('academic-level:table-visibility-changed', {
-                        detail: { visible: true }
+            if (shouldOpen) {
+                window.setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent("academic-level:accordion-opened", {
+                        detail: { section: targetItem.dataset.accordionSection || "" },
                     }));
                 }, 350);
             }

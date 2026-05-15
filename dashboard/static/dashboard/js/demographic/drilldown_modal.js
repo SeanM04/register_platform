@@ -1,4 +1,9 @@
-// Import home page modal functions for consistency
+/**
+ * Drilldown modal functionality for demographic charts.
+ * Uses the same design as home page drilldown.
+ */
+
+// Import the home page modal functions
 import { 
     isDrillDownModalOpen as isHomeDrillDownModalOpen,
     closeDrillDownModal as closeHomeDrillDownModal,
@@ -7,25 +12,25 @@ import {
     showDrillDownModal as showHomeDrillDownModal
 } from "../home/drilldown_modal.js?v=20260416-home-drilldown16";
 
-// Re-export with completion names for backward compatibility
+// Re-export with demographic names
 export const isDrillDownModalOpen = isHomeDrillDownModalOpen;
 export const closeDrillDownModal = closeHomeDrillDownModal;
 export const showDrillDownErrorModal = showHomeDrillDownErrorModal;
 export const showLoadingDrillDownModal = showHomeLoadingDrillDownModal;
 
-export const showCompletionDrillDownModal = (payload, onPageChange = null) => {
-    // Transform completion payload to match home page format
+export const showDrillDownModal = (payload, chartData = {}, options = {}) => {
+    // Transform demographic payload to match home page format
     const transformedPayload = {
-        title: payload.title || "Student Details",
-        subtitle: payload.subtitle || `Showing ${payload.total_items || payload.total_count || 0} students`,
+        title: payload.bucket_label || "Student Details",
+        subtitle: `Showing ${payload.total_count || 0} students`,
         columns: payload.columns || [],
         rows: payload.rows || [],
-        total_items: payload.total_items || payload.total_count || 0,
-        current_page: payload.current_page || payload.page || 1,
+        total_count: payload.total_count || 0,
+        page: payload.page || 1,
         page_size: payload.page_size || 10,
-        total_pages: payload.total_pages || payload.page_count || 1,
+        page_count: payload.page_count || 1,
     };
     
     // Use home page modal with transformed payload
-    return showHomeDrillDownModal(transformedPayload, [], { onPageChange });
+    return showHomeDrillDownModal(transformedPayload, chartData, options);
 };

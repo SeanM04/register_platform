@@ -10,6 +10,7 @@ import { initialiseOriginMapSection } from "./origin_map.js";
 import { initialiseProgrammeMixSection } from "./programme_mix.js";
 import { initialiseYearDistributionSection } from "./level_gender.js";
 import { initialiseAgeDistributionSection } from "./age_distribution.js";
+import { addDemographicDrilldownHandlers } from "./drilldown.js";
 import {
     initialiseGenderNarrative,
     initialiseLocationNarrative,
@@ -263,4 +264,9 @@ export const initialiseDemographicPage = async () => {
     initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
     initialiseDeferredOriginMapSection(context, controllers, resizeCharts);
     loadNarrativesInBackground(context);
+    
+    // Add drilldown handlers to all charts after they are initialized
+    setTimeout(() => {
+        addDemographicDrilldownHandlers(context);
+    }, 100);
 };

@@ -13,6 +13,8 @@ from .constants import BIRTH_LOCATION_MAP_ALIASES, BIRTH_LOCATION_MAP_POINTS
 DEMOGRAPHIC_LOCATION_LIMIT = 10
 DEMOGRAPHIC_PROGRAMME_LIMIT = 20
 DEMOGRAPHIC_ITERATOR_CHUNK_SIZE = 2000
+# Academic levels shown on year distribution (cohort progression within programme)
+ACADEMIC_YEAR_LEVEL_KEYS = ("1", "2", "3", "4", "5")
 AGE_GROUP_SPECS = (
     ("Under 20", 0, 19),
     ("20-24", 20, 24),
@@ -57,66 +59,31 @@ def _calculate_age_from_dob(date_of_birth):
     return years
 
 
-def _get_student_attended_periods(student_registration_number):
-    """Get all periods attended by a student in chronological order."""
-    try:
-        registrations = Registration.objects.filter(
-            student__registration_number=student_registration_number
-        ).order_by('period__external_id').values_list('period__external_id', flat=True)
-        return list(registrations)
-    except Exception:
-        return []
+def build_registration_pk_to_progression_year_map(student_ids):
+    """
+    Map each registration PK to academic level 1–5 from chronological order.
 
-
-def _get_student_entry_period(student_registration_number):
-    """Get the entry period (first registration) for a student."""
-    attended_periods = _get_student_attended_periods(student_registration_number)
-    return attended_periods[0] if attended_periods else None
-
-
-def _compute_academic_year(current_period_id, student_registration_number):
-    """Compute academic year for period-specific analysis matching expected results."""
-    if not current_period_id or not student_registration_number:
-        return None
-    
-    # Get entry period for this student
-    entry_period_id = _get_student_entry_period(student_registration_number)
-    if not entry_period_id:
-        return None
-    
-    # Compute academic year based on progression from entry to current period
-    academic_year = (int(current_period_id) - int(entry_period_id)) + 1
-    
-    # Ensure academic year is within valid range (1-5 for engineering programmes)
-    if academic_year < 1:
-        academic_year = 1
-    elif academic_year > 5:  # Maximum 5 years for engineering programmes
-        academic_year = 5
-    
-    # Period-specific mapping to match expected results exactly
-    period_id = int(current_period_id)
-    
-    # Define expected academic years for each period based on your requirements
-    period_mapping = {
-        200: [1],  # Entry period
-        201: [1],  # New entrants only
-        202: [1, 2],  # New entrants + Year 2 from 201
-        203: [1, 2],  # New entrants + Year 2 from 202
-        206: [1, 2, 3],  # Progressive from multiple cohorts
-        208: [1, 2, 3],  # Progressive from multiple cohorts
-        210: [1, 2, 3, 4],  # Full progression range
-        212: [1, 2, 3, 4],  # Full progression range
-        214: [1, 2, 3, 4, 5],  # Complete academic year range
-        216: [1, 2, 3, 4, 5],  # Complete academic year range
-        218: [1, 2, 3, 4, 5],  # Complete academic year range
-    }
-    
-    # Only return academic year if it's in the expected list for this period
-    expected_years = period_mapping.get(period_id, [])
-    if academic_year in expected_years:
-        return academic_year
-    else:
-        return None
+    Uses the same rule as student profile progression: two consecutive registrations
+    (semesters) advance one academic year, capped at 5.
+    """
+    if not student_ids:
+        return {}
+    rows = list(
+        Registration.objects.filter(student_id__in=student_ids)
+        .order_by("student_id", "period__external_id", "id")
+        .values_list("student_id", "id")
+    )
+    result = {}
+    current_student = None
+    idx_in_student = 0
+    for student_id, reg_id in rows:
+        if student_id != current_student:
+            current_student = student_id
+            idx_in_student = 0
+        year = min(max((idx_in_student // 2) + 1, 1), 5)
+        result[reg_id] = year
+        idx_in_student += 1
+    return result
 
 
 def _age_group_for_years(age):
@@ -148,6 +115,8 @@ def _get_demographic_registration_rows(request, search_query=""):
 
     latest_first_rows = (
         registrations.order_by("student__registration_number", "-period__external_id", "-id").values(
+            "id",
+            "student_id",
             "student__registration_number",
             "student__gender",
             "student__date_of_birth",
@@ -179,7 +148,11 @@ def build_demographic_data(request, search_query=""):
     programme_code_map = {}
     year_gender_counts = defaultdict(_empty_gender_counts)
 
-    for row in _get_demographic_registration_rows(request, search_query):
+    registration_rows = list(_get_demographic_registration_rows(request, search_query))
+    student_ids = {row["student_id"] for row in registration_rows if row.get("student_id")}
+    reg_to_progression_year = build_registration_pk_to_progression_year_map(student_ids)
+
+    for row in registration_rows:
         total_students += 1
         gender_key = normalize_gender_key(row["student__gender"])
         if gender_key == "male":
@@ -203,14 +176,10 @@ def build_demographic_data(request, search_query=""):
         programme_gender_counts[programme_name][gender_key] += 1
         programme_code_map[programme_name] = programme_code
 
-        # Compute academic year based on sequential progression
-        current_period_id = row["period__external_id"]
-        student_reg_num = row["student__registration_number"]
-        computed_academic_year = _compute_academic_year(current_period_id, student_reg_num)
-        
-        if computed_academic_year:
-            academic_year = str(computed_academic_year)
-            year_gender_counts[academic_year][gender_key] += 1
+        reg_id = row.get("id")
+        progression_year = reg_to_progression_year.get(reg_id) if reg_id is not None else None
+        if progression_year is not None:
+            year_gender_counts[str(progression_year)][gender_key] += 1
 
     unspecified_count = total_students - male_count - female_count
 
@@ -326,20 +295,20 @@ def build_demographic_data(request, search_query=""):
         )[:DEMOGRAPHIC_PROGRAMME_LIMIT]
     ]
 
-    year_distribution_rows = [
-        {
-            "year": year,
-            "male": counts["male"],
-            "female": counts["female"],
-            "male_share": _format_share(counts["male"], counts["male"] + counts["female"] + counts["unspecified"]),
-            "female_share": _format_share(counts["female"], counts["male"] + counts["female"] + counts["unspecified"]),
-            "total": counts["male"] + counts["female"] + counts["unspecified"],
-        }
-        for year, counts in sorted(
-            year_gender_counts.items(),
-            key=lambda item: (-(item[1]["male"] + item[1]["female"] + item[1]["unspecified"]), item[0]),
+    year_distribution_rows = []
+    for year in ACADEMIC_YEAR_LEVEL_KEYS:
+        counts = year_gender_counts.get(year, _empty_gender_counts())
+        row_total = counts["male"] + counts["female"] + counts["unspecified"]
+        year_distribution_rows.append(
+            {
+                "year": year,
+                "male": counts["male"],
+                "female": counts["female"],
+                "male_share": _format_share(counts["male"], row_total),
+                "female_share": _format_share(counts["female"], row_total),
+                "total": row_total,
+            }
         )
-    ]
 
     age_distribution_rows = [
         {

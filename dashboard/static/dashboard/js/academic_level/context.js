@@ -88,3 +88,13 @@ export const updateAcademicLevelContext = (context, payload = {}) => {
 
     return context;
 };
+
+/** Re-query table row nodes after tbody is re-rendered (pass trend uses these for highlight / jump). */
+export const refreshAcademicLevelTableDomRefs = (context) => {
+    if (!context?.elements) {
+        return;
+    }
+    context.elements.levelTableBody = document.querySelector(".level-table tbody");
+    context.elements.levelTableRows = Array.from(document.querySelectorAll("[data-level-row]"));
+    context.elements.levelTableWrap = document.querySelector("[data-scroll-region]");
+};

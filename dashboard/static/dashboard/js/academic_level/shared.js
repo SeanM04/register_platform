@@ -367,6 +367,26 @@ export const initialiseChart = (elementId, rows, optionBuilder, emptyMessage, va
         useDirtyRect: renderer === "canvas",
     });
     chart.setOption(optionBuilder(rows, element.clientWidth));
+    window.requestAnimationFrame(() => {
+        try {
+            chart.resize();
+            chart.setOption(optionBuilder(rows, element.clientWidth), false);
+        } catch {
+            /* chart may be disposed during navigation */
+        }
+    });
+    const w = element.clientWidth;
+    const h = element.clientHeight;
+    if (w < 96 || h < 96) {
+        window.setTimeout(() => {
+            try {
+                chart.resize();
+                chart.setOption(optionBuilder(rows, element.clientWidth), false);
+            } catch {
+                /* ignore */
+            }
+        }, 400);
+    }
     return chart;
 };
 

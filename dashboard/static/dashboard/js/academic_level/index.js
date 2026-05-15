@@ -1,4 +1,4 @@
-import { createAcademicLevelContext, updateAcademicLevelContext } from "./context.js";
+import { createAcademicLevelContext, refreshAcademicLevelTableDomRefs, updateAcademicLevelContext } from "./context.js";
 import { initialiseFullscreenControls } from "./fullscreen.js";
 import { initialiseGenderSection } from "./gender.js";
 import { renderStoryBanner } from "./narratives.js";
@@ -18,6 +18,7 @@ const paginationState = {
 // Store the initial table data globally so we can render it anytime
 let initialTableData = null;
 
+<<<<<<< HEAD
 // Holds the chart resize function once charts are initialised; called by accordion events
 let resizeChartsCallback = null;
 
@@ -25,6 +26,25 @@ window.addEventListener('academic-level:charts-section-opened', () => {
     if (typeof resizeChartsCallback === 'function') {
         window.requestAnimationFrame(resizeChartsCallback);
     }
+=======
+/** Set after charts initialise; accordion open handler triggers resize + table repaint */
+let academicLevelResizeCharts = null;
+
+document.addEventListener("academic-level:accordion-opened", () => {
+    if (!academicLevelResizeCharts) {
+        return;
+    }
+    if (initialTableData && initialTableData.length > 0) {
+        renderTableImmediately(initialTableData);
+        renderPaginationControls();
+    }
+    window.requestAnimationFrame(() => {
+        academicLevelResizeCharts();
+        window.setTimeout(() => {
+            academicLevelResizeCharts();
+        }, 400);
+    });
+>>>>>>> 26d9b9b5b71af08698e93680a2a9c8f39816f205
 });
 
 const buildRequestUrl = (endpoint) => {
@@ -305,20 +325,11 @@ const renderTableImmediately = (rows) => {
             <td>${escapeTooltipHtml(row.average_mark)}</td>
             <td class="level-td-pass">
                 <span class="level-pass-pill${row.below_target ? " is-below-target" : ""}">${escapeTooltipHtml(row.pass_rate)}</span>
-                ${row.below_target ? '<span class="level-pass-flag">Below 85% target</span>' : ""}
             </td>
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
     `).join("").trim();
 
-};
-
-// Simplified re-render for accordion expand - just call immediate render
-const handleAccordionExpand = () => {
-    if (initialTableData && initialTableData.length > 0) {
-        renderTableImmediately(initialTableData);
-        renderPaginationControls();
-    }
 };
 
 const renderLevelTable = (context) => {
@@ -348,7 +359,6 @@ const renderLevelTable = (context) => {
             <td>${escapeTooltipHtml(row.average_mark)}</td>
             <td class="level-td-pass">
                 <span class="level-pass-pill${row.below_target ? " is-below-target" : ""}">${escapeTooltipHtml(row.pass_rate)}</span>
-                ${row.below_target ? '<span class="level-pass-flag">Below 85% target</span>' : ""}
             </td>
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
@@ -442,8 +452,15 @@ export const initialiseAcademicLevelPage = () => {
             
             // Render table IMMEDIATELY - don't wait for anything
             renderTableImmediately(allLevelRows);
+<<<<<<< HEAD
             renderPaginationControls();
             
+=======
+            refreshAcademicLevelTableDomRefs(context);
+
+            initialisePagination();
+
+>>>>>>> 26d9b9b5b71af08698e93680a2a9c8f39816f205
             context.data.levelRows = payloadResponse?.level_chart_rows || [];
 
             if (!storyBannerHydrated) {
@@ -467,15 +484,23 @@ export const initialiseAcademicLevelPage = () => {
                 });
             };
 
+            academicLevelResizeCharts = resizeCharts;
             initialiseChartResizeHandling(controllers, resizeCharts);
             initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
 
+<<<<<<< HEAD
             // Expose to the module-level listener so accordion opens always reach resizeCharts
             resizeChartsCallback = resizeCharts;
 
             // Simple event listener - just re-render when accordion opens
             window.addEventListener('academic-level:table-visibility-changed', () => {
                 handleAccordionExpand();
+=======
+            window.requestAnimationFrame(() => {
+                resizeCharts();
+                window.setTimeout(() => resizeCharts(), 120);
+                window.setTimeout(() => resizeCharts(), 450);
+>>>>>>> 26d9b9b5b71af08698e93680a2a9c8f39816f205
             });
         })
         .catch((error) => {

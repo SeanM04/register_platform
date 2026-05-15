@@ -1,4 +1,4 @@
-import { createHomeContext, updateHomeContext } from "./context.js?v=20260411-home-drilldown01";
+import { createHomeContext, updateHomeContext } from "./context.js?v=20260514-home-parallel-metrics01";
 import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260416-home-drilldown16";
 import { initialiseFullscreenControls } from "./fullscreen.js?v=20260403-home-story04";
 import {
@@ -9,7 +9,7 @@ import {
     initialiseProgressNarrative,
     initialiseRiskNarrative,
     renderStoryBanner,
-} from "./narratives.js?v=20260416-home-banner-text02";;
+} from "./narratives.js?v=20260416-home-banner-text02";
 import { initialiseOutcomeSection } from "./outcomes.js?v=20260411-home-drilldown01";
 import { initialiseProgressSection } from "./progress.js?v=20260411-home-drilldown01";
 import { initialiseRiskDistributionSection } from "./risk_distribution.js?v=20260411-home-drilldown01";
@@ -240,15 +240,16 @@ const setHomeShellErrorState = (context) => {
 
 /**
  * Bootstrap the story-first landing dashboard from the lightweight shell.
+ * @param {Promise<void>} librariesReadyPromise Resolves when chart libraries (e.g. ECharts) are available.
  */
-export const initialiseOverviewPage = async () => {
+export const initialiseOverviewPage = async (librariesReadyPromise = Promise.resolve()) => {
     const shellContext = createHomeContext();
 
     if (!homeRoot || !shellContext.elements.storyBanner) {
         return;
     }
 
-    const payloadResponse = await payloadPromise;
+    const [, payloadResponse] = await Promise.all([librariesReadyPromise, payloadPromise]);
     if (!payloadResponse) {
         setHomeShellErrorState(shellContext);
         return;

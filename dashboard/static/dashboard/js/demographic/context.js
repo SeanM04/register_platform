@@ -9,6 +9,9 @@ export const createDemographicContext = (payload = {}) => {
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
 
     return {
+        config: {
+            drilldownUrl: document.querySelector(".demographic-layout")?.dataset.drilldownUrl || "",
+        },
         data: {
             genderRows: chartPayload.genderRows || parseJsonScript("demographic-gender-data", []),
             locationRows: chartPayload.locationRows || parseJsonScript("demographic-location-data", []),
@@ -57,6 +60,12 @@ genderCopy: document.getElementById("demographic-gender-copy"),
             ageDistributionHints: document.getElementById("demographic-age-distribution-hints"),
             ageDistributionNote: document.getElementById("demographic-age-distribution-note"),
             ageDistributionChart: document.getElementById("demographic-age-distribution-chart"),
+            genderChart: document.getElementById("demographic-gender-chart"),
+            locationChart: document.getElementById("demographic-location-chart"),
+            yearDistributionChart: document.getElementById("demographic-year-distribution-chart"),
+            programmeChart: document.getElementById("demographic-programme-chart"),
+            locationMixChart: document.getElementById("demographic-location-mix-chart"),
+            programmeGenderChart: document.getElementById("demographic-programme-gender-chart"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
         },

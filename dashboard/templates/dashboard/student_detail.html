@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h1>{{ student.name }}</h1>
                 <p class="detail-copy">Student record found but no data matches current filters.</p>
             </div>
-            <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+            <a class="back-button" href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back</a>
         </header>
 
         <section class="profile-card">
@@ -68,8 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
       
             </div>
             <div class="header-actions">
-                <a class="transcript-button" href="{% url 'dashboard:student-transcript' student.student_number %}">View Transcript</a>
-                <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+                <a class="transcript-button" href="{% url 'dashboard:student-transcript' student.student_number %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">View Transcript</a>
+                <a class="back-button" href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back</a>
             </div>
         </header>
 
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <dd>{{ student.academic_level }}</dd>
                 </div>
                 <div>
-                    <dt>Term:</dt>
+                    <dt>Semester:</dt>
                     <dd>{{ student.term_name }}</dd>
                 </div>
                 <div>
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h1>No Records Found</h1>
                 <p class="detail-copy">{{ no_data_message }}</p>
             </div>
-            <a class="back-button" href="{% url 'dashboard:students' %}">Back</a>
+            <a class="back-button" href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back</a>
         </header>
         
         <section class="profile-card">

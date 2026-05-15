@@ -50,10 +50,8 @@ const buildYearDistributionOption = (rows, chartWidth = 0) => {
                 fontWeight: 600,
             },
             formatter: (params) => {
-                console.log('Year tooltip triggered:', params);
                 const dataIndex = params.dataIndex;
                 const row = rows[dataIndex];
-                console.log('Selected row:', row);
                 if (!row) return '';
                 
                 const seriesName = params.seriesName;
@@ -77,7 +75,13 @@ const buildYearDistributionOption = (rows, chartWidth = 0) => {
                 color: "#082340",
                 fontWeight: 600,
                 fontSize: isNarrow ? 10 : 11,
-                formatter: (value) => formatChartLabel(value, isNarrow ? 10 : 14),
+                formatter: (value) => {
+                    const raw = String(value ?? "").trim();
+                    if (/^\d+$/.test(raw)) {
+                        return `Year ${raw}`;
+                    }
+                    return formatChartLabel(value, isNarrow ? 10 : 14);
+                },
             },
         },
         yAxis: {
@@ -135,7 +139,7 @@ export const initialiseYearDistributionSection = (context) => {
         yearDistributionRows,
         buildYearDistributionOption,
         "No year distribution data matched the current filters.",
-        (rows) => rows.some((row) => Number(row.total || 0) > 0),
+        (rows) => Boolean(rows && rows.length),
     );
 
     updateOverviewNarrative(elements, yearDistributionRows, cardNarratives, flags);
