@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260414-pagination01">
+<link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260510-skeleton-loading01">
 <link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260414-risk-drilldown01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
@@ -145,9 +145,8 @@
     <section class="programme-story-banner" id="programme-story-banner" aria-live="polite">
         <p class="programme-banner-loading">Loading the programme story & visual payload...</p>
     </section>
-    <p class="programme-narrative-status" id="programme-narrative-status" hidden></p>
 
-    
+
     <section class="programme-story-flow" aria-label="Programme storytelling flow">
         <div class="demographic-accordion">
             <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-load-status">

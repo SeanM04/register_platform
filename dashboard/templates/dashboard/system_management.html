@@ -26,11 +26,28 @@
         {% endfor %}
     </section>
 
-    <section class="system-grid">
-        <article class="system-card system-card-users">
+    <section class="system-card system-tabbed-card">
+        <!-- Tab bar -->
+        <nav class="system-tab-bar" aria-label="System management sections">
+            <a href="?tab=users{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="system-tab{% if active_tab == 'users' or active_tab == '' %} is-active{% endif %}">
+                User Access
+            </a>
+            <a href="?tab=ai"
+               class="system-tab{% if active_tab == 'ai' %} is-active{% endif %}">
+                AI Insights
+            </a>
+            <a href="?tab=audit"
+               class="system-tab{% if active_tab == 'audit' %} is-active{% endif %}">
+                Audit Log
+            </a>
+        </nav>
+
+        <!-- ── Tab: User Access ─────────────────────────────────── -->
+        <div class="system-tab-panel{% if active_tab != 'users' and active_tab != '' %} is-hidden{% endif %}" id="panel-users">
             <div class="system-card-header system-card-header-stack">
                 <div>
-                    <h1 class="panel-title">User Access</h1>
+                    <h2 class="panel-title">User Access</h2>
                     <p class="system-card-copy">Manage platform access from one clean operational view.</p>
                 </div>
             </div>
@@ -41,6 +58,7 @@
                 </div>
 
                 <form class="system-search-form" method="get">
+                    <input type="hidden" name="tab" value="users">
                     <input class="system-search-input" type="search" name="q" value="{{ search_query }}" placeholder="Search users" aria-label="Search users">
                     <button class="system-search-button" type="submit">Search</button>
                 </form>
@@ -98,7 +116,7 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="toggle-active">
                                         <input type="hidden" name="user_id" value="{{ user.id }}">
-                                        <input type="hidden" name="next" value="{{ current_path }}">
+                                        <input type="hidden" name="next" value="{% url 'dashboard:system-management' %}?tab=users{% if search_query %}&q={{ search_query }}{% endif %}">
                                         <button class="system-action-button" type="submit" {% if not user.can_toggle_active %}disabled{% endif %}>
                                             {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
                                         </button>
@@ -108,7 +126,7 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="clear-lockout">
                                         <input type="hidden" name="user_id" value="{{ user.id }}">
-                                        <input type="hidden" name="next" value="{{ current_path }}">
+                                        <input type="hidden" name="next" value="{% url 'dashboard:system-management' %}?tab=users{% if search_query %}&q={{ search_query }}{% endif %}">
                                         <button class="system-action-button system-action-button-secondary" type="submit" {% if not user.has_lockout %}disabled{% endif %}>
                                             Unlock
                                         </button>
@@ -137,34 +155,215 @@
                 {% if page_obj.paginator.num_pages > 1 %}
                 <nav class="system-page-links" aria-label="User pagination">
                     {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Prev</a>
+                    <a href="?tab=users&page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Prev</a>
                     {% endif %}
                     {% for number in page_numbers %}
-                    <a href="?page={{ number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="{% if number == page_obj.number %}is-active{% endif %}">{{ number }}</a>
+                    <a href="?tab=users&page={{ number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="{% if number == page_obj.number %}is-active{% endif %}">{{ number }}</a>
                     {% endfor %}
                     {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Next</a>
+                    <a href="?tab=users&page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Next</a>
                     {% endif %}
                 </nav>
                 {% endif %}
             </div>
-        </article>
+        </div>
 
+        <!-- ── Tab: AI Insights ─────────────────────────────────── -->
+        <div class="system-tab-panel{% if active_tab != 'ai' %} is-hidden{% endif %}" id="panel-ai">
+
+            <div class="system-card-header">
+                <div>
+                    <h2 class="panel-title">AI Insights Provider</h2>
+                    <p class="system-card-copy">Choose which AI service generates narrative insights across the platform. Changes take effect immediately for all subsequent requests.</p>
+                </div>
+            </div>
+
+            <div class="system-ai-body">
+                {% if not ai_insights_enabled %}
+                <div class="system-ai-notice">
+                    AI insights are currently disabled in your environment configuration (<code>AI_INSIGHTS_ENABLED=False</code>). Selecting a provider here will take effect once AI insights are enabled.
+                </div>
+                {% endif %}
+
+                <form class="system-ai-form" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="set-ai-provider">
+                    <input type="hidden" name="next" value="{% url 'dashboard:system-management' %}?tab=ai">
+
+                    <div class="system-ai-options">
+                        <label class="system-ai-option{% if ai_provider == 'google' %} is-selected{% endif %}">
+                            <input class="system-ai-radio" type="radio" name="provider" value="google"{% if ai_provider == 'google' %} checked{% endif %}>
+                            <div class="system-ai-option-body">
+                                <div class="system-ai-option-top">
+                                    <span class="system-ai-option-name">Google Gemini</span>
+                                    <span class="system-ai-key-badge{% if ai_google_available %} is-ready{% else %} is-missing{% endif %}">
+                                        {% if ai_google_available %}Key configured{% else %}No API key{% endif %}
+                                    </span>
+                                </div>
+                                <p class="system-ai-option-desc">Uses the Gemini model via Google's Generative Language API.</p>
+                            </div>
+                        </label>
+
+                        <label class="system-ai-option{% if ai_provider == 'openai' %} is-selected{% endif %}">
+                            <input class="system-ai-radio" type="radio" name="provider" value="openai"{% if ai_provider == 'openai' %} checked{% endif %}>
+                            <div class="system-ai-option-body">
+                                <div class="system-ai-option-top">
+                                    <span class="system-ai-option-name">OpenAI</span>
+                                    <span class="system-ai-key-badge{% if ai_openai_available %} is-ready{% else %} is-missing{% endif %}">
+                                        {% if ai_openai_available %}Key configured{% else %}No API key{% endif %}
+                                    </span>
+                                </div>
+                                <p class="system-ai-option-desc">Uses a GPT model via the OpenAI Responses API.</p>
+                            </div>
+                        </label>
+
+                        <label class="system-ai-option{% if ai_provider == 'auto' %} is-selected{% endif %}">
+                            <input class="system-ai-radio" type="radio" name="provider" value="auto"{% if ai_provider == 'auto' %} checked{% endif %}>
+                            <div class="system-ai-option-body">
+                                <div class="system-ai-option-top">
+                                    <span class="system-ai-option-name">Auto</span>
+                                    <span class="system-ai-key-badge is-neutral">Tries Google first, then OpenAI</span>
+                                </div>
+                                <p class="system-ai-option-desc">Automatically selects the first available provider based on configured API keys.</p>
+                            </div>
+                        </label>
+
+                        <label class="system-ai-option{% if ai_provider == 'rules' %} is-selected{% endif %}">
+                            <input class="system-ai-radio" type="radio" name="provider" value="rules"{% if ai_provider == 'rules' %} checked{% endif %}>
+                            <div class="system-ai-option-body">
+                                <div class="system-ai-option-top">
+                                    <span class="system-ai-option-name">Rule-based only</span>
+                                    <span class="system-ai-key-badge is-neutral">Always available</span>
+                                </div>
+                                <p class="system-ai-option-desc">Disables AI generation. All insight cards use deterministic rule-based copy.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="system-ai-footer">
+                        <span class="system-ai-current">
+                            Active:
+                            {% if ai_provider == 'google' %}Google Gemini
+                            {% elif ai_provider == 'openai' %}OpenAI
+                            {% elif ai_provider == 'rules' %}Rule-based engine
+                            {% else %}Auto
+                            {% endif %}
+                        </span>
+                        <button class="system-submit" type="submit">Save provider</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ── Tab: Audit Log ──────────────────────────────────── -->
+        <div class="system-tab-panel{% if active_tab != 'audit' %} is-hidden{% endif %}" id="panel-audit">
+            <div class="system-card-header system-card-header-stack">
+                <div>
+                    <h2 class="panel-title">Audit Log</h2>
+                    <p class="system-card-copy">A chronological record of all significant platform actions.</p>
+                </div>
+            </div>
+
+            <div class="system-table-toolbar">
+                <form class="system-audit-filter-form" method="get">
+                    <input type="hidden" name="tab" value="audit">
+                    <select class="system-audit-select" name="audit_action" aria-label="Filter by action">
+                        <option value="">All actions</option>
+                        {% for value, label in audit_action_choices %}
+                        <option value="{{ value }}"{% if audit_action_filter == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <input class="system-search-input" type="search" name="audit_q" value="{{ audit_search_query }}" placeholder="Search by email" aria-label="Search audit log">
+                    <input class="system-audit-date" type="date" name="audit_from" value="{{ audit_date_from }}" aria-label="From date" title="From">
+                    <input class="system-audit-date" type="date" name="audit_to" value="{{ audit_date_to }}" aria-label="To date" title="To">
+                    <button class="system-search-button" type="submit">Filter</button>
+                    {% if audit_has_filter %}
+                    <a href="?tab=audit" class="system-audit-clear">Clear</a>
+                    {% endif %}
+                </form>
+            </div>
+
+            <div class="system-table-wrap is-scroll-start" tabindex="0" aria-label="Audit log table">
+                <table class="system-table system-audit-table">
+                    <colgroup>
+                        <col class="system-audit-col-time">
+                        <col class="system-audit-col-actor">
+                        <col class="system-audit-col-action">
+                        <col class="system-audit-col-target">
+                        <col class="system-audit-col-detail">
+                        <col class="system-audit-col-ip">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Actor</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>Detail</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in audit_entries %}
+                        <tr>
+                            <td class="system-audit-time">{{ entry.timestamp|date:"d M Y, H:i" }}</td>
+                            <td>{{ entry.actor_email }}</td>
+                            <td><span class="audit-pill is-{{ entry.tone }}">{{ entry.action_label }}</span></td>
+                            <td>{{ entry.target_email }}</td>
+                            <td class="system-audit-detail">{{ entry.detail }}</td>
+                            <td class="system-audit-ip">{{ entry.ip_address }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td class="system-empty" colspan="6">No audit events recorded yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="system-pagination">
+                <p class="system-pagination-copy">
+                    {% if audit_page_obj.paginator.count %}
+                    Showing {{ audit_page_obj.start_index }}&ndash;{{ audit_page_obj.end_index }} of {{ audit_page_obj.paginator.count }} events
+                    {% else %}
+                    No events recorded
+                    {% endif %}
+                </p>
+                {% if audit_page_obj.paginator.num_pages > 1 %}
+                <nav class="system-page-links" aria-label="Audit log pagination">
+                    {% with base="?tab=audit" q=audit_search_query a=audit_action_filter f=audit_date_from t=audit_date_to %}
+                    {% if audit_page_obj.has_previous %}
+                    <a href="{{ base }}&audit_page={{ audit_page_obj.previous_page_number }}{% if q %}&audit_q={{ q }}{% endif %}{% if a %}&audit_action={{ a }}{% endif %}{% if f %}&audit_from={{ f }}{% endif %}{% if t %}&audit_to={{ t }}{% endif %}">Prev</a>
+                    {% endif %}
+                    {% for number in audit_page_numbers %}
+                    <a href="{{ base }}&audit_page={{ number }}{% if q %}&audit_q={{ q }}{% endif %}{% if a %}&audit_action={{ a }}{% endif %}{% if f %}&audit_from={{ f }}{% endif %}{% if t %}&audit_to={{ t }}{% endif %}" class="{% if number == audit_page_obj.number %}is-active{% endif %}">{{ number }}</a>
+                    {% endfor %}
+                    {% if audit_page_obj.has_next %}
+                    <a href="{{ base }}&audit_page={{ audit_page_obj.next_page_number }}{% if q %}&audit_q={{ q }}{% endif %}{% if a %}&audit_action={{ a }}{% endif %}{% if f %}&audit_from={{ f }}{% endif %}{% if t %}&audit_to={{ t }}{% endif %}">Next</a>
+                    {% endif %}
+                    {% endwith %}
+                </nav>
+                {% endif %}
+            </div>
+        </div>
     </section>
+
+    <!-- Add user modal -->
     <section class="system-modal-backdrop{% if show_user_modal %} is-open{% endif %}" id="add-user-modal" {% if not show_user_modal %}hidden{% endif %}>
         <div class="system-modal" role="dialog" aria-modal="true" aria-labelledby="add-user-modal-title">
             <div class="system-modal-header">
                 <div>
                     <h2 class="panel-title" id="add-user-modal-title">Add User</h2>
-                    <p class="system-card-copy">Provision a new platform account with the right access level & a secure password.</p>
+                    <p class="system-card-copy">Provision a new platform account with the right access level &amp; a secure password.</p>
                 </div>
-                <button class="system-modal-close" type="button" data-modal-close aria-label="Close add user dialog">x</button>
+                <button class="system-modal-close" type="button" data-modal-close aria-label="Close add user dialog">&#x2715;</button>
             </div>
 
             <form class="system-form system-modal-form" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="create-user">
-                <input type="hidden" name="next" value="{{ current_path }}">
+                <input type="hidden" name="next" value="{% url 'dashboard:system-management' %}?tab=users">
 
                 {% if user_form.non_field_errors %}
                 <div class="system-form-errors">

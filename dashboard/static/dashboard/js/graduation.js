@@ -98,7 +98,6 @@ class GraduationAnalysis {
         this.bindEvents();
         await this.loadData();
         this.renderStoryBanner();
-        this.renderSnapshotStatus();
         this.renderFallbackNarratives();
         this.loadNarratives();
         this.syncFullscreenButtons();
@@ -203,6 +202,7 @@ class GraduationAnalysis {
         const facultyNameElement = document.getElementById("best-faculty-name");
         if (facultyNameElement) {
             facultyNameElement.textContent = kpis.best_faculty_name || "";
+            facultyNameElement.removeAttribute("data-faculty-loading");
         }
     }
 
@@ -317,24 +317,6 @@ class GraduationAnalysis {
                 </article>
             </div>
         `.trim();
-    }
-
-    renderSnapshotStatus() {
-        const statusElement = document.getElementById("graduation-snapshot-status");
-        const meta = this.currentData?.meta || {};
-        if (!statusElement) {
-            return;
-        }
-
-        const message = String(meta.snapshot_message || "").trim();
-        if (!message) {
-            statusElement.hidden = true;
-            statusElement.textContent = "";
-            return;
-        }
-
-        statusElement.hidden = false;
-        statusElement.textContent = message;
     }
 
     normalizeCardSeverity(value) {
@@ -545,57 +527,19 @@ class GraduationAnalysis {
         });
     }
 
-    renderNarrativeDiagnostics() {
-        const statusElement = document.getElementById("graduation-narrative-status");
-        const diagnostics = this.narrativeDiagnostics || {};
-        if (!statusElement) {
-            return;
-        }
-
-        const message = String(diagnostics.message || "").trim();
-        if (!message) {
-            statusElement.hidden = true;
-            statusElement.textContent = "";
-            statusElement.className = "completion-narrative-status";
-            return;
-        }
-
-        statusElement.hidden = false;
-        statusElement.textContent = message;
-        statusElement.className = `completion-narrative-status is-${diagnostics.status || "rules"}`;
-        if (diagnostics.fallback_detail) {
-            statusElement.title = diagnostics.fallback_detail;
-        } else {
-            statusElement.removeAttribute("title");
-        }
-    }
-
     loadNarratives() {
         if (!this.narrativesUrl) {
-            this.narrativeDiagnostics = {
-                status: "error",
-                message: "Graduation narratives are unavailable in this page context, so the charts are using local guidance copy.",
-                fallback_detail: "No narratives endpoint URL was attached to the page shell.",
-            };
-            this.renderNarrativeDiagnostics();
             return;
         }
-
-        this.narrativeDiagnostics = {
-            status: "loading",
-            message: "Checking the graduation narratives provider for chart-level AI copy...",
-        };
-        this.renderNarrativeDiagnostics();
 
         this.fetchJson(this.narrativesUrl)
             .then((payload) => {
                 this.currentNarratives = payload?.card_narratives || {};
-                this.narrativeDiagnostics = payload?.diagnostics || {};
-                this.renderNarrativeDiagnostics();
+                const diagnostics = payload?.diagnostics || {};
 
                 const flags = {
-                    narrativeSource: this.narrativeDiagnostics.returned_source || this.currentNarratives.source || "rules",
-                    narrativesAreAi: this.narrativeDiagnostics.status === "ai",
+                    narrativeSource: diagnostics.returned_source || this.currentNarratives.source || "rules",
+                    narrativesAreAi: diagnostics.status === "ai",
                 };
                 const fallback = this.getFallbackNarratives();
                 const cards = this.currentNarratives.cards || {};
@@ -605,18 +549,7 @@ class GraduationAnalysis {
                 this.applyNarrativeCard("faculty", { ...fallback.faculty, ...(cards.faculty || {}) }, flags);
                 this.applyNarrativeCard("timing", { ...fallback.timing, ...(cards.timing || {}) }, flags);
             })
-            .catch((error) => {
-                const detail = String(error?.message || "").trim();
-                const isMissingEndpoint = detail.includes("status 404");
-                this.narrativeDiagnostics = {
-                    status: "error",
-                    message: isMissingEndpoint
-                        ? "Graduation narratives are falling back to local guidance because this running server does not expose the narratives endpoint yet."
-                        : "Graduation narratives are falling back to local guidance because the narrative request did not complete.",
-                    fallback_detail: detail || "Unknown graduation narratives fetch error.",
-                };
-                this.renderNarrativeDiagnostics();
-            });
+            .catch(() => {});
     }
 
     getOrCreateChart(elementId) {

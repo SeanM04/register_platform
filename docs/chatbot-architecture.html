@@ -548,7 +548,7 @@
 
 <!-- ─── HERO ─────────────────────────────────────────────────────────── -->
 <div class="hero">
-  <div class="hero-badge">UniStudio Platform · April 2026</div>
+  <div class="hero-badge">UniStudio Platform · May 2026</div>
   <h1>Chatbot <span>Architecture</span> &amp; Documentation</h1>
   <p class="hero-sub">
     A complete reference for the UniStudio assistant — covering the management
@@ -691,7 +691,7 @@
     <!-- UI Mockups -->
     <div class="section-header" style="margin-top:2.5rem;">
       <h2><span class="ico">🖥️</span> What It Looks Like</h2>
-      <p>The assistant lives in the bottom-right corner of every dashboard page and in the top toolbar.</p>
+      <p>The assistant lives in the bottom-right corner of every dashboard page as a floating button.</p>
     </div>
     <div class="mockup-row">
 
@@ -700,7 +700,7 @@
         <div class="mockup-frame" style="justify-content:flex-end; align-items:flex-end; min-height:200px;">
           <div style="position:absolute; top:1rem; left:1rem; right:1rem; background:#0d325d; border-radius:8px; padding:.5rem .75rem; display:flex; align-items:center; justify-content:space-between;">
             <span style="color:#fff; font-size:.75rem; font-weight:700;">UniStudio Dashboard</span>
-            <span style="color:rgba(255,255,255,.6); font-size:.7rem;">💬</span>
+            <span style="color:rgba(255,255,255,.6); font-size:.7rem;">🏫</span>
           </div>
           <div style="padding:.75rem;">
             <div class="mock-fab">💬</div>
@@ -890,7 +890,7 @@
       <div class="mermaid">
 flowchart TD
     subgraph Browser["Browser"]
-        FAB["FAB / Topbar button"]
+        FAB["FAB toggle button"]
         UI["chatbot.js + chatbot.css"]
         FAB --> UI
     end
@@ -933,7 +933,7 @@ flowchart TD
     <div class="diagram-explainer">
       <div class="explainer-item">
         <h4>🌐 Browser Layer</h4>
-        <p>The FAB (floating action button) and topbar toggle open the chat panel. All UI logic lives in <code>chatbot.js</code> — no page reload needed. Messages are sent via <code>fetch()</code> with the CSRF token attached.</p>
+        <p>The FAB (floating action button) in the bottom-right corner opens the chat panel. All UI logic lives in <code>chatbot.js</code> — no page reload needed. Messages are sent via <code>fetch()</code> with the CSRF token attached.</p>
       </div>
       <div class="explainer-item c-purple">
         <h4>🐍 Django Platform</h4>
@@ -956,13 +956,17 @@ flowchart TD
     START["get_chatbot_reply()"]
     START --> EN{"CHATBOT_ENABLED?"}
     EN -->|No| RULES["Rule-based reply"]
-    EN -->|Yes| G{"GOOGLE_API_KEY set?"}
-    G -->|Yes| GCALL["Call Google Gemini"]
+    EN -->|Yes| CTX{"_is_contextual_reply?\nshort follow-up + history exists"}
+    CTX -->|Yes — bypass fast paths| G{"GOOGLE_API_KEY set?"}
+    CTX -->|No| INTENT{"intent == greeting\nor out_of_scope?"}
+    INTENT -->|Yes| CONST["Constant reply — no DB"]
+    INTENT -->|No| G
+    G -->|Yes| GCALL["Call Google Gemini\nwith multi-turn history"]
     GCALL --> GOK{"Non-empty response?"}
     GOK -->|Yes| GREPLY["source: google"]
     GOK -->|No| O{"OPENAI_API_KEY set?"}
     G -->|No| O
-    O -->|Yes| OCALL["Call OpenAI"]
+    O -->|Yes| OCALL["Call OpenAI Chat Completions\nwith multi-turn history"]
     OCALL --> OOK{"Non-empty response?"}
     OOK -->|Yes| OREPLY["source: openai"]
     OOK -->|No| RULES
@@ -1050,8 +1054,8 @@ flowchart LR
       <div class="mermaid">
 flowchart TB
     subgraph L1["Layer 1 - Browser UI"]
-        FA["FAB and Topbar toggle"]
-        JS["chatbot.js"]
+        FA["FAB toggle button"]
+        JS["chatbot.js + auto-grow textarea"]
         STO["sessionStorage history"]
     end
 
@@ -1097,7 +1101,7 @@ flowchart TB
     <div class="diagram-explainer">
       <div class="explainer-item">
         <h4>Layer 1 — Browser UI</h4>
-        <p><code>chatbot.js</code> and <code>chatbot.css</code> form the entire front-end. The FAB and topbar button both toggle the same panel. Message history is stored in <code>sessionStorage</code> for instant re-render on panel open — the authoritative copy lives in <code>ChatMessage</code> rows in the database.</p>
+        <p><code>chatbot.js</code> and <code>chatbot.css</code> form the entire front-end. The FAB (floating action button) in the bottom-right corner toggles the panel. The textarea auto-expands as the user types (up to ~6 lines) via the <code>_autoGrow()</code> function. Message history is stored in <code>sessionStorage</code> for instant re-render on panel open — the authoritative copy lives in <code>ChatMessage</code> rows in the database.</p>
       </div>
       <div class="explainer-item c-red">
         <h4>Layer 5 — Safety and Cache</h4>
@@ -1117,7 +1121,7 @@ flowchart TB
       </div>
       <div class="explainer-item">
         <h4>AI Providers — optional</h4>
-        <p>Google Gemini handles both the intent call and the full reply when configured. OpenAI uses <code>gpt-4o-mini</code> via the Chat Completions API for intent, and the configured main model via the Responses API for the full reply. If neither is configured, the rule-based reply from Layer 3 is returned directly — the platform is fully functional without any API key.</p>
+        <p>Google Gemini handles both the intent call and the full reply when configured. OpenAI uses <code>gpt-4o-mini</code> via the Chat Completions API for intent, and the configured main model via the Chat Completions API (<code>/v1/chat/completions</code>) for the full multi-turn reply. If neither is configured, the rule-based reply from Layer 3 is returned directly — the platform is fully functional without any API key.</p>
       </div>
     </div>
 
@@ -1219,8 +1223,8 @@ flowchart LR
         <p>The intent call always uses <code>gpt-4o-mini</code> regardless of <code>CHATBOT_OPENAI_MODEL</code>. This is intentional: intent classification is a structured extraction task where a small, fast model outperforms a large reasoning model. The main reply uses whatever model is configured in settings.</p>
       </div>
       <div class="explainer-item c-green">
-        <h4>Why Chat Completions for Intent, Responses for Reply?</h4>
-        <p>The OpenAI Responses API (used for the main reply) supports reasoning models like <code>o4-mini</code> and structured outputs. The Chat Completions API (used for intent) is simpler, supports <code>gpt-4o-mini</code> directly, and returns JSON more predictably for classification tasks.</p>
+        <h4>Why Chat Completions for both Intent and Reply?</h4>
+        <p>Both the intent call and the main reply now use the OpenAI Chat Completions API (<code>/v1/chat/completions</code>). Chat Completions supports the full <code>messages</code> array needed for multi-turn conversation history — the previous Responses API did not support this, so the migration was necessary to enable contextual follow-up replies.</p>
       </div>
     </div>
 
@@ -1357,9 +1361,9 @@ sequenceDiagram
     <div class="file-group">
       <h3>Frontend</h3>
       <div class="file-list">
-        <div class="file-row"><div class="file-path">templates/base.html</div><div class="file-desc">Chat panel HTML, FAB button, and topbar toggle button rendered on every page. Controlled by <code>chatbot_bootstrap.enabled</code>.</div></div>
-        <div class="file-row"><div class="file-path">dashboard/static/dashboard/css/chatbot.css</div><div class="file-desc">All <code>usc-*</code> component styles. Panel, FAB, message bubbles, typing indicator, suggestion chips, topbar button.</div></div>
-        <div class="file-row"><div class="file-path">dashboard/static/dashboard/js/chatbot.js</div><div class="file-desc">Panel open/close, message send, optimistic UI, typing indicator, history render, auto-grow textarea, keyboard shortcuts.</div></div>
+        <div class="file-row"><div class="file-path">templates/base.html</div><div class="file-desc">Chat panel HTML and FAB button rendered on every page. Controlled by <code>chatbot_bootstrap.enabled</code>.</div></div>
+        <div class="file-row"><div class="file-path">dashboard/static/dashboard/css/chatbot.css</div><div class="file-desc">All <code>usc-*</code> component styles. Panel, FAB, message bubbles, typing indicator, suggestion chips, unified input card (<code>.usc-input-wrap</code>).</div></div>
+        <div class="file-row"><div class="file-path">dashboard/static/dashboard/js/chatbot.js</div><div class="file-desc">Panel open/close, message send, optimistic UI, typing indicator, history render, auto-grow textarea (<code>_autoGrow</code>), keyboard shortcuts, multi-turn history passed to server.</div></div>
       </div>
     </div>
 
@@ -1747,6 +1751,8 @@ erDiagram
           <tr><td>INTENT_PROMPT</td><td>str</td><td>System instruction for the Layer 2 intent detection call. Defines 11 intent categories and 5 entity types. Sent as <code>systemInstruction</code> to Gemini and as the <code>system</code> message to OpenAI.</td></tr>
           <tr><td>_PERIOD_MONTH_RE</td><td>compiled regex</td><td>Module-level compiled regex matching month+year patterns (e.g. <em>August 2025</em>). Used by <code>_build_period_performance_context()</code> to detect a named period in the message without recompiling on every call.</td></tr>
           <tr><td>_SEMESTER_RE</td><td>compiled regex</td><td>Module-level compiled regex matching <em>Semester 1</em> / <em>Sem 2</em> patterns. Companion to <code>_PERIOD_MONTH_RE</code> for period detection.</td></tr>
+          <tr><td>_FOLLOWUP_TOKENS</td><td>frozenset</td><td>Set of ~30 short follow-up words ("yes", "sure", "go ahead", "more", "those", "explain", etc.) used by <code>_is_contextual_reply()</code> to detect conversational continuations that should bypass the greeting/out-of-scope fast paths.</td></tr>
+          <tr><td>_is_contextual_reply()</td><td>function</td><td>Returns <code>True</code> when the current message is a follow-up to an existing assistant turn — either because it is very short (≤ 20 chars) or because it contains <code>_FOLLOWUP_TOKENS</code> and is under 120 chars. Prevents "yes" or "sure" from triggering the greeting handler mid-conversation.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1916,7 +1922,7 @@ erDiagram
       <div class="card">
         <div class="card-icon c-purple">🤖</div>
         <h3>Add an AI provider</h3>
-        <p>Add a <code>_request_&lt;provider&gt;_chatbot_response(prompt)</code> function, a <code>&lt;provider&gt;_ready</code> flag in <code>get_chatbot_provider_status()</code>, and insert the provider into the routing chain in <code>get_chatbot_reply()</code>.</p>
+        <p>Add a <code>_request_&lt;provider&gt;_chatbot_response(system_text, history, user_turn)</code> function that builds the provider's multi-turn payload, a <code>&lt;provider&gt;_ready</code> flag in <code>get_chatbot_provider_status()</code>, and insert the provider into the routing chain in <code>get_chatbot_reply()</code>.</p>
       </div>
       <div class="card">
         <div class="card-icon c-teal">💬</div>
@@ -1986,6 +1992,34 @@ erDiagram
       <p>Version history of the UniStudio chatbot integration on this platform.</p>
     </div>
     <div class="changelog">
+      <div class="changelog-row">
+        <div class="cl-date">May 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> Multi-turn conversation memory</h4>
+          <p>AI providers now receive full conversation history on every call. Google Gemini uses the <code>contents</code> array with alternating <code>user</code>/<code>model</code> roles under <code>systemInstruction</code>. OpenAI uses the Chat Completions <code>messages</code> array (<code>/v1/chat/completions</code>) replacing the Responses API. New helpers: <code>_build_google_contents()</code>, <code>_build_openai_messages()</code>, <code>_build_system_text()</code>, <code>_build_user_turn()</code>.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">May 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag new">New</span> Contextual follow-up gate</h4>
+          <p>Added <code>_is_contextual_reply()</code> and <code>_FOLLOWUP_TOKENS</code> frozenset. Short messages (≤ 20 chars) or messages containing follow-up tokens ("yes", "sure", "go ahead", "more", "explain", etc.) now bypass the greeting and out-of-scope fast paths when prior assistant turns exist in history — keeping the conversation thread intact.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">May 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag changed">Changed</span> FAB-only trigger — topbar button removed</h4>
+          <p>The topbar <code>💬</code> button (<code>.usc-topbar-btn</code>, <code>#usc-topbar-toggle</code>) has been removed from <code>templates/base.html</code>. The FAB (bottom-right floating button) is now the sole chat trigger. The MSU logo was restored to the topbar in the space previously occupied by the chat button.</p>
+        </div>
+      </div>
+      <div class="changelog-row">
+        <div class="cl-date">May 2026</div>
+        <div class="cl-body">
+          <h4><span class="cl-tag changed">Changed</span> Auto-expanding textarea</h4>
+          <p>The input area was redesigned as a unified <code>.usc-input-wrap</code> card (border and focus ring on the wrapper, not the textarea). The textarea auto-grows as the user types via <code>_autoGrow()</code> — sets <code>height="0"</code> first to force accurate <code>scrollHeight</code>, caps at 144 px (~6 lines), and switches <code>overflow-y</code> to <code>auto</code> only when capped. Resets to <code>2.5rem</code> on send.</p>
+        </div>
+      </div>
       <div class="changelog-row">
         <div class="cl-date">Apr 2026</div>
         <div class="cl-body">

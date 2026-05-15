@@ -1,11 +1,10 @@
-Django==6.0.3
+Django==6.0.5
 psycopg[binary]==3.3.3
 python-dotenv==1.2.2
 pandas==3.0.1
 openpyxl>=3.1.0
 # OpenAI API client — for GPT-4o and intent detection
 openai>=1.30.0
-
 # Rich — for the terminal UI (coloured output, panels, tables)
 rich>=13.0.0
 
@@ -14,3 +13,5 @@ rich>=13.0.0
 # For production with multiple workers: uvicorn ... --workers 4
 # Note: switch CACHES backend to Redis when using --workers > 1
 uvicorn[standard]>=0.29.0
+# Reliable client IP extraction — handles X-Forwarded-For safely via trusted proxy validation
+django-ipware>=7.0.0

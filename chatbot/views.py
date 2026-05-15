@@ -88,13 +88,13 @@ def _load_sync_session(request) -> tuple:
     return chat_session, history
 
 
-def _call_service(message, filters, history) -> tuple:
+def _call_service(message, filters, history, session_id=None) -> tuple:
     """Call get_chatbot_reply and return (payload, error_response).
 
     On success: (dict, None). On error: (None, JsonResponse).
     """
     try:
-        return get_chatbot_reply(message, filters=filters, history=history), None
+        return get_chatbot_reply(message, filters=filters, history=history, session_id=session_id), None
     except ValueError as exc:
         return None, JsonResponse({"error": str(exc)}, status=400)
     except Exception:  # noqa: BLE001
@@ -136,7 +136,7 @@ def chatbot_message(request):
             "diagnostics": {"returned_source": "cache", "cache_hit": True},
         })
 
-    response_payload, err = _call_service(message, filters, history)
+    response_payload, err = _call_service(message, filters, history, session_id=request.session.session_key)
     if err:
         return err
 
@@ -269,7 +269,8 @@ def _stream_service_reply(request, ctx: _StreamCtx) -> StreamingHttpResponse:
             loop.call_soon_threadsafe(event_queue.put_nowait, {"type": "status", "step": step})
 
         service_task = asyncio.create_task(
-            _run_service(ctx.message, ctx.filters, ctx.history, event_queue, _on_status)
+            _run_service(ctx.message, ctx.filters, ctx.history, event_queue, _on_status,
+                         session_id=request.session.session_key)
         )
 
         try:
@@ -292,7 +293,7 @@ def _stream_service_reply(request, ctx: _StreamCtx) -> StreamingHttpResponse:
     return resp
 
 
-async def _run_service(message, filters, history, event_queue, on_status) -> None:
+async def _run_service(message, filters, history, event_queue, on_status, session_id=None) -> None:
     """Run get_chatbot_reply in the thread-pool executor and push the result onto the queue."""
     try:
         result = await asyncio.to_thread(
@@ -301,6 +302,7 @@ async def _run_service(message, filters, history, event_queue, on_status) -> Non
             filters=filters,
             history=history,
             status_callback=on_status,
+            session_id=session_id,
         )
         await event_queue.put({"type": "_done", **result})
     except ValueError as exc:

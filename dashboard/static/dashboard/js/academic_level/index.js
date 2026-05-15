@@ -18,6 +18,15 @@ const paginationState = {
 // Store the initial table data globally so we can render it anytime
 let initialTableData = null;
 
+// Holds the chart resize function once charts are initialised; called by accordion events
+let resizeChartsCallback = null;
+
+window.addEventListener('academic-level:charts-section-opened', () => {
+    if (typeof resizeChartsCallback === 'function') {
+        window.requestAnimationFrame(resizeChartsCallback);
+    }
+});
+
 const buildRequestUrl = (endpoint) => {
     const requestUrl = new URL(endpoint, window.location.origin);
     const currentUrl = new URL(window.location.href);
@@ -363,7 +372,7 @@ export const initialiseAcademicLevelPage = () => {
     const { elements } = shellContext;
     let storyBannerHydrated = false;
 
-    initialiseAcademicLevelSearch(elements);
+    initialisePagination();
 
     const metricsUrl = elements.root?.dataset.metricsUrl;
     const payloadUrl = elements.root?.dataset.payloadUrl;
@@ -371,6 +380,17 @@ export const initialiseAcademicLevelPage = () => {
         setAcademicLevelShellErrorState(shellContext);
         return;
     }
+
+    initialiseAcademicLevelSearch(elements, {
+        fetchPayload: () => fetchJson(payloadUrl),
+        onRowsUpdate: (rows) => {
+            paginationState.allRows = rows;
+            paginationState.currentPage = 1;
+            initialTableData = rows;
+            renderTableImmediately(rows);
+            renderPaginationControls();
+        },
+    });
 
     fetchJson(metricsUrl)
         .then((metricsResponse) => {
@@ -422,6 +442,7 @@ export const initialiseAcademicLevelPage = () => {
             
             // Render table IMMEDIATELY - don't wait for anything
             renderTableImmediately(allLevelRows);
+            renderPaginationControls();
             
             context.data.levelRows = payloadResponse?.level_chart_rows || [];
 
@@ -449,8 +470,11 @@ export const initialiseAcademicLevelPage = () => {
             initialiseChartResizeHandling(controllers, resizeCharts);
             initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
 
+            // Expose to the module-level listener so accordion opens always reach resizeCharts
+            resizeChartsCallback = resizeCharts;
+
             // Simple event listener - just re-render when accordion opens
-            document.addEventListener('academic-level:table-visibility-changed', () => {
+            window.addEventListener('academic-level:table-visibility-changed', () => {
                 handleAccordionExpand();
             });
         })

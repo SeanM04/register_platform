@@ -457,90 +457,28 @@ class CompletionAnalysis {
         });
     }
 
-    renderNarrativeDiagnostics() {
-        const statusElement = document.getElementById("completion-narrative-status");
-        const diagnostics = this.narrativeDiagnostics || {};
-        if (!statusElement) {
-            return;
-        }
-
-        const message = String(diagnostics.message || "").trim();
-        if (!message) {
-            statusElement.hidden = true;
-            statusElement.textContent = "";
-            statusElement.className = "completion-narrative-status";
-            return;
-        }
-
-        statusElement.hidden = false;
-        statusElement.textContent = message;
-        statusElement.className = `completion-narrative-status is-${diagnostics.status || "rules"}`;
-        if (diagnostics.fallback_detail) {
-            statusElement.title = diagnostics.fallback_detail;
-        } else {
-            statusElement.removeAttribute("title");
-        }
-    }
-
     loadNarratives() {
         if (!this.narrativesUrl) {
-            this.narrativeDiagnostics = {
-                status: "error",
-                message: "Completion narratives are unavailable in this page context, so the charts are using local guidance copy.",
-                fallback_detail: "No narratives endpoint URL was attached to the page shell.",
-            };
-            this.renderNarrativeDiagnostics();
             return;
         }
-
-        this.narrativeDiagnostics = {
-            status: "loading",
-            message: "Checking the completion narratives provider for chart-level AI copy...",
-        };
-        this.renderNarrativeDiagnostics();
 
         this.fetchJson(this.narrativesUrl)
             .then((payload) => {
                 this.currentNarratives = payload?.card_narratives || {};
-                this.narrativeDiagnostics = payload?.diagnostics || {};
-                this.renderNarrativeDiagnostics();
+                const diagnostics = payload?.diagnostics || {};
 
                 const flags = {
-                    narrativeSource: this.narrativeDiagnostics.returned_source || this.currentNarratives.source || "rules",
-                    narrativesAreAi: this.narrativeDiagnostics.status === "ai",
+                    narrativeSource: diagnostics.returned_source || this.currentNarratives.source || "rules",
+                    narrativesAreAi: diagnostics.status === "ai",
                 };
                 const fallback = this.getFallbackNarratives();
                 const cards = this.currentNarratives.cards || {};
 
-                this.applyNarrativeCard("cohort", {
-                    ...fallback.cohort,
-                    ...(cards.cohort || {}),
-                }, flags);
-                this.applyNarrativeCard("programme", {
-                    ...fallback.programme,
-                    ...(cards.programme || {}),
-                }, flags);
-                this.applyNarrativeCard("drivers", {
-                    ...fallback.drivers,
-                    ...(cards.drivers || {}),
-                }, flags);
-
-                if (window.console?.info && payload?.diagnostics) {
-                    window.console.info("[Completion narratives diagnostics]", payload.diagnostics);
-                }
+                this.applyNarrativeCard("cohort", { ...fallback.cohort, ...(cards.cohort || {}) }, flags);
+                this.applyNarrativeCard("programme", { ...fallback.programme, ...(cards.programme || {}) }, flags);
+                this.applyNarrativeCard("drivers", { ...fallback.drivers, ...(cards.drivers || {}) }, flags);
             })
-            .catch((error) => {
-                const detail = String(error?.message || "").trim();
-                const isMissingEndpoint = detail.includes("status 404");
-                this.narrativeDiagnostics = {
-                    status: "error",
-                    message: isMissingEndpoint
-                        ? "Completion narratives are falling back to local guidance because this running server does not expose the narratives endpoint yet."
-                        : "Completion narratives are falling back to local guidance because the narrative request did not complete.",
-                    fallback_detail: detail || "Unknown completion narratives fetch error.",
-                };
-                this.renderNarrativeDiagnostics();
-            });
+            .catch(() => {});
     }
 
     getOrCreateChart(elementId) {

@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260417-pass-trend-clean01"></script></script></script></script>
+<link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260510-table-maxheight-fix">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -253,7 +253,6 @@
     </section>
 
     <section class="level-story-banner" id="academic-level-story-banner" aria-live="polite"></section>
-    <p class="level-narrative-status" id="academic-level-narrative-status" hidden></p>
 
     <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="cohort-overview-programme-enrolment">
         <div class="demographic-flow-header">
@@ -456,7 +455,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260417-filter-consistency02"></script>
+<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260510-search-fix"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {
@@ -475,7 +474,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
             targetItem.classList.toggle('is-open', shouldOpen);
             targetContent.classList.toggle('is-hidden', !shouldOpen);
-            targetContent.style.maxHeight = shouldOpen ? `${targetContent.scrollHeight}px` : '0';
+            if (shouldOpen) {
+                targetContent.style.maxHeight = `${targetContent.scrollHeight}px`;
+                // After the open animation, remove the inline cap so dynamically-added
+                // content (AJAX table rows, pagination buttons) is never clipped.
+                setTimeout(() => {
+                    if (targetItem.classList.contains('is-open')) {
+                        targetContent.style.maxHeight = '';
+                    }
+                }, 320);
+            } else {
+                targetContent.style.maxHeight = '0';
+            }
             targetToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
 
             if (targetToggleText) {
@@ -493,6 +503,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.dispatchEvent(new CustomEvent('academic-level:table-visibility-changed', {
                         detail: { visible: true }
                     }));
+                }, 350);
+            }
+            // Resize ECharts instances when chart sections open (they were hidden on init)
+            if (shouldOpen && (
+                targetItem.dataset.accordionSection === 'pass-trends' ||
+                targetItem.dataset.accordionSection === 'cohort-overview-programme-enrolment'
+            )) {
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('academic-level:charts-section-opened'));
                 }, 350);
             }
         };

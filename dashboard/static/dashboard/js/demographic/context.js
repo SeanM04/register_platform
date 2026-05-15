@@ -29,8 +29,7 @@ export const createDemographicContext = (payload = {}) => {
         elements: {
             root: document.querySelector(".demographic-layout"),
             storyBanner: document.getElementById("demographic-story-banner"),
-            narrativeStatus: document.getElementById("demographic-narrative-status"),
-            genderCopy: document.getElementById("demographic-gender-copy"),
+genderCopy: document.getElementById("demographic-gender-copy"),
             genderHints: document.getElementById("demographic-gender-hints"),
             genderNote: document.getElementById("demographic-gender-note"),
             locationCopy: document.getElementById("demographic-location-copy"),

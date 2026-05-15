@@ -6,9 +6,9 @@
 {% block title %}Graduation Analysis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260414-dropdown-arrows01">
-<link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260418-readiness-shell01">
-<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260416-instant-loading01">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260510-skeleton-loading01">
+<link rel="stylesheet" href="{% static 'dashboard/css/graduation.css' %}?v=20260510-skeleton-loading01">
+<link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260510-skeleton-loading01">
 <link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
 
@@ -30,7 +30,7 @@
         <article class="graduation-metric">
             <p class="graduation-metric-label">Best Faculty Rate</p>
             <p class="graduation-metric-value" data-metric-value data-metric-key="best_faculty_rate">-</p>
-            <p class="graduation-metric-faculty" id="best-faculty-name"></p>
+            <p class="graduation-metric-faculty" id="best-faculty-name" data-faculty-loading></p>
         </article>
     </section>
 
@@ -40,8 +40,6 @@
             <p class="completion-banner-description">Graduation here follows the documented cohort-based logic: each graduate inherits the effective cohort after decision shifts, the graduation rate uses cohort completion averages through the programme target period, and on-time graduation means no cohort shift occurred.</p>
         </div>
     </section>
-    <p class="graduation-snapshot-status" id="graduation-snapshot-status" hidden></p>
-    <p class="completion-narrative-status" id="graduation-narrative-status" hidden></p>
 
     <div class="demographic-accordion">
         <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-graduation">

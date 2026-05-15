@@ -167,33 +167,6 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
     });
 };
 
-const renderNarrativeDiagnostics = (context) => {
-    const diagnostics = context.data.narrativeDiagnostics || {};
-    const statusElement = context.elements.narrativeStatus;
-
-    if (!statusElement) {
-        return;
-    }
-
-    const message = String(diagnostics.message || "").trim();
-    if (!message) {
-        statusElement.hidden = true;
-        statusElement.textContent = "";
-        statusElement.className = "demographic-narrative-status";
-        return;
-    }
-
-    statusElement.hidden = false;
-    statusElement.textContent = message;
-    statusElement.className = `demographic-narrative-status is-${diagnostics.status || "rules"}`;
-
-    if (diagnostics.fallback_detail) {
-        statusElement.title = diagnostics.fallback_detail;
-    } else {
-        statusElement.removeAttribute("title");
-    }
-};
-
 const loadNarrativesInBackground = (context) => {
     if (!demographicRoot?.dataset.narrativesUrl) {
         return;
@@ -214,7 +187,6 @@ const loadNarrativesInBackground = (context) => {
                 if (window.console?.info && payload?.diagnostics) {
                     window.console.info("[Demographic narratives diagnostics]", payload.diagnostics);
                 }
-                renderNarrativeDiagnostics(context);
                 hydrateNarratives(context);
             })
             .catch(() => {});
@@ -272,7 +244,6 @@ export const initialiseDemographicPage = async () => {
     hydrateSummaryCards(context, buildMetricCards(payloadResponse?.metrics || {}));
 
     renderStoryBanner(context.elements.storyBanner, context.data.genderRows, context.data.locationRows, context.data.programmeRows);
-    renderNarrativeDiagnostics(context);
 
     const controllers = [
         initialiseGenderSection(context),

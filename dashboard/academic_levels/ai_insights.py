@@ -101,6 +101,18 @@ def _format_programme_name(value):
     return text.strip() or str(value or "").strip()
 
 
+def _get_effective_ai_provider():
+    """Return the active AI provider, preferring the DB-stored setting over Django settings."""
+    try:
+        from dashboard.models import PlatformSetting
+        db_val = PlatformSetting.get_value("ai_provider", "").strip().lower()
+        if db_val:
+            return db_val
+    except Exception:
+        pass
+    return getattr(settings, "AI_INSIGHTS_PROVIDER", "auto").strip().lower()
+
+
 def _truncate_text(value, max_length=44):
     """Clamp narrative text to a fixed display length while preserving an ellipsis."""
 
@@ -724,7 +736,7 @@ def get_academic_level_card_narratives_result(academic_level_data):
     """
 
     fallback = build_rule_based_academic_level_narratives(academic_level_data)
-    provider = getattr(settings, "AI_INSIGHTS_PROVIDER", "auto").strip().lower()
+    provider = _get_effective_ai_provider()
     insights_enabled = bool(
         getattr(settings, "AI_INSIGHTS_ENABLED", False)
         or getattr(settings, "OPENAI_INSIGHTS_ENABLED", False)

@@ -71,6 +71,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'dashboard.middleware.ErrorLoggingMiddleware',
     'accounts.middleware.SessionValidationMiddleware',
     'chatbot.middleware.ChatbotRateLimitMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -131,7 +132,7 @@ GOOGLE_INSIGHTS_MODEL = os.getenv("GOOGLE_INSIGHTS_MODEL", "gemini-2.5-flash-lit
 GOOGLE_INSIGHTS_TIMEOUT_SECONDS = get_env_int("GOOGLE_INSIGHTS_TIMEOUT_SECONDS", 6)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_INSIGHTS_ENABLED = get_env_bool("OPENAI_INSIGHTS_ENABLED", False)
-OPENAI_INSIGHTS_MODEL = os.getenv("OPENAI_INSIGHTS_MODEL", "gpt-5.4-mini")
+OPENAI_INSIGHTS_MODEL = os.getenv("OPENAI_INSIGHTS_MODEL", "gpt-4o-mini").strip()
 OPENAI_INSIGHTS_TIMEOUT_SECONDS = get_env_int("OPENAI_INSIGHTS_TIMEOUT_SECONDS", 6)
 # ---------------------------------------------------------------------------
 # Cache — used by the chatbot response cache and the rate limiter.
@@ -155,7 +156,7 @@ CHATBOT_RATE_LIMIT_WINDOW_SECONDS = get_env_int("CHATBOT_RATE_LIMIT_WINDOW_SECON
 CHATBOT_ENABLED = get_env_bool("CHATBOT_ENABLED", True)
 CHATBOT_PROVIDER = os.getenv("CHATBOT_PROVIDER", AI_INSIGHTS_PROVIDER or "auto").strip().lower()
 CHATBOT_GOOGLE_MODEL = os.getenv("CHATBOT_GOOGLE_MODEL", GOOGLE_INSIGHTS_MODEL)
-CHATBOT_OPENAI_MODEL = os.getenv("CHATBOT_OPENAI_MODEL", OPENAI_INSIGHTS_MODEL)
+CHATBOT_OPENAI_MODEL = os.getenv("CHATBOT_OPENAI_MODEL", OPENAI_INSIGHTS_MODEL).strip()
 CHATBOT_TIMEOUT_SECONDS = get_env_int(
     "CHATBOT_TIMEOUT_SECONDS",
     max(GOOGLE_INSIGHTS_TIMEOUT_SECONDS, OPENAI_INSIGHTS_TIMEOUT_SECONDS, 12),

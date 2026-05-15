@@ -32,7 +32,6 @@ export const createProgrammeContext = (payload = {}) => {
         elements: {
             root: document.querySelector(".programme-dashboard"),
             storyBanner: document.getElementById("programme-story-banner"),
-            narrativeStatus: document.getElementById("programme-narrative-status"),
             metricCards: Array.from(document.querySelectorAll("[data-metric-card]")),
             metricNotes: Array.from(document.querySelectorAll("[data-metric-note]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),

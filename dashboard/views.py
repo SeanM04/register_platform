@@ -19,8 +19,9 @@ from accounts.decorators import (
 )
 from accounts.forms import SystemManagementUserForm
 from accounts.models import LoginLockout
+from django.conf import settings as django_settings
 from services.chatbot_service import get_chatbot_provider_status
-from .models import AcademicPeriod, CourseResult, Faculty, Programme, Registration, Student
+from .models import AcademicPeriod, AuditLog, CourseResult, Faculty, PlatformSetting, Programme, Registration, Student
 
 SIDEBAR_ITEMS = [
     {"key": "dashboard", "label": "Dashboard", "url_name": "dashboard:home"},
@@ -1713,6 +1714,78 @@ def programme_view(request):
     return feature_programme_view(request)
 
 
+def _format_audit_detail(action, detail):
+    if not detail:
+        return ""
+    if action == AuditLog.ACTION_AI_PROVIDER_CHANGED:
+        return f"{detail.get('old', '?')} → {detail.get('new', '?')}"
+    if action == AuditLog.ACTION_LOGIN_FAILED:
+        return detail.get("reason", "")
+    return ", ".join(f"{k}: {v}" for k, v in detail.items())
+
+
+def _build_audit_log_context(request):
+    from datetime import datetime
+    search_q = request.GET.get("audit_q", "").strip()
+    action_filter = request.GET.get("audit_action", "").strip()
+    date_from_raw = request.GET.get("audit_from", "").strip()
+    date_to_raw = request.GET.get("audit_to", "").strip()
+
+    qs = AuditLog.objects.all()
+    if search_q:
+        qs = qs.filter(
+            Q(actor_email__icontains=search_q) | Q(target_email__icontains=search_q)
+        )
+    if action_filter:
+        qs = qs.filter(action=action_filter)
+
+    date_from = date_to = None
+    try:
+        if date_from_raw:
+            date_from = datetime.strptime(date_from_raw, "%Y-%m-%d").date()
+            qs = qs.filter(timestamp__date__gte=date_from)
+    except ValueError:
+        date_from_raw = ""
+    try:
+        if date_to_raw:
+            date_to = datetime.strptime(date_to_raw, "%Y-%m-%d").date()
+            qs = qs.filter(timestamp__date__lte=date_to)
+    except ValueError:
+        date_to_raw = ""
+
+    paginator = Paginator(qs, 15)
+    page_obj = paginator.get_page(request.GET.get("audit_page"))
+    page_start = max(page_obj.number - 2, 1)
+    page_end = min(page_obj.number + 2, paginator.num_pages)
+
+    entries = [
+        {
+            "timestamp": entry.timestamp,
+            "actor_email": entry.actor_email or "—",
+            "action_label": entry.get_action_display(),
+            "action": entry.action,
+            "tone": AuditLog.ACTION_TONE.get(entry.action, "neutral"),
+            "target_email": entry.target_email or "—",
+            "detail": _format_audit_detail(entry.action, entry.detail),
+            "ip_address": entry.ip_address or "—",
+        }
+        for entry in page_obj.object_list
+    ]
+
+    has_filter = bool(search_q or action_filter or date_from_raw or date_to_raw)
+    return {
+        "audit_entries": entries,
+        "audit_page_obj": page_obj,
+        "audit_page_numbers": range(page_start, page_end + 1),
+        "audit_search_query": search_q,
+        "audit_action_filter": action_filter,
+        "audit_date_from": date_from_raw,
+        "audit_date_to": date_to_raw,
+        "audit_has_filter": has_filter,
+        "audit_action_choices": AuditLog.ACTION_CHOICES,
+    }
+
+
 @platform_admin_required
 def system_management_view(request):
     """Render the admin-only system workspace for user access and platform controls."""
@@ -1724,11 +1797,33 @@ def system_management_view(request):
     if request.method == "POST":
         action = request.POST.get("action", "create-user")
 
+        if action == "set-ai-provider":
+            _AI_VALID_PROVIDERS = {"google", "openai", "rules", "auto"}
+            chosen = request.POST.get("provider", "").strip().lower()
+            if chosen in _AI_VALID_PROVIDERS:
+                old_provider = PlatformSetting.get_value("ai_provider", "auto") or "auto"
+                PlatformSetting.set_value("ai_provider", chosen)
+                _labels = {"google": "Google Gemini", "openai": "OpenAI", "rules": "Rule-based engine", "auto": "Auto"}
+                messages.success(request, f"AI insights provider set to {_labels[chosen]}.")
+                AuditLog.record(
+                    AuditLog.ACTION_AI_PROVIDER_CHANGED,
+                    detail={"old": old_provider, "new": chosen},
+                    request=request,
+                )
+            else:
+                messages.error(request, "Invalid AI provider selection.")
+            return redirect(redirect_target)
+
         if action == "create-user":
             user_form = SystemManagementUserForm(request.POST)
             if user_form.is_valid():
                 created_user = user_form.save()
                 messages.success(request, f"{created_user.email} was added successfully.")
+                AuditLog.record(
+                    AuditLog.ACTION_USER_CREATED,
+                    target_email=created_user.email,
+                    request=request,
+                )
                 return redirect(redirect_target)
             messages.error(request, "Please correct the highlighted user details and try again.")
             show_user_modal = True
@@ -1743,6 +1838,11 @@ def system_management_view(request):
                     managed_user.save(update_fields=["is_active"])
                     state = "activated" if managed_user.is_active else "deactivated"
                     messages.success(request, f"{managed_user.email} was {state}.")
+                    AuditLog.record(
+                        AuditLog.ACTION_USER_ACTIVATED if managed_user.is_active else AuditLog.ACTION_USER_DEACTIVATED,
+                        target_email=managed_user.email,
+                        request=request,
+                    )
                     return redirect(redirect_target)
 
             elif action == "clear-lockout":
@@ -1757,6 +1857,11 @@ def system_management_view(request):
                 )
                 if updated:
                     messages.success(request, f"Lockout cleared for {managed_user.email}.")
+                    AuditLog.record(
+                        AuditLog.ACTION_LOCKOUT_CLEARED,
+                        target_email=managed_user.email,
+                        request=request,
+                    )
                 else:
                     messages.info(request, f"{managed_user.email} has no active user-specific lockout.")
                 return redirect(redirect_target)
@@ -1775,8 +1880,12 @@ def system_management_view(request):
             | Q(user_type__name__icontains=search_query)
         )
 
-    lockout_records = get_active_user_lockout_records()
-    user_rows = build_system_user_rows(managed_users, lockout_records, request.user)
+    _on_users_tab = request.GET.get("tab", "users") != "audit" and request.GET.get("tab") != "ai"
+    if _on_users_tab or show_user_modal:
+        lockout_records = get_active_user_lockout_records()
+        user_rows = build_system_user_rows(managed_users, lockout_records, request.user)
+    else:
+        user_rows = []
 
     paginator = Paginator(user_rows, 10)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -1801,6 +1910,26 @@ def system_management_view(request):
             "search_query": search_query,
             "current_path": request.get_full_path(),
             "show_user_modal": show_user_modal,
+            "active_tab": request.GET.get("tab", "users"),
+            "ai_provider": PlatformSetting.get_value("ai_provider", "auto") or "auto",
+            "ai_google_available": bool(getattr(django_settings, "GOOGLE_API_KEY", "")),
+            "ai_openai_available": bool(getattr(django_settings, "OPENAI_API_KEY", "")),
+            "ai_insights_enabled": bool(getattr(django_settings, "AI_INSIGHTS_ENABLED", False)),
+            **(
+                _build_audit_log_context(request)
+                if request.GET.get("tab") == "audit"
+                else {
+                    "audit_entries": [],
+                    "audit_page_obj": None,
+                    "audit_page_numbers": range(0),
+                    "audit_search_query": "",
+                    "audit_action_filter": "",
+                    "audit_date_from": "",
+                    "audit_date_to": "",
+                    "audit_has_filter": False,
+                    "audit_action_choices": AuditLog.ACTION_CHOICES,
+                }
+            ),
         }
     )
     return render(request, "dashboard/system_management.html", context)

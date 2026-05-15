@@ -283,3 +283,180 @@ class CompletionAnalysisRecord(TimeStampedModel):
 
     def __str__(self):
         return f"{self.student.registration_number} - {self.programme.name}"
+
+
+_SENSITIVE_POST_FIELDS = frozenset({
+    "password", "password1", "password2", "token", "secret",
+    "key", "api_key", "access_token", "refresh_token", "csrfmiddlewaretoken",
+})
+
+
+def _get_client_ip(request):
+    from ipware import get_client_ip
+    ip, _ = get_client_ip(request)
+    return ip
+
+
+class AuditLog(models.Model):
+    ACTION_USER_CREATED = "user_created"
+    ACTION_USER_ACTIVATED = "user_activated"
+    ACTION_USER_DEACTIVATED = "user_deactivated"
+    ACTION_LOCKOUT_CLEARED = "lockout_cleared"
+    ACTION_AI_PROVIDER_CHANGED = "ai_provider_changed"
+    ACTION_LOGIN_SUCCESS = "login_success"
+    ACTION_LOGIN_FAILED = "login_failed"
+    ACTION_LOGOUT = "logout"
+
+    ACTION_CHOICES = [
+        (ACTION_USER_CREATED, "User created"),
+        (ACTION_USER_ACTIVATED, "User activated"),
+        (ACTION_USER_DEACTIVATED, "User deactivated"),
+        (ACTION_LOCKOUT_CLEARED, "Lockout cleared"),
+        (ACTION_AI_PROVIDER_CHANGED, "AI provider changed"),
+        (ACTION_LOGIN_SUCCESS, "Login"),
+        (ACTION_LOGIN_FAILED, "Login failed"),
+        (ACTION_LOGOUT, "Logout"),
+    ]
+
+    ACTION_TONE = {
+        ACTION_USER_CREATED: "success",
+        ACTION_USER_ACTIVATED: "success",
+        ACTION_USER_DEACTIVATED: "warning",
+        ACTION_LOCKOUT_CLEARED: "info",
+        ACTION_AI_PROVIDER_CHANGED: "info",
+        ACTION_LOGIN_SUCCESS: "neutral",
+        ACTION_LOGIN_FAILED: "danger",
+        ACTION_LOGOUT: "neutral",
+    }
+
+    actor = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_actions",
+    )
+    actor_email = models.EmailField(blank=True)
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES, db_index=True)
+    target_email = models.EmailField(blank=True)
+    detail = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "audit_log"
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["action"]),
+            models.Index(fields=["actor_email"]),
+        ]
+
+    @classmethod
+    def record(cls, action, *, actor=None, target_email="", detail=None, request=None):
+        ip = None
+        if request is not None:
+            ip = _get_client_ip(request)
+            if actor is None and hasattr(request, "user") and request.user.is_authenticated:
+                actor = request.user
+        actor_email = actor.email if actor is not None else ""
+        cls.objects.create(
+            actor=actor,
+            actor_email=actor_email,
+            action=action,
+            target_email=target_email,
+            detail=detail or {},
+            ip_address=ip,
+        )
+
+
+class ErrorLog(models.Model):
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    path = models.CharField(max_length=500)
+    method = models.CharField(max_length=10)
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="error_logs",
+    )
+    user_email = models.EmailField(blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    exception_type = models.CharField(max_length=200, db_index=True)
+    exception_message = models.TextField(blank=True)
+    traceback = models.TextField(blank=True)
+    get_params = models.JSONField(default=dict, blank=True)
+    post_params = models.JSONField(default=dict, blank=True)
+    resolved = models.BooleanField(default=False, db_index=True)
+    resolved_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_errors",
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "error_log"
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["exception_type"]),
+            models.Index(fields=["resolved", "-timestamp"]),
+        ]
+
+    def __str__(self):
+        status = "resolved" if self.resolved else "open"
+        return f"{self.exception_type} at {self.path} [{status}]"
+
+    @classmethod
+    def from_request(cls, request, exception, tb_str=""):
+        user = None
+        user_email = ""
+        if hasattr(request, "user") and request.user.is_authenticated:
+            user = request.user
+            user_email = request.user.email
+
+        get_params = dict(request.GET.lists())
+        post_params = {
+            k: ["[REDACTED]"] if k.lower() in _SENSITIVE_POST_FIELDS else list(v)
+            for k, v in request.POST.lists()
+        }
+
+        cls.objects.create(
+            path=request.path[:500],
+            method=request.method,
+            user=user,
+            user_email=user_email,
+            ip_address=_get_client_ip(request),
+            exception_type=type(exception).__name__[:200],
+            exception_message=str(exception)[:2000],
+            traceback=tb_str,
+            get_params=get_params,
+            post_params=post_params,
+        )
+
+
+class PlatformSetting(models.Model):
+    """Runtime-configurable key/value store for platform-wide settings."""
+
+    key = models.CharField(max_length=100, unique=True)
+    value = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "platform_settings"
+
+    def __str__(self):
+        return f"{self.key}={self.value!r}"
+
+    @classmethod
+    def get_value(cls, key, default=""):
+        try:
+            return cls.objects.values_list("value", flat=True).get(key=key)
+        except cls.DoesNotExist:
+            return default
+
+    @classmethod
+    def set_value(cls, key, value):
+        cls.objects.update_or_create(key=key, defaults={"value": str(value)})

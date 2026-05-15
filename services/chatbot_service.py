@@ -6,6 +6,8 @@ import json
 import logging
 import re
 import statistics
+import threading
+import time
 import urllib.error
 import urllib.request
 from typing import Iterable
@@ -41,7 +43,7 @@ INTENT_PROMPT = (
     "- calculation      : completion %, GPA, risk score, or graduation rate explained\n"
     "- demographic      : gender breakdown, year distribution, origin stats\n"
     "- decision_analysis: academic decisions (Proceed, Retake, Repeat, Discontinue)\n"
-    "- data_query       : pass rates, statistics, mark distributions, totals\n"
+    "- data_query       : pass rates, statistics, mark distributions, totals, top/best performing students, rankings\n"
     "- admissions       : applying to MSUAS, entry requirements, how to enrol\n"
     "- general_info     : location, contacts, directions, portals, fees, calendar\n"
     "- greeting         : hello, hi, thanks, greetings\n"
@@ -92,6 +94,155 @@ PROGRAMME_DURATIONS = {
 REGNUM_PATTERN = re.compile(r"\b[a-z]\d[a-z0-9]{3,}\b", re.IGNORECASE)
 COURSE_CODE_PATTERN = re.compile(r"\b[a-z]{3,}\d{3,}\b", re.IGNORECASE)
 
+# ---------------------------------------------------------------------------
+# Tool registry — registered with OpenAI / Google for function calling.
+# These 8 tools replace the 20-handler keyword dispatch; the AI decides which
+# ones to call based on the user's question and conversation context.
+# Stored in OpenAI JSON-Schema format; converted to Google format dynamically.
+# ---------------------------------------------------------------------------
+CHATBOT_TOOLS: list[dict] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_top_students",
+            "description": (
+                "Return the top-N students ranked by average mark. Use for: "
+                "'top 5 students in year 2', 'best performer', 'who has the highest marks', "
+                "'number one student in INSY', 'who is leading academically'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "integer", "description": "How many students to return (default 5, max 20).", "minimum": 1, "maximum": 20},
+                    "year_level": {"type": "integer", "description": "Academic year level 1–5 to filter by. Omit for all years.", "minimum": 1, "maximum": 5},
+                    "programme_code": {"type": "string", "description": "Programme code filter, e.g. 'INSY', 'ACCT'."},
+                    "faculty": {"type": "string", "description": "Faculty name filter."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_student_profile",
+            "description": (
+                "Return full academic profile for a specific student: marks, risk score, "
+                "completion history, decisions, graduation rate. Use when a registration number "
+                "is mentioned (e.g. 'M213TX') or the user says 'yes' / 'show me more' after "
+                "the bot offered a profile in the previous turn."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "registration_number": {"type": "string", "description": "Student registration number, e.g. 'M213TX'."},
+                },
+                "required": ["registration_number"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_at_risk_students",
+            "description": (
+                "Return students flagged for academic risk: multiple failures, adverse decisions, "
+                "or carrying courses. Use for: 'struggling students', 'at risk', 'failing', "
+                "'watchlist', 'who needs help', 'discontinue students'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "risk_band": {"type": "string", "enum": ["moderate", "high", "critical"], "description": "Filter by band. Omit for all risk levels."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_programme_statistics",
+            "description": (
+                "Return pass rates, average marks, student counts, and gender breakdown for programmes. "
+                "Use for: 'how is INSY performing', 'pass rate for accounting', 'compare ACCT and BMAN'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "programme_codes": {"type": "array", "items": {"type": "string"}, "description": "Programme codes to query, e.g. ['INSY', 'ACCT']. Empty means all in scope."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_faculty_statistics",
+            "description": (
+                "Return student counts, pass rates, and gender breakdown aggregated by faculty. "
+                "Use for: 'how is Engineering faculty performing', 'which faculty has the best pass rate'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "faculty_name": {"type": "string", "description": "Faculty name to query. Omit for all faculties in scope."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_demographic_breakdown",
+            "description": (
+                "Return gender breakdown and academic year distribution statistics. "
+                "Use for: 'gender stats', 'male vs female', 'year distribution', 'how many year 1 students', "
+                "'demographic breakdown'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "year_level": {"type": "integer", "description": "Filter by academic year level 1–5. Omit for all years.", "minimum": 1, "maximum": 5},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_course_difficulty_ranking",
+            "description": (
+                "Return courses ranked hardest to easiest by average student mark. "
+                "Use for: 'hardest course', 'easiest subject', 'which course has lowest pass rate', "
+                "'course difficulty'."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_period_performance",
+            "description": (
+                "Return performance statistics for a specific academic period or semester. "
+                "Use when a period name, month, or semester number is mentioned, "
+                "e.g. 'August 2024 performance', 'how did Semester 1 2025 go'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "period_name": {"type": "string", "description": "Period name e.g. 'August 2024', 'Semester 1 2025'."},
+                },
+                "required": ["period_name"],
+            },
+        },
+    },
+]
+
 # Short words that strongly signal a follow-up reply rather than a new topic.
 _FOLLOWUP_TOKENS = frozenset({
     "yes", "yeah", "yep", "yup", "sure", "ok", "okay", "alright",
@@ -114,6 +265,38 @@ PROVIDER_LABELS = {
     "openai": "OpenAI",
     "rules": "Guidance",
 }
+
+# ---------------------------------------------------------------------------
+# In-process session context cache — persists active data across follow-up turns
+# Keyed by Django session key; each entry holds the last tool results so "yes"
+# responses can re-use the previous turn's fetched data without a full re-query.
+# ---------------------------------------------------------------------------
+_SESSION_CONTEXT: dict[str, dict] = {}
+_SESSION_LOCK = threading.Lock()
+_SESSION_TTL = 7200  # 2 hours
+
+
+def _get_session_ctx(session_id: str | None) -> dict:
+    if not session_id:
+        return {}
+    with _SESSION_LOCK:
+        entry = _SESSION_CONTEXT.get(session_id)
+        if entry and (time.time() - entry["ts"]) < _SESSION_TTL:
+            return entry["data"]
+        if entry:
+            del _SESSION_CONTEXT[session_id]
+    return {}
+
+
+def _store_session_ctx(session_id: str | None, data: dict) -> None:
+    if not session_id:
+        return
+    with _SESSION_LOCK:
+        _SESSION_CONTEXT[session_id] = {"ts": time.time(), "data": data}
+        now = time.time()
+        expired = [k for k, v in _SESSION_CONTEXT.items() if now - v["ts"] > _SESSION_TTL]
+        for k in expired:
+            del _SESSION_CONTEXT[k]
 
 UNIVERSITY_FACTS = {
     "name": "Manicaland State University of Applied Sciences (MSUAS)",
@@ -366,7 +549,14 @@ def _extract_google_response_text(response_payload):
 
 
 def get_chatbot_provider_status() -> dict:
-    provider = getattr(settings, "CHATBOT_PROVIDER", "auto").strip().lower()
+    # Prefer the DB-stored selection (set via System Management → AI Insights)
+    # so the chatbot honours the same provider the admin chose for narratives.
+    try:
+        from dashboard.models import PlatformSetting
+        _db_provider = PlatformSetting.get_value("ai_provider", "").strip().lower()
+    except Exception:  # noqa: BLE001
+        _db_provider = ""
+    provider = _db_provider or getattr(settings, "CHATBOT_PROVIDER", "auto").strip().lower()
     enabled = bool(getattr(settings, "CHATBOT_ENABLED", True))
     google_ready = provider in {"auto", "google"} and bool(getattr(settings, "GOOGLE_API_KEY", ""))
     openai_ready = provider in {"auto", "openai"} and bool(getattr(settings, "OPENAI_API_KEY", ""))
@@ -681,6 +871,19 @@ def _build_programme_context(programmes: Iterable[Programme], filters: dict):
         scoped_results = CourseResult.objects.filter(registration__in=scoped_registrations).exclude(mark__isnull=True)
         total_results = scoped_results.count()
         passed = scoped_results.filter(mark__gte=PASS_MARK).count()
+        gender_rows = list(
+            scoped_registrations.values("student__gender")
+            .annotate(count=Count("student_id", distinct=True))
+            .order_by("-count")
+        )
+        _total_gendered = sum(r["count"] for r in gender_rows)
+        gender_breakdown = {
+            (r["student__gender"] or "Unspecified").title(): {
+                "count": r["count"],
+                "pct": round(r["count"] / _total_gendered * 100, 1) if _total_gendered else 0,
+            }
+            for r in gender_rows
+        }
         rows.append(
             {
                 "code": programme.code,
@@ -692,6 +895,7 @@ def _build_programme_context(programmes: Iterable[Programme], filters: dict):
                 "pass_rate": _safe_round((passed / total_results * 100) if total_results else None),
                 "fail_rate": _safe_round(((total_results - passed) / total_results * 100) if total_results else None),
                 "carrying_count": scoped_registrations.filter(carrying__gt=0).count(),
+                "gender_breakdown": gender_breakdown,
             }
         )
     return rows
@@ -707,6 +911,19 @@ def _build_faculty_context(faculties: Iterable[Faculty], filters: dict):
         scoped_results = CourseResult.objects.filter(registration__in=scoped_registrations).exclude(mark__isnull=True)
         total_results = scoped_results.count()
         passed = scoped_results.filter(mark__gte=PASS_MARK).count()
+        gender_rows = list(
+            scoped_registrations.values("student__gender")
+            .annotate(count=Count("student_id", distinct=True))
+            .order_by("-count")
+        )
+        _total_gendered = sum(r["count"] for r in gender_rows)
+        gender_breakdown = {
+            (r["student__gender"] or "Unspecified").title(): {
+                "count": r["count"],
+                "pct": round(r["count"] / _total_gendered * 100, 1) if _total_gendered else 0,
+            }
+            for r in gender_rows
+        }
         rows.append(
             {
                 "faculty": faculty.name,
@@ -714,6 +931,7 @@ def _build_faculty_context(faculties: Iterable[Faculty], filters: dict):
                 "registrations": scoped_registrations.count(),
                 "average_mark": _safe_round(scoped_results.aggregate(value=Avg("mark"))["value"]),
                 "pass_rate": _safe_round((passed / total_results * 100) if total_results else None),
+                "gender_breakdown": gender_breakdown,
             }
         )
     return rows
@@ -838,6 +1056,41 @@ def _build_course_difficulty_context(results) -> dict | None:
     return {"hardest": hardest, "easiest": easiest}
 
 
+def _build_year_distribution_context(filters: dict) -> dict:
+    """Return student counts and gender breakdown by academic year.
+    Mirrors year_gender from the standalone prototype's _compute_demographic_data().
+    """
+    from collections import defaultdict as _dd
+
+    year_rows = list(
+        _apply_scope_filters(Registration.objects.all(), filters)
+        .exclude(period__academic_year="")
+        .exclude(period__academic_year__isnull=True)
+        .values("period__academic_year", "student__gender")
+        .annotate(count=Count("student_id", distinct=True))
+        .order_by("period__academic_year")
+    )
+
+    year_map: dict = _dd(lambda: {"male": 0, "female": 0, "unspecified": 0, "total": 0})
+    for row in year_rows:
+        yr = str(row["period__academic_year"])
+        g = str(row["student__gender"] or "").strip().lower()
+        if g.startswith("m"):
+            year_map[yr]["male"] += row["count"]
+        elif g.startswith("f"):
+            year_map[yr]["female"] += row["count"]
+        else:
+            year_map[yr]["unspecified"] += row["count"]
+        year_map[yr]["total"] += row["count"]
+
+    return {
+        "by_year": [
+            {"year": yr, **counts}
+            for yr, counts in sorted(year_map.items())
+        ]
+    }
+
+
 _PERIOD_MONTH_RE = re.compile(
     r"\b(january|february|march|april|may|june|july|august|september|october|november|december)"
     r"\s+\d{4}\b",
@@ -939,6 +1192,254 @@ def _build_period_performance_context(message: str, filters: dict) -> dict | Non
     }
 
 
+_TOP_STUDENT_KWS = (
+    "top student", "best student", "top perform", "best perform",
+    "highest mark", "highest average", "highest scoring",
+    "number one student", "top scorer", "best scorer",
+    "who is the top", "who is the best", "who has the highest",
+    "which student has", "leading student",
+)
+_TOP_STUDENT_SIGNAL_KWS = ("top", "best", "highest", "perform", "leading", "number one")
+# Matches "top students", "top 5 students", "best 3 students", "highest 10 students"
+_TOP_STUDENT_N_RE = re.compile(r"\b(top|best|highest)\s+\d*\s*students?\b", re.IGNORECASE)
+# Captures the count in "top 5 students" → group(2) = "5"
+_TOP_N_COUNT_RE = re.compile(r"\b(top|best|highest)\s+(\d+)\s*students?\b", re.IGNORECASE)
+
+
+def _is_top_student_query(msg_lower: str) -> bool:
+    """Return True when the message is asking for the best/top-performing student(s)."""
+    if any(kw in msg_lower for kw in _TOP_STUDENT_KWS):
+        return True
+    if _TOP_STUDENT_N_RE.search(msg_lower):
+        return True
+    return ("who" in msg_lower or "which student" in msg_lower) and any(
+        kw in msg_lower for kw in _TOP_STUDENT_SIGNAL_KWS
+    )
+
+
+def _build_top_student_context(filters: dict, message: str, programme_code: str = "") -> dict:
+    """Return the top-N students by average mark within the current scope.
+
+    Extracts an optional year-level filter (e.g. "year 2") and an optional
+    count (e.g. "top 5") from the message and layers them on top of the
+    existing topbar scope filters.  programme_code narrows the query to a
+    specific programme (e.g. "ACCT") when supplied by a tool call.
+    """
+    msg_lower = message.lower()
+
+    # How many students to return — default 5, capped at 20
+    count_match = _TOP_N_COUNT_RE.search(message)
+    top_n = min(max(int(count_match.group(2)), 1), 20) if count_match else 5
+
+    year_filter = None
+    for yr in (5, 4, 3, 2, 1):
+        if f"year {yr}" in msg_lower:
+            year_filter = yr
+            break
+
+    active_filters = {**filters}
+    if year_filter and not active_filters.get("year"):
+        active_filters["year"] = str(year_filter)
+
+    registrations = _base_registrations(active_filters)
+    if programme_code:
+        registrations = registrations.filter(programme__code__iexact=programme_code)
+    results = CourseResult.objects.filter(registration__in=registrations).exclude(mark__isnull=True)
+
+    top_rows = list(
+        results
+        .values(
+            "registration__student__registration_number",
+            "registration__student__first_names",
+            "registration__student__surname",
+            "registration__programme__name",
+            "registration__programme__code",
+            "registration__student__gender",
+        )
+        .annotate(
+            avg_mark=Avg("mark"),
+            total_results=Count("id"),
+        )
+        .filter(total_results__gte=2)
+        .order_by("-avg_mark")[:top_n]
+    )
+
+    students = []
+    for row in top_rows:
+        avg = _safe_round(row["avg_mark"])
+        name = (
+            f"{row['registration__student__first_names'] or ''} "
+            f"{row['registration__student__surname'] or ''}"
+        ).strip()
+        students.append({
+            "regnum": row["registration__student__registration_number"],
+            "name": name or "Unknown",
+            "programme": row["registration__programme__name"] or "Unknown",
+            "code": row["registration__programme__code"] or "?",
+            "gender": (row["registration__student__gender"] or "Unspecified").title(),
+            "avg_mark": avg,
+            "total_results": row["total_results"],
+            "classification": _classify_mark(avg),
+        })
+
+    return {
+        "students": students,
+        "requested_count": top_n,
+        "year_filter": year_filter,
+        "scope_label": _build_scope_label(active_filters),
+    }
+
+
+def _build_lightweight_scope_summary(filters: dict) -> dict:
+    """Three-query scope overview used by the tool-calling system prompt.
+
+    Deliberately avoids the expensive parts of _summarize_scope (watchlist,
+    faculty breakdown, programme breakdown) since the AI fetches those on
+    demand via the registered tools.
+    """
+    registrations = _base_registrations(filters)
+    results = CourseResult.objects.filter(registration__in=registrations).exclude(mark__isnull=True)
+    total_students = registrations.values("student_id").distinct().count()
+    total_results = results.count()
+    avg_mark = results.aggregate(value=Avg("mark"))["value"]
+    return {
+        "filters": filters,
+        "total_students": total_students,
+        "total_results": total_results,
+        "average_mark": _safe_round(avg_mark),
+    }
+
+
+def _execute_tool(name: str, args: dict, filters: dict) -> str:
+    """Execute a registered tool call by name and return a JSON-encoded result.
+
+    Each branch maps to an existing context builder so we reuse all existing
+    DB query logic — tools are routing, not new queries.
+    """
+    try:
+        if name == "search_top_students":
+            count = min(max(int(args.get("count", 5)), 1), 20)
+            year = args.get("year_level")
+            prog_code = str(args.get("programme_code", "")).strip()
+            faculty_name = args.get("faculty", "")
+            eff = {**filters}
+            if year:
+                eff["year"] = str(year)
+            if faculty_name:
+                eff["faculty"] = faculty_name
+            fake_msg = f"top {count} students" + (f" year {year}" if year else "")
+            return json.dumps(
+                _build_top_student_context(eff, fake_msg, programme_code=prog_code),
+                default=str,
+            )
+
+        if name == "get_student_profile":
+            regnum = str(args.get("registration_number", "")).strip()
+            data = _build_student_context(regnum)
+            return json.dumps(data or {"error": f"No student found for {regnum!r}"}, default=str)
+
+        if name == "search_at_risk_students":
+            data = _build_at_risk_context(filters) or {}
+            band = str(args.get("risk_band", "")).lower()
+            if band and data.get("top_students"):
+                data = {
+                    **data,
+                    "top_students": [s for s in data["top_students"] if s.get("band", "").lower() == band],
+                }
+            return json.dumps(data, default=str)
+
+        if name == "get_programme_statistics":
+            codes = args.get("programme_codes") or []
+            matched = (
+                _match_entities(" ".join(codes), Programme, "name", "code")
+                if codes
+                else list(Programme.objects.filter(
+                    registrations__in=_base_registrations(filters)
+                ).distinct()[:MAX_PROGRAMME_ROWS])
+            )
+            return json.dumps(_build_programme_context(matched, filters), default=str)
+
+        if name == "get_faculty_statistics":
+            fname = args.get("faculty_name", "")
+            matched = (
+                _match_entities(fname, Faculty, "name")
+                if fname
+                else list(Faculty.objects.filter(
+                    departments__programmes__registrations__in=_base_registrations(filters)
+                ).distinct()[:MAX_FACULTY_ROWS])
+            )
+            return json.dumps(_build_faculty_context(matched, filters), default=str)
+
+        if name == "get_demographic_breakdown":
+            year = args.get("year_level")
+            eff = {**filters}
+            if year:
+                eff["year"] = str(year)
+            return json.dumps(_build_year_distribution_context(eff) or {}, default=str)
+
+        if name == "get_course_difficulty_ranking":
+            regs = _base_registrations(filters)
+            results = CourseResult.objects.filter(registration__in=regs).exclude(mark__isnull=True)
+            return json.dumps(_build_course_difficulty_context(results) or {}, default=str)
+
+        if name == "get_period_performance":
+            period_name = str(args.get("period_name", ""))
+            return json.dumps(_build_period_performance_context(period_name, filters) or {}, default=str)
+
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Tool execution error [%s]: %s", name, exc)
+        return json.dumps({"error": str(exc)})
+
+    return json.dumps({"error": f"Unknown tool: {name}"})
+
+
+def _build_tool_system_text(scope: dict) -> str:
+    """Lean system prompt for the tool-calling path.
+
+    Unlike the rule-based system text, we do NOT pre-load the full context
+    JSON — the AI calls tools to fetch exactly the data it needs.  This
+    prevents the AI from being anchored to a pre-computed 'baseline answer'
+    that may not match what the user actually asked.
+    """
+    scope_label = _build_scope_label(scope.get("filters", {}))
+    return (
+        "You are UniStudio Bot — a friendly, knowledgeable academic analytics assistant for the "
+        "UniStudio registrar platform at Manicaland State University of Applied Sciences (MSUAS), Zimbabwe.\n\n"
+        "PERSONALITY:\n"
+        "- Speak in first person ('I can see...', 'Looking at the data...', 'I'd recommend...').\n"
+        "- Be warm and conversational, not robotic. Write like a helpful colleague.\n"
+        "- After the core answer, offer one relevant follow-up question.\n"
+        "- CRITICAL: When the user says 'yes', 'sure', 'show me more', or any short affirmative — "
+        "call the appropriate tool to fetch the data you previously offered. "
+        "Do NOT summarise scope statistics instead.\n"
+        "- Use short paragraphs. Never write a long run-on sentence.\n\n"
+        "TOOL USAGE RULES:\n"
+        "1. ALWAYS call a tool to fetch data — never invent or estimate numbers.\n"
+        "2. COMPOUND QUERIES — when the user's question requires multiple pieces of data, "
+        "call ALL needed tools before synthesising. Examples:\n"
+        "   - 'top student in year 2 from the best programme' → call get_programme_statistics "
+        "(find the top programme), THEN call search_top_students with that programme_code and year_level=2.\n"
+        "   - 'compare ACCT and INSY pass rates then show top student' → call get_programme_statistics "
+        "for both codes, THEN call search_top_students with the winner's code.\n"
+        "   You may issue multiple tool calls in a single response — do so whenever you need more than "
+        "one dataset to fully answer the question. Do NOT synthesise until you have all the data.\n"
+        "3. For follow-up messages ('yes', 'which ones', 'tell me more'), "
+        "look at the last assistant turn in the conversation history to determine "
+        "which tool to call (e.g. call get_student_profile if you offered a profile).\n"
+        "4. If data is unavailable after calling the appropriate tool, "
+        "redirect to pr@msuas.ac.zw or +263 2063456.\n"
+        "5. Stay within MSUAS academics, student performance, services, and admissions.\n\n"
+        f"University facts: {json.dumps(UNIVERSITY_FACTS, ensure_ascii=True)}\n"
+        f"Admissions: {ADMISSIONS_SUMMARY}\n"
+        f"Completion rules: {COMPLETION_RULES_SUMMARY}\n"
+        f"Risk bands: {RISK_BANDS_SUMMARY}\n"
+        f"Current scope: {scope_label} — "
+        f"{scope.get('total_students', '?')} students, "
+        f"{scope.get('total_results', '?')} marks recorded, "
+        f"avg mark {scope.get('average_mark', 'N/A')}.\n"
+    )
+
+
 def _build_scope_context(message: str, filters: dict):
     registrations = _base_registrations(filters)
     results = CourseResult.objects.filter(registration__in=registrations).exclude(mark__isnull=True)
@@ -973,6 +1474,17 @@ def _build_scope_context(message: str, filters: dict):
         if _PERIOD_MONTH_RE.search(message)
         else None
     )
+    _wants_distribution = (
+        any(kw in msg_lower for kw in ("year", "year 1", "year 2", "year 3", "year 4", "distribution", "demographic", "gender"))
+        and not _is_top_student_query(msg_lower)
+    )
+    year_distribution = _build_year_distribution_context(filters) if _wants_distribution else None
+
+    top_student_context = (
+        _build_top_student_context(filters, message)
+        if _is_top_student_query(msg_lower)
+        else None
+    )
 
     return {
         "scope_summary": scope_summary,
@@ -983,6 +1495,8 @@ def _build_scope_context(message: str, filters: dict):
         "at_risk_context": at_risk_context,
         "course_difficulty": course_difficulty,
         "period_performance": period_performance,
+        "year_distribution": year_distribution,
+        "top_student_context": top_student_context,
     }
 
 
@@ -996,6 +1510,23 @@ def _build_history_block(history: list[dict] | None) -> str:
         label = "User" if role == "user" else "Assistant"
         lines.append(f"{label}: {content}")
     return "\n".join(lines) if lines else "No prior conversation."
+
+
+def _extract_regnum_from_history(history: list[dict] | None) -> str | None:
+    """Return the most recently mentioned registration number from the last assistant turn.
+
+    When the user gives a short follow-up like "yes" after the bot offered
+    "Would you like a detailed profile for LARONAH (M213TX)?", this lets us
+    re-fetch that student's context so the AI has the actual data to respond with.
+    """
+    if not history:
+        return None
+    for turn in reversed(history):
+        if turn.get("role") == "assistant":
+            match = REGNUM_PATTERN.search(turn.get("content", ""))
+            if match:
+                return match.group(0)
+    return None
 
 
 def _is_contextual_reply(message: str, history: list[dict] | None) -> bool:
@@ -1393,13 +1924,83 @@ def _reply_decisions(
     )
 
 
+def _reply_top_student(
+    message_lower: str, scope: dict, scope_label: str, context: dict,
+) -> str | None:
+    tsc = context.get("top_student_context")
+    if not tsc:
+        return None
+
+    students = tsc["students"]
+    yr_info = f" in Year {tsc['year_filter']}" if tsc["year_filter"] else ""
+    effective_label = tsc["scope_label"]
+
+    if not students:
+        return (
+            f"I couldn't find any student performance data{yr_info} in the current scope "
+            f"({effective_label}). This may mean no marks have been recorded yet."
+        )
+
+    top = students[0]
+    count_label = tsc.get("requested_count", len(students))
+    lines = "\n".join(
+        f"  {i + 1}. {s['name']} ({s['regnum']}) — {s['programme']} ({s['code']}) | "
+        f"avg {s['avg_mark']} | {s['classification']}"
+        for i, s in enumerate(students)
+    )
+    first_name = top["name"].split()[0] if top["name"] != "Unknown" else "this student"
+    return (
+        f"Top {count_label} performing students{yr_info} in scope ({effective_label}):\n\n"
+        f"  1st: {top['name']} ({top['regnum']}) — {top['programme']} ({top['code']})\n"
+        f"  Average mark: {top['avg_mark']} ({top['classification']})\n\n"
+        f"Full ranking:\n{lines}\n\n"
+        f"Source: live DB query — avg mark across all recorded course results, min 2 results. "
+        f"Would you like a detailed profile for {first_name}?"
+    )
+
+
 def _reply_demographics(
     message_lower: str, scope: dict, scope_label: str, context: dict,
 ) -> str | None:
-    _demo_kws = ("gender", "male", "female", "demographic")
+    _demo_kws = ("gender", "male", "female", "demographic", "year", "distribution")
     if not any(kw in message_lower for kw in _demo_kws):
         return None
-    # Per-programme breakdown takes priority when a programme was matched
+    if _is_top_student_query(message_lower):
+        return None
+
+    # Year distribution — answer first if the question is about academic years
+    if any(kw in message_lower for kw in ("year 1", "year 2", "year 3", "year 4", "year distribution", "by year")):
+        yd = context.get("year_distribution")
+        if yd and yd.get("by_year"):
+            lines = []
+            for row in yd["by_year"]:
+                g = row
+                lines.append(
+                    f"  {row['year']}: {row['total']} students "
+                    f"(Male {g['male']}, Female {g['female']}"
+                    + (f", Unspecified {g['unspecified']}" if g["unspecified"] else "")
+                    + ")"
+                )
+            return (
+                f"Student distribution by academic year in scope ({scope_label}):\n"
+                + "\n".join(lines)
+            )
+
+    # Per-faculty breakdown when a faculty was matched
+    faculty_ctx = context.get("faculty_targets") or []
+    if faculty_ctx:
+        lines = []
+        for fac in faculty_ctx:
+            fac_gender = fac.get("gender_breakdown", {})
+            if fac_gender:
+                g_str = ", ".join(
+                    f"{g}: {d['count']} ({d['pct']}%)" for g, d in fac_gender.items()
+                )
+                lines.append(f"{fac['faculty']}: {fac['students']} students — {g_str}.")
+        if lines:
+            return "Gender breakdown by faculty:\n" + "\n".join(lines)
+
+    # Per-programme breakdown when a programme was matched
     programme_ctx = context.get("programme_targets") or []
     if programme_ctx:
         lines = []
@@ -1414,14 +2015,23 @@ def _reply_demographics(
                 )
         if lines:
             return "Gender breakdown by programme:\n" + "\n".join(lines)
+
+    # Scope-level gender totals + year distribution if available
     gender_str = ", ".join(
         f"{g}: {d['count']} ({d['pct']}%)" for g, d in scope.get("gender_breakdown", {}).items()
     )
     total = scope["total_students"]
-    return (
+    reply = (
         f"Gender breakdown in scope ({scope_label}) across {total} students: "
         f"{gender_str if gender_str else 'No gender data available'}."
     )
+    yd = context.get("year_distribution")
+    if yd and yd.get("by_year"):
+        year_lines = ", ".join(
+            f"{row['year']}: {row['total']}" for row in yd["by_year"]
+        )
+        reply += f" By academic year: {year_lines}."
+    return reply
 
 
 def _reply_period_performance(
@@ -1505,6 +2115,7 @@ _REPLY_HANDLERS = (
     _reply_single_course,
     _reply_risk_summary,
     _reply_decisions,
+    _reply_top_student,
     _reply_demographics,
     _reply_period_performance,
 )
@@ -1585,6 +2196,151 @@ def _build_system_text(context: dict, fallback_reply: str) -> str:
 
 def _build_user_turn(message: str) -> str:
     return f"User question: {message}"
+
+
+def _openai_tool_call_round(
+    system_text: str,
+    history: list[dict] | None,
+    user_turn: str,
+    filters: dict,
+    emit,
+) -> str | None:
+    """Multi-round OpenAI tool-calling exchange.
+
+    Loops until the model returns finish_reason='stop' (or max 4 rounds).
+    Each round: model either calls tools (we execute them and continue) or
+    produces a final text reply (we return it).
+    """
+    _HEADERS = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}", "Content-Type": "application/json"}
+    messages = _build_openai_messages(system_text, history, user_turn)
+
+    for round_num in range(4):
+        payload = {
+            "model": settings.CHATBOT_OPENAI_MODEL,
+            "max_tokens": 800,
+            "messages": messages,
+            "tools": CHATBOT_TOOLS,
+            "tool_choice": "auto",
+        }
+        req = urllib.request.Request(
+            OPENAI_CHAT_COMPLETIONS_URL,
+            data=json.dumps(payload).encode(),
+            headers=_HEADERS,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=settings.CHATBOT_TIMEOUT_SECONDS) as r:
+                raw = json.loads(r.read().decode())
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("OpenAI tool-call round %d failed: %s", round_num + 1, exc)
+            return None
+
+        choice = raw.get("choices", [{}])[0]
+        assistant_msg = choice.get("message", {})
+        finish_reason = choice.get("finish_reason", "stop")
+        tool_calls = assistant_msg.get("tool_calls") or []
+
+        if finish_reason != "tool_calls" or not tool_calls:
+            # Model is done — return whatever text it produced
+            return (assistant_msg.get("content") or "").strip() or None
+
+        # Execute each tool call and append results before the next round
+        emit("Fetching data from database…")
+        messages.append(assistant_msg)
+        for tc in tool_calls:
+            fn = tc.get("function", {})
+            try:
+                args = json.loads(fn.get("arguments", "{}"))
+            except (json.JSONDecodeError, TypeError):
+                args = {}
+            result = _execute_tool(fn.get("name", ""), args, filters)
+            messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+
+    logger.warning("OpenAI tool-call exceeded max rounds without a final reply")
+    return None
+
+
+def _google_tool_call_round(
+    system_text: str,
+    history: list[dict] | None,
+    user_turn: str,
+    filters: dict,
+    emit,
+) -> str | None:
+    """Two-pass Google Gemini function-calling exchange.
+
+    Pass 1 — send message + function declarations; model returns functionCall parts.
+    Pass 2 — send functionResponse parts; model synthesises the final reply.
+    Returns the final text or None on any failure.
+    """
+    def _upcase(schema: dict) -> dict:
+        out = {}
+        for k, v in schema.items():
+            if k == "type" and isinstance(v, str):
+                out[k] = v.upper()
+            elif k == "properties" and isinstance(v, dict):
+                out[k] = {pk: _upcase(pv) for pk, pv in v.items()}
+            elif k == "items" and isinstance(v, dict):
+                out[k] = _upcase(v)
+            else:
+                out[k] = v
+        return out
+
+    google_tools = [{"functionDeclarations": [
+        {
+            "name": t["function"]["name"],
+            "description": t["function"]["description"],
+            "parameters": _upcase(t["function"]["parameters"]),
+        }
+        for t in CHATBOT_TOOLS
+    ]}]
+
+    url = GOOGLE_GENERATE_CONTENT_URL_TEMPLATE.format(model=settings.CHATBOT_GOOGLE_MODEL)
+    headers = {"Content-Type": "application/json", "x-goog-api-key": settings.GOOGLE_API_KEY}
+    contents = _build_google_contents(history, user_turn)
+
+    payload1 = {
+        "systemInstruction": {"parts": [{"text": system_text}]},
+        "contents": contents,
+        "tools": google_tools,
+        "generationConfig": {"temperature": 0.5, "maxOutputTokens": 800},
+    }
+    req1 = urllib.request.Request(url, data=json.dumps(payload1).encode(), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req1, timeout=settings.CHATBOT_TIMEOUT_SECONDS) as r:
+            raw1 = json.loads(r.read().decode())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Google tool-call pass 1 failed: %s", exc)
+        return None
+
+    parts = raw1.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    fn_calls = [p["functionCall"] for p in parts if "functionCall" in p]
+
+    if not fn_calls:
+        return _extract_google_response_text(raw1).strip() or None
+
+    emit("Fetching data from database…")
+    contents.append({"role": "model", "parts": parts})
+    for fc in fn_calls:
+        result_str = _execute_tool(fc.get("name", ""), fc.get("args", {}), filters)
+        contents.append({
+            "role": "user",
+            "parts": [{"functionResponse": {"name": fc["name"], "response": json.loads(result_str)}}],
+        })
+
+    payload2 = {
+        "systemInstruction": {"parts": [{"text": system_text}]},
+        "contents": contents,
+        "generationConfig": {"temperature": 0.5, "maxOutputTokens": 800},
+    }
+    req2 = urllib.request.Request(url, data=json.dumps(payload2).encode(), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req2, timeout=settings.CHATBOT_TIMEOUT_SECONDS) as r:
+            raw2 = json.loads(r.read().decode())
+        return _extract_google_response_text(raw2).strip() or None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Google tool-call pass 2 failed: %s", exc)
+        return None
 
 
 def _request_openai_chatbot_response(
@@ -1709,6 +2465,7 @@ def get_chatbot_reply(
     filters: dict | None = None,
     history: list[dict] | None = None,
     status_callback=None,
+    session_id: str | None = None,
 ) -> dict:
     """Return a chatbot reply dict.
 
@@ -1718,6 +2475,7 @@ def get_chatbot_reply(
         history: Prior conversation turns for the AI context window.
         status_callback: Optional callable(step: str) invoked at each processing
             stage so callers can stream progress to the user.
+        session_id: Django session key used to persist per-session context.
     """
 
     def _emit(step: str) -> None:
@@ -1743,14 +2501,9 @@ def get_chatbot_reply(
     }
 
     # Detect contextual follow-ups BEFORE intent classification.
-    # Replies like "yes", "sure", "go ahead", "which ones?" must never be
-    # short-circuited through the greeting/out-of-scope fast paths — they need
-    # the full AI path with conversation history so the thread is maintained.
     is_contextual = _is_contextual_reply(cleaned_message, history)
 
     # --- Intent detection (Layer 2) ----------------------------------------
-    # Only runs when an AI provider is configured. Uses a lightweight call
-    # (max 80 tokens) to classify the message before touching the database.
     intent = "general_info"
     intent_entities: dict = {}
     if status["enabled"] and status["ai_available"]:
@@ -1760,9 +2513,6 @@ def get_chatbot_reply(
         intent_entities = intent_result.get("entities", {})
         diagnostics["intent"] = intent
 
-        # Short-circuit only when NOT a contextual follow-up.
-        # A "yes" after the bot offered to break down gender by programme must
-        # go to the AI with history — not return GREETING_REPLY.
         if not is_contextual:
             if intent == "greeting":
                 return {
@@ -1779,15 +2529,60 @@ def get_chatbot_reply(
                     "diagnostics": diagnostics,
                 }
 
-    # --- Full context build (DB queries) ------------------------------------
+    # --- Tool-calling path (primary when AI is available) -------------------
+    # The AI selects which DB function(s) to call, executes them, then
+    # synthesises the answer -- no keyword dispatch, no pre-loaded context blob.
+    if status["enabled"] and status["ai_available"]:
+        _emit("Querying the database\u2026")
+        scope = _build_lightweight_scope_summary(filters)
+        system_text = _build_tool_system_text(scope)
+        user_turn = _build_user_turn(cleaned_message)
+        _emit("Preparing your answer\u2026")
+        response_text = None
+        try:
+            if status["openai_ready"]:
+                _emit("Connecting to OpenAI\u2026")
+                response_text = _openai_tool_call_round(
+                    system_text, history, user_turn, filters, _emit
+                )
+                if response_text:
+                    diagnostics["returned_source"] = "openai"
+            elif status["google_ready"]:
+                _emit("Connecting to Google Gemini\u2026")
+                response_text = _google_tool_call_round(
+                    system_text, history, user_turn, filters, _emit
+                )
+                if response_text:
+                    diagnostics["returned_source"] = "google"
+            else:
+                diagnostics["fallback_reason"] = "no_ai_provider_configured"
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+            logger.warning("Tool-calling round failed: %s", error)
+            diagnostics["fallback_reason"] = "tool_calling_failed"
+
+        if response_text:
+            _store_session_ctx(session_id, {
+                "last_reply": response_text,
+                "filters": filters,
+                "intent": intent,
+            })
+            source = diagnostics["returned_source"]
+            return {
+                "reply": response_text,
+                "source": source,
+                "source_label": PROVIDER_LABELS.get(source, source),
+                "diagnostics": diagnostics,
+            }
+
+        if not diagnostics["fallback_reason"]:
+            diagnostics["fallback_reason"] = "tool_calling_empty_response"
+
+    # --- Rule-based path (chatbot disabled OR tool-calling failed) ----------
     _emit("Querying the database\u2026")
     context = _build_scope_context(cleaned_message, filters)
     context["_intent"] = intent
     context["_intent_entities"] = intent_entities
 
-    # Intent-driven context backfill — ensures context builders run even when
-    # the user's message has a typo that defeats keyword matching.
-    # The AI intent detector is typo-tolerant; keyword matching is not.
     if intent == "at_risk" and not context.get("at_risk_context"):
         _emit("Analysing at-risk students\u2026")
         context["at_risk_context"] = _build_at_risk_context(filters)
@@ -1800,7 +2595,6 @@ def get_chatbot_reply(
             context["faculty_targets"] = _build_faculty_context(matched, filters)
 
     if intent == "data_query" and not context.get("course_difficulty"):
-        # "hardest/easiest" intents sometimes come through as data_query
         msg_lower_check = cleaned_message.lower()
         if any(kw in msg_lower_check for kw in ("hard", "easy", "difficult", "tough")):
             _emit("Checking course difficulty\u2026")
@@ -1812,6 +2606,13 @@ def get_chatbot_reply(
     elif context.get("course_difficulty"):
         _emit("Checking course difficulty\u2026")
 
+    if intent == "data_query" and not context.get("top_student_context"):
+        if _is_top_student_query(cleaned_message.lower()):
+            _emit("Finding top performers\u2026")
+            context["top_student_context"] = _build_top_student_context(filters, cleaned_message)
+    elif context.get("top_student_context"):
+        _emit("Finding top performers\u2026")
+
     if context.get("student_targets"):
         _emit("Looking up student records\u2026")
 
@@ -1819,7 +2620,22 @@ def get_chatbot_reply(
         _emit("Looking up programme data\u2026")
 
     _emit("Preparing your answer\u2026")
-    fallback_reply = _build_rule_based_reply(cleaned_message, context)
+
+    if is_contextual:
+        _prev_regnum = _extract_regnum_from_history(history)
+        if _prev_regnum and not context.get("student_targets"):
+            _emit("Looking up student records\u2026")
+            _recovered = _build_student_context(_prev_regnum)
+            if _recovered:
+                context["student_targets"] = [_recovered]
+        fallback_reply = (
+            "This is a follow-up to the previous answer. "
+            "Do NOT re-summarise overall scope data. "
+            "Use the conversation history to determine exactly what the user is affirming or "
+            "asking about, then respond directly and specifically to that request."
+        )
+    else:
+        fallback_reply = _build_rule_based_reply(cleaned_message, context)
 
     if not status["enabled"]:
         diagnostics["fallback_reason"] = "chatbot_disabled"
@@ -1830,8 +2646,6 @@ def get_chatbot_reply(
             "diagnostics": diagnostics,
         }
 
-    # Build system text + user turn separately so history is sent as real
-    # conversation turns (multi-turn API) rather than a flat embedded block.
     system_text = _build_system_text(context, fallback_reply)
     user_turn   = _build_user_turn(cleaned_message)
 

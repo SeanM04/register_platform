@@ -574,21 +574,35 @@ body.is-filter-loading .topbar-filters {
 }
 
 [data-metric-value] {
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
 [data-metric-value].is-loading {
-    opacity: 0.52;
-    animation: metric-value-pulse 1.8s ease-in-out infinite;
+    color: transparent !important;
+    position: relative;
+    overflow: hidden;
+    border-radius: 5px;
+    background: rgba(148, 163, 184, 0.15);
+    min-width: 4rem;
+    animation: none;
 }
 
-@keyframes metric-value-pulse {
-    0%, 100% {
-        opacity: 0.52;
-    }
-    50% {
-        opacity: 0.28;
-    }
+[data-metric-value].is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.55) 50%,
+        transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+    to { transform: translateX(200%); }
 }
 
 [data-metric-value].is-loaded {

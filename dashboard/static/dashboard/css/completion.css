@@ -178,15 +178,6 @@
     box-shadow: var(--shadow);
 }
 
-.completion-metric-value.is-loading {
-    color: #94a3b8;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
 
 @media (max-width: 1200px) {
     .completion-metrics {

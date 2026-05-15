@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.utils import timezone
+from django.utils.html import format_html
+
 from .models import (
     AcademicDecision,
     AcademicPeriod,
@@ -8,6 +11,7 @@ from .models import (
     Course,
     CourseResult,
     Department,
+    ErrorLog,
     Faculty,
     Programme,
     Registration,
@@ -102,4 +106,115 @@ class CourseAdmin(admin.ModelAdmin):
 class CompletionAnalysisRecordAdmin(admin.ModelAdmin):
     list_display = ("student", "programme", "academic_stage", "decision", "completion_rate")
     list_filter = ("effective_cohort", "original_cohort", "shifted", "decision")
-    search_fields = ("student__registration_number", "student__first_names", "student__surname", "programme__name")
+    search_fields = (
+        "student__registration_number",
+        "student__first_names",
+        "student__surname",
+        "programme__name",
+    )
+
+
+@admin.register(ErrorLog)
+class ErrorLogAdmin(admin.ModelAdmin):
+    date_hierarchy = "timestamp"
+    ordering = ("-timestamp",)
+    list_per_page = 25
+
+    list_display = (
+        "timestamp",
+        "exception_type",
+        "path",
+        "method",
+        "user_email",
+        "status_badge",
+    )
+    list_filter = ("resolved", "method", "exception_type")
+    search_fields = ("path", "exception_type", "exception_message", "user_email")
+
+    readonly_fields = (
+        "timestamp",
+        "path",
+        "method",
+        "user",
+        "user_email",
+        "ip_address",
+        "exception_type",
+        "exception_message",
+        "traceback_display",
+        "get_params",
+        "post_params",
+        "resolved_at",
+        "resolved_by",
+    )
+
+    fieldsets = (
+        ("Request", {
+            "fields": ("timestamp", "path", "method", "user", "user_email", "ip_address"),
+        }),
+        ("Exception", {
+            "fields": ("exception_type", "exception_message", "traceback_display"),
+        }),
+        ("Request Data", {
+            "fields": ("get_params", "post_params"),
+            "classes": ("collapse",),
+        }),
+        ("Resolution", {
+            "fields": ("resolved", "resolved_by", "resolved_at", "resolution_notes"),
+        }),
+    )
+
+    actions = ["mark_resolved", "mark_unresolved"]
+
+    # ── Custom columns ──────────────────────────────────────────
+
+    @admin.display(description="Status", ordering="resolved", boolean=False)
+    def status_badge(self, obj):
+        if obj.resolved:
+            return format_html(
+                '<span style="color:#166534;font-weight:700;">&#10003; Resolved</span>'
+            )
+        return format_html(
+            '<span style="color:#be123c;font-weight:700;">&#10007; Open</span>'
+        )
+
+    @admin.display(description="Traceback")
+    def traceback_display(self, obj):
+        if not obj.traceback:
+            return "—"
+        return format_html(
+            '<pre style="white-space:pre-wrap;font-size:11px;'
+            'max-height:400px;overflow:auto;background:#f8f9fa;'
+            'padding:0.75rem;border-radius:6px">{}</pre>',
+            obj.traceback,
+        )
+
+    # ── Save hook ───────────────────────────────────────────────
+
+    def save_model(self, request, obj, form, change):
+        if obj.resolved and not obj.resolved_at:
+            obj.resolved_at = timezone.now()
+            obj.resolved_by = request.user
+        elif not obj.resolved:
+            obj.resolved_at = None
+            obj.resolved_by = None
+        super().save_model(request, obj, form, change)
+
+    # ── Bulk actions ────────────────────────────────────────────
+
+    @admin.action(description="Mark selected errors as resolved")
+    def mark_resolved(self, request, queryset):
+        updated = queryset.filter(resolved=False).update(
+            resolved=True,
+            resolved_by=request.user,
+            resolved_at=timezone.now(),
+        )
+        self.message_user(request, f"{updated} error(s) marked as resolved.")
+
+    @admin.action(description="Reopen selected errors")
+    def mark_unresolved(self, request, queryset):
+        updated = queryset.filter(resolved=True).update(
+            resolved=False,
+            resolved_by=None,
+            resolved_at=None,
+        )
+        self.message_user(request, f"{updated} error(s) reopened.")

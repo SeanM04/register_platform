@@ -1,7 +1,17 @@
 # UniStudio Chatbot — Architecture & Documentation
 
 > **Audience:** Platform developers and management.
-> **Last updated:** April 2026
+> **Last updated:** May 2026
+
+## Changelog
+
+| Date | Change |
+| --- | --- |
+| May 2026 | Multi-turn conversation memory — contextual follow-up gate, Google Gemini and OpenAI now receive history as genuine API turns instead of flat embedded text |
+| May 2026 | Auto-expanding textarea — `.usc-input-wrap` unified input card, fixed `_autoGrow()` cross-browser height algorithm |
+| May 2026 | Topbar chatbot toggle button removed — FAB (floating action button) is the sole chat trigger |
+| May 2026 | OpenAI provider migrated from Responses API to Chat Completions API for multi-turn support |
+| Apr 2026 | Initial release: 20-handler dispatch, async SSE streaming, rate limiting, guidance-mode fallback |
 
 ---
 
@@ -285,7 +295,7 @@ detected intent and triggers any context builder that keyword matching missed
 result. Each handler takes `(message_lower, scope, scope_label, context)`
 and returns `str | None`.
 
-```
+```text
 Handler                     Fires when
 ─────────────────────────────────────────────────────────────────
 _reply_safety_gate          message matches SENSITIVE_PATTERNS
@@ -319,36 +329,92 @@ Adding a new branch: write one `_reply_<name>` function and append it to
 
 ## 8. AI Provider Routing
 
+### 8a. Contextual follow-up gate (May 2026)
+
+Before intent detection runs, `get_chatbot_reply` calls `_is_contextual_reply(message, history)` to decide whether the current message is a short follow-up to an ongoing conversation (e.g. "yes", "sure", "go ahead", "which ones?", "tell me more").
+
+**Why this matters:** the intent detector classifies "yes" as `greeting` → the old code immediately returned `GREETING_REPLY` with no context. After the fix, contextual replies bypass the greeting and out-of-scope short-circuits entirely and proceed to the full AI path with complete conversation history.
+
+```python
+# _is_contextual_reply logic
+if not history or no assistant turn in history:
+    return False
+if len(message) <= 20:
+    return True          # very short + conversation exists → always contextual
+if any follow-up token in message words AND len(message) <= 120:
+    return True
+```
+
+`_FOLLOWUP_TOKENS` covers: `yes, yeah, sure, ok, please, go, ahead, show, tell, more, continue, which, those, them, that, these, how, break, elaborate, explain, details, further, deeper` and others.
+
+### 8b. Routing decision tree
+
 ```mermaid
 flowchart TD
     START["get_chatbot_reply(message, filters, history, status_callback)"]
-    START --> EMIT1["status_callback('Analysing your question…')"]
-    EMIT1 --> CHECK_EN{CHATBOT_ENABLED?}
-    CHECK_EN -->|No| RULES["Return rule-based reply\nsource: rules"]
-    CHECK_EN -->|Yes| CHECK_G{GOOGLE_API_KEY\nconfigured?}
-    CHECK_G -->|Yes| EMIT2["status_callback('Connecting to Google Gemini…')"]
-    EMIT2 --> GOOGLE["Call Google Gemini\nCHATBOT_GOOGLE_MODEL"]
-    GOOGLE --> GEMINI_OK{Response\nnon-empty?}
-    GEMINI_OK -->|Yes| AI_REPLY["Return AI reply\nsource: google"]
-    GEMINI_OK -->|No| CHECK_O
-    CHECK_G -->|No| CHECK_O{OPENAI_API_KEY\nconfigured?}
-    CHECK_O -->|Yes| EMIT3["status_callback('Connecting to OpenAI…')"]
-    EMIT3 --> OPENAI["Call OpenAI\nCHATBOT_OPENAI_MODEL"]
-    OPENAI --> OAI_OK{Response\nnon-empty?}
-    OAI_OK -->|Yes| OAI_REPLY["Return AI reply\nsource: openai"]
-    OAI_OK -->|No| RULES
+    START --> CTX["_is_contextual_reply(message, history)"]
+    CTX -->|True| SKIP["Skip greeting/OOS short-circuits\nProceed to full AI path with history"]
+    CTX -->|False| INTENT["Intent detection\n80-token AI call"]
+    INTENT -->|greeting| GREET["Return GREETING_REPLY immediately\nsource: rules"]
+    INTENT -->|out_of_scope| OOS["Return OUT_OF_SCOPE_REPLY\nsource: rules"]
+    INTENT -->|other| DB
+    SKIP --> DB["DB context build\n_build_scope_context()"]
+    DB --> BASELINE["Rule-based baseline\n_build_rule_based_reply()"]
+    BASELINE --> CHECK_EN{CHATBOT_ENABLED?}
+    CHECK_EN -->|No| RULES["Return baseline\nsource: rules"]
+    CHECK_EN -->|Yes| CHECK_G{GOOGLE_API_KEY?}
+    CHECK_G -->|Yes| GOOGLE["Google Gemini\nmulti-turn contents array"]
+    CHECK_G -->|No| CHECK_O{OPENAI_API_KEY?}
+    CHECK_O -->|Yes| OPENAI["OpenAI Chat Completions\nmulti-turn messages array"]
     CHECK_O -->|No| RULES
-    GOOGLE -->|HTTP/Timeout error| RULES
-    OPENAI -->|HTTP/Timeout error| RULES
+    GOOGLE -->|non-empty| AI_REPLY["Return AI reply\nsource: google"]
+    OPENAI -->|non-empty| OAI_REPLY["Return AI reply\nsource: openai"]
+    GOOGLE -->|empty or error| RULES
+    OPENAI -->|empty or error| RULES
 ```
 
-Both providers receive the same prompt:
-- System instruction + PERSONALITY section (warm, first-person, conversational)
-- University facts, admissions summary, student services, completion rules, graduation rules
-- Full scoped live data (JSON) + programme table
-- Conversation history (last 8 turns)
-- Deterministic baseline answer (labelled as the factual foundation to rewrite)
-- User question
+### 8c. Multi-turn prompt structure (May 2026)
+
+History is now sent to the AI as genuine conversation turns — **not** as a flat embedded text block. This is what allows the model to properly continue a thread.
+
+**Google Gemini:**
+
+```python
+# _build_google_contents(history, user_turn)
+{
+  "systemInstruction": {"parts": [{"text": system_text}]},
+  "contents": [
+    {"role": "user",  "parts": [{"text": "<prior user message>"}]},
+    {"role": "model", "parts": [{"text": "<prior assistant reply>"}]},
+    ...                          # last MAX_HISTORY_MESSAGES turns
+    {"role": "user",  "parts": [{"text": "User question: <current message>"}]}
+  ]
+}
+```
+
+**OpenAI Chat Completions:**
+
+```python
+# _build_openai_messages(system_text, history, user_turn)
+[
+  {"role": "system",    "content": system_text},
+  {"role": "user",      "content": "<prior user message>"},
+  {"role": "assistant", "content": "<prior assistant reply>"},
+  ...                             # last MAX_HISTORY_MESSAGES turns
+  {"role": "user",      "content": "User question: <current message>"}
+]
+```
+
+> **Note:** OpenAI was migrated from the Responses API (`/v1/responses`) to Chat Completions (`/v1/chat/completions`) to support multi-turn history. `_extract_response_text()` now reads `choices[0].message.content` first, falling back to the Responses API format for backward compatibility.
+
+**`_build_system_text(context, fallback_reply)`** — the system-level content passed to both providers. Contains:
+
+- PERSONALITY section: first-person, warm, conversational; explicit instruction to honour follow-up commitments when the user says "yes"
+- University facts, admissions, student services, completion rules, graduation rules, risk bands
+- Full scoped live data (JSON) + programme reference table
+- Deterministic baseline answer (labelled as factual foundation to rewrite)
+
+History is excluded from `_build_system_text` — it travels as real API turns instead.
 
 ---
 
@@ -361,7 +427,7 @@ Both providers receive the same prompt:
 Status events are posted back to the asyncio event loop using
 `loop.call_soon_threadsafe` → `asyncio.Queue`.
 
-```
+```text
 chatbot_message_stream (async)
 │
 ├─ _load_session()            async — aget_or_create + history load
@@ -391,7 +457,7 @@ async ORM (`abulk_create`, `asave`) — no sync DB calls in the async path.
 The browser always shows live step text in the typing bubble, regardless of
 whether ASGI streaming is active:
 
-```
+```text
 _startStatusCycle()
   └─ setInterval 1800 ms — rotates TYPING_STEPS array:
        "Analysing your question…"
@@ -431,6 +497,7 @@ timestamps stored in the Django cache. On every request, timestamps older than
 the window are pruned, then the count is checked against the limit.
 
 **Response on limit exceeded:**
+
 ```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 42
@@ -500,6 +567,7 @@ CACHES = {
 ```
 
 For multi-worker production, switch to:
+
 ```python
 "BACKEND": "django.core.cache.backends.redis.RedisCache",
 "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
@@ -513,40 +581,74 @@ file — never committed to version control. The settings file reads them via
 
 ## 13. Frontend Widget Anatomy
 
-```
-<section class="usc" id="usc">          ← fixed position container
+### 13a. DOM structure
+
+```text
+<section class="usc" id="usc">          ← fixed position container (bottom-right)
   <div class="usc-panel" hidden>         ← chat panel (flex column)
-    <div class="usc-header">             ← gradient header (U avatar, status, clear/close)
+    <div class="usc-header">             ← gradient header: U avatar, name, status, clear/close
     <div class="usc-messages">           ← scrollable message thread
-    <div class="usc-suggestions">        ← chips (hidden after first message)
-    <form class="usc-form">              ← textarea + send button
+    <div class="usc-suggestions">        ← suggestion chips (hidden after first message)
+    <form class="usc-form">
+      <div class="usc-input-wrap">       ← unified input card (border + focus ring live here)
+        <textarea class="usc-input">     ← auto-expanding textarea (rows="1", no border)
+        <button class="usc-send">        ← send button (align-self: flex-end, pinned to bottom)
+      </div>
+    </form>
   </div>
-  <button class="usc-fab">              ← floating action button (below panel in DOM)
+  <button class="usc-fab">              ← sole chat trigger (floating action button)
 </section>
-
-<button class="usc-topbar-btn">         ← secondary toggle in topbar brand-actions
 ```
 
-**Typing bubble structure:**
+> **Topbar button removed (May 2026):** The `<button class="usc-topbar-btn" id="usc-topbar-toggle">` that previously appeared in the topbar `brand-actions` area has been removed. The FAB is now the only way to open the chat panel. The `topbarBtn` reference in `chatbot.js` is preserved as a `null`-safe optional (`topbarBtn?.addEventListener`) so no JS changes were needed.
+
+### 13b. Auto-expanding textarea (May 2026)
+
+The textarea grows from one line to a maximum of ~6 lines as the user types, then scrolls internally.
+
+**CSS** — `.usc-input` has no border, background, or fixed height. The border and focus ring live on `.usc-input-wrap` so they surround the whole input card (textarea + send button together). `overflow-y: hidden` by default; JS switches it to `auto` when capped.
+
+**JS** — `_autoGrow()` in `chatbot.js`:
+
+```javascript
+const MAX_INPUT_H = 144; // px ≈ 6 lines
+function _autoGrow() {
+    input.style.height = "0";                          // shrink first — forces correct scrollHeight
+    const natural = input.scrollHeight;
+    const capped  = Math.min(natural, MAX_INPUT_H);
+    input.style.height = capped + "px";
+    input.style.overflowY = natural > MAX_INPUT_H ? "auto" : "hidden";
+}
+```
+
+`_autoGrow` is called on:
+
+- `input` event (every keystroke)
+- suggestion chip click (pre-fills input)
+- after message sent (reset to `2.5rem` single-line height)
+
+> **Why `height = "0"` instead of `height = "auto"`?** Setting `auto` does not always force a fresh `scrollHeight` calculation in all browsers, especially when `min-height` CSS is present. Setting `"0"` collapses the element first, making `scrollHeight` report only the content height with no influence from prior CSS constraints.
+
+### 13c. Typing bubble
+
 ```html
 <div class="usc-msg usc-msg--assistant" id="usc-typing">
   <div class="usc-msg-bubble usc-typing">
-    <span class="usc-typing-dots">      ← three animated dots
+    <span class="usc-typing-dots">
       <span class="usc-typing-dot"></span>
       <span class="usc-typing-dot"></span>
       <span class="usc-typing-dot"></span>
     </span>
     <span class="usc-typing-status" aria-live="polite">
-      Querying the database…            ← live step text (hidden when empty)
+      Querying the database…             ← live step text (hidden when empty)
     </span>
   </div>
 </div>
 ```
 
-**State management** — conversation history is stored in `sessionStorage`
-(key `usc-history-v2`) for instant re-render when the panel is reopened.
-The authoritative history lives in `ChatMessage` rows in the DB; the client
-copy is for display only and is cleared when the user clicks "New conversation".
+### 13d. State management
+
+Conversation history is stored in `sessionStorage` (key `usc-history-v2`) for instant re-render when the panel is reopened. The authoritative history lives in `ChatMessage` rows in the DB and is loaded server-side on each request (last 16 turns). The client copy is for display only and is cleared when the user clicks "New conversation".
 
 ---
 
@@ -568,6 +670,7 @@ copy is for display only and is cleared when the user clicks "New conversation".
 ## 15. How to Extend
 
 **Add a new reply branch:**
+
 1. Write a `_reply_<name>(message_lower, scope, scope_label, context) -> str | None` function.
 2. Return `None` if the handler should not fire; return the reply string when it does.
 3. Insert it into `_REPLY_HANDLERS` in `chatbot_service.py` at the appropriate priority position (before `_reply_default`).
@@ -579,7 +682,8 @@ Call `status_callback("Your step label…")` at the relevant point inside
 automatically.
 
 **Add a new AI provider:**
-1. Add a `_request_<provider>_chatbot_response(prompt)` function.
+
+1. Add a `_request_<provider>_chatbot_response(system_text, history, user_turn)` function using `_build_openai_messages` or `_build_google_contents` as a reference.
 2. Add a `<provider>_ready` flag in `get_chatbot_provider_status()`.
 3. Insert the provider into the routing chain in `get_chatbot_reply()`.
 

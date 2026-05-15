@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniStudio Chatbot v2 — Tool-Calling Architecture</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f4f9; color: #1a2535; line-height: 1.6; }
+
+  :root {
+    --blue-deep:  #0d325d;
+    --blue-mid:   #1a6da8;
+    --blue-light: #4fb0d1;
+    --blue-pale:  #e8f2fb;
+    --green:      #27ae60;
+    --orange:     #e67e22;
+    --red:        #e74c3c;
+    --purple:     #8e44ad;
+    --surface:    #ffffff;
+    --border:     rgba(13,50,93,.1);
+    --radius:     12px;
+    --shadow-sm:  0 2px 8px rgba(13,50,93,.08);
+    --shadow-md:  0 8px 24px rgba(13,50,93,.12);
+  }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, var(--blue-deep) 0%, #1a5a94 60%, #1a84c8 100%);
+    color: #fff; padding: 3.5rem 2rem 4rem; text-align: center; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 70% 30%, rgba(79,176,209,.25) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+    border-radius: 999px; padding: .35rem 1rem; font-size: .75rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; margin-bottom: 1rem;
+  }
+  .hero h1 { font-size: clamp(1.8rem,4vw,3rem); font-weight: 800; line-height: 1.15; }
+  .hero h1 span { color: var(--blue-light); }
+  .hero-sub { margin-top: .75rem; font-size: 1.05rem; color: rgba(255,255,255,.8); max-width: 600px; margin-inline: auto; }
+  .hero-meta { margin-top: 1.5rem; display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; }
+  .hero-pill { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: .4rem .9rem; font-size: .8rem; font-weight: 600; }
+
+  /* Nav */
+  .tab-bar {
+    background: var(--surface); border-bottom: 2px solid var(--border);
+    position: sticky; top: 0; z-index: 100; display: flex; justify-content: center;
+    gap: .25rem; padding: 0 1rem; box-shadow: var(--shadow-sm); flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: none; border: none; cursor: pointer; font: inherit; font-size: .85rem;
+    font-weight: 600; color: #5a7a9a; padding: .9rem 1.1rem;
+    border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--blue-mid); }
+  .tab-btn.active { color: var(--blue-deep); border-bottom-color: var(--blue-mid); }
+
+  /* Layout */
+  .page { max-width: 1120px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Section header */
+  .section-header { margin-bottom: 2rem; }
+  .section-header h2 { font-size: 1.6rem; font-weight: 800; color: var(--blue-deep); display: flex; align-items: center; gap: .6rem; }
+  .section-header h2 .ico {
+    width: 2rem; height: 2rem; border-radius: 8px;
+    background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+    color: #fff; display: flex; align-items: center; justify-content: center; font-size: .9rem; flex-shrink: 0;
+  }
+  .section-header p { margin-top: .5rem; color: #5a7a9a; font-size: .95rem; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.4rem; box-shadow: var(--shadow-sm); transition: transform .15s, box-shadow .15s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .card-icon { width: 2.25rem; height: 2.25rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: .75rem; }
+  .card h3 { font-size: .92rem; font-weight: 700; margin-bottom: .35rem; }
+  .card p { font-size: .8rem; color: #5a7a9a; line-height: 1.45; }
+  .card .example { margin-top: .6rem; padding: .4rem .6rem; background: var(--blue-pale); border-radius: 6px; font-size: .75rem; color: var(--blue-deep); font-style: italic; }
+
+  .c-blue   { background: #dbeafe; color: #1d4ed8; }
+  .c-teal   { background: #d1fae5; color: #065f46; }
+  .c-orange { background: #ffedd5; color: #9a3412; }
+  .c-purple { background: #ede9fe; color: #5b21b6; }
+  .c-pink   { background: #fce7f3; color: #9d174d; }
+  .c-yellow { background: #fef3c7; color: #92400e; }
+  .c-red    { background: #fee2e2; color: #991b1b; }
+  .c-sky    { background: #e0f2fe; color: #075985; }
+  .c-lime   { background: #ecfccb; color: #365314; }
+  .c-indigo { background: #e0e7ff; color: #3730a3; }
+  .c-gray   { background: #f1f5f9; color: #334155; }
+
+  /* Diagram */
+  .diagram-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem 1rem; box-shadow: var(--shadow-sm); overflow-x: auto;
+  }
+  .diagram-card + .diagram-card { margin-top: 1.5rem; }
+  .diagram-label { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a9ab0; margin-bottom: .75rem; }
+
+  /* Prose card */
+  .prose-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.5rem 1.75rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;
+  }
+  .prose-card h3 { font-size: 1rem; font-weight: 700; color: var(--blue-deep); margin-bottom: .6rem; }
+  .prose-card p, .prose-card li { font-size: .88rem; color: #374151; line-height: 1.65; }
+  .prose-card ul, .prose-card ol { padding-left: 1.3rem; margin-top: .4rem; }
+  .prose-card li { margin-bottom: .3rem; }
+  .prose-card code { background: #f1f5f9; border-radius: 4px; padding: .1em .4em; font-size: .82em; font-family: "Cascadia Code", Consolas, monospace; color: #1e3a5f; }
+
+  /* Code block */
+  .code-block {
+    background: #0f1923; border-radius: var(--radius); padding: 1.2rem 1.4rem; overflow-x: auto;
+    margin: .75rem 0; box-shadow: var(--shadow-sm);
+  }
+  .code-block pre { margin: 0; }
+  .code-block code { font-family: "Cascadia Code", Consolas, monospace; font-size: .8rem; color: #a8d8ff; line-height: 1.7; white-space: pre; }
+  .code-block .kw  { color: #ff79c6; }
+  .code-block .str { color: #f1fa8c; }
+  .code-block .cmt { color: #6272a4; }
+  .code-block .num { color: #bd93f9; }
+  .code-block .fn  { color: #50fa7b; }
+  .code-block .var { color: #8be9fd; }
+
+  /* Step flow */
+  .steps { display: grid; gap: 0; }
+  .step {
+    display: grid; grid-template-columns: 2.5rem 1fr; gap: 1rem; align-items: start;
+    position: relative; padding-bottom: 1.5rem;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step::before {
+    content: ""; position: absolute; left: 1.25rem; top: 2.5rem; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .step:last-child::before { display: none; }
+  .step-num {
+    width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: .85rem; font-weight: 800; flex-shrink: 0; z-index: 1;
+  }
+  .step-body h4 { font-size: .95rem; font-weight: 700; color: var(--blue-deep); margin-bottom: .3rem; padding-top: .45rem; }
+  .step-body p  { font-size: .84rem; color: #5a7a9a; line-height: 1.55; }
+  .step-body code { background: #f1f5f9; border-radius: 4px; padding: .1em .35em; font-size: .78em; font-family: Consolas, monospace; color: #1e3a5f; }
+
+  /* Compare table */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  .compare-table th { background: var(--blue-pale); color: var(--blue-deep); font-weight: 700; padding: .7rem 1rem; text-align: left; border-bottom: 2px solid var(--border); }
+  .compare-table td { padding: .65rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; color: #374151; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: #f8fafc; }
+  .badge { display: inline-block; border-radius: 6px; padding: .15rem .55rem; font-size: .72rem; font-weight: 700; }
+  .badge-green  { background: #d1fae5; color: #065f46; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+  .badge-orange { background: #ffedd5; color: #9a3412; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+
+  /* Tool registry */
+  .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+  .tool-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.1rem 1.3rem; box-shadow: var(--shadow-sm);
+  }
+  .tool-card-header { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
+  .tool-name { font-size: .85rem; font-weight: 800; color: var(--blue-deep); font-family: Consolas, monospace; }
+  .tool-tag { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 5px; }
+  .tool-desc { font-size: .8rem; color: #5a7a9a; line-height: 1.5; margin-bottom: .5rem; }
+  .tool-params { font-size: .75rem; }
+  .tool-params span { display: inline-block; background: #f1f5f9; border-radius: 4px; padding: .1rem .45rem; margin: .15rem .1rem; font-family: Consolas, monospace; color: #334155; }
+  .tool-example { margin-top: .5rem; background: var(--blue-pale); border-radius: 6px; padding: .4rem .6rem; font-size: .75rem; color: var(--blue-deep); font-style: italic; }
+
+  /* Config table */
+  .cfg-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+  .cfg-table th { background: #f8fafc; color: #374151; font-weight: 700; padding: .6rem 1rem; text-align: left; border-bottom: 2px solid var(--border); }
+  .cfg-table td { padding: .6rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .cfg-table td:first-child { font-family: Consolas, monospace; color: var(--blue-deep); font-size: .78rem; }
+  .cfg-table td:nth-child(2) { color: #059669; font-family: Consolas, monospace; font-size: .78rem; }
+  .cfg-table td:nth-child(3) { color: #5a7a9a; }
+
+  /* Callout */
+  .callout { border-radius: var(--radius); padding: 1rem 1.25rem; margin: 1rem 0; border-left: 4px solid; display: flex; gap: .75rem; align-items: flex-start; }
+  .callout-info    { background: #eff6ff; border-color: #3b82f6; }
+  .callout-warn    { background: #fffbeb; border-color: #f59e0b; }
+  .callout-success { background: #f0fdf4; border-color: #22c55e; }
+  .callout-danger  { background: #fef2f2; border-color: #ef4444; }
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; padding-top: .05rem; }
+  .callout-body { font-size: .84rem; color: #374151; line-height: 1.55; }
+  .callout-body strong { color: #1a2535; }
+
+  /* Grading table */
+  .grade-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .grade-table th { background: var(--blue-pale); color: var(--blue-deep); font-weight: 700; padding: .6rem 1rem; text-align: left; border-bottom: 2px solid var(--border); }
+  .grade-table td { padding: .6rem 1rem; border-bottom: 1px solid var(--border); }
+  .grade-table tr:last-child td { border-bottom: none; }
+
+  /* Gap utilities */
+  .mt1 { margin-top: .75rem; }
+  .mt2 { margin-top: 1.25rem; }
+  .mt3 { margin-top: 2rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 680px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<script>mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });</script>
+
+<!-- ═══════════════════════════════════════════════════════════════ HERO -->
+<header class="hero">
+  <div class="hero-badge">Technical Reference · v2.0</div>
+  <h1>UniStudio Chatbot<br><span>Tool-Calling Architecture</span></h1>
+  <p class="hero-sub">
+    Comprehensive documentation for the AI-powered academic analytics assistant —
+    covering tool registration, multi-round query resolution, intent detection,
+    session context, fallback routing, and the complete request lifecycle.
+  </p>
+  <div class="hero-meta">
+    <div class="hero-pill">8 Registered Tools</div>
+    <div class="hero-pill">Multi-Round Tool Calling</div>
+    <div class="hero-pill">OpenAI + Google Gemini</div>
+    <div class="hero-pill">SSE Streaming</div>
+    <div class="hero-pill">Session Context Cache</div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════ NAV -->
+<nav class="tab-bar" id="tabs">
+  <button class="tab-btn active" data-tab="overview">Overview</button>
+  <button class="tab-btn" data-tab="flow">Request Flow</button>
+  <button class="tab-btn" data-tab="tools">Tool Registry</button>
+  <button class="tab-btn" data-tab="multiquery">Multi-Query Logic</button>
+  <button class="tab-btn" data-tab="providers">Providers</button>
+  <button class="tab-btn" data-tab="context">Session &amp; Context</button>
+  <button class="tab-btn" data-tab="fallback">Fallback Path</button>
+  <button class="tab-btn" data-tab="grading">Grading &amp; Risk</button>
+  <button class="tab-btn" data-tab="config">Configuration</button>
+  <button class="tab-btn" data-tab="changelog">Changelog</button>
+</nav>
+
+<main class="page">
+
+<!-- ══════════════════════════════════════════════════════ TAB: OVERVIEW -->
+<section class="section active" id="tab-overview">
+  <div class="section-header">
+    <h2><span class="ico">◎</span> Architecture Overview</h2>
+    <p>How the v2 chatbot is structured, what changed from v1, and the design philosophy behind the tool-calling approach.</p>
+  </div>
+
+  <div class="prose-card">
+    <h3>What is the UniStudio Chatbot?</h3>
+    <p>UniStudio Bot is the conversational AI layer of the registrar platform at Manicaland State University of Applied Sciences (MSUAS). It gives academic staff and administrators natural-language access to live registration, performance, risk, and demographic data — without writing SQL or navigating dashboard filters.</p>
+    <p style="margin-top:.5rem">Every answer is backed by a live database query. The bot never estimates or hallucates numbers — it calls a registered tool function which runs a real Django ORM query, then synthesises the result into a conversational reply.</p>
+  </div>
+
+  <div class="callout callout-info mt2">
+    <span class="callout-icon">ℹ️</span>
+    <div class="callout-body"><strong>Architecture version:</strong> v2 replaced the previous 20-handler keyword-dispatch system with LLM-driven tool calling in May 2026. The AI now decides which database functions to call rather than relying on keyword regex matching. This document covers v2 only.</div>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--blue-deep);margin:1.5rem 0 .75rem">What changed from v1</h3>
+  <div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead><tr><th>Dimension</th><th>v1 — Keyword Dispatch</th><th>v2 — Tool Calling</th></tr></thead>
+      <tbody>
+        <tr><td>Intent resolution</td><td><span class="badge badge-red">Regex + 20 keyword handlers</span></td><td><span class="badge badge-green">AI selects from 8 registered tools</span></td></tr>
+        <tr><td>DB queries per turn</td><td>8–12 upfront regardless of question</td><td>3 lightweight + only what the question needs</td></tr>
+        <tr><td>Compound queries</td><td>Broke — only one handler fired per turn</td><td>AI chains multiple tools in sequence</td></tr>
+        <tr><td>Context across turns</td><td>Stateless — every turn rebuilt from scratch</td><td>In-process session cache + conversation history</td></tr>
+        <tr><td>AI role</td><td>Rewrites a pre-built keyword-matched answer</td><td>Synthesises from raw tool results</td></tr>
+        <tr><td>Follow-up replies ("yes")</td><td>Returned scope summary — wrong data</td><td>Reads history, calls the appropriate tool</td></tr>
+        <tr><td>Provider label</td><td>Read from static .env (stale)</td><td>Read from DB first (PlatformSetting)</td></tr>
+        <tr><td>Fallback</td><td>None — errors returned empty reply</td><td>Full rule-based path preserved as fallback</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-2 mt3">
+    <div class="prose-card">
+      <h3>Design philosophy</h3>
+      <ul>
+        <li>The AI is the router, not the data source. It decides <em>which</em> tools to call based on the user's intent and conversation history.</li>
+        <li>Tools are thin wrappers — they call existing Django ORM context builders. No new query logic was written; only routing changed.</li>
+        <li>The AI synthesises from raw JSON tool results — it is never given a pre-written answer to "rewrite conversationally" (the v1 anchor problem).</li>
+        <li>Resilience is non-negotiable: every AI failure falls back to a deterministic rule-based path.</li>
+      </ul>
+    </div>
+    <div class="prose-card">
+      <h3>Rating: v1 vs v2</h3>
+      <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+        <thead><tr><th style="text-align:left;padding:.4rem .6rem;background:#f8fafc;border-bottom:1px solid var(--border)">Dimension</th><th style="padding:.4rem .6rem;background:#f8fafc;border-bottom:1px solid var(--border)">v1</th><th style="padding:.4rem .6rem;background:#f8fafc;border-bottom:1px solid var(--border)">v2</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border)">Intent accuracy</td><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border);text-align:center"><span class="badge badge-red">3/10</span></td><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border);text-align:center"><span class="badge badge-green">8/10</span></td></tr>
+          <tr><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border)">Data accuracy</td><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border);text-align:center"><span class="badge badge-orange">5/10</span></td><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border);text-align:center"><span class="badge badge-green">8/10</span></td></tr>
+          <tr><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border)">Conversation memory</td><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border);text-align:center"><span class="badge badge-red">1/10</span></td><td style="padding:.35rem .6rem;border-bottom:1px solid var(--border);text-align:center"><span class="badge badge-blue">6/10</span></td></tr>
+          <tr><td style="padding:.35rem .6rem">Overall</td><td style="padding:.35rem .6rem;text-align:center"><strong>4/10</strong></td><td style="padding:.35rem .6rem;text-align:center"><strong>7/10</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: REQUEST FLOW -->
+<section class="section" id="tab-flow">
+  <div class="section-header">
+    <h2><span class="ico">→</span> Full Request Lifecycle</h2>
+    <p>Every message the user sends goes through this exact sequence — from receipt at the view layer through to the SSE reply.</p>
+  </div>
+
+  <div class="diagram-card">
+    <div class="diagram-label">End-to-end request flow</div>
+    <div class="mermaid">
+flowchart TD
+  A([User sends message]) --> B["chatbot_message_stream<br/>Django async view"]
+  B --> C{Cache hit?}
+  C -->|Yes| D[Stream cached reply via SSE]
+  C -->|No| E["Load session + history<br/>from ChatSession DB"]
+  E --> F["_run_service<br/>asyncio.to_thread"]
+  F --> G["get_chatbot_reply<br/>service layer"]
+
+  G --> G1{Contextual follow-up?}
+  G1 -->|"_is_contextual_reply"| G2
+
+  G2["Intent detection<br/>gpt-4o-mini · max 80 tokens"] --> G3{Intent}
+  G3 -->|greeting| H1[Return GREETING_REPLY]
+  G3 -->|out_of_scope| H2[Return OUT_OF_SCOPE_REPLY]
+  G3 -->|other| I
+
+  I{AI available?} -->|Yes| J["TOOL-CALLING PATH<br/>primary"]
+  I -->|No| K["RULE-BASED PATH<br/>fallback"]
+
+  J --> J1["_build_lightweight_scope_summary<br/>3 DB queries"]
+  J1 --> J2["_build_tool_system_text<br/>lean system prompt"]
+  J2 --> J3["_openai_tool_call_round<br/>or _google_tool_call_round"]
+  J3 --> J4{Response returned?}
+  J4 -->|Yes| J5["_store_session_ctx<br/>update session cache"]
+  J5 --> REPLY[Stream final reply via SSE]
+  J4 -->|No| K
+
+  K --> K1["_build_scope_context<br/>full DB context build"]
+  K1 --> K2["_build_rule_based_reply<br/>20 keyword handlers"]
+  K2 --> K3["_build_system_text<br/>full context blob injected"]
+  K3 --> K4["Standard AI completion<br/>OR rules-only reply"]
+  K4 --> REPLY
+
+  style J fill:#dbeafe,stroke:#3b82f6
+  style K fill:#d1fae5,stroke:#22c55e
+  style REPLY fill:#0d325d,color:#fff,stroke:#0d325d
+    </div>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--blue-deep);margin:2rem 0 1rem">Step-by-step breakdown</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num c-blue">1</div>
+      <div class="step-body">
+        <h4>View layer — Django async view</h4>
+        <p><code>chatbot_message_stream</code> receives the POST, validates the JSON body, loads the <code>ChatSession</code> and conversation history (last 20 turns), checks the response cache, then delegates to <code>_run_service</code> via <code>asyncio.to_thread</code> so the event loop is never blocked. Status events are streamed to the browser via SSE as each processing stage completes.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num c-teal">2</div>
+      <div class="step-body">
+        <h4>Contextual follow-up detection</h4>
+        <p><code>_is_contextual_reply</code> runs before any AI call. It checks whether the message is a short affirmative or follow-up token ("yes", "sure", "go ahead", "which ones?", "show me more") <em>and</em> there is prior conversation history. Contextual replies bypass the greeting/out-of-scope short-circuit — they must always reach the AI with full history so the thread is maintained.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num c-purple">3</div>
+      <div class="step-body">
+        <h4>Lightweight intent detection</h4>
+        <p>A cheap AI call (<code>gpt-4o-mini</code>, max 80 tokens) classifies the message into one of: <code>greeting</code>, <code>out_of_scope</code>, <code>at_risk</code>, <code>demographic</code>, <code>data_query</code>, <code>general_info</code>. Greetings and out-of-scope messages are short-circuited immediately without hitting the database. The intent is also stored in <code>diagnostics</code> for developer inspection.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num c-orange">4</div>
+      <div class="step-body">
+        <h4>Tool-calling path (primary)</h4>
+        <p>When an AI provider is configured and reachable, the service runs the multi-round tool-calling exchange. It builds a 3-query lightweight scope summary, constructs a lean system prompt (no pre-loaded data), and calls <code>_openai_tool_call_round</code> or <code>_google_tool_call_round</code>. These loop for up to 4 rounds until <code>finish_reason = "stop"</code>. See the <strong>Multi-Query Logic</strong> tab for a deep dive.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num c-lime">5</div>
+      <div class="step-body">
+        <h4>Rule-based fallback path</h4>
+        <p>Runs when the chatbot is disabled, no provider is configured, or the tool-calling path returns no text. Builds the full scope context (8–12 DB queries), runs the 20-handler keyword dispatch to generate a <code>fallback_reply</code>, then optionally passes it through the legacy AI completion path for natural-language rewriting. This ensures the bot always returns a useful answer.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num c-sky">6</div>
+      <div class="step-body">
+        <h4>Persistence &amp; streaming</h4>
+        <p>The final reply is saved to <code>ChatMessage</code> (both user and assistant turns), stored in the Django response cache for identical future queries, and streamed back to the browser as a final SSE <code>reply</code> event. The session context cache is updated so follow-up turns can access the data without re-querying.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: TOOLS -->
+<section class="section" id="tab-tools">
+  <div class="section-header">
+    <h2><span class="ico">🔧</span> Tool Registry</h2>
+    <p>The 8 registered tools that the AI can call. Each tool maps to an existing Django ORM context builder — tools are routing, not new query logic.</p>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">ℹ️</span>
+    <div class="callout-body"><strong>How tool registration works:</strong> Tools are defined once in <code>CHATBOT_TOOLS</code> (OpenAI JSON-Schema format) in <code>services/chatbot_service.py</code>. For OpenAI they are sent as-is. For Google Gemini, <code>_upcase()</code> converts property type strings to uppercase (<code>"string"</code> → <code>"STRING"</code>) as required by the Google API. The AI receives these definitions in every request and uses them to decide what data it needs.</div>
+  </div>
+
+  <div class="tool-grid mt2">
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-blue" style="width:1.8rem;height:1.8rem;font-size:.85rem">🏆</div>
+        <span class="tool-name">search_top_students</span>
+      </div>
+      <p class="tool-desc">Returns the top-N students ranked by average mark within the current scope. Supports filtering by year level, programme code, and faculty simultaneously.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>count <em style="color:#9ca3af">(int, 1–20)</em></span>
+        <span>year_level <em style="color:#9ca3af">(int, 1–5)</em></span>
+        <span>programme_code <em style="color:#9ca3af">(str)</em></span>
+        <span>faculty <em style="color:#9ca3af">(str)</em></span>
+      </div>
+      <p class="tool-example">"top 5 students in year 2" · "best performer in ACCT" · "who has the highest marks"</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-teal" style="width:1.8rem;height:1.8rem;font-size:.85rem">👤</div>
+        <span class="tool-name">get_student_profile</span>
+      </div>
+      <p class="tool-desc">Returns the full academic profile for a specific student: marks, risk score, completion history, decisions, and graduation rate. Triggered when a registration number is mentioned or the user affirms a profile offer.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>registration_number <em style="color:#9ca3af">(str, required)</em></span>
+      </div>
+      <p class="tool-example">"show me M2018P" · "tell me about that student" · "yes" (after bot offered a profile)</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-red" style="width:1.8rem;height:1.8rem;font-size:.85rem">⚠️</div>
+        <span class="tool-name">search_at_risk_students</span>
+      </div>
+      <p class="tool-desc">Returns students flagged for academic risk: multiple failures, adverse decisions (repeat, discontinue), or carrying courses. Supports filtering by risk band.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>risk_band <em style="color:#9ca3af">(enum: moderate | high | critical)</em></span>
+      </div>
+      <p class="tool-example">"struggling students" · "who is at risk" · "critical band students" · "watchlist"</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-purple" style="width:1.8rem;height:1.8rem;font-size:.85rem">📊</div>
+        <span class="tool-name">get_programme_statistics</span>
+      </div>
+      <p class="tool-desc">Returns pass rates, average marks, student counts, and gender breakdown for one or more programmes. Called with an empty list to return all programmes in scope.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>programme_codes <em style="color:#9ca3af">(array of str)</em></span>
+      </div>
+      <p class="tool-example">"how is INSY performing" · "compare ACCT and BMAN" · "top programme by pass rate"</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-orange" style="width:1.8rem;height:1.8rem;font-size:.85rem">🏛️</div>
+        <span class="tool-name">get_faculty_statistics</span>
+      </div>
+      <p class="tool-desc">Returns student counts, pass rates, and gender breakdown aggregated by faculty. Called with no faculty_name to return all faculties in scope.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>faculty_name <em style="color:#9ca3af">(str)</em></span>
+      </div>
+      <p class="tool-example">"how is Engineering faculty performing" · "which faculty has the best pass rate"</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-sky" style="width:1.8rem;height:1.8rem;font-size:.85rem">👥</div>
+        <span class="tool-name">get_demographic_breakdown</span>
+      </div>
+      <p class="tool-desc">Returns gender breakdown and academic year distribution statistics. Can filter to a specific year level.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>year_level <em style="color:#9ca3af">(int, 1–5)</em></span>
+      </div>
+      <p class="tool-example">"gender stats" · "male vs female" · "how many year 1 students" · "demographic breakdown"</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-yellow" style="width:1.8rem;height:1.8rem;font-size:.85rem">📉</div>
+        <span class="tool-name">get_course_difficulty_ranking</span>
+      </div>
+      <p class="tool-desc">Returns courses ranked hardest to easiest by average student mark. No parameters — always returns the full ranking within the current topbar scope.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <em style="font-size:.75rem;color:#9ca3af">None required</em>
+      </div>
+      <p class="tool-example">"hardest course" · "easiest subject" · "which course has the lowest pass rate"</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="card-icon c-indigo" style="width:1.8rem;height:1.8rem;font-size:.85rem">📅</div>
+        <span class="tool-name">get_period_performance</span>
+      </div>
+      <p class="tool-desc">Returns performance statistics for a specific academic period or semester. The period_name is extracted from the user's message by the AI.</p>
+      <div class="tool-params">
+        <strong style="font-size:.75rem;color:#374151">Parameters:</strong><br>
+        <span>period_name <em style="color:#9ca3af">(str, required)</em></span>
+      </div>
+      <p class="tool-example">"August 2024 performance" · "how did Semester 1 2025 go" · "last semester results"</p>
+    </div>
+
+  </div>
+
+  <div class="prose-card mt3">
+    <h3>How <code>_execute_tool</code> works</h3>
+    <p>When the AI returns a <code>tool_calls</code> array, <code>_execute_tool(name, args, filters)</code> dispatches each call. It maps the tool name to the appropriate context builder function, merges the AI-supplied arguments with the active topbar scope filters, runs the DB query, and returns a JSON-encoded result string.</p>
+    <p style="margin-top:.5rem">The <code>filters</code> dict (year, period, faculty from the topbar) is always merged in — so if the user has "Year 2" selected in the topbar and asks "who is the top student?", the tool automatically scopes to Year 2 without the AI needing to pass it explicitly.</p>
+  </div>
+
+  <div class="code-block mt1">
+    <pre><code><span class="cmt"># Simplified dispatch logic in _execute_tool</span>
+<span class="kw">def</span> <span class="fn">_execute_tool</span>(<span class="var">name</span>: str, <span class="var">args</span>: dict, <span class="var">filters</span>: dict) -> str:
+    <span class="kw">if</span> <span class="var">name</span> == <span class="str">"search_top_students"</span>:
+        <span class="var">eff</span> = {**<span class="var">filters</span>}                    <span class="cmt"># start with topbar scope</span>
+        <span class="kw">if</span> <span class="var">args</span>.get(<span class="str">"year_level"</span>):
+            <span class="var">eff</span>[<span class="str">"year"</span>] = str(<span class="var">args</span>[<span class="str">"year_level"</span>])  <span class="cmt"># layer AI argument on top</span>
+        <span class="var">prog_code</span> = <span class="var">args</span>.get(<span class="str">"programme_code"</span>, <span class="str">""</span>)
+        <span class="kw">return</span> json.dumps(
+            <span class="fn">_build_top_student_context</span>(<span class="var">eff</span>, <span class="var">fake_msg</span>, programme_code=<span class="var">prog_code</span>),
+            default=str
+        )
+    <span class="cmt"># ... 7 more branches ...</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: MULTI-QUERY -->
+<section class="section" id="tab-multiquery">
+  <div class="section-header">
+    <h2><span class="ico">⟳</span> Multi-Round Tool Calling</h2>
+    <p>How the agent chains multiple tool calls to answer compound questions — and the exact protocol used with each provider.</p>
+  </div>
+
+  <div class="prose-card">
+    <h3>Why multiple rounds are necessary</h3>
+    <p>Some questions cannot be answered with a single tool call. The question <em>"who is the top student in Year 1 from the top programme?"</em> requires the AI to:</p>
+    <ol style="margin-top:.5rem">
+      <li>Call <code>get_programme_statistics</code> to find which programme has the highest pass rate</li>
+      <li>Extract the programme code from the result (e.g. <code>ACCT</code>)</li>
+      <li>Call <code>search_top_students</code> with <code>programme_code="ACCT"</code> and <code>year_level=1</code></li>
+    </ol>
+    <p style="margin-top:.5rem">In v1, the system answered such queries by calling a single keyword handler — which either matched the wrong data or returned "I don't have that information." In v2, the AI orchestrates the calls itself and only synthesises once it has all the data it needs.</p>
+  </div>
+
+  <div class="diagram-card mt2">
+    <div class="diagram-label">Multi-round tool-calling loop (OpenAI)</div>
+    <div class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant S as Service
+  participant A as OpenAI API
+  participant D as Database
+
+  U->>S: top student in Year 1 from the best programme
+  S->>A: Round 1 - messages + tools + tool_choice auto
+  A-->>S: finish_reason tool_calls - get_programme_statistics
+
+  S->>D: _execute_tool get_programme_statistics
+  D-->>S: ACCT pass_rate 92.2 avg 62.2
+  S->>A: Round 2 - messages + tool result appended
+  A-->>S: finish_reason tool_calls - search_top_students programme_code ACCT year_level 1
+
+  S->>D: _execute_tool search_top_students ACCT year 1
+  D-->>S: Nyasha Calvin Muzangaza avg 72.7
+  S->>A: Round 3 - messages + both tool results
+  A-->>S: finish_reason stop - final reply text
+
+  S-->>U: SSE reply event streamed to browser
+    </div>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--blue-deep);margin:2rem 0 .75rem">The loop in code</h3>
+  <div class="code-block">
+    <pre><code><span class="kw">for</span> <span class="var">round_num</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">4</span>):          <span class="cmt"># max 4 rounds — prevents infinite loops</span>
+    <span class="var">payload</span> = {
+        <span class="str">"model"</span>: settings.CHATBOT_OPENAI_MODEL,
+        <span class="str">"messages"</span>: <span class="var">messages</span>,
+        <span class="str">"tools"</span>: CHATBOT_TOOLS,
+        <span class="str">"tool_choice"</span>: <span class="str">"auto"</span>,          <span class="cmt"># AI decides whether to call tools</span>
+    }
+    <span class="var">raw</span> = <span class="fn">_post_openai</span>(<span class="var">payload</span>)
+
+    <span class="var">finish_reason</span> = <span class="var">raw</span>[<span class="str">"choices"</span>][<span class="num">0</span>][<span class="str">"finish_reason"</span>]
+    <span class="var">tool_calls</span>    = <span class="var">raw</span>[<span class="str">"choices"</span>][<span class="num">0</span>][<span class="str">"message"</span>].get(<span class="str">"tool_calls"</span>) <span class="kw">or</span> []
+
+    <span class="kw">if</span> <span class="var">finish_reason</span> != <span class="str">"tool_calls"</span> <span class="kw">or not</span> <span class="var">tool_calls</span>:
+        <span class="kw">return</span> <span class="var">raw</span>[<span class="str">"choices"</span>][<span class="num">0</span>][<span class="str">"message"</span>][<span class="str">"content"</span>]  <span class="cmt"># done — return text</span>
+
+    <span class="cmt"># Execute all tool calls from this round and append results</span>
+    <span class="var">messages</span>.append(<span class="var">assistant_msg</span>)
+    <span class="kw">for</span> <span class="var">tc</span> <span class="kw">in</span> <span class="var">tool_calls</span>:
+        <span class="var">result</span> = <span class="fn">_execute_tool</span>(<span class="var">tc</span>[<span class="str">"function"</span>][<span class="str">"name"</span>], <span class="var">args</span>, <span class="var">filters</span>)
+        <span class="var">messages</span>.append({<span class="str">"role"</span>: <span class="str">"tool"</span>, <span class="str">"tool_call_id"</span>: <span class="var">tc</span>[<span class="str">"id"</span>], <span class="str">"content"</span>: <span class="var">result</span>})
+    <span class="cmt"># Loop → Round N+1 — AI now has tool results and can call more or synthesise</span></code></pre>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--blue-deep);margin:2rem 0 .75rem">How the AI decides which tools to call</h3>
+  <div class="prose-card">
+    <p>The AI (OpenAI or Gemini) receives three inputs in every round:</p>
+    <ol>
+      <li><strong>The system prompt</strong> — personality, tool usage rules, current scope (3 numbers), university facts</li>
+      <li><strong>Conversation history</strong> — the last N turns so it knows what was already discussed</li>
+      <li><strong>The tool schemas</strong> — descriptions and parameter types for all 8 tools</li>
+    </ol>
+    <p style="margin-top:.5rem">The AI's decision is driven by its tool descriptions. The compound-query rule in the system prompt reads:</p>
+  </div>
+
+  <div class="code-block mt1">
+    <pre><code><span class="str">"COMPOUND QUERIES — when the user's question requires multiple pieces of data,
+call ALL needed tools before synthesising. Examples:
+  - 'top student in year 2 from the best programme'
+    → call get_programme_statistics (find the top programme),
+      THEN call search_top_students with that programme_code and year_level=2.
+
+You may issue multiple tool calls in a single response — do so whenever you need
+more than one dataset to fully answer the question. Do NOT synthesise until you
+have all the data."</span></code></pre>
+  </div>
+
+  <div class="callout callout-warn mt2">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Parallel vs sequential tool calls:</strong> OpenAI can return multiple tool calls in a <em>single</em> round (parallel calling). This means for some compound queries the AI may call both <code>get_programme_statistics</code> AND <code>search_top_students</code> simultaneously in Round 1 if it already knows the programme code. The loop handles both patterns — it processes all tool calls in the array before proceeding to the next round.</div>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--blue-deep);margin:2rem 0 .75rem">Common multi-tool patterns</h3>
+  <div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead><tr><th>User query</th><th>Round 1 tool</th><th>Round 2 tool</th><th>Why two rounds?</th></tr></thead>
+      <tbody>
+        <tr><td>"top student from the best programme"</td><td><code>get_programme_statistics</code></td><td><code>search_top_students</code></td><td>Need programme code before filtering students</td></tr>
+        <tr><td>"at-risk students in the hardest course"</td><td><code>get_course_difficulty_ranking</code></td><td><code>search_at_risk_students</code></td><td>Need course name before filtering at-risk list</td></tr>
+        <tr><td>"show top student then give me their profile"</td><td><code>search_top_students</code></td><td><code>get_student_profile</code></td><td>Need regnum from ranking before fetching profile</td></tr>
+        <tr><td>"compare Engineering vs Sciences faculty"</td><td colspan="2"><code>get_faculty_statistics</code> (parallel, both in Round 1)</td><td>AI calls once with both faculty names</td></tr>
+        <tr><td>"yes" (after bot offered a profile)</td><td colspan="2"><code>get_student_profile</code> (single round, regnum from history)</td><td>History contains the regnum from previous turn</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: PROVIDERS -->
+<section class="section" id="tab-providers">
+  <div class="section-header">
+    <h2><span class="ico">☁️</span> AI Providers</h2>
+    <p>OpenAI and Google Gemini are both supported. The active provider is controlled from System Management and read from the database at runtime.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="prose-card" style="border-top:3px solid #1d4ed8">
+      <h3 style="color:#1d4ed8">OpenAI</h3>
+      <ul>
+        <li>Model: <code>gpt-4o-mini</code> (default, configurable via <code>CHATBOT_OPENAI_MODEL</code>)</li>
+        <li>Intent detection: always <code>gpt-4o-mini</code> (hardcoded, fast)</li>
+        <li>Tool calling: <code>tools</code> array + <code>tool_choice: "auto"</code></li>
+        <li>Multi-round: loop on <code>finish_reason == "tool_calls"</code></li>
+        <li>Tool result role: <code>"tool"</code> with <code>tool_call_id</code></li>
+        <li>Max tokens: 800 per round</li>
+      </ul>
+    </div>
+    <div class="prose-card" style="border-top:3px solid #16a34a">
+      <h3 style="color:#16a34a">Google Gemini</h3>
+      <ul>
+        <li>Model: <code>gemini-2.5-flash-lite</code> (default, configurable)</li>
+        <li>Tool calling: <code>functionDeclarations</code> (types uppercased via <code>_upcase()</code>)</li>
+        <li>Multi-round: loop on <code>functionCall</code> in response parts</li>
+        <li>Tool result role: <code>functionResponse</code> part in a <code>user</code> turn</li>
+        <li>History: mapped from OpenAI format (<code>user</code>/<code>assistant</code>) to Gemini format</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Provider selection — how it works</h3>
+    <p>The active provider is determined at request time by <code>get_chatbot_provider_status()</code>. It reads from the database first (<code>PlatformSetting.get_value("ai_provider")</code>), then falls back to the static <code>CHATBOT_PROVIDER</code> setting. This means changing the provider in System Management takes effect immediately without a server restart.</p>
+  </div>
+  <div class="code-block mt1">
+    <pre><code><span class="kw">def</span> <span class="fn">get_chatbot_provider_status</span>() -> dict:
+    <span class="cmt"># 1. Read from DB (System Management sets this)</span>
+    <span class="var">db_provider</span> = PlatformSetting.get_value(<span class="str">"ai_provider"</span>, <span class="str">""</span>).strip().lower()
+    <span class="cmt"># 2. Fall back to static setting if DB has no value</span>
+    <span class="var">provider</span> = <span class="var">db_provider</span> <span class="kw">or</span> settings.CHATBOT_PROVIDER
+    <span class="cmt"># 3. Resolve: "openai", "google", "auto", or "rules"</span>
+    <span class="kw">return</span> {
+        <span class="str">"provider"</span>:      <span class="var">provider</span>,
+        <span class="str">"openai_ready"</span>:  provider <span class="kw">in</span> (<span class="str">"openai"</span>, <span class="str">"auto"</span>) <span class="kw">and</span> bool(settings.OPENAI_API_KEY),
+        <span class="str">"google_ready"</span>:  provider <span class="kw">in</span> (<span class="str">"google"</span>, <span class="str">"auto"</span>) <span class="kw">and</span> bool(settings.GOOGLE_API_KEY),
+        <span class="str">"ai_available"</span>:  openai_ready <span class="kw">or</span> google_ready,
+        <span class="str">"enabled"</span>:       settings.CHATBOT_ENABLED,
+    }</code></pre>
+  </div>
+
+  <div class="callout callout-info mt2">
+    <span class="callout-icon">ℹ️</span>
+    <div class="callout-body"><strong>Provider priority when set to "auto":</strong> OpenAI is checked first, then Google Gemini. In practice, set an explicit provider in System Management for predictable behaviour. The "auto" mode is intended for development environments where only one key may be present.</div>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--blue-deep);margin:2rem 0 .75rem">Google API format conversion</h3>
+  <p style="font-size:.87rem;color:#5a7a9a;margin-bottom:.75rem">Google Gemini requires type strings in uppercase (<code>STRING</code>, <code>INTEGER</code>, <code>ARRAY</code>, <code>OBJECT</code>) and uses a different message structure. The <code>_upcase()</code> helper and the Google round function handle this transparently.</p>
+  <div class="code-block">
+    <pre><code><span class="cmt"># OpenAI format (stored in CHATBOT_TOOLS)</span>
+{ <span class="str">"type"</span>: <span class="str">"function"</span>, <span class="str">"function"</span>: { <span class="str">"name"</span>: <span class="str">"search_top_students"</span>,
+  <span class="str">"parameters"</span>: { <span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {
+    <span class="str">"count"</span>: { <span class="str">"type"</span>: <span class="str">"integer"</span> } } } } }
+
+<span class="cmt"># Google format (converted by _upcase() at request time)</span>
+{ <span class="str">"functionDeclarations"</span>: [{ <span class="str">"name"</span>: <span class="str">"search_top_students"</span>,
+  <span class="str">"parameters"</span>: { <span class="str">"type"</span>: <span class="str">"OBJECT"</span>, <span class="str">"properties"</span>: {
+    <span class="str">"count"</span>: { <span class="str">"type"</span>: <span class="str">"INTEGER"</span> } } } }] }</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: CONTEXT -->
+<section class="section" id="tab-context">
+  <div class="section-header">
+    <h2><span class="ico">🧠</span> Session &amp; Context</h2>
+    <p>How conversation state is preserved across turns, how follow-up replies are detected, and how the scope filters flow through the system.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="prose-card">
+      <h3>In-process session context cache</h3>
+      <p>An in-memory Python dict (<code>_SESSION_CONTEXT</code>) keyed by Django session key stores the last tool result for each active session. Entries expire after 2 hours (TTL). Expired entries are pruned on every write.</p>
+      <p style="margin-top:.5rem">This allows follow-up turns to access the previous tool result without re-querying the database — the AI can reference the data from the prior round when a user says "tell me more about that".</p>
+      <div class="callout callout-warn" style="margin-top:.75rem">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body" style="font-size:.8rem"><strong>Production limitation:</strong> The dict is per-process. With multiple Gunicorn workers, each worker has its own cache. Upgrade to Redis for multi-worker deployments: <code>cache.set(f"chat_ctx:{session_id}", data, timeout=7200)</code>.</div>
+      </div>
+    </div>
+    <div class="prose-card">
+      <h3>Conversation history window</h3>
+      <p>The last <strong>20 turns</strong> of the conversation (<code>HISTORY_WINDOW = 20</code>) are loaded from <code>ChatMessage</code> on each request. They are sent to the AI as real multi-turn messages (<code>user</code> / <code>assistant</code> roles), not embedded in the system prompt.</p>
+      <p style="margin-top:.5rem">History is filtered in <code>_build_openai_messages</code> — only <code>user</code> and <code>assistant</code> roles pass through, each truncated to 400 characters. This prevents token overflow on long sessions.</p>
+    </div>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Contextual follow-up detection — <code>_is_contextual_reply</code></h3>
+    <p>Before any AI call, the service checks if the current message is a short follow-up to the previous assistant turn. The detection logic:</p>
+    <ol style="margin-top:.5rem">
+      <li>Message is short (≤6 tokens when split by whitespace)</li>
+      <li>All tokens are in the <code>_FOLLOWUP_TOKENS</code> frozenset: <code>yes, yeah, sure, ok, show, more, continue, which, those, tell, go, ahead, details, elaborate, and, also…</code></li>
+      <li>There is at least one prior turn in the history</li>
+    </ol>
+    <p style="margin-top:.5rem">If all three conditions pass, <code>is_contextual = True</code>. This flag prevents greeting/out-of-scope short-circuits — a "yes" is never intercepted and returned as a greeting reply. It also overrides the fallback_reply on the rule-based path so the AI can't anchor to a scope summary.</p>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Scope filters — how topbar selection flows through</h3>
+    <p>The topbar filters (year, period, faculty) are sent with every chat message from the client. They flow through the entire chain:</p>
+    <div class="code-block" style="margin-top:.5rem">
+      <pre><code>Client JSON → filters dict → _normalize_filters() → _base_registrations(filters)
+  └── _apply_scope_filters(queryset, filters)
+        ├── period__name__icontains = filters["year"]   <span class="cmt"># e.g. "1" matches "Semester 1"</span>
+        ├── period__name__icontains = filters["period"] <span class="cmt"># exact period label</span>
+        └── programme__department__faculty__name = filters["faculty"]</code></pre>
+    </div>
+    <p style="margin-top:.5rem">Every tool call inherits the topbar filters — when the AI calls <code>search_top_students</code>, it automatically runs within the user's selected year/period/faculty. The AI can layer additional filters on top (e.g. <code>year_level=2</code> from the query), but it cannot escape the topbar scope.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: FALLBACK -->
+<section class="section" id="tab-fallback">
+  <div class="section-header">
+    <h2><span class="ico">🛡️</span> Fallback Path</h2>
+    <p>The rule-based path that activates when the chatbot is disabled or the tool-calling path fails. It guarantees the bot always returns a useful answer.</p>
+  </div>
+
+  <div class="diagram-card">
+    <div class="diagram-label">Fallback decision tree</div>
+    <div class="mermaid">
+flowchart LR
+  A{AI available?} -->|No| B[Rule-based path]
+  A -->|Yes| C[Tool-calling path]
+  C --> D{Got response?}
+  D -->|Yes| DONE[Return to user]
+  D -->|No| B
+  B --> E["_build_scope_context<br/>full context build"]
+  E --> F["_build_rule_based_reply<br/>20 keyword handlers"]
+  F --> G{Chatbot enabled?}
+  G -->|No| H[Return rules reply directly]
+  G -->|Yes| I["Legacy AI completion<br/>fallback_reply as baseline"]
+  I --> J{Got text?}
+  J -->|Yes| DONE
+  J -->|No| H
+  style DONE fill:#0d325d,color:#fff,stroke:#0d325d
+    </div>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>The 20 keyword handlers</h3>
+    <p>The rule-based path runs the message through a chain of handlers. Each returns a string if it fires, or <code>None</code> to pass to the next handler. The chain is defined in <code>_REPLY_HANDLERS</code>:</p>
+  </div>
+  <div class="code-block mt1">
+    <pre><code>_REPLY_HANDLERS = [
+    _reply_risk_summary,        <span class="cmt"># "at risk", "watchlist", "failing"</span>
+    _reply_decisions,           <span class="cmt"># "repeat", "discontinue", "deferred"</span>
+    _reply_top_student,         <span class="cmt"># "top student", "best performer", "top 5 students"</span>
+    _reply_demographics,        <span class="cmt"># "gender", "demographic", "year distribution" (guards _is_top_student_query)</span>
+    _reply_period_performance,  <span class="cmt"># month/semester name in message</span>
+    _reply_course_difficulty,   <span class="cmt"># "hardest", "easiest", "course rank"</span>
+    _reply_student_profile,     <span class="cmt"># registration number pattern (M2018P)</span>
+    _reply_programme_profile,   <span class="cmt"># programme name/code match</span>
+    _reply_faculty_profile,     <span class="cmt"># faculty name match</span>
+    _reply_course_profile,      <span class="cmt"># course code pattern (ACCT301)</span>
+    _reply_completion_rules,    <span class="cmt"># "carry", "complete", "graduate", "requirements"</span>
+    _reply_admissions,          <span class="cmt"># "apply", "admission", "entry requirements"</span>
+    _reply_graduation,          <span class="cmt"># "graduation", "ceremony"</span>
+    _reply_default,             <span class="cmt"># always fires — scope summary</span>
+]</code></pre>
+  </div>
+
+  <div class="callout callout-success mt2">
+    <span class="callout-icon">✅</span>
+    <div class="callout-body"><strong>Why keep the fallback?</strong> The tool-calling path requires a live AI API call. Network timeouts, API outages, rate limits, or misconfigured keys all cause failures. The rule-based path ensures the bot never returns a blank response — it degrades gracefully to deterministic keyword matching.</div>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Diagnostics — tracking what happened</h3>
+    <p>Every reply includes a <code>diagnostics</code> dict that tells developers exactly which path was taken:</p>
+  </div>
+  <div class="code-block mt1">
+    <pre><code>{
+  <span class="str">"provider"</span>:       <span class="str">"openai"</span>,           <span class="cmt"># configured provider</span>
+  <span class="str">"ai_available"</span>:   <span class="kw">True</span>,               <span class="cmt"># API key present and valid</span>
+  <span class="str">"returned_source"</span>: <span class="str">"openai"</span>,          <span class="cmt"># "openai" | "google" | "rules" | "cache"</span>
+  <span class="str">"fallback_reason"</span>: <span class="str">""</span>,                <span class="cmt"># empty = tool path succeeded</span>
+  <span class="str">"intent"</span>:         <span class="str">"data_query"</span>        <span class="cmt"># intent classification result</span>
+}
+
+<span class="cmt"># Possible fallback_reason values:</span>
+<span class="cmt"># "tool_calling_failed"       — HTTP error on tool-calling round</span>
+<span class="cmt"># "tool_calling_empty_response" — AI returned no text after tool rounds</span>
+<span class="cmt"># "no_ai_provider_configured" — no valid key for the selected provider</span>
+<span class="cmt"># "chatbot_disabled"          — CHATBOT_ENABLED=False in settings</span>
+<span class="cmt"># "empty_openai_response"     — legacy path returned empty text</span>
+<span class="cmt"># "provider_request_failed"   — network/timeout error on legacy path</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: GRADING -->
+<section class="section" id="tab-grading">
+  <div class="section-header">
+    <h2><span class="ico">🎓</span> Grading, Risk &amp; Academic Rules</h2>
+    <p>The classification bands, risk scoring, and completion rules that the chatbot applies to all student data queries.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="prose-card">
+      <h3>Degree classification scale</h3>
+      <p>Applied by <code>_classify_mark(avg_mark)</code> to every student's average mark. Matches the MSUAS grading rules displayed on every dashboard page.</p>
+      <div style="overflow-x:auto;margin-top:.75rem">
+        <table class="grade-table">
+          <thead><tr><th>Classification</th><th>Mark range</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-green">1st Class Honours</span></td><td>75 – 100</td></tr>
+            <tr><td><span class="badge badge-blue">2.1 Upper Second</span></td><td>65 – 74</td></tr>
+            <tr><td><span class="badge badge-orange">2.2 Lower Second</span></td><td>60 – 64</td></tr>
+            <tr><td><span class="badge" style="background:#f1f5f9;color:#374151">3rd Class</span></td><td>50 – 59</td></tr>
+            <tr><td><span class="badge badge-red">Fail</span></td><td>0 – 49</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="prose-card">
+      <h3>Risk bands</h3>
+      <p>Applied by <code>_compute_risk</code> to every student returned in profile and at-risk queries. Mirrors <code>risk/constants.py</code>.</p>
+      <div style="overflow-x:auto;margin-top:.75rem">
+        <table class="grade-table">
+          <thead><tr><th>Band</th><th>Score range</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge" style="background:#d1fae5;color:#065f46">Low</span></td><td>0 – 2</td><td>On track</td></tr>
+            <tr><td><span class="badge badge-orange">Moderate</span></td><td>3 – 4</td><td>Needs monitoring</td></tr>
+            <tr><td><span class="badge badge-red">High</span></td><td>5 – 7</td><td>Intervention advised</td></tr>
+            <tr><td><span class="badge" style="background:#450a0a;color:#fca5a5">Critical</span></td><td>8+</td><td>Immediate action</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Risk score drivers</h3>
+    <p>A student's risk score is computed by summing driver weights. The chatbot returns the top 3 drivers with each at-risk result.</p>
+    <div class="cards mt1" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+      <div class="card"><div class="card-icon c-red">✗</div><h3>Fail mark</h3><p>Any course mark below 50. +1 per failure.</p></div>
+      <div class="card"><div class="card-icon c-red">⬇</div><h3>Below average</h3><p>Student average below the cohort average. +1.</p></div>
+      <div class="card"><div class="card-icon c-orange">↩</div><h3>Adverse decision</h3><p>Repeat, discontinue, or deferred decision on record. +2.</p></div>
+      <div class="card"><div class="card-icon c-orange">📚</div><h3>Carrying courses</h3><p>One or more courses carried from prior period. +1.</p></div>
+      <div class="card"><div class="card-icon c-yellow">📉</div><h3>Low completion</h3><p>Completion rate significantly below target. +1.</p></div>
+    </div>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Programme durations &amp; completion rules</h3>
+    <p>Used by the chatbot when answering completion and graduation questions:</p>
+    <table class="grade-table" style="margin-top:.5rem">
+      <thead><tr><th>Programme type</th><th>Target periods (semesters)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Masters / MSc</td><td>4</td><td>Year 2 Semester 2</td></tr>
+        <tr><td>Engineering</td><td>10</td><td>Year 5 Semester 2</td></tr>
+        <tr><td>All others (default)</td><td>8</td><td>Year 4 Semester 2</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: CONFIG -->
+<section class="section" id="tab-config">
+  <div class="section-header">
+    <h2><span class="ico">⚙️</span> Configuration Reference</h2>
+    <p>All environment variables and Django settings that control the chatbot. Set in <code>.env</code>; loaded by <code>registrar_platform/settings.py</code>.</p>
+  </div>
+
+  <div class="callout callout-danger">
+    <span class="callout-icon">🚨</span>
+    <div class="callout-body"><strong>Critical:</strong> <code>CHATBOT_OPENAI_MODEL</code> must be a valid chat model that supports function/tool calling — e.g. <code>gpt-4o-mini</code>, <code>gpt-4o</code>, <code>gpt-4-turbo</code>. Models like <code>gpt-3.5-turbo-instruct</code> (completion-only) or fabricated names will return HTTP 400 and the chatbot will silently fall back to rule-based replies for every message.</div>
+  </div>
+
+  <div style="overflow-x:auto;margin-top:1.25rem">
+    <table class="cfg-table">
+      <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>OPENAI_API_KEY</td><td>""</td><td>OpenAI API key. Required for the OpenAI tool-calling path.</td></tr>
+        <tr><td>OPENAI_INSIGHTS_MODEL</td><td>gpt-4o-mini</td><td>Base model name. Used as the default for CHATBOT_OPENAI_MODEL if not overridden.</td></tr>
+        <tr><td>CHATBOT_OPENAI_MODEL</td><td>gpt-4o-mini</td><td>Model used for all chatbot completions (both tool-calling rounds and legacy path). Must support tool calling.</td></tr>
+        <tr><td>GOOGLE_API_KEY</td><td>""</td><td>Google AI API key. Required for the Gemini tool-calling path.</td></tr>
+        <tr><td>GOOGLE_INSIGHTS_MODEL</td><td>gemini-2.5-flash-lite</td><td>Google model name. Also used as default for CHATBOT_GOOGLE_MODEL.</td></tr>
+        <tr><td>CHATBOT_GOOGLE_MODEL</td><td>gemini-2.5-flash-lite</td><td>Model used for all Gemini chatbot completions.</td></tr>
+        <tr><td>CHATBOT_PROVIDER</td><td>auto</td><td>Static provider setting. Overridden by the DB value (System Management). Values: <code>openai</code>, <code>google</code>, <code>auto</code>, <code>rules</code>.</td></tr>
+        <tr><td>CHATBOT_ENABLED</td><td>True</td><td>Master on/off switch. When False, all requests go to rule-based path with no AI calls.</td></tr>
+        <tr><td>CHATBOT_TIMEOUT_SECONDS</td><td>15</td><td>HTTP timeout for all AI provider requests. On timeout, tool-calling fails and the rule-based fallback fires.</td></tr>
+        <tr><td>CHATBOT_RATE_LIMIT_REQUESTS</td><td>30</td><td>Max chatbot requests per user per window.</td></tr>
+        <tr><td>CHATBOT_RATE_LIMIT_WINDOW_SECONDS</td><td>60</td><td>Rate limit window duration in seconds.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose-card mt3">
+    <h3>Key files</h3>
+    <table class="grade-table">
+      <thead><tr><th>File</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>services/chatbot_service.py</code></td><td>All chatbot logic: tool registry, context builders, AI round functions, reply handlers, grading scale, risk computation.</td></tr>
+        <tr><td><code>chatbot/views.py</code></td><td>Django views: <code>chatbot_message_stream</code> (async SSE), <code>chatbot_message</code> (sync fallback), <code>clear_chat_history</code>.</td></tr>
+        <tr><td><code>chatbot/models.py</code></td><td><code>ChatSession</code>, <code>ChatMessage</code>, <code>ChatResponseCache</code> Django models.</td></tr>
+        <tr><td><code>chatbot/middleware.py</code></td><td>Per-user rate limiting middleware.</td></tr>
+        <tr><td><code>registrar_platform/settings.py</code></td><td>All settings constants. Always use <code>.strip()</code> on env vars that consume model names.</td></tr>
+        <tr><td><code>.env</code></td><td>Local secrets. Never commit to version control.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose-card mt2">
+    <h3>Known limitations &amp; next improvements</h3>
+    <ol>
+      <li><strong>In-process session cache</strong> — does not survive server restarts or work across multiple Gunicorn workers. Replace with Redis (<code>django.core.cache</code>) for production multi-worker deployments.</li>
+      <li><strong>Two AI round trips per query</strong> — the tool-calling path makes at least 2 API calls (intent detection + tool round). Simple factual queries could use a fast-path that skips intent detection.</li>
+      <li><strong>History token overflow</strong> — long sessions (30+ turns) will cause older turns to be silently truncated. A sliding summary approach would be more robust.</li>
+      <li><strong>No <code>compare_years</code> tool</strong> — queries like "compare Year 1 vs Year 3 pass rates" fall back to <code>get_demographic_breakdown</code>, which is approximate. A dedicated comparison tool would close this gap.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ TAB: CHANGELOG -->
+<section class="section" id="tab-changelog">
+  <div class="section-header">
+    <h2><span class="ico">📋</span> Changelog &amp; Bug Fixes</h2>
+    <p>Every specific change made during the v2 upgrade — root cause, symptom observed, and exact fix applied. Ordered from most impactful to smallest.</p>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">ℹ️</span>
+    <div class="callout-body"><strong>Upgrade date:</strong> May 2026. All changes are in <code>services/chatbot_service.py</code>, <code>chatbot/views.py</code>, <code>registrar_platform/settings.py</code>, and <code>.env</code> unless noted otherwise.</div>
+  </div>
+
+  <!-- ── BUG 1 ── -->
+  <h3 style="font-size:1.05rem;font-weight:800;color:var(--blue-deep);margin:2rem 0 .75rem">Bug Fixes</h3>
+
+  <div class="prose-card" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-01 — Invalid OpenAI model name caused HTTP 400 on every request</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>All chatbot questions fell through to rule-based replies. Terminal showed <code>OpenAI tool-call pass 1 failed: HTTP Error 400: Bad Request</code> followed by <code>Chatbot provider request failed: HTTP Error 400</code>.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td><code>.env</code> had <code>OPENAI_INSIGHTS_MODEL= gpt-5.4-mini</code> — a fabricated model name with a leading space. OpenAI returns 400 for any unrecognised model ID. <code>settings.py</code> also hardcoded the same bad default.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Why intent worked</td><td>Intent detection hardcodes <code>gpt-4o-mini</code> directly and never reads <code>CHATBOT_OPENAI_MODEL</code>, so it continued to function while everything else failed silently.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># .env — before</span>
+OPENAI_INSIGHTS_MODEL= gpt-5.4-mini   <span class="cmt"># invalid model, leading space</span>
+
+<span class="cmt"># .env — after</span>
+OPENAI_INSIGHTS_MODEL=gpt-4o-mini     <span class="cmt"># valid model, no space</span>
+
+<span class="cmt"># settings.py — before</span>
+OPENAI_INSIGHTS_MODEL = os.getenv(<span class="str">"OPENAI_INSIGHTS_MODEL"</span>, <span class="str">"gpt-5.4-mini"</span>)
+CHATBOT_OPENAI_MODEL  = os.getenv(<span class="str">"CHATBOT_OPENAI_MODEL"</span>, OPENAI_INSIGHTS_MODEL)
+
+<span class="cmt"># settings.py — after (fixed default + .strip() on both lines)</span>
+OPENAI_INSIGHTS_MODEL = os.getenv(<span class="str">"OPENAI_INSIGHTS_MODEL"</span>, <span class="str">"gpt-4o-mini"</span>).strip()
+CHATBOT_OPENAI_MODEL  = os.getenv(<span class="str">"CHATBOT_OPENAI_MODEL"</span>, OPENAI_INSIGHTS_MODEL).strip()</code></pre>
+    </div>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-02 — Programme code filter silently dropped, returning wrong student</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>"Who is the top student in Year 1 from the top programme?" returned Tamia Tambudzai Gwarada (THMA) — but the answer said they were from ACCT. Programme in the profile contradicted the programme in the headline.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td>In <code>_execute_tool</code>, the AI-supplied <code>programme_code="ACCT"</code> was only appended to a fake message string (<code>"top 5 students ACCT"</code>). <code>_build_top_student_context</code> only parsed year numbers from the message — it never parsed programme codes. The filter was silently ignored and the query ran across all programmes, returning whoever had the highest average mark globally.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Verified with</td><td>Direct DB query confirmed Nyasha Calvin Muzangaza (M2018P, avg 72.7) is the correct top Year 1 ACCT student.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># _build_top_student_context — before (no programme_code param)</span>
+<span class="kw">def</span> <span class="fn">_build_top_student_context</span>(<span class="var">filters</span>: dict, <span class="var">message</span>: str) -> dict:
+    registrations = _base_registrations(active_filters)
+    results = CourseResult.objects.filter(registration__in=registrations)...
+
+<span class="cmt"># _build_top_student_context — after (programme_code as real DB filter)</span>
+<span class="kw">def</span> <span class="fn">_build_top_student_context</span>(<span class="var">filters</span>: dict, <span class="var">message</span>: str, programme_code: str = <span class="str">""</span>) -> dict:
+    registrations = _base_registrations(active_filters)
+    <span class="kw">if</span> programme_code:
+        registrations = registrations.filter(programme__code__iexact=programme_code)
+    results = CourseResult.objects.filter(registration__in=registrations)...
+
+<span class="cmt"># _execute_tool — before (code embedded in fake message, never used)</span>
+fake_msg = <span class="str">f"top {count} students year {year} {prog_code}"</span>
+<span class="kw">return</span> json.dumps(_build_top_student_context(eff, fake_msg))
+
+<span class="cmt"># _execute_tool — after (code passed as typed parameter)</span>
+fake_msg = <span class="str">f"top {count} students"</span> + (<span class="str">f" year {year}"</span> <span class="kw">if</span> year <span class="kw">else</span> <span class="str">""</span>)
+<span class="kw">return</span> json.dumps(_build_top_student_context(eff, fake_msg, programme_code=prog_code))</code></pre>
+    </div>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-03 — Provider label showed wrong provider (Google Gemini when OpenAI selected)</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>Chat bubble footer showed "Google Gemini" even after selecting OpenAI in System Management.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td><code>get_chatbot_provider_status()</code> read from <code>settings.CHATBOT_PROVIDER</code> — a static value loaded once at startup from <code>.env</code>. System Management writes to the <code>PlatformSetting</code> DB table, which was never consulted at request time.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># Before — read from static .env setting only</span>
+provider = settings.CHATBOT_PROVIDER
+
+<span class="cmt"># After — read DB first, fall back to static setting</span>
+<span class="kw">try</span>:
+    <span class="kw">from</span> dashboard.models <span class="kw">import</span> PlatformSetting
+    db_provider = PlatformSetting.get_value(<span class="str">"ai_provider"</span>, <span class="str">""</span>).strip().lower()
+<span class="kw">except</span> Exception:
+    db_provider = <span class="str">""</span>
+provider = db_provider <span class="kw">or</span> settings.CHATBOT_PROVIDER</code></pre>
+    </div>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-04 — "top 5 students" not recognised as a top-student query</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>"Give me the top 5 students in Year 2" returned "I don't have individual student data."</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td><code>_is_top_student_query</code> matched phrases like "top student" (singular) but not "top 5 students" (number + plural). The numeric pattern was missing from detection.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># Two new regex patterns added after _TOP_STUDENT_SIGNAL_KWS</span>
+_TOP_STUDENT_N_RE = re.compile(
+    <span class="str">r"\b(top|best|highest)\s+\d*\s*students?\b"</span>, re.IGNORECASE
+)
+_TOP_N_COUNT_RE = re.compile(
+    <span class="str">r"\b(top|best|highest)\s+(\d+)\s*students?\b"</span>, re.IGNORECASE
+)
+
+<span class="cmt"># _is_top_student_query — before (only keywords, no numeric pattern)</span>
+<span class="kw">def</span> <span class="fn">_is_top_student_query</span>(msg_lower):
+    <span class="kw">return</span> any(kw <span class="kw">in</span> msg_lower <span class="kw">for</span> kw <span class="kw">in</span> _TOP_STUDENT_KWS)
+
+<span class="cmt"># _is_top_student_query — after (keywords + numeric regex)</span>
+<span class="kw">def</span> <span class="fn">_is_top_student_query</span>(msg_lower):
+    <span class="kw">if</span> any(kw <span class="kw">in</span> msg_lower <span class="kw">for</span> kw <span class="kw">in</span> _TOP_STUDENT_KWS): <span class="kw">return</span> True
+    <span class="kw">if</span> _TOP_STUDENT_N_RE.search(msg_lower): <span class="kw">return</span> True
+    <span class="kw">return</span> False</code></pre>
+    </div>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-05 — "yes" follow-up returned scope summary instead of the offered data</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>After the bot offered "Would you like a detailed profile for [student]?", the user replied "yes" and received an unrelated scope summary.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td>Every turn called <code>_build_rule_based_reply</code> → <code>_reply_default</code> → scope summary. This became the <code>fallback_reply</code> injected into the system prompt as <em>"Baseline answer: rewrite conversationally"</em>. The AI rewrote the scope summary instead of acting on the previous offer.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Fix</td><td>When <code>is_contextual=True</code>: (1) override <code>fallback_reply</code> with a history-guidance string that explicitly instructs the AI not to re-summarise scope; (2) run <code>_extract_regnum_from_history</code> to recover a student registration number from the previous turn and inject it as a student target so the AI has real data to work with.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># New helper — recovers regnum from last assistant turn</span>
+<span class="kw">def</span> <span class="fn">_extract_regnum_from_history</span>(history):
+    <span class="kw">for</span> turn <span class="kw">in</span> reversed(history <span class="kw">or</span> []):
+        <span class="kw">if</span> turn.get(<span class="str">"role"</span>) == <span class="str">"assistant"</span>:
+            match = REGNUM_PATTERN.search(turn.get(<span class="str">"content"</span>, <span class="str">""</span>))
+            <span class="kw">if</span> match: <span class="kw">return</span> match.group(<span class="num">0</span>)
+    <span class="kw">return</span> None
+
+<span class="cmt"># get_chatbot_reply — contextual path override</span>
+<span class="kw">if</span> is_contextual:
+    prev_regnum = _extract_regnum_from_history(history)
+    <span class="kw">if</span> prev_regnum <span class="kw">and not</span> context.get(<span class="str">"student_targets"</span>):
+        recovered = _build_student_context(prev_regnum)
+        <span class="kw">if</span> recovered:
+            context[<span class="str">"student_targets"</span>] = [recovered]
+    fallback_reply = (
+        <span class="str">"This is a follow-up to the previous answer. "</span>
+        <span class="str">"Do NOT re-summarise overall scope data. "</span>
+        <span class="str">"Use the conversation history to determine exactly what the user is affirming..."</span>
+    )</code></pre>
+    </div>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-06 — Compound query returned partial answer after one tool round</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>"Who is the top student in Year 1 from the top programme?" returned programme statistics (ACCT pass rate) but said "I don't have access to individual student rankings."</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td>The old tool-calling implementation was a fixed two-pass exchange: Pass 1 collected tool calls, executed them, and passed results to Pass 2 for synthesis. Pass 2 had no tools available, so when it needed a second DB call (to fetch students from ACCT), it couldn't make one and had to give up.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Fix</td><td>Converted to a multi-round loop (max 4 rounds). Each round checks <code>finish_reason</code>: if <code>"tool_calls"</code>, execute the tools and continue; if <code>"stop"</code>, return the final text. The AI now orchestrates all the tool calls it needs before synthesising.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># Before — fixed two-pass (Pass 2 had no tools)</span>
+raw1 = post(payload_with_tools)      <span class="cmt"># Pass 1</span>
+execute_tools(raw1.tool_calls)
+raw2 = post(payload_no_tools)        <span class="cmt"># Pass 2 — synthesise only</span>
+<span class="kw">return</span> raw2.text
+
+<span class="cmt"># After — multi-round loop (tools available every round)</span>
+<span class="kw">for</span> round_num <span class="kw">in</span> range(<span class="num">4</span>):
+    raw = post(payload_with_tools)
+    <span class="kw">if</span> raw.finish_reason != <span class="str">"tool_calls"</span>:
+        <span class="kw">return</span> raw.text              <span class="cmt"># done</span>
+    execute_tools(raw.tool_calls)   <span class="cmt"># loop → next round</span></code></pre>
+    </div>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--red)">
+    <h3 style="color:var(--red)">BUG-07 — "year 1" in top-student query triggered year-distribution handler</h3>
+    <table class="grade-table" style="margin:.5rem 0 .75rem">
+      <tbody>
+        <tr><td style="width:120px;font-weight:700;color:#374151">Symptom</td><td>"Who is the top performing student in Year 1?" returned year distribution data instead of ranked students.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Root cause</td><td><code>_reply_demographics</code> triggered on "year 1" before <code>_reply_top_student</code> had a chance to fire. There was no guard to prevent the demographics handler from stealing top-student queries.</td></tr>
+        <tr><td style="font-weight:700;color:#374151">Fix</td><td>(1) Moved <code>_reply_top_student</code> before <code>_reply_demographics</code> in <code>_REPLY_HANDLERS</code>. (2) Added <code>_is_top_student_query</code> guard at the top of <code>_reply_demographics</code> — returns <code>None</code> immediately if the message is a top-student query.</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block">
+      <pre><code><span class="cmt"># _reply_demographics — guard added at top</span>
+<span class="kw">def</span> <span class="fn">_reply_demographics</span>(message_lower, ...):
+    <span class="kw">if</span> <span class="fn">_is_top_student_query</span>(message_lower):
+        <span class="kw">return</span> None   <span class="cmt"># let _reply_top_student handle it</span>
+    ...</code></pre>
+    </div>
+  </div>
+
+  <!-- ── IMPROVEMENTS ── -->
+  <h3 style="font-size:1.05rem;font-weight:800;color:var(--blue-deep);margin:2rem 0 .75rem">Architecture Improvements</h3>
+
+  <div class="prose-card" style="border-left:4px solid var(--green)">
+    <h3 style="color:var(--green)">IMP-01 — Replaced 20-handler keyword dispatch with 8-tool AI routing</h3>
+    <p>The entire primary request path was rewritten. Instead of building 8–12 DB queries upfront and running a keyword-handler chain, the AI now receives a lean system prompt and 8 registered tool schemas. It selects which tools to call based on the user's intent and conversation history.</p>
+    <p style="margin-top:.5rem"><strong>Files changed:</strong> <code>services/chatbot_service.py</code> — added <code>CHATBOT_TOOLS</code> constant, <code>_execute_tool</code>, <code>_build_tool_system_text</code>, <code>_openai_tool_call_round</code>, <code>_google_tool_call_round</code>.</p>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--green)">
+    <h3 style="color:var(--green)">IMP-02 — Added in-process session context cache</h3>
+    <p>A <code>threading.Lock</code>-protected dict (<code>_SESSION_CONTEXT</code>) keyed by Django session key stores the last tool result and active filters per user session. TTL is 2 hours. The cache is written after every successful tool-calling reply and consulted on follow-up turns.</p>
+    <p style="margin-top:.5rem"><strong>Files changed:</strong> <code>services/chatbot_service.py</code> — <code>_SESSION_CONTEXT</code>, <code>_get_session_ctx</code>, <code>_store_session_ctx</code>. <code>chatbot/views.py</code> — <code>session_id</code> parameter wired through <code>_call_service</code>, <code>_run_service</code>, and the SSE stream task.</p>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--green)">
+    <h3 style="color:var(--green)">IMP-03 — Added compound-query instruction to the tool system prompt</h3>
+    <p>An explicit compound-query rule was added to <code>_build_tool_system_text</code>. The AI is now instructed to call all tools needed to fully answer a question before synthesising — with worked examples of multi-tool chains. This resolved BUG-06 at the prompt level, and the multi-round loop (BUG-06 code fix) handles cases where the AI needs intermediate results before it can decide the next call.</p>
+  </div>
+
+  <div class="prose-card mt2" style="border-left:4px solid var(--green)">
+    <h3 style="color:var(--green)">IMP-04 — Lightweight scope summary replaces full context build on tool path</h3>
+    <p>The tool-calling path uses <code>_build_lightweight_scope_summary</code> (3 DB queries: student count, result count, average mark) instead of the full <code>_build_scope_context</code> (8–12 queries). This reduces DB load significantly for the common case where the AI needs targeted data, not a full dump.</p>
+  </div>
+
+  <!-- ── SUMMARY TABLE ── -->
+  <h3 style="font-size:1.05rem;font-weight:800;color:var(--blue-deep);margin:2rem 0 .75rem">All Changes at a Glance</h3>
+  <div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead><tr><th>ID</th><th>File(s)</th><th>Type</th><th>One-line summary</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-01</td><td><code>.env</code>, <code>settings.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td>Model name <code>gpt-5.4-mini</code> → <code>gpt-4o-mini</code>; added <code>.strip()</code> to prevent space-prefix failures</td></tr>
+        <tr><td>BUG-02</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td><code>programme_code</code> passed as real DB filter to <code>_build_top_student_context</code>, not embedded in message string</td></tr>
+        <tr><td>BUG-03</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td><code>get_chatbot_provider_status</code> reads <code>PlatformSetting</code> DB first, falls back to static setting</td></tr>
+        <tr><td>BUG-04</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td>Added <code>_TOP_STUDENT_N_RE</code> regex so "top 5 students" is correctly detected as a top-student query</td></tr>
+        <tr><td>BUG-05</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td>Contextual follow-ups bypass scope-summary anchor; <code>_extract_regnum_from_history</code> recovers student data from prior turn</td></tr>
+        <tr><td>BUG-06</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td>Two-pass tool exchange replaced with 4-round loop so AI can chain tools across multiple rounds</td></tr>
+        <tr><td>BUG-07</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-red">Bug fix</span></td><td><code>_reply_demographics</code> gains <code>_is_top_student_query</code> guard; <code>_reply_top_student</code> moved earlier in handler chain</td></tr>
+        <tr><td>IMP-01</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-green">Improvement</span></td><td>Full tool-calling architecture: <code>CHATBOT_TOOLS</code>, <code>_execute_tool</code>, <code>_openai_tool_call_round</code>, <code>_google_tool_call_round</code></td></tr>
+        <tr><td>IMP-02</td><td><code>chatbot_service.py</code>, <code>views.py</code></td><td><span class="badge badge-green">Improvement</span></td><td>In-process session context cache with 2-hour TTL; <code>session_id</code> wired through all view paths</td></tr>
+        <tr><td>IMP-03</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-green">Improvement</span></td><td>Compound-query instruction added to tool system prompt with worked examples</td></tr>
+        <tr><td>IMP-04</td><td><code>chatbot_service.py</code></td><td><span class="badge badge-green">Improvement</span></td><td>Tool path uses 3-query lightweight scope summary instead of full 8–12 query context build</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<script>
+  const tabs = document.querySelectorAll('.tab-btn');
+  const sections = document.querySelectorAll('.section');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      sections.forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
