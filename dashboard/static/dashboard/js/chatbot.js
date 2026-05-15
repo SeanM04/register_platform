@@ -178,13 +178,13 @@
         bubble.textContent = entry.content;
         wrap.appendChild(bubble);
 
-        if (entry.role === "assistant" && entry.source && entry.source !== "rules") {
+        if (entry.role === "assistant" && entry.source === "cache") {
             const meta = document.createElement("div");
             meta.className = "usc-msg-meta";
 
             const badge = document.createElement("span");
             badge.className = "usc-msg-meta-badge";
-            badge.textContent = SOURCE_LABELS[entry.source] || entry.source;
+            badge.textContent = "Cached";
             meta.appendChild(badge);
             wrap.appendChild(meta);
         }

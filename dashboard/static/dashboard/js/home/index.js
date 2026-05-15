@@ -136,29 +136,11 @@ const renderActionCards = (context, actionCards = []) => {
 };
 
 const renderNarrativeDiagnostics = (context) => {
-    const diagnostics = context.data.narrativeDiagnostics || {};
     const statusElement = context.elements.narrativeStatus;
-
-    if (!statusElement) {
-        return;
-    }
-
-    const message = String(diagnostics.message || "").trim();
-    if (!message) {
+    if (statusElement) {
         statusElement.hidden = true;
         statusElement.textContent = "";
         statusElement.className = "home-narrative-status";
-        return;
-    }
-
-    statusElement.hidden = false;
-    statusElement.textContent = message;
-    statusElement.className = `home-narrative-status is-${diagnostics.status || "rules"}`;
-
-    if (diagnostics.fallback_detail) {
-        statusElement.title = diagnostics.fallback_detail;
-    } else {
-        statusElement.removeAttribute("title");
     }
 };
 
