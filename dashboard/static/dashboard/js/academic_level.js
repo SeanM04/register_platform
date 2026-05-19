@@ -1,4 +1,4 @@
-import { initialiseAcademicLevelPage } from "./academic_level/index.js?v=20260412-academic-shell02";
+import { initialiseAcademicLevelPage } from "./academic_level/index.js?v=20260519-academic-conflict-fix01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.

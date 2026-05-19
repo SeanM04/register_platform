@@ -18,7 +18,6 @@ const paginationState = {
 // Store the initial table data globally so we can render it anytime
 let initialTableData = null;
 
-<<<<<<< HEAD
 // Holds the chart resize function once charts are initialised; called by accordion events
 let resizeChartsCallback = null;
 
@@ -26,25 +25,6 @@ window.addEventListener('academic-level:charts-section-opened', () => {
     if (typeof resizeChartsCallback === 'function') {
         window.requestAnimationFrame(resizeChartsCallback);
     }
-=======
-/** Set after charts initialise; accordion open handler triggers resize + table repaint */
-let academicLevelResizeCharts = null;
-
-document.addEventListener("academic-level:accordion-opened", () => {
-    if (!academicLevelResizeCharts) {
-        return;
-    }
-    if (initialTableData && initialTableData.length > 0) {
-        renderTableImmediately(initialTableData);
-        renderPaginationControls();
-    }
-    window.requestAnimationFrame(() => {
-        academicLevelResizeCharts();
-        window.setTimeout(() => {
-            academicLevelResizeCharts();
-        }, 400);
-    });
->>>>>>> 26d9b9b5b71af08698e93680a2a9c8f39816f205
 });
 
 const buildRequestUrl = (endpoint) => {
@@ -452,15 +432,8 @@ export const initialiseAcademicLevelPage = () => {
             
             // Render table IMMEDIATELY - don't wait for anything
             renderTableImmediately(allLevelRows);
-<<<<<<< HEAD
             renderPaginationControls();
-            
-=======
             refreshAcademicLevelTableDomRefs(context);
-
-            initialisePagination();
-
->>>>>>> 26d9b9b5b71af08698e93680a2a9c8f39816f205
             context.data.levelRows = payloadResponse?.level_chart_rows || [];
 
             if (!storyBannerHydrated) {
@@ -484,23 +457,15 @@ export const initialiseAcademicLevelPage = () => {
                 });
             };
 
-            academicLevelResizeCharts = resizeCharts;
             initialiseChartResizeHandling(controllers, resizeCharts);
             initialiseFullscreenControls(context.elements.fullscreenButtons, resizeCharts);
 
-<<<<<<< HEAD
             // Expose to the module-level listener so accordion opens always reach resizeCharts
             resizeChartsCallback = resizeCharts;
-
-            // Simple event listener - just re-render when accordion opens
-            window.addEventListener('academic-level:table-visibility-changed', () => {
-                handleAccordionExpand();
-=======
             window.requestAnimationFrame(() => {
                 resizeCharts();
                 window.setTimeout(() => resizeCharts(), 120);
                 window.setTimeout(() => resizeCharts(), 450);
->>>>>>> 26d9b9b5b71af08698e93680a2a9c8f39816f205
             });
         })
         .catch((error) => {

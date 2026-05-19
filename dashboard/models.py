@@ -292,9 +292,13 @@ _SENSITIVE_POST_FIELDS = frozenset({
 
 
 def _get_client_ip(request):
-    from ipware import get_client_ip
-    ip, _ = get_client_ip(request)
-    return ip
+    try:
+        from ipware import get_client_ip
+
+        ip, _ = get_client_ip(request)
+        return ip
+    except ImportError:
+        return request.META.get("REMOTE_ADDR", "")
 
 
 class AuditLog(models.Model):
