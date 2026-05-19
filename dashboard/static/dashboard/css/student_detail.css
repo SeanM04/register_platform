@@ -236,6 +236,10 @@
     width: 8rem;
 }
 
+.results-col-status {
+    width: 9rem;
+}
+
 .results-table thead {
     background: var(--navy);
     color: #ffffff;
@@ -271,6 +275,64 @@
 .results-table .results-th-course,
 .results-table .results-td-course {
     text-align: left !important;
+}
+
+.results-course-name {
+    font-weight: 600;
+}
+
+.results-attempt-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.32rem;
+}
+
+.results-attempt-tag,
+.results-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.18rem 0.48rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.results-attempt-tag {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.results-attempt-tag.is-repeat {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.results-attempt-tag.is-carried {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.results-attempt-tag.is-first {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.results-status-pill.is-pass {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.results-status-pill.is-fail {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.results-status-pill.is-awaiting {
+    background: #e2e8f0;
+    color: #475569;
 }
 
 /* Enhanced visual feedback for filter synchronization */
@@ -391,6 +453,21 @@
 
 .results-table tbody tr:last-child td {
     box-shadow: none;
+}
+
+.results-section-row td {
+    padding: 0.85rem 1rem 0.45rem;
+    background: #f8fbff;
+    border-top: 1px solid #d7e7f6;
+    border-bottom: 1px solid #e8f1f8;
+    color: var(--navy);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.results-section-title {
+    text-align: left;
 }
 
 /* Year Dropdown Tabs */

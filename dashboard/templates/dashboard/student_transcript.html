@@ -688,9 +688,7 @@ function downloadTranscript() {
         {% for year_group in year_groups|dictsort:"grouper" %}
         <div class="academic-year-section">
             <div class="year-header">
-                {% with year_num=year_group.grouper %}
-                    March {{ year_num }} - July {{ year_num }}
-                {% endwith %}
+                {{ year_group.grouper }}
             </div>
             
             <!-- Create semester groupings within each year -->
@@ -699,19 +697,7 @@ function downloadTranscript() {
             {% for semester_group in semester_groups %}
             <div class="semester-section">
                 <div class="semester-header">
-                    {% for result in semester_group.list|slice:":1" %}
-                        {% if "Semester 1" in result.semester %}
-                            Year 1 · Semester 1
-                        {% elif "Semester 2" in result.semester %}
-                            Year 1 · Semester 2
-                        {% elif "Semester 3" in result.semester %}
-                            Year 2 · Semester 1
-                        {% elif "Semester 4" in result.semester %}
-                            Year 2 · Semester 2
-                        {% else %}
-                            {{ semester_group.grouper }}
-                        {% endif %}
-                    {% endfor %}
+                    {{ year_group.grouper }} · {{ semester_group.grouper }}
                 </div>
                 
                 <table class="transcript-table">
@@ -728,7 +714,7 @@ function downloadTranscript() {
                         {% for result in semester_group.list %}
                         <tr>
                             <td class="course-code">{{ result.course_code }}</td>
-                            <td class="course-name">{{ result.course_name }}</td>
+                            <td class="course-name">{{ result.course_display_name|default:result.course_name }}</td>
                             <td class="credits">{{ result.mark_value }}</td>
                             <td class="grade {% if result.is_failing %}fail{% else %}pass{% endif %}">
                                 {{ result.grade }}
@@ -820,7 +806,7 @@ function downloadTranscript() {
             </div>
         </div>
         <div class="transcript-actions">
-            <a href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="print-button">Back to Students</a>
+            <a href="{{ back_to_students_url }}" class="print-button">Back to Students</a>
         </div>
     </div>
     {% endif %}

@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Extract semester number from "Semester 1 - March - July"
                         const semesterNumber = semesterInfo.match(/Semester \d+/)[0];
                         
-                        // Create new label: "Year 1 - Semester 2"
-                        const newLabel = `${yearOnly} - ${semesterNumber}`;
+                        // Create new label: "Year 1 Semester 2"
+                        const newLabel = `${yearOnly} ${semesterNumber}`;
                         
                         dropdown.querySelector('.year-dropdown-label').textContent = newLabel;
                         

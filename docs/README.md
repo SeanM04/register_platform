@@ -19,6 +19,8 @@ This folder contains implementation notes and operational guidance for the regis
   Sidebar page-by-page documentation for non-technical users and maintainers
 - [AI_INSIGHTS.md](AI_INSIGHTS.md)
   Shared AI narrative generation patterns across dashboards
+- [STUDENT_HISTORY.md](STUDENT_HISTORY.md)
+  Student timeline grouping, repeat-attempt handling, and transcript helper logic
 - [CHATBOT.md](CHATBOT.md)
   UniStudio chatbot widget — async SSE streaming, real-time status feedback, 20-handler dispatch, rate limiting, and provider fallback
 - [DASHBOARD_HOME.md](DASHBOARD_HOME.md)

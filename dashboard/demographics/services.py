@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from ..models import Registration
+from ..student_history import extract_registration_year_semester
 from ..views import build_registration_filter_q, normalize_gender_key
 from .constants import BIRTH_LOCATION_MAP_ALIASES, BIRTH_LOCATION_MAP_POINTS
 
@@ -61,29 +62,19 @@ def _calculate_age_from_dob(date_of_birth):
 
 def build_registration_pk_to_progression_year_map(student_ids):
     """
-    Map each registration PK to academic level 1–5 from chronological order.
-
-    Uses the same rule as student profile progression: two consecutive registrations
-    (semesters) advance one academic year, capped at 5.
+    Map each registration PK to the official programme year stored on the period.
     """
     if not student_ids:
         return {}
     rows = list(
         Registration.objects.filter(student_id__in=student_ids)
+        .select_related("period")
         .order_by("student_id", "period__external_id", "id")
-        .values_list("student_id", "id")
     )
-    result = {}
-    current_student = None
-    idx_in_student = 0
-    for student_id, reg_id in rows:
-        if student_id != current_student:
-            current_student = student_id
-            idx_in_student = 0
-        year = min(max((idx_in_student // 2) + 1, 1), 5)
-        result[reg_id] = year
-        idx_in_student += 1
-    return result
+    return {
+        registration.id: extract_registration_year_semester(registration)[0]
+        for registration in rows
+    }
 
 
 def _age_group_for_years(age):

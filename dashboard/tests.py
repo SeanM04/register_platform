@@ -21,6 +21,7 @@ from .models import (
     Cohort,
     CompletionAnalysisRecord,
     Registration,
+    CourseResult,
     Student,
     ZeroCompletionReason,
 )
@@ -110,6 +111,22 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(alice_rows[0]["department"], self.commerce_department.name)
         self.assertEqual(alice_rows[0]["decision"], "Pending")
 
+    def test_student_detail_back_link_preserves_unfiltered_students_list(self):
+        """Back from student detail should return to the original students list filter state."""
+
+        students_response = self.client.get(reverse("dashboard:students"))
+        student_link = next(
+            row for row in students_response.context["students"]
+            if row["name"] == self.student_primary.full_name
+        )
+        detail_response = self.client.get(
+            reverse("dashboard:student-detail", args=[student_link["detail_slug"]]),
+            {"return_to": reverse("dashboard:students")},
+        )
+
+        self.assertEqual(detail_response.context["back_to_students_url"], reverse("dashboard:students"))
+        self.assertNotContains(detail_response, "href=\"/students?faculty=")
+
     def test_student_detail_scopes_topbar_filters_to_student_records(self):
         """Student detail filters should expose only years, periods, and faculties the student has."""
 
@@ -140,8 +157,8 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(filters["faculty"]["disabled"])
         self.assertEqual(response.context["selected_faculty"], self.commerce_faculty.name)
 
-    def test_student_detail_omits_empty_result_years_from_topbar_and_tabs(self):
-        """Registrations without course rows should not appear as selectable student years."""
+    def test_student_detail_keeps_database_years_visible_without_course_rows(self):
+        """Student year tabs should reflect stored registrations even before course rows exist."""
 
         empty_period = AcademicPeriod.objects.create(
             external_id=202701,
@@ -163,10 +180,448 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         )
 
         filters = {row["name"]: row for row in response.context["filters"]}
-        visible_tab_years = [row["year"] for row in response.context["student"]["year_dropdown_tabs"]]
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        visible_tab_years = [row["year"] for row in year_tabs]
         self.assertEqual(filters["year"]["options"], ["Year 1"])
         self.assertEqual(visible_tab_years, [1])
-        self.assertNotContains(response, "2027 January - June")
+        self.assertEqual(len(year_tabs[0]["semesters"]), 2)
+        self.assertContains(response, "2027 January - June")
+
+    def test_student_detail_rebases_non_contiguous_imported_years_for_display(self):
+        """Student detail should show contiguous study years even when imported period years jump."""
+
+        year2_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="2",
+            semester="1",
+            name="2027 January - June",
+        )
+        year2_sem2_period = AcademicPeriod.objects.create(
+            external_id=202702,
+            academic_year="2",
+            semester="2",
+            name="2027 August - December",
+        )
+        year3_period = AcademicPeriod.objects.create(
+            external_id=202801,
+            academic_year="3",
+            semester="1",
+            name="2028 January - June",
+        )
+        year5_period = AcademicPeriod.objects.create(
+            external_id=202901,
+            academic_year="5",
+            semester="1",
+            name="2029 January - June",
+        )
+        student = Student.objects.create(
+            registration_number="REG003",
+            first_names="Chipo",
+            surname="Dube",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        registrations = [
+            Registration.objects.create(
+                external_id=30,
+                student=student,
+                programme=self.science_programme,
+                period=year2_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=31,
+                student=student,
+                programme=self.science_programme,
+                period=year2_sem2_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=32,
+                student=student,
+                programme=self.science_programme,
+                period=year3_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=33,
+                student=student,
+                programme=self.science_programme,
+                period=year5_period,
+                decision="proceed",
+                carrying=0,
+            ),
+        ]
+        for index, registration in enumerate(registrations, start=1):
+            CourseResult.objects.create(
+                registration=registration,
+                course=self.course,
+                mark=60 + index,
+            )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+        )
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        visible_tab_years = [row["year"] for row in response.context["student"]["year_dropdown_tabs"]]
+        self.assertEqual(filters["year"]["options"], ["Year 2", "Year 1"])
+        self.assertEqual(visible_tab_years, [2, 1])
+        self.assertContains(response, "Year 1")
+        self.assertContains(response, "Year 2")
+
+    def test_student_detail_orders_latest_year_left_and_latest_semester_first(self):
+        """Student year dropdowns should show newest years first and semester 2 above semester 1."""
+
+        year2_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="2",
+            semester="1",
+            name="2027 January - June",
+        )
+        year2_sem2_period = AcademicPeriod.objects.create(
+            external_id=202702,
+            academic_year="2",
+            semester="2",
+            name="2027 August - December",
+        )
+        student = Student.objects.create(
+            registration_number="REG005",
+            first_names="Nyasha",
+            surname="Zhou",
+            gender="Female",
+            place_of_birth="Kwekwe",
+        )
+        registrations = [
+            Registration.objects.create(
+                external_id=50,
+                student=student,
+                programme=self.science_programme,
+                period=self.period_2025,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=51,
+                student=student,
+                programme=self.science_programme,
+                period=self.period_2026,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=52,
+                student=student,
+                programme=self.science_programme,
+                period=year2_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=53,
+                student=student,
+                programme=self.science_programme,
+                period=year2_sem2_period,
+                decision="proceed",
+                carrying=0,
+            ),
+        ]
+        for index, registration in enumerate(registrations, start=1):
+            CourseResult.objects.create(
+                registration=registration,
+                course=self.course,
+                mark=69 + index,
+            )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+            {"term": "2:2", "year": "Year 2"},
+        )
+
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        self.assertEqual([tab["year"] for tab in year_tabs], [2, 1])
+        self.assertEqual(year_tabs[0]["semesters"][0]["label"], "Semester 2")
+        self.assertEqual(year_tabs[0]["semesters"][1]["label"], "Semester 1")
+        self.assertEqual(year_tabs[0]["display_label"], "Year 2 Semester 2")
+
+    def test_student_detail_rebases_initial_semester_two_to_semester_one_display(self):
+        """A student's first visible semester should not start at semester two in the UI."""
+
+        student = Student.objects.create(
+            registration_number="REG004",
+            first_names="Tariro",
+            surname="Sibanda",
+            gender="Female",
+            place_of_birth="Gweru",
+        )
+        registration = Registration.objects.create(
+            external_id=40,
+            student=student,
+            programme=self.science_programme,
+            period=self.period_2025,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(
+            registration=registration,
+            course=self.course,
+            mark=67,
+        )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+        )
+
+        self.assertEqual(response.context["student"]["academic_level"], "Year 1 Semester 1")
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        self.assertEqual(len(year_tabs), 1)
+        self.assertEqual(year_tabs[0]["year_label"], "Year 1")
+        self.assertEqual(year_tabs[0]["semesters"][0]["label"], "Semester 1")
+
+    def test_student_detail_collapses_repeated_semesters_into_one_tab(self):
+        """Repeated registrations in the same official year/semester should not create extra tabs."""
+
+        repeat_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="1",
+            semester="1",
+            name="2026 January - June Repeat",
+        )
+        repeat_registration = Registration.objects.create(
+            external_id=77,
+            student=self.student_primary,
+            programme=self.science_programme,
+            period=repeat_period,
+            decision="repeat",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=repeat_registration,
+            course=self.course,
+            mark=65,
+            attendance_type="Repeat",
+        )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+            {"faculty": self.science_faculty.name},
+        )
+
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        self.assertEqual(len(year_tabs), 1)
+        self.assertEqual(year_tabs[0]["year"], 1)
+        self.assertEqual(len(year_tabs[0]["semesters"]), 1)
+
+    def test_student_detail_splits_repeated_semester_results_by_period(self):
+        """Repeated semester results should show the latest period first and earlier attempts below it."""
+
+        repeat_period = AcademicPeriod.objects.create(
+            external_id=202203,
+            academic_year="1",
+            semester="1",
+            name="May 2022 - August 2022",
+        )
+        latest_period = AcademicPeriod.objects.create(
+            external_id=202206,
+            academic_year="1",
+            semester="1",
+            name="September 2022 - December 2022",
+        )
+        first_registration = Registration.objects.create(
+            external_id=80,
+            student=self.student_secondary,
+            programme=self.commerce_programme,
+            period=repeat_period,
+            decision="repeat",
+            carrying=1,
+        )
+        latest_registration = Registration.objects.create(
+            external_id=81,
+            student=self.student_secondary,
+            programme=self.commerce_programme,
+            period=latest_period,
+            decision="proceed carrying",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=first_registration,
+            course=self.course,
+            mark=48,
+        )
+        CourseResult.objects.create(
+            registration=latest_registration,
+            course=self.course,
+            mark=62,
+            attendance_type="Repeat",
+        )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_secondary.registration_number.lower()]),
+            {
+                "faculty": self.commerce_faculty.name,
+                "term": "1:1",
+                "year": "Year 1",
+                "period": "September - December",
+            },
+        )
+
+        self.assertEqual(response.context["student"]["term_name"], "September 2022 - December 2022")
+        result_sections = response.context["student"]["result_sections"]
+        self.assertEqual(
+            [section["period_name"] for section in result_sections],
+            ["September 2022 - December 2022", "May 2022 - August 2022"],
+        )
+
+    def test_student_detail_promotes_new_module_set_out_of_repeated_semester_bucket(self):
+        """A later same-stage registration with new modules should become the next displayed semester."""
+
+        first_period = AcademicPeriod.objects.create(
+            external_id=202101,
+            academic_year="1",
+            semester="1",
+            name="September 2021 - December 2021",
+        )
+        repeat_period = AcademicPeriod.objects.create(
+            external_id=202203,
+            academic_year="1",
+            semester="1",
+            name="May 2022 - August 2022",
+        )
+        new_set_period = AcademicPeriod.objects.create(
+            external_id=202206,
+            academic_year="1",
+            semester="1",
+            name="September 2022 - December 2022",
+        )
+        follow_up_period = AcademicPeriod.objects.create(
+            external_id=202301,
+            academic_year="1",
+            semester="2",
+            name="March 2023 - July 2023",
+        )
+        course_a = self.course
+        from .models import Course
+        course_b = Course.objects.create(code="ASTA101", name="Introduction to Statistics")
+        course_c = Course.objects.create(code="ACCT123", name="Financial Accounting for Business Ib")
+        course_d = Course.objects.create(code="BMAN121", name="Commercial Law")
+        course_e = Course.objects.create(code="SSHR211", name="HR Practice")
+
+        student = Student.objects.create(
+            registration_number="REG006",
+            first_names="Blake",
+            surname="Allen",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        first_registration = Registration.objects.create(
+            external_id=90,
+            student=student,
+            programme=self.science_programme,
+            period=first_period,
+            decision="repeat",
+            carrying=1,
+        )
+        repeat_registration = Registration.objects.create(
+            external_id=91,
+            student=student,
+            programme=self.science_programme,
+            period=repeat_period,
+            decision="repeat",
+            carrying=1,
+        )
+        new_set_registration = Registration.objects.create(
+            external_id=92,
+            student=student,
+            programme=self.science_programme,
+            period=new_set_period,
+            decision="proceed carrying",
+            carrying=1,
+        )
+        follow_up_registration = Registration.objects.create(
+            external_id=93,
+            student=student,
+            programme=self.science_programme,
+            period=follow_up_period,
+            decision="proceed",
+            carrying=0,
+        )
+
+        CourseResult.objects.create(registration=first_registration, course=course_a, mark=35)
+        CourseResult.objects.create(registration=first_registration, course=course_b, mark=27)
+        CourseResult.objects.create(registration=repeat_registration, course=course_a, mark=50, attendance_type="Repeat")
+        CourseResult.objects.create(registration=repeat_registration, course=course_b, mark=55, attendance_type="Repeat")
+        CourseResult.objects.create(registration=new_set_registration, course=course_c, mark=41)
+        CourseResult.objects.create(registration=new_set_registration, course=course_d, mark=34)
+        CourseResult.objects.create(registration=follow_up_registration, course=course_c, mark=52, attendance_type="Carry")
+        CourseResult.objects.create(registration=follow_up_registration, course=course_e, mark=60)
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+            {"term": "1:2", "year": "Year 1", "period": "September - December"},
+        )
+
+        self.assertEqual(response.context["student"]["academic_level"], "Year 1 Semester 2")
+        sections = response.context["student"]["result_sections"]
+        self.assertEqual([section["period_name"] for section in sections], ["September 2022 - December 2022"])
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        self.assertEqual(year_tabs[-1]["year_label"], "Year 1")
+        self.assertEqual([option["label"] for option in year_tabs[-1]["semesters"]], ["Semester 2", "Semester 1"])
+
+    def test_student_transcript_keeps_retakes_in_their_actual_semester(self):
+        """Transcript rows should preserve attempt history without creating fake years."""
+
+        failed_period = AcademicPeriod.objects.create(
+            external_id=202401,
+            academic_year="1",
+            semester="1",
+            name="2024 January - June",
+        )
+        carry_period = AcademicPeriod.objects.create(
+            external_id=202801,
+            academic_year="2",
+            semester="1",
+            name="2025 January - June",
+        )
+        failed_registration = Registration.objects.create(
+            external_id=88,
+            student=self.student_secondary,
+            programme=self.commerce_programme,
+            period=failed_period,
+            decision="fail",
+            carrying=1,
+        )
+        carried_registration = Registration.objects.create(
+            external_id=89,
+            student=self.student_secondary,
+            programme=self.commerce_programme,
+            period=carry_period,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(
+            registration=failed_registration,
+            course=self.course,
+            mark=42,
+        )
+        CourseResult.objects.create(
+            registration=carried_registration,
+            course=self.course,
+            mark=68,
+            attendance_type="Repeat",
+        )
+
+        response = self.client.get(
+            reverse("dashboard:student-transcript", args=[self.student_secondary.registration_number.lower()]),
+        )
+
+        transcript_results = response.context["transcript_results"]
+        year_semester_pairs = [(row["academic_year"], row["period"]) for row in transcript_results if row["course_code"] == self.course.code]
+        self.assertIn(("Year 1", "Semester 1"), year_semester_pairs)
+        self.assertIn(("Year 2", "Semester 1"), year_semester_pairs)
+        self.assertTrue(any("Attempt 2" in row["course_display_name"] for row in transcript_results))
 
     @override_settings(
         CHATBOT_ENABLED=True,

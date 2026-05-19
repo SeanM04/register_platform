@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h1>{{ student.name }}</h1>
                 <p class="detail-copy">Student record found but no data matches current filters.</p>
             </div>
-            <a class="back-button" href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back</a>
+            <a class="back-button" href="{{ back_to_students_url }}">Back</a>
         </header>
 
         <section class="profile-card">
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="header-actions">
                 <a class="transcript-button" href="{% url 'dashboard:student-transcript' student.student_number %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">View Transcript</a>
-                <a class="back-button" href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back</a>
+                <a class="back-button" href="{{ back_to_students_url }}">Back</a>
             </div>
         </header>
 
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% for year_tab in student.year_dropdown_tabs %}
             <div class="year-dropdown{% if year_tab.is_active %} is-active{% endif %}{% if year_tab.semester_selected %} semester-selected{% endif %}">
                 <button class="year-dropdown-toggle" type="button" aria-expanded="false" aria-controls="year-{{ year_tab.year }}-dropdown">
-                    <span class="year-dropdown-label">{{ year_tab.year_label }}</span>
+                    <span class="year-dropdown-label">{{ year_tab.display_label }}</span>
                     <span class="year-dropdown-arrow"></span>
                 </button>
                 <div class="year-dropdown-content" id="year-{{ year_tab.year }}-dropdown">
@@ -151,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <col class="results-col-course">
                         <col class="results-col-period">
                         <col class="results-col-mark">
+                        <col class="results-col-status">
                     </colgroup>
                     <thead>
                         <tr>
@@ -158,21 +159,39 @@ document.addEventListener('DOMContentLoaded', function() {
                             <th class="results-th-course">Course Name</th>
                             <th>Period</th>
                             <th class="results-th-mark">Mark</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-{% if student.results %}
-                            {% for result in student.results %}
+{% if student.result_sections %}
+                            {% for section in student.result_sections %}
+                            <tr class="results-section-row">
+                                <td colspan="5" class="results-section-title">{{ section.period_name }}</td>
+                            </tr>
+                            {% for result in section.results %}
                             <tr>
                                 <td class="results-td-code">{{ result.code }}</td>
-                                <td class="results-td-course">{{ result.course }}</td>
+                                <td class="results-td-course">
+                                    <div class="results-course-name">{{ result.course }}</div>
+                                    {% if result.attempt_tags %}
+                                    <div class="results-attempt-tags">
+                                        {% for tag in result.attempt_tags %}
+                                        <span class="results-attempt-tag{% if tag == 'Carried' %} is-carried{% elif tag == 'Repeated' %} is-repeat{% elif tag == 'First Attempt' %} is-first{% endif %}">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
                                 <td>{{ result.period }}</td>
-                                <td class="results-td-mark{% if result.mark < 50 %} failing-mark{% endif %}">{{ result.mark }}%</td>
+                                <td class="results-td-mark{% if result.is_failing %} failing-mark{% endif %}">{% if result.mark == '--' %}--{% else %}{{ result.mark }}%{% endif %}</td>
+                                <td>
+                                    <span class="results-status-pill{% if result.is_awaiting %} is-awaiting{% elif result.is_failing %} is-fail{% else %} is-pass{% endif %}">{{ result.status }}</span>
+                                </td>
                             </tr>
+                            {% endfor %}
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="4" class="empty-results">
+                                <td colspan="5" class="empty-results">
                                     <div class="empty-results-content">
                                         <p>{{ no_data_message|default:"No courses found for this student." }}</p>
                                     </div>
@@ -192,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h1>No Records Found</h1>
                 <p class="detail-copy">{{ no_data_message }}</p>
             </div>
-            <a class="back-button" href="{% url 'dashboard:students' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back</a>
+            <a class="back-button" href="{{ back_to_students_url }}">Back</a>
         </header>
         
         <section class="profile-card">
