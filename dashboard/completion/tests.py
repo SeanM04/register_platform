@@ -683,6 +683,41 @@ class CompletionViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(payload["rows"][0]["programme"], engineering_programme.name)
         self.assertEqual(payload["rows"][0]["name"], student.full_name)
 
+    def test_completion_driver_drilldown_matches_visible_zero_completion_reason(self):
+        period_2027_second = AcademicPeriod.objects.create(
+            external_id=202703,
+            academic_year="1",
+            semester="2",
+            name="2027 Special Period",
+        )
+        student = Student.objects.create(
+            registration_number="REG106",
+            first_names="Memory",
+            surname="Zhou",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        registration = Registration.objects.create(
+            external_id=106,
+            student=student,
+            programme=self.commerce_programme,
+            period=period_2027_second,
+            decision="repeat",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=registration, course=self.course, mark=80)
+
+        payload = self.client.get(
+            reverse("dashboard:completion-drilldown"),
+            {
+                "chart_key": "drivers",
+                "bucket_key": "Repeat shift",
+            },
+        ).json()["data"]
+
+        self.assertIn(student.full_name, [row["name"] for row in payload["rows"]])
+        self.assertEqual(payload["rows"][0]["academic_stage"].startswith("Year "), True)
+
 
 class CompletionRuleTests(TestCase):
     """Verify the documented completion rule helpers."""

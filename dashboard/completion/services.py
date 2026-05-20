@@ -3,173 +3,113 @@
 import logging
 from urllib.parse import unquote_plus
 
+from services.completion_service import get_completion_page_data
+
 logger = logging.getLogger(__name__)
 
-def get_zero_completion_decision(decision):
-    """Return the zero-completion decision rule when the decision matches one."""
-    from services.completion_rules import ZERO_COMPLETION_DECISIONS, normalize_decision_text
-    
-    normalized = normalize_decision_text(decision)
-    if not normalized:
-        return None
-    
-    for rule in ZERO_COMPLETION_DECISIONS:
-        if any(term in normalized for term in rule.match_terms):
-            return rule
-    return None
 
 def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
     """Return student rows for completion analysis chart drill-downs."""
-    
-    from ..models import Registration, Student, Programme
-    from ..views import build_registration_filter_q
-    
-    # URL decode the bucket key to handle special characters
+
     bucket_key = unquote_plus(bucket_key)
-    
-    try:
-        # Build base registration filter
-        base_filter = build_registration_filter_q(request)
-        registrations = Registration.objects.filter(base_filter)
-        
-        logger.info(f"Completion drilldown - chart_key='{chart_key}', bucket_key='{bucket_key}'")
-        logger.info(f"Base registrations count: {registrations.count()}")
-        
-        # For completion analysis, we'll handle various chart types with specific filtering
-        if chart_key == "drivers":
-            # Filter by zero completion reason (computed from decision)
-            # Since zero_completion_reason is computed, we need to filter in Python
-            registrations = registrations.select_related('student', 'programme', 'programme__department')
-            filtered_registrations = []
-            for registration in registrations:
-                decision_rule = get_zero_completion_decision(registration.decision)
-                if decision_rule and decision_rule.label == bucket_key:
-                    filtered_registrations.append(registration)
-            registrations = sorted(
-                filtered_registrations,
-                key=lambda registration: (
-                    registration.student.registration_number,
-                    -(registration.period.external_id or 0),
-                    -registration.id,
-                ),
-            )
-        elif chart_key == "programme_load":
-            # Filter by the chart label, which uses Programme.normalized_name rather than raw name.
-            registrations = registrations.select_related(
-                'student',
-                'programme',
-                'programme__department',
-                'programme__department__faculty',
-                'period',
-            ).order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-            normalized_bucket = str(bucket_key or "").strip().lower()
-            registrations = [
-                registration
-                for registration in registrations
-                if str(registration.programme.name or "").strip().lower() == normalized_bucket
-                or str(registration.programme.normalized_name or "").strip().lower() == normalized_bucket
-            ]
-        elif chart_key == "cohorts":
-            registrations = registrations.filter(period__name=bucket_key).select_related(
-                'student',
-                'programme',
-                'programme__department',
-                'period',
-            ).order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-        else:
-            # Default case - return all filtered registrations
-            registrations = registrations.select_related('student', 'programme', 'programme__department').order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-        
-        logger.info(f"Filtered registrations count: {len(registrations) if isinstance(registrations, list) else registrations.count()}")
-        
-        # First deduplicate students across all registrations
-        unique_students = {}
-        seen_students = set()  # Track seen registration numbers to avoid duplicates
-        
-        for registration in registrations:
-            student = registration.student
-            reg_number = student.registration_number
-            
-            # Skip if we've already processed this student
-            if reg_number in seen_students:
-                continue
-                
-            seen_students.add(reg_number)
-            programme = registration.programme
-            
-            # Store the latest registration for this student
-            unique_students[reg_number] = {
-                "student": student,
-                "programme": programme,
-                "registration": registration
-            }
-        
-        # Convert to list for pagination
-        unique_student_list = list(unique_students.values())
-        # Get total count for pagination (now based on unique students)
-        total_count = len(unique_student_list)
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-        
-        # Apply pagination to unique students
-        offset = (page - 1) * page_size
-        paginated_students = unique_student_list[offset:offset + page_size]
-        
-        # Build student rows from paginated unique students
-        student_rows = []
-        for student_data in paginated_students:
-            student = student_data["student"]
-            programme = student_data["programme"]
-            registration = student_data["registration"]
-            reg_number = student.registration_number
-            
-            row_data = {
-                "name": student.full_name,
-                "programme": programme.name if programme else "Unassigned",
-                "department": programme.department.name if programme and programme.department else "Unassigned",
-                "faculty": programme.department.faculty.name if programme and programme.department and programme.department.faculty else "Unassigned",
-                "decision": registration.decision or "Unknown",
-                "carrying": registration.carrying or 0,
-                "detail_url": f"/students/{reg_number}/",
-            }
-            student_rows.append(row_data)
-        
-        # Build response payload
-        payload = {
-            "title": f"Students - {bucket_key}",
-            "subtitle": f"Students for {chart_key}: {bucket_key}",
-            "columns": [
-                {"key": "name", "label": "Student Name"},
-                {"key": "programme", "label": "Programme"},
-                {"key": "department", "label": "Department"},
-                {"key": "faculty", "label": "Faculty"},
-                {"key": "decision", "label": "Decision"},
-                {"key": "carrying", "label": "Carrying"},
-            ],
-            "rows": student_rows,
-            "pagination": {
-                "current_page": page,
-                "page_size": page_size,
-                "total_items": total_count,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_previous": page > 1,
-            },
+    year = request.GET.get("year")
+    period = request.GET.get("period")
+    faculty = request.GET.get("faculty")
+
+    logger.info(
+        "Completion drilldown called: chart_key=%s bucket_key=%s page=%s",
+        chart_key,
+        bucket_key,
+        page,
+    )
+
+    completion_data = get_completion_page_data(
+        year=year,
+        period=period,
+        faculty=faculty,
+    )
+    visible_students = list(completion_data.get("students") or [])
+
+    normalized_chart = str(chart_key or "").strip().lower()
+    normalized_bucket = str(bucket_key or "").strip().lower()
+
+    if normalized_chart == "drivers":
+        filtered_students = [
+            student for student in visible_students
+            if str(student.get("zero_completion_reason") or "").strip().lower() == normalized_bucket
+        ]
+        title = f"Students - {bucket_key}"
+        subtitle = f"Students currently linked to {bucket_key}."
+    elif normalized_chart == "programme_load":
+        filtered_students = [
+            student for student in visible_students
+            if str(student.get("programme_name") or "").strip().lower() == normalized_bucket
+            or str(student.get("programme_normalized_name") or "").strip().lower() == normalized_bucket
+        ]
+        title = f"Students - {bucket_key}"
+        subtitle = f"Students currently visible in {bucket_key}."
+    elif normalized_chart == "cohorts":
+        filtered_students = [
+            student for student in visible_students
+            if str(student.get("original_cohort") or "").strip().lower() == normalized_bucket
+            or str(student.get("effective_cohort") or "").strip().lower() == normalized_bucket
+        ]
+        title = f"Students - {bucket_key}"
+        subtitle = f"Students currently attached to cohort {bucket_key}."
+    else:
+        filtered_students = visible_students
+        title = f"Students - {bucket_key}"
+        subtitle = f"Students for {chart_key}: {bucket_key}"
+
+    filtered_students.sort(
+        key=lambda student: (
+            str(student.get("student_name") or "").split()[-1].lower(),
+            " ".join(str(student.get("student_name") or "").split()[:-1]).lower(),
+            str(student.get("regnum") or "").lower(),
+        )
+    )
+
+    total_count = len(filtered_students)
+    total_pages = max(1, (total_count + page_size - 1) // page_size) if total_count else 1
+    safe_page = max(1, min(int(page or 1), total_pages))
+    offset = (safe_page - 1) * page_size
+    paginated_students = filtered_students[offset:offset + page_size]
+
+    student_rows = [
+        {
+            "name": student.get("student_name", ""),
+            "programme": student.get("programme_name", "Unassigned"),
+            "academic_stage": str(student.get("academic_stage") or "").replace(", ", " "),
+            "decision": student.get("decision", "Unknown"),
+            "effective_cohort": student.get("effective_cohort", ""),
+            "completion_rate": f"{round(float(student.get('completion_rate') or 0))}%",
+            "detail_url": f"/students/{student.get('detail_slug') or str(student.get('regnum') or '').lower()}/",
         }
-        
-        return payload
-        
-    except Exception as e:
-        logger.error(f"Error in build_completion_drilldown_data: {e}")
-        raise
+        for student in paginated_students
+    ]
+
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": [
+            {"key": "name", "label": "Student Name"},
+            {"key": "programme", "label": "Programme"},
+            {"key": "academic_stage", "label": "Academic Stage"},
+            {"key": "decision", "label": "Decision"},
+            {"key": "effective_cohort", "label": "Effective Cohort"},
+            {"key": "completion_rate", "label": "Completion Rate"},
+        ],
+        "rows": student_rows,
+        "pagination": {
+            "current_page": safe_page,
+            "page_size": page_size,
+            "total_items": total_count,
+            "total_pages": total_pages,
+            "has_next": safe_page < total_pages,
+            "has_previous": safe_page > 1,
+        },
+        "current_page": safe_page,
+        "page_size": page_size,
+        "total_items": total_count,
+        "total_pages": total_pages,
+    }
