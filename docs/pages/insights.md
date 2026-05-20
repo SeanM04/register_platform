@@ -72,6 +72,8 @@ flowchart TD
   payload instead of a short preview.
 - The attention queue is paginated at `10` students per page with page-level
   `Prev` and `Next` controls.
+- In `Intervention Summary`, a single failed module and a single carried module
+  are treated as the same driver and displayed as `1 carried module`.
 
 ## Maintenance Checklist
 

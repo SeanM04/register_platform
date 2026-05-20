@@ -1,178 +1,235 @@
 """Drilldown services for graduation analysis."""
 
 import logging
-from urllib.parse import unquote_plus
+from typing import Any, Dict, List
+
+from services.graduation_services import (
+    _build_student_histories,
+    _graduation_period_label,
+    _is_graduated_record,
+    _registration_matches_filters,
+    _steps_remaining,
+    _student_name_sort_key,
+    _target_period_from_programme,
+)
 
 logger = logging.getLogger(__name__)
 
+
+def _build_visible_profiles(request) -> List[Dict[str, Any]]:
+    """Rebuild the filtered latest-visible student profiles used by graduation charts."""
+
+    year = request.GET.get("year")
+    period = request.GET.get("period")
+    faculty = request.GET.get("faculty")
+
+    student_histories = _build_student_histories(faculty=faculty)
+    profiles: List[Dict[str, Any]] = []
+    for history in student_histories:
+        visible_records = [
+            record
+            for record, registration in zip(history["records"], history["registrations"])
+            if _registration_matches_filters(registration, year=year, period=period)
+        ]
+        if not visible_records:
+            continue
+
+        latest_visible = max(
+            visible_records,
+            key=lambda record: (record["period_external_id"], record["registration_id"]),
+        )
+        target_period = _target_period_from_programme(
+            latest_visible["programme_name"],
+            latest_visible["regnum"],
+        )
+        steps_remaining = _steps_remaining(latest_visible, target_period)
+        is_graduated = _is_graduated_record(
+            latest_visible,
+            target_period,
+            history.get("start_progression_period"),
+        )
+        profiles.append(
+            {
+                "history": history,
+                "record": latest_visible,
+                "target_period": target_period,
+                "steps_remaining": steps_remaining,
+                "is_graduated": is_graduated,
+            }
+        )
+
+    return profiles
+
+
+def _build_graduated_students(profiles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for profile in profiles:
+        if not profile["is_graduated"]:
+            continue
+        record = profile["record"]
+        rows.append(
+            {
+                "name": record["student_name"],
+                "programme": record["programme_name"],
+                "department": record.get("department_name", "Unknown"),
+                "faculty": record["faculty_name"],
+                "graduation_stage": _graduation_period_label(
+                    record["programme_name"],
+                    record["regnum"],
+                ),
+                "cohort": record["original_cohort_label"],
+                "status": "On time" if record["effective_cohort_label"] == record["original_cohort_label"] else "Delayed",
+                "detail_url": f"/students/{str(record['regnum']).lower()}/",
+                "regnum": record["regnum"],
+                "programme_name": record["programme_name"],
+                "department_name": record.get("department_name", "Unknown"),
+                "faculty_name": record["faculty_name"],
+                "original_cohort": record["original_cohort_label"],
+                "effective_cohort": record["effective_cohort_label"],
+                "on_time": record["effective_cohort_label"] == record["original_cohort_label"],
+            }
+        )
+    rows.sort(key=lambda row: _student_name_sort_key(row["name"], row["regnum"]))
+    return rows
+
+
+def _build_one_step_students(profiles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for profile in profiles:
+        if profile["is_graduated"]:
+            continue
+        steps_remaining = profile["steps_remaining"]
+        if steps_remaining is None or steps_remaining > 1 or steps_remaining < 0:
+            continue
+        record = profile["record"]
+        rows.append(
+            {
+                "name": record["student_name"],
+                "programme": record["programme_name"],
+                "department": record.get("department_name", "Unknown"),
+                "faculty": record["faculty_name"],
+                "graduation_stage": record.get("academic_level_label")
+                    or f"Year {record.get('period_year', '')}, Semester {record.get('period_semester', '')}".strip(", "),
+                "cohort": record["effective_cohort_label"],
+                "status": "One step away" if steps_remaining == 1 else "At target stage",
+                "detail_url": f"/students/{str(record['regnum']).lower()}/",
+                "regnum": record["regnum"],
+                "programme_name": record["programme_name"],
+                "department_name": record.get("department_name", "Unknown"),
+                "faculty_name": record["faculty_name"],
+                "original_cohort": record["original_cohort_label"],
+                "effective_cohort": record["effective_cohort_label"],
+                "steps_remaining": steps_remaining,
+            }
+        )
+    rows.sort(key=lambda row: _student_name_sort_key(row["name"], row["regnum"]))
+    return rows
+
+
+def _paginate_rows(rows: List[Dict[str, Any]], page: int, page_size: int) -> Dict[str, Any]:
+    total_count = len(rows)
+    total_pages = max(1, (total_count + page_size - 1) // page_size) if page_size else 1
+    safe_page = max(1, min(int(page or 1), total_pages))
+    start = (safe_page - 1) * page_size
+    end = start + page_size
+    page_rows = rows[start:end]
+    return {
+        "rows": page_rows,
+        "pagination": {
+            "current_page": safe_page,
+            "page_size": page_size,
+            "total_items": total_count,
+            "total_pages": total_pages,
+            "has_next": safe_page < total_pages,
+            "has_previous": safe_page > 1,
+        },
+        "current_page": safe_page,
+        "page_size": page_size,
+        "total_items": total_count,
+        "total_pages": total_pages,
+    }
+
+
 def build_graduation_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
     """Return student rows for graduation analysis chart drill-downs."""
-    
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    logger.info(f"Graduation drilldown called: chart_key={chart_key}, bucket_key={bucket_key}, page={page}")
-    
-    try:
-        # Get filter parameters from request
-        year = request.GET.get('year')
-        period = request.GET.get('period')
-        faculty = request.GET.get('faculty')
-        
-        logger.info(f"Graduation drilldown - chart_key='{chart_key}', bucket_key='{bucket_key}'")
-        logger.info(f"Filters: year={year}, period={period}, faculty={faculty}")
-        
-        # Use the same graduation service logic as the charts
-        try:
-            import time
-            start_time = time.time()
-            
-            from services.graduation_services import get_graduation_page_data
-            graduation_data = get_graduation_page_data(year=year, period=period, faculty=faculty)
-            
-            service_time = time.time() - start_time
-            logger.info(f"Graduation service took {service_time:.2f} seconds")
-            
-            # Get the graduated students from the service
-            graduated_students = graduation_data["students"]
-            logger.info(f"Total graduated students from service: {len(graduated_students)}")
-        except Exception as e:
-            logger.error(f"Error calling graduation service: {e}")
-            raise
-        
-        # Filter graduated students based on chart_key and bucket_key
-        filtered_students = []
-        
-        if chart_key == "faculties":
-            # Filter by faculty name
-            filtered_students = [
-                student for student in graduated_students 
-                if student["faculty"] == bucket_key
-            ]
-        elif chart_key == "departments":
-            # Filter by department name
-            filtered_students = [
-                student for student in graduated_students 
-                if student.get("department_name") == bucket_key
-            ]
-        elif chart_key == "programmes" or chart_key == "programme_load":
-            # Filter by programme name
-            filtered_students = [
-                student for student in graduated_students 
-                if student["programme_name"] == bucket_key
-            ]
-        elif chart_key == "cohorts":
-            # Filter by cohort
-            filtered_students = [
-                student for student in graduated_students 
-                if student["effective_cohort"] == bucket_key or student["original_cohort"] == bucket_key
-            ]
-        elif chart_key == "timing":
-            # Filter by graduation timing (on-time vs delayed)
-            filtered_students = [
-                student for student in graduated_students 
-                if (bucket_key == "On-time" and student.get("on_time", False)) or
-                   (bucket_key == "Delayed" and not student.get("on_time", False))
-            ]
-        else:
-            # Default case - return all graduated students
-            filtered_students = graduated_students
-        
-        logger.info(f"Filtered students count: {len(filtered_students)}")
-        
-        # Apply pagination to filtered students
-        total_count = len(filtered_students)
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-        
-        offset = (page - 1) * page_size
-        paginated_students = filtered_students[offset:offset + page_size]
-        
-        # Build student rows from paginated graduated students
-        student_rows = []
-        for student in paginated_students:
-            # Try to get department name from programme if student record doesn't have it
-            department_name = student.get("department_name", "Unknown")
-            if department_name == "Unknown" or not department_name:
-                try:
-                    from dashboard.models import Programme
-                    prog_name = student["programme_name"]
-                    
-                    # Try exact match first
-                    programme = Programme.objects.filter(name=prog_name).first()
-                    
-                    # If not found, try case-insensitive match
-                    if not programme:
-                        programme = Programme.objects.filter(name__iexact=prog_name).first()
-                    
-                    # If still not found, try normalized matching (handle & vs "and")
-                    if not programme:
-                        normalized_name = prog_name.replace('&', 'and').replace('  ', ' ').strip()
-                        programme = Programme.objects.filter(name__iexact=normalized_name).first()
-                    
-                    # Final fallback: try partial matching on key words
-                    if not programme:
-                        # Extract key parts (degree and main subject)
-                        parts = prog_name.split()
-                        if len(parts) >= 3:
-                            # Try matching on the main subject part
-                            subject_parts = parts[2:]  # Skip degree and first word
-                            for i in range(1, len(subject_parts) + 1):
-                                partial = ' '.join(subject_parts[:i])
-                                programme = Programme.objects.filter(name__icontains=partial).first()
-                                if programme:
-                                    break
-                    
-                    if programme and programme.department:
-                        department_name = programme.department.name
-                        logger.info(f"Matched '{prog_name}' to '{programme.name}' -> {department_name}")
-                    else:
-                        department_name = "Unassigned"
-                        logger.warning(f"Could not find department for programme: {prog_name}")
-                        
-                except Exception as e:
-                    logger.warning(f"Could not get department for programme {student['programme_name']}: {e}")
-                    department_name = "Unassigned"
-            
-            # Only log if department was successfully resolved from programme
-            if department_name != "Unassigned" and student.get("department_name", "Unknown") == "Unknown":
-                logger.info(f"Resolved department for {student['student_name']}: {department_name}")
-            
-            row_data = {
-                "name": student["student_name"],
-                "programme": student["programme_name"],
-                "department": department_name,
-                "faculty": student["faculty"],
-                "decision": "Graduated",
-                "carrying": 0,
-                "detail_url": f"/students/{student['regnum'].lower()}/",
-            }
-            student_rows.append(row_data)
-        
-        # Build response payload
-        payload = {
-            "title": f"Students - {bucket_key}",
-            "subtitle": f"Students for {chart_key}: {bucket_key}",
-            "columns": [
-                {"key": "name", "label": "Student Name"},
-                {"key": "programme", "label": "Programme"},
-                {"key": "department", "label": "Department"},
-                {"key": "faculty", "label": "Faculty"},
-                {"key": "decision", "label": "Decision"},
-                {"key": "carrying", "label": "Carrying"},
-            ],
-            "rows": student_rows,
-            "pagination": {
-                "current_page": page,
-                "page_size": page_size,
-                "total_items": total_count,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_previous": page > 1,
-            },
-        }
-        
-        return payload
-        
-    except Exception as e:
-        logger.error(f"Error in build_graduation_drilldown_data: {e}")
-        raise
+
+    logger.info(
+        "Graduation drilldown called: chart_key=%s bucket_key=%s page=%s",
+        chart_key,
+        bucket_key,
+        page,
+    )
+
+    profiles = _build_visible_profiles(request)
+    graduated_students = _build_graduated_students(profiles)
+    one_step_students = _build_one_step_students(profiles)
+
+    normalized_chart = str(chart_key or "").strip().lower()
+    normalized_bucket = str(bucket_key or "").strip()
+    filtered_students: List[Dict[str, Any]] = []
+    title = f"Students - {bucket_key}"
+    subtitle = f"Students for {chart_key}: {bucket_key}"
+
+    if normalized_chart == "faculties":
+        filtered_students = [
+            student for student in graduated_students
+            if student["faculty_name"] == normalized_bucket
+        ]
+    elif normalized_chart == "departments":
+        filtered_students = [
+            student for student in graduated_students
+            if student["department_name"] == normalized_bucket
+        ]
+    elif normalized_chart in {"programmes", "programme_load", "graduation_programmes"}:
+        filtered_students = [
+            student for student in graduated_students
+            if student["programme_name"] == normalized_bucket
+        ]
+    elif normalized_chart == "graduation_cohorts":
+        filtered_students = [
+            student for student in graduated_students
+            if student["original_cohort"] == normalized_bucket
+        ]
+    elif normalized_chart == "readiness_programmes":
+        filtered_students = [
+            student for student in one_step_students
+            if student["programme_name"] == normalized_bucket
+        ]
+        title = f"Near-Graduation Students - {bucket_key}"
+        subtitle = f"Students one step from graduation in {bucket_key}."
+    elif normalized_chart == "readiness_cohorts":
+        filtered_students = [
+            student for student in one_step_students
+            if student["effective_cohort"] == normalized_bucket
+        ]
+        title = f"Near-Graduation Students - {bucket_key}"
+        subtitle = f"Students one step from graduation in effective cohort {bucket_key}."
+    elif normalized_chart == "timing":
+        filtered_students = [
+            student for student in graduated_students
+            if (normalized_bucket == "On-time" and student.get("on_time", False))
+            or (normalized_bucket == "Delayed" and not student.get("on_time", False))
+        ]
+    elif normalized_chart == "cohorts":
+        filtered_students = [
+            student for student in graduated_students
+            if student["original_cohort"] == normalized_bucket
+        ]
+    else:
+        filtered_students = graduated_students
+
+    paginated = _paginate_rows(filtered_students, page, page_size)
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "columns": [
+            {"key": "name", "label": "Student Name"},
+            {"key": "programme", "label": "Programme"},
+            {"key": "department", "label": "Department"},
+            {"key": "faculty", "label": "Faculty"},
+            {"key": "graduation_stage", "label": "Stage"},
+            {"key": "cohort", "label": "Cohort"},
+            {"key": "status", "label": "Status"},
+        ],
+        **paginated,
+    }

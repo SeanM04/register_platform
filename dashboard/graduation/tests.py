@@ -91,7 +91,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         response = self.client.get(
             reverse("dashboard:graduation-drilldown"),
             {
-                "chart_key": "programme_load",
+                "chart_key": "graduation_programmes",
                 "bucket_key": self.science_programme.name,
             },
         )
@@ -122,7 +122,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         first_page = self.client.get(
             reverse("dashboard:graduation-drilldown"),
             {
-                "chart_key": "programme_load",
+                "chart_key": "graduation_programmes",
                 "bucket_key": self.science_programme.name,
                 "page": 1,
                 "page_size": 1,
@@ -131,7 +131,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         second_page = self.client.get(
             reverse("dashboard:graduation-drilldown"),
             {
-                "chart_key": "programme_load",
+                "chart_key": "graduation_programmes",
                 "bucket_key": self.science_programme.name,
                 "page": 2,
                 "page_size": 1,
@@ -144,6 +144,87 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertFalse(second_page["pagination"]["has_next"])
         self.assertTrue(second_page["pagination"]["has_previous"])
         self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
+
+    def test_graduation_readiness_drilldown_returns_one_step_students(self):
+        readiness_student = Student.objects.create(
+            registration_number="REG199",
+            first_names="Ready",
+            surname="Student",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        year1_sem1 = AcademicPeriod.objects.create(
+            external_id=204001,
+            academic_year="1",
+            semester="1",
+            name="2040 January - June",
+        )
+        year1_sem2 = AcademicPeriod.objects.create(
+            external_id=204002,
+            academic_year="1",
+            semester="2",
+            name="2040 July - December",
+        )
+        year2_sem1 = AcademicPeriod.objects.create(
+            external_id=204101,
+            academic_year="2",
+            semester="1",
+            name="2041 January - June",
+        )
+        year2_sem2 = AcademicPeriod.objects.create(
+            external_id=204102,
+            academic_year="2",
+            semester="2",
+            name="2041 July - December",
+        )
+        year3_sem1 = AcademicPeriod.objects.create(
+            external_id=204201,
+            academic_year="3",
+            semester="1",
+            name="2042 January - June",
+        )
+        year3_sem2 = AcademicPeriod.objects.create(
+            external_id=204202,
+            academic_year="3",
+            semester="2",
+            name="2042 July - December",
+        )
+        year4_sem1 = AcademicPeriod.objects.create(
+            external_id=204301,
+            academic_year="4",
+            semester="1",
+            name="2043 January - June",
+        )
+        for external_id, period in [
+            (40, year1_sem1),
+            (41, year1_sem2),
+            (42, year2_sem1),
+            (43, year2_sem2),
+            (44, year3_sem1),
+            (45, year3_sem2),
+            (46, year4_sem1),
+        ]:
+            Registration.objects.create(
+                external_id=external_id,
+                student=readiness_student,
+                programme=self.science_programme,
+                period=period,
+                decision="Proceed",
+                carrying=0,
+            )
+
+        response = self.client.get(
+            reverse("dashboard:graduation-drilldown"),
+            {
+                "chart_key": "readiness_programmes",
+                "bucket_key": self.science_programme.name,
+            },
+        )
+
+        payload = response.json()["data"]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["rows"][0]["name"], readiness_student.full_name)
+        self.assertEqual(payload["rows"][0]["status"], "One step away")
 
     def test_graduation_filter_endpoints_return_database_options(self):
         programmes_response = self.client.get(reverse("dashboard:graduation-programmes"))

@@ -27,6 +27,23 @@ const getDisplayValue = (value) => {
     return text || "--";
 };
 
+const buildStatusCellHtml = (value) => {
+    const text = getDisplayValue(value);
+    const normalized = String(text).trim().toLowerCase();
+    let toneClass = "";
+    if (normalized === "on time") {
+        toneClass = "is-on-time";
+    } else if (normalized === "delayed") {
+        toneClass = "is-delayed";
+    }
+
+    if (!toneClass) {
+        return escapeTooltipHtml(text);
+    }
+
+    return `<span class="home-drilldown-status ${toneClass}">${escapeTooltipHtml(text)}</span>`;
+};
+
 const buildSummaryBodyHtml = (items = []) => {
     if (!items.length) {
         return `
@@ -83,7 +100,10 @@ const buildTableBodyHtml = (payload = {}) => {
     const rowsHtml = rows.length
         ? rows.map((row) => {
             const cellsHtml = columns.map((column, columnIndex) => {
-                const cellValue = escapeTooltipHtml(getDisplayValue(row?.[column.key]));
+                const rawValue = row?.[column.key];
+                const cellValue = column?.key === "status"
+                    ? buildStatusCellHtml(rawValue)
+                    : escapeTooltipHtml(getDisplayValue(rawValue));
                 const detailUrl = String(row?.detail_url || "").trim();
                 if (columnIndex === 0 && detailUrl) {
                     return `

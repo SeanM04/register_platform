@@ -37,7 +37,7 @@ RISK_DRIVER_LABELS = {
     "average_below_60": "Average 50-59%",
     "failed_3_plus": "3+ failed modules",
     "failed_2": "2 failed modules",
-    "failed_1": "1 failed module",
+    "failed_1": "1 carried module",
     "carrying_multi": "2+ carried modules",
     "carrying_1": "1 carried module",
     "decision_alert": "Adverse decision",

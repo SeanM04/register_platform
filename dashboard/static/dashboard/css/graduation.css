@@ -966,6 +966,18 @@
     font-size: 0.8rem;
 }
 
+.home-drilldown-status {
+    font-weight: 700;
+}
+
+.home-drilldown-status.is-on-time {
+    color: #16a34a;
+}
+
+.home-drilldown-status.is-delayed {
+    color: #dc2626;
+}
+
 /* Student Row Clickable */
 .graduation-students-table tbody tr {
     cursor: pointer;

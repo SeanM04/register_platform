@@ -313,10 +313,13 @@ def _build_student_histories(faculty: Optional[str] = None) -> List[Dict[str, An
             zip(student_records, ordered_registrations),
             start=1,
         ):
+            department = registration.programme.department if registration.programme else None
             record["faculty_name"] = registration.programme.department.faculty.name
+            record["department_name"] = department.name if department else "Unknown"
             record["period_name"] = registration.period.name
             record["period_year"] = registration.period.academic_year
             record["period_semester"] = registration.period.semester
+            record["academic_level_label"] = f"Year {registration.period.academic_year}, Semester {registration.period.semester}"
             record["chronological_progression_index"] = chronological_index
             record["relative_programme_progression_index"] = _relative_programme_progression(
                 record,

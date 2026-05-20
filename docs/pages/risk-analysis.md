@@ -70,6 +70,8 @@ flowchart TD
 - The page-level `Action Register` is paginated at `10` students per page.
 - `Prev` and `Next` on the `Action Register` should preserve the current filter
   scope while moving through the register.
+- In the driver summary, a single failed module and a single carried module are
+  grouped together and displayed as `1 carried module`.
 
 ## Maintenance Checklist
 

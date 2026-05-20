@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from ..models import CourseResult, Registration, Student
 from ..test_support import DashboardFixtureMixin
-from .services import format_risk_monitor_drivers
+from .services import assess_student_risk, format_risk_monitor_drivers
 
 
 @override_settings(
@@ -182,6 +182,57 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
             format_risk_monitor_drivers("average below 50%"),
             "Performance needs support",
         )
+
+    def test_single_failed_module_is_grouped_under_one_carried_module(self):
+        failed_only_student = Student.objects.create(
+            registration_number="REG301",
+            first_names="Tafadzwa",
+            surname="Moyo",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        failed_only_registration = Registration.objects.create(
+            external_id=301,
+            student=failed_only_student,
+            programme=self.science_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(
+            registration=failed_only_registration,
+            course=self.course,
+            mark=45,
+        )
+
+        carrying_only_student = Student.objects.create(
+            registration_number="REG302",
+            first_names="Tanaka",
+            surname="Dube",
+            gender="Male",
+            place_of_birth="Mutare",
+        )
+        carrying_only_registration = Registration.objects.create(
+            external_id=302,
+            student=carrying_only_student,
+            programme=self.science_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=carrying_only_registration,
+            course=self.course,
+            mark=72,
+        )
+
+        failed_assessment = assess_student_risk([failed_only_registration])
+        carrying_assessment = assess_student_risk([carrying_only_registration])
+
+        self.assertIn("carrying_1", failed_assessment["risk_driver_tags"])
+        self.assertNotIn("failed_1", failed_assessment["risk_driver_tags"])
+        self.assertIn("1 carried module", failed_assessment["risk_drivers"])
+        self.assertEqual(carrying_assessment["risk_driver_tags"], ["carrying_1"])
 
     def test_risk_payload_supplies_rule_based_card_narratives_by_default(self):
         """Risk payload should expose deterministic narratives when AI is off."""

@@ -668,7 +668,7 @@ class GraduationAnalysis {
             if (params.dataIndex !== undefined && topRows[params.dataIndex]) {
                 const programme = topRows[params.dataIndex];
                 if (programme.programme_name) {
-                    this.openDrillDown('programme_load', programme.programme_name);
+                    this.openDrillDown('graduation_programmes', programme.programme_name);
                 }
             }
         });
@@ -782,7 +782,7 @@ class GraduationAnalysis {
         chart.off('click').on('click', (params) => {
             console.log("DEBUG: cohort graduation chart clicked:", params);
             if (params.data && params.data.raw && params.data.raw.original_cohort_label) {
-                this.openDrillDown('cohorts', params.data.raw.original_cohort_label);
+                this.openDrillDown('graduation_cohorts', params.data.raw.original_cohort_label);
             }
         });
     }
@@ -1199,7 +1199,7 @@ class GraduationAnalysis {
             if (params.dataIndex !== undefined && topRows[params.dataIndex]) {
                 const programme = topRows[params.dataIndex];
                 if (programme.programme_name) {
-                    this.openDrillDown('programme_load', programme.programme_name);
+                    this.openDrillDown('readiness_programmes', programme.programme_name);
                 }
             }
         });
@@ -1314,7 +1314,7 @@ class GraduationAnalysis {
             if (params.dataIndex !== undefined && sortedRows[params.dataIndex]) {
                 const cohort = sortedRows[params.dataIndex];
                 if (cohort.effective_cohort_label) {
-                    this.openDrillDown('cohorts', cohort.effective_cohort_label);
+                    this.openDrillDown('readiness_cohorts', cohort.effective_cohort_label);
                 }
             }
         });

@@ -106,8 +106,8 @@ def assess_student_risk(registrations):
         risk_driver_tags.append("failed_2")
     elif failed_courses == 1:
         risk_score += 1
-        risk_drivers.append("1 failed module")
-        risk_driver_tags.append("failed_1")
+        risk_drivers.append("1 carried module")
+        risk_driver_tags.append("carrying_1")
 
     if carrying >= 2:
         risk_score += 2
