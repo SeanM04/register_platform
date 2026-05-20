@@ -183,7 +183,7 @@ def risk_payload(request):
 
     search_query = request.GET.get("q", "").strip()
     risk_data = get_cached_risk_dashboard_data(request, search_query)
-    page_data = paginate_risk_rows(risk_data["risk_rows"], request.GET.get("page"), page_size=20)
+    page_data = paginate_risk_rows(risk_data["risk_rows"], request.GET.get("page"), page_size=10)
 
     return JsonResponse(
         {

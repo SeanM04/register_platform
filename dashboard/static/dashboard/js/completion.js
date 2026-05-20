@@ -20,7 +20,7 @@ class CompletionAnalysis {
         this.currentNarratives = {};
         this.narrativeDiagnostics = {};
         this.currentPage = 1;
-        this.itemsPerPage = 12;
+        this.itemsPerPage = 10;
         this.chartInstances = {};
         this.currentFilters = this.getFiltersFromURL();
 

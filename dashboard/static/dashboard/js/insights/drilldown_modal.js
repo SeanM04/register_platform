@@ -3,6 +3,18 @@ import { escapeTooltipHtml } from "./shared.js?v=20260412-insights-shell01";
 const DRILLDOWN_MODAL_ID = "insights-drilldown-modal";
 let lastFocusedElement = null;
 
+const getStudentNameSortKey = (fullName = "") => {
+    const normalized = String(fullName || "").trim().replace(/\s+/g, " ");
+    if (!normalized) {
+        return { surname: "", givenNames: "" };
+    }
+    const parts = normalized.split(" ");
+    return {
+        surname: String(parts[parts.length - 1] || "").toLowerCase(),
+        givenNames: String(parts.slice(0, -1).join(" ") || "").toLowerCase(),
+    };
+};
+
 const getDisplayValue = (value) => {
     if (value === null || value === undefined || value === "") {
         return "—";
@@ -76,13 +88,15 @@ const buildTableHtml = (columns, rows, totalCount) => {
 
     const sortedRows = rows.length 
         ? [...rows].sort((a, b) => {
-            const getLastName = (row) => {
-                const fullName = String(row?.[columns[0]?.key] || "").trim();
-                const parts = fullName.split(/\s+/);
-                return parts[parts.length - 1].toLowerCase();
-            };
-
-            return getLastName(a).localeCompare(getLastName(b));
+            const aName = getStudentNameSortKey(a?.[columns[0]?.key] || "");
+            const bName = getStudentNameSortKey(b?.[columns[0]?.key] || "");
+            return (
+                aName.surname.localeCompare(bName.surname)
+                || aName.givenNames.localeCompare(bName.givenNames)
+                || String(a?.registration_number || a?.regnum || a?.detail_slug || "").localeCompare(
+                    String(b?.registration_number || b?.regnum || b?.detail_slug || "")
+                )
+            );
         })
         : [];
 

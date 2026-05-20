@@ -32,7 +32,10 @@ class CompletionViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(data["kpis"]["gender_distribution"]["female"], 1)
         self.assertEqual(data["kpis"]["gender_distribution"]["male"], 1)
         self.assertEqual(len(data["students"]), 2)
-        self.assertEqual(data["students"][0]["regnum"], self.student_primary.registration_number)
+        self.assertEqual(
+            [row["regnum"] for row in data["students"]],
+            [self.student_secondary.registration_number, self.student_primary.registration_number],
+        )
         self.assertTrue(data["charts"]["cohort_completion"])
         self.assertTrue(data["charts"]["programme_completion"])
         self.assertIn("zero_completion_drivers", data["charts"])

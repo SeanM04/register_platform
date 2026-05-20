@@ -3,6 +3,18 @@ import { escapeTooltipHtml } from "./shared.js?v=20260414-risk-drilldown01";
 const DRILLDOWN_MODAL_ID = "risk-drilldown-modal";
 let lastFocusedElement = null;
 
+const getStudentNameSortKey = (fullName = "") => {
+    const normalized = String(fullName || "").trim().replace(/\s+/g, " ");
+    if (!normalized) {
+        return { surname: "", givenNames: "" };
+    }
+    const parts = normalized.split(" ");
+    return {
+        surname: String(parts[parts.length - 1] || "").toLowerCase(),
+        givenNames: String(parts.slice(0, -1).join(" ") || "").toLowerCase(),
+    };
+};
+
 const getDisplayValue = (value) => {
     if (value === 0) {
         return "0";
@@ -41,13 +53,15 @@ const buildTableBodyHtml = (payload = {}) => {
 
     const rows = Array.isArray(payload.rows)
         ? [...payload.rows].sort((a, b) => {
-            const getLastName = (row) => {
-                const fullName = String(row?.[firstColumnKey] || "").trim();
-                const parts = fullName.split(/\s+/);
-                return parts[parts.length - 1].toLowerCase();
-            };
-
-            return getLastName(a).localeCompare(getLastName(b));
+            const aName = getStudentNameSortKey(a?.[firstColumnKey] || "");
+            const bName = getStudentNameSortKey(b?.[firstColumnKey] || "");
+            return (
+                aName.surname.localeCompare(bName.surname)
+                || aName.givenNames.localeCompare(bName.givenNames)
+                || String(a?.registration_number || a?.regnum || a?.detail_slug || "").localeCompare(
+                    String(b?.registration_number || b?.regnum || b?.detail_slug || "")
+                )
+            );
         })
         : [];
 
@@ -67,16 +81,7 @@ const buildTableBodyHtml = (payload = {}) => {
     const rowsHtml = rows.length
         ? rows.map((row) => {
             const cellsHtml = columns.map((column, columnIndex) => {
-                let value = getDisplayValue(row?.[column.key]);
-
-// If it's the FIRST column (student name), swap to "Last First"
-if (columnIndex === 0) {
-    const parts = String(value || "").trim().split(/\s+/);
-    if (parts.length > 1) {
-        const lastName = parts.pop();
-        value = `${lastName} ${parts.join(" ")}`;
-    }
-}
+                const value = getDisplayValue(row?.[column.key]);
 
 const cellValue = escapeTooltipHtml(value);
                 const detailUrl = String(row?.detail_url || "").trim();

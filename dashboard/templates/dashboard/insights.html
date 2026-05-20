@@ -301,6 +301,10 @@
                     <div class="insight-flagged-list">
                         <div class="insight-empty-state">Loading flagged students.</div>
                     </div>
+                    <div class="insight-flagged-footer">
+                        <p class="insight-flagged-results" id="insight-flagged-results"></p>
+                        <nav class="insight-flagged-pagination" id="insight-flagged-pagination" aria-label="Students needing attention pages"></nav>
+                    </div>
                 </article>
             </div>
         </section>
@@ -311,7 +315,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260420-kpi-note-fix01"></script>
+<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260520-flagged-pagination01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

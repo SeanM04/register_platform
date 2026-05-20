@@ -660,6 +660,58 @@
     line-height: 1.55;
 }
 
+.insight-flagged-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-top: 0.35rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid #edf2f7;
+}
+
+.insight-flagged-results {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.insight-flagged-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.insight-flagged-pagination-info {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.insight-flagged-pagination-button {
+    padding: 0.48rem 0.8rem;
+    border: 1px solid rgba(13, 50, 93, 0.16);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.insight-flagged-pagination-button:hover:not(:disabled) {
+    background: #f4f8fb;
+    border-color: rgba(13, 50, 93, 0.24);
+    transform: translateY(-1px);
+}
+
+.insight-flagged-pagination-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .insight-card:fullscreen,
 .insight-card.is-fullscreen {
     display: flex;
@@ -727,6 +779,16 @@
         flex-direction: column;
         align-items: flex-start;
         grid-template-columns: 1fr;
+    }
+
+    .insight-flagged-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .insight-flagged-pagination {
+        justify-content: space-between;
+        flex-wrap: wrap;
     }
 
     .insight-chart-canvas {

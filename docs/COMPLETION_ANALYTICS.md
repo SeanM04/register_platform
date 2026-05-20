@@ -176,6 +176,10 @@ The table uses each student's latest visible record and shows:
 - zero-completion reason
 - completion rate
 
+The page-level `Completion Rate Details` table is paginated in `10`-student
+pages on the frontend. Its header row is sticky so the column labels stay
+visible while the user scrolls through the current page.
+
 ## Views Layer
 
 The page controller lives in `dashboard/completion/views.py`.
@@ -274,6 +278,7 @@ Responsibilities:
 - render KPI values
 - render ECharts charts
 - render the student table and CSV export
+- paginate the `Completion Rate Details` table in `10`-row pages
 - fetch optional narratives
 - show a visible diagnostics banner for loading, AI success, fallback, or endpoint failure
 - render chart-footer badges as either `AI` or `Guidance`
@@ -316,6 +321,7 @@ Responsibilities:
 - AI and guidance pill styling
 - diagnostics status styling
 - table styling
+- sticky completion-table header styling
 
 ## Chart Notes and Diagnostics
 

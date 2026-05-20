@@ -25,6 +25,16 @@ def _safe_rate(numerator: float, denominator: float) -> float:
     return round((numerator / denominator) * 100, 0)
 
 
+def _student_name_sort_key(name: str, regnum: str = "") -> tuple[str, str, str]:
+    text = " ".join(str(name or "").strip().split())
+    if not text:
+        return ("", "", str(regnum or "").lower())
+    parts = text.split(" ")
+    surname = parts[-1].lower()
+    given_names = " ".join(parts[:-1]).lower()
+    return (surname, given_names, str(regnum or "").lower())
+
+
 def _target_period_from_programme(programme_name: str, student_regnum: str = None) -> int:
     # Check cache first
     cache_key = (str(programme_name or ""), student_regnum)
@@ -470,7 +480,9 @@ def get_graduation_page_data(
             }
         )
 
-    graduated_students.sort(key=lambda row: (row["student_name"], row["regnum"]))
+    graduated_students.sort(
+        key=lambda row: _student_name_sort_key(row["student_name"], row["regnum"])
+    )
     if not latest_visible_profiles:
         return _empty_graduation_payload()
 

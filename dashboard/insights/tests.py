@@ -95,6 +95,32 @@ class InsightViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(distribution_rows[3]["count"], 0)
         self.assertEqual(driver_rows, [])
 
+    def test_insights_payload_returns_full_flagged_student_list(self):
+        extra_student = Student.objects.create(
+            registration_number="REG203",
+            first_names="Sipho",
+            surname="Ncube",
+            gender="Male",
+            place_of_birth="Bulawayo",
+        )
+        extra_registration = Registration.objects.create(
+            external_id=203,
+            student=extra_student,
+            programme=self.commerce_programme,
+            period=self.period_2026,
+            decision="discontinue",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=extra_registration, course=self.course, mark=42)
+
+        payload = self.client.get(
+            reverse("dashboard:insights-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+
+        self.assertEqual(payload["flagged_total"], 3)
+        self.assertEqual(len(payload["flagged_students"]), 3)
+
     def test_insights_drilldown_paginates_student_rows(self):
         low_risk_student_a = Student.objects.create(
             registration_number="REG201",

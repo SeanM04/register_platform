@@ -36,6 +36,16 @@ def _normalise_gender(value: str) -> str:
     return "other"
 
 
+def _student_name_sort_key(name: str, regnum: str = "") -> tuple[str, str, str]:
+    text = " ".join(str(name or "").strip().split())
+    if not text:
+        return ("", "", str(regnum or "").lower())
+    parts = text.split(" ")
+    surname = parts[-1].lower()
+    given_names = " ".join(parts[:-1]).lower()
+    return (surname, given_names, str(regnum or "").lower())
+
+
 def _extract_period_year(period_name: str) -> str:
     match = re.search(r"(20\d{2})", str(period_name or ""))
     return match.group(1) if match else ""
@@ -509,7 +519,9 @@ def get_completion_page_data(
             )
         )
 
-    latest_visible_profiles.sort(key=lambda row: (row["student_name"], row["regnum"]))
+    latest_visible_profiles.sort(
+        key=lambda row: _student_name_sort_key(row["student_name"], row["regnum"])
+    )
 
     gender_distribution = {"male": 0, "female": 0, "other": 0}
     for profile in latest_visible_profiles:

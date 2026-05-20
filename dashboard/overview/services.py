@@ -958,9 +958,23 @@ def _build_progress_drilldown_payload(request, registrations, bucket_key, page, 
             "registration": registration
         }
     
-    # Convert to list and sort by name
+    def _student_name_sort_key(student_name, regnum):
+        text = " ".join(str(student_name or "").strip().split())
+        if not text:
+            return ("", "", str(regnum or "").lower())
+        parts = text.split(" ")
+        surname = parts[-1].lower()
+        given_names = " ".join(parts[:-1]).lower()
+        return (surname, given_names, str(regnum or "").lower())
+
+    # Convert to list and sort by surname then first names
     unique_student_list = list(unique_students.values())
-    unique_student_list.sort(key=lambda x: x["student"].full_name)
+    unique_student_list.sort(
+        key=lambda x: _student_name_sort_key(
+            x["student"].full_name,
+            x["student"].registration_number,
+        )
+    )
     
     # Apply pagination to unique students
     total_count = len(unique_student_list)

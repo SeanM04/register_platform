@@ -93,6 +93,7 @@ Covers:
 - effective cohort shifting logic
 - cumulative cohort-timeline heatmap behavior
 - completion payload and narratives endpoints
+- completion details table pagination at `10` rows with a sticky header
 - frontend chart rendering and chart footer badge states
 - troubleshooting for stale routes, missing endpoints, and fallback guidance
 
@@ -104,6 +105,14 @@ Current note:
 
 - report `%` outputs are rounded to whole numbers before they reach the page
 - report `Avg Mark` values are also rounded to whole numbers for display
+
+### Risk And Insights Table Notes
+
+Current note:
+
+- the Risk `Action Register` now paginates at `10` rows per page
+- `Insights -> Students Needing Attention` now shows the full flagged queue in
+  `10`-row pages with `Prev` and `Next`
 
 ### Graduation Analytics
 

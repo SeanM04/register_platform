@@ -19,6 +19,7 @@ For non-technical users, this page answers:
 - Which faculty or trigger is driving the watchlist?
 - What action should teams consider next?
 - Which students need attention under the current filter?
+- How do I move through the full attention queue 10 students at a time?
 
 For technical users, the page is intentionally payload-driven. The initial shell
 loads quickly, and `/metrics/insights/payload/` supplies the final cards, chart
@@ -67,6 +68,10 @@ flowchart TD
   loading copy once real data has arrived.
 - The primary takeaway should be written as an action-oriented summary.
 - The student table should match the same filter scope shown in the topbar.
+- `Students Needing Attention` now uses the full flagged-student list from the
+  payload instead of a short preview.
+- The attention queue is paginated at `10` students per page with page-level
+  `Prev` and `Next` controls.
 
 ## Maintenance Checklist
 

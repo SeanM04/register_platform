@@ -72,6 +72,32 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(risk_levels[self.student_secondary.full_name], "High Risk")
         self.assertEqual(active_labels, ["Risk"])
 
+    def test_risk_payload_orders_rows_by_surname(self):
+        self._add_low_risk_student(regnum="REG013", external_id=13)
+
+        response = self.client.get(reverse("dashboard:risk-payload"))
+        rows = response.json()["register"]["rows"]
+        names = [row["name"] for row in rows]
+
+        self.assertEqual(
+            names,
+            sorted(
+                names,
+                key=lambda value: (value.split()[-1].lower(), " ".join(value.split()[:-1]).lower()),
+            ),
+        )
+
+    def test_risk_payload_action_register_uses_ten_rows_per_page(self):
+        for index in range(3, 14):
+            self._add_low_risk_student(regnum=f"REG0{index}", external_id=index + 1)
+
+        payload = self.client.get(reverse("dashboard:risk-payload")).json()
+        register = payload["register"]
+
+        self.assertEqual(register["page_size"], 10)
+        self.assertEqual(len(register["rows"]), 10)
+        self.assertTrue(register["has_next"])
+
     def test_risk_payload_supplies_story_chart_rows(self):
         """Risk payload should expose the distribution, driver, level, and programme chart payloads."""
 

@@ -62,6 +62,31 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(data["charts"]["faculty_graduation_rate"])
         self.assertTrue(data["charts"]["graduation_timing"])
 
+    def test_graduation_payload_sorts_students_by_surname(self):
+        second_graduate = Student.objects.create(
+            registration_number="REG004",
+            first_names="Alice",
+            surname="Anderson",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        Registration.objects.create(
+            external_id=5,
+            student=second_graduate,
+            programme=self.science_programme,
+            period=self.period_2028,
+            decision="graduated",
+            carrying=0,
+        )
+
+        response = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        regnums = [row["regnum"] for row in response.json()["data"]["students"]]
+        self.assertEqual(regnums, [second_graduate.registration_number, self.graduating_student.registration_number])
+
     def test_graduation_drilldown_returns_filtered_student_rows(self):
         response = self.client.get(
             reverse("dashboard:graduation-drilldown"),

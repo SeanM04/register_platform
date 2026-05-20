@@ -544,7 +544,11 @@ def _report_at_risk(year, period, faculty, threshold, cap=MAX_ROWS):
             total_courses=Count("id"),
         )
         .filter(avg_mark__lt=threshold)
-        .order_by("avg_mark")
+        .order_by(
+            "registration__student__surname",
+            "registration__student__first_names",
+            "registration__student__registration_number",
+        )
     )
     total_db_rows = grouped.count()
     rows = [_build_at_risk_row(r) for r in grouped[:cap]]

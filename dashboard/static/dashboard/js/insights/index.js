@@ -37,6 +37,8 @@ const fetchJson = async (endpoint) => {
     return response.json();
 };
 
+const FLAGGED_STUDENTS_PAGE_SIZE = 10;
+
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
         .map((controller) => controller.getChart())
@@ -128,8 +130,10 @@ const renderConfidenceRows = (container, rows = []) => {
     `).join("").trim();
 };
 
-const renderFlaggedStudents = (context, flaggedStudents = [], flaggedTotal = 0) => {
+const renderFlaggedStudents = (context, flaggedStudents = [], flaggedTotal = 0, page = 1) => {
     const { flaggedCopy, flaggedList, root } = context.elements;
+    const pagination = document.getElementById("insight-flagged-pagination");
+    const resultsMeta = document.getElementById("insight-flagged-results");
     if (!flaggedList) {
         return;
     }
@@ -140,13 +144,24 @@ const renderFlaggedStudents = (context, flaggedStudents = [], flaggedTotal = 0) 
             : "No students currently need closer academic attention in the visible scope.";
     }
 
+    const totalPages = Math.max(1, Math.ceil(flaggedStudents.length / FLAGGED_STUDENTS_PAGE_SIZE));
+    const currentPage = Math.min(Math.max(Number(page) || 1, 1), totalPages);
+    const startIndex = (currentPage - 1) * FLAGGED_STUDENTS_PAGE_SIZE;
+    const paginatedStudents = flaggedStudents.slice(startIndex, startIndex + FLAGGED_STUDENTS_PAGE_SIZE);
+
     if (!flaggedStudents.length) {
         flaggedList.innerHTML = `<div class="insight-empty-state">No students are currently flagged in the selected insight scope.</div>`;
+        if (resultsMeta) {
+            resultsMeta.textContent = "No students currently need closer academic attention.";
+        }
+        if (pagination) {
+            pagination.innerHTML = "";
+        }
         return;
     }
 
     const studentDetailPrefix = root?.dataset.studentDetailPrefix || "/students/";
-    flaggedList.innerHTML = flaggedStudents.map((student) => `
+    flaggedList.innerHTML = paginatedStudents.map((student) => `
         <a class="insight-flagged-item" href="${escapeTooltipHtml(`${studentDetailPrefix}${encodeURIComponent(student.detail_slug)}/`)}">
             <span class="insight-flagged-body">
                 <span class="insight-flagged-name">${escapeTooltipHtml(student.name)}</span>
@@ -155,6 +170,31 @@ const renderFlaggedStudents = (context, flaggedStudents = [], flaggedTotal = 0) 
             <span class="insight-risk-badge insight-risk-badge-${escapeTooltipHtml(student.risk_key)}">${escapeTooltipHtml(student.risk_level)}</span>
         </a>
     `).join("").trim();
+
+    if (resultsMeta) {
+        const visibleStart = startIndex + 1;
+        const visibleEnd = Math.min(startIndex + FLAGGED_STUDENTS_PAGE_SIZE, flaggedStudents.length);
+        resultsMeta.textContent = `Showing ${visibleStart}-${visibleEnd} of ${flaggedStudents.length} students`;
+    }
+
+    if (pagination) {
+        const previousDisabled = currentPage <= 1 ? "disabled" : "";
+        const nextDisabled = currentPage >= totalPages ? "disabled" : "";
+        pagination.innerHTML = `
+            <button class="insight-flagged-pagination-button" type="button" data-flagged-page="${currentPage - 1}" ${previousDisabled}>Prev</button>
+            <span class="insight-flagged-pagination-info">Page ${currentPage} of ${totalPages}</span>
+            <button class="insight-flagged-pagination-button" type="button" data-flagged-page="${currentPage + 1}" ${nextDisabled}>Next</button>
+        `.trim();
+
+        pagination.querySelectorAll("[data-flagged-page]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const nextPage = Number(button.dataset.flaggedPage);
+                if (!Number.isNaN(nextPage)) {
+                    renderFlaggedStudents(context, flaggedStudents, flaggedTotal, nextPage);
+                }
+            });
+        });
+    }
 };
 
 const setInsightShellErrorState = (context) => {

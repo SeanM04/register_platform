@@ -20,6 +20,7 @@ For non-technical users, this page answers:
 - Which academic levels or programmes carry the largest watchlist pressure?
 - What is driving risk most strongly?
 - Which students should be reviewed first?
+- Which students are in the `Action Register`, 10 at a time?
 
 For technical users, risk is a feature-owned module with services, presenters,
 payload endpoints, ECharts sections, and drill-down routes.
@@ -66,6 +67,9 @@ flowchart TD
 - Drill-down pages should keep row data focused and operational.
 - The page should make the main risk driver easy to see before the user opens a
   student list.
+- The page-level `Action Register` is paginated at `10` students per page.
+- `Prev` and `Next` on the `Action Register` should preserve the current filter
+  scope while moving through the register.
 
 ## Maintenance Checklist
 

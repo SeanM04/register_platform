@@ -94,7 +94,7 @@ def _build_flagged_students(at_risk_profiles):
     """Build the compact action queue shown near the end of the page."""
 
     flagged_students = []
-    for row in at_risk_profiles[:5]:
+    for row in at_risk_profiles:
         flagged_students.append(
             {
                 "initials": build_initials(row["name"]),

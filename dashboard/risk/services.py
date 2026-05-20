@@ -188,16 +188,16 @@ def build_student_risk_profiles_from_registrations(registrations):
             }
         )
 
-    return sorted(
-        risk_rows,
-        key=lambda row: (
-            RISK_PRIORITY[row["risk_level"]],
-            -row["risk_score"],
-            -row["failed_courses"],
-            row["average_mark_sort"],
-            row["name"],
-        ),
-    )
+    def _student_name_sort_key(row):
+        text = " ".join(str(row.get("name") or "").strip().split())
+        if not text:
+            return ("", "", str(row.get("registration_number") or "").lower())
+        parts = text.split(" ")
+        surname = parts[-1].lower()
+        given_names = " ".join(parts[:-1]).lower()
+        return (surname, given_names, str(row.get("registration_number") or "").lower())
+
+    return sorted(risk_rows, key=_student_name_sort_key)
 
 
 def build_student_risk_profiles(request, search_query=""):

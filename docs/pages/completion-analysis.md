@@ -21,6 +21,7 @@ For non-technical users, this page answers:
 - Which programmes have stronger or weaker completion?
 - Why are students sitting at zero completion?
 - How many students have shifted into later effective cohorts?
+- Which students make up the current completion table, 10 at a time?
 
 For technical users, the page is built around shared completion rules in
 `services/completion_rules.py` and payload construction in
@@ -116,6 +117,9 @@ is preserved even when the raw imported stage fields are noisy or offset.
 - Programme labels should be shortened in charts but preserved in tooltips.
 - Chart footers should show the AI pill only when AI generated the narrative;
   otherwise they should show guidance.
+- The `Completion Rate Details` table is paginated at `10` students per page.
+- The completion table header is sticky so column labels remain visible while
+  scrolling.
 
 ## Maintenance Checklist
 

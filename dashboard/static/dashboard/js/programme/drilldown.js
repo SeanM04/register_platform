@@ -3,6 +3,18 @@
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeProgrammeDrillDownToken = 0;
 
+const getStudentNameSortKey = (fullName = "") => {
+    const normalized = String(fullName || "").trim().replace(/\s+/g, " ");
+    if (!normalized) {
+        return { surname: "", givenNames: "" };
+    }
+    const parts = normalized.split(" ");
+    return {
+        surname: String(parts[parts.length - 1] || "").toLowerCase(),
+        givenNames: String(parts.slice(0, -1).join(" ") || "").toLowerCase(),
+    };
+};
+
 const removeExistingProgrammeDrillDownModal = () => {
     document.querySelectorAll('.risk-drilldown-modal').forEach((modal) => {
         modal.remove();
@@ -136,13 +148,15 @@ const showProgrammeDrillDownModal = (payload, onPageChange = null) => {
     if (payload.rows && payload.rows.length > 0) {
         // Sort rows by last name
         const sortedRows = [...payload.rows].sort((a, b) => {
-            const getLastName = (row) => {
-                const fullName = String(row?.name || "").trim();
-                const parts = fullName.split(/\s+/);
-                return parts[parts.length - 1].toLowerCase();
-            };
-
-            return getLastName(a).localeCompare(getLastName(b));
+            const aName = getStudentNameSortKey(a?.name || "");
+            const bName = getStudentNameSortKey(b?.name || "");
+            return (
+                aName.surname.localeCompare(bName.surname)
+                || aName.givenNames.localeCompare(bName.givenNames)
+                || String(a?.registration_number || a?.regnum || a?.detail_slug || "").localeCompare(
+                    String(b?.registration_number || b?.regnum || b?.detail_slug || "")
+                )
+            );
         });
         
         sortedRows.forEach(row => {
