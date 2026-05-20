@@ -23,6 +23,18 @@ For non-technical users, this page answers:
 For technical users, the demographics feature owns its backend services, AI
 narratives, ECharts sections, and Leaflet origin map.
 
+The year-distribution chart now follows the same cumulative cohort-timeline
+logic as the Completion Analysis heatmap:
+
+- the active topbar cohort period is resolved first
+- each visible registration is mapped to its intake-relative progression stage
+- the chart then collapses semester stages into parent years
+
+Example:
+
+- `Y1 S1` and `Y1 S2` both roll up under `Year 1`
+- `Y2 S1` and `Y2 S2` both roll up under `Year 2`
+
 ## Page Architecture
 
 ```mermaid
@@ -64,9 +76,13 @@ flowchart TD
 - Map coordinates must be validated before rendering markers.
 - Empty map states should explain that no location data matched the current
   filters.
+- When a topbar cohort period is selected, the year-distribution bars should
+  match the completion heatmap after collapsing semester stages into years.
 
 ## Maintenance Checklist
 
 - Keep location normalization and map fallbacks conservative.
+- Keep `build_registration_pk_to_progression_year_map()` aligned with the
+  shared completion progression mapping.
 - Run `python manage.py test dashboard.demographics.tests` after data-shaping or
   narrative changes.

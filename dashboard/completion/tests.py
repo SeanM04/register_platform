@@ -206,6 +206,400 @@ class CompletionViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(zero_student["completion_rate"], 0.0)
         self.assertEqual(zero_student["zero_completion_reason"], "Failed 4+ courses")
 
+    def test_completion_payload_shows_only_actual_stages_present_in_selected_cohort_period(self):
+        period_2060_first = AcademicPeriod.objects.create(
+            external_id=206001,
+            academic_year="1",
+            semester="1",
+            name="2060 Jan - June",
+        )
+        period_2060_second = AcademicPeriod.objects.create(
+            external_id=206002,
+            academic_year="1",
+            semester="2",
+            name="2060 July - December",
+        )
+        period_2061_first = AcademicPeriod.objects.create(
+            external_id=206101,
+            academic_year="2",
+            semester="1",
+            name="2061 Jan - June",
+        )
+        student = Student.objects.create(
+            registration_number="REG006",
+            first_names="Linda",
+            surname="Dube",
+            gender="Female",
+            place_of_birth="Gweru",
+        )
+        first_registration = Registration.objects.create(
+            external_id=20,
+            student=student,
+            programme=self.science_programme,
+            period=period_2060_first,
+            decision="proceed",
+            carrying=0,
+        )
+        second_registration = Registration.objects.create(
+            external_id=21,
+            student=student,
+            programme=self.science_programme,
+            period=period_2060_second,
+            decision="proceed",
+            carrying=0,
+        )
+        third_registration = Registration.objects.create(
+            external_id=22,
+            student=student,
+            programme=self.science_programme,
+            period=period_2061_first,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=first_registration, course=self.course, mark=80)
+        CourseResult.objects.create(registration=second_registration, course=self.course, mark=75)
+        CourseResult.objects.create(registration=third_registration, course=self.course, mark=70)
+
+        response = self.client.get(
+            reverse("dashboard:completion-payload"),
+            {"year": "2060", "period": "Jan - June"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        data = response.json()["data"]
+        cohort_rows = [
+            row for row in data["charts"]["cohort_completion"]
+            if row["effective_cohort_label"] == "2060 Jan - June"
+            and row["student_count"] > 0
+        ]
+        self.assertEqual(
+            [(row["progression_period"], row["progression_label"]) for row in cohort_rows],
+            [(1, "Y1 S1")],
+        )
+
+    def test_completion_payload_does_not_pull_later_period_stages_into_selected_cohort_row(self):
+        intake_period = AcademicPeriod.objects.create(
+            external_id=203001,
+            academic_year="1",
+            semester="1",
+            name="2030 Jan - June",
+        )
+        second_stage_period = AcademicPeriod.objects.create(
+            external_id=203002,
+            academic_year="1",
+            semester="2",
+            name="2030 July - December",
+        )
+        fourth_stage_period = AcademicPeriod.objects.create(
+            external_id=203101,
+            academic_year="2",
+            semester="2",
+            name="2031 Jan - June",
+        )
+
+        continuous_student = Student.objects.create(
+            registration_number="REG008",
+            first_names="Anele",
+            surname="Ncube",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        skipped_stage_student = Student.objects.create(
+            registration_number="REG009",
+            first_names="Brian",
+            surname="Sithole",
+            gender="Male",
+            place_of_birth="Gweru",
+        )
+
+        registrations = [
+            Registration.objects.create(
+                external_id=30,
+                student=continuous_student,
+                programme=self.science_programme,
+                period=intake_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=31,
+                student=continuous_student,
+                programme=self.science_programme,
+                period=second_stage_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=32,
+                student=continuous_student,
+                programme=self.science_programme,
+                period=fourth_stage_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=33,
+                student=skipped_stage_student,
+                programme=self.science_programme,
+                period=intake_period,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=34,
+                student=skipped_stage_student,
+                programme=self.science_programme,
+                period=fourth_stage_period,
+                decision="proceed",
+                carrying=0,
+            ),
+        ]
+        for registration in registrations:
+            CourseResult.objects.create(registration=registration, course=self.course, mark=72)
+
+        response = self.client.get(
+            reverse("dashboard:completion-payload"),
+            {"year": "2030", "period": "Jan - June"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        data = response.json()["data"]
+        cohort_rows = [
+            row for row in data["charts"]["cohort_completion"]
+            if row["effective_cohort_label"] == "2030 Jan - June"
+            and row["student_count"] > 0
+        ]
+
+        self.assertEqual(
+            [(row["progression_period"], row["progression_label"], row["student_count"]) for row in cohort_rows],
+            [(1, "Y1 S1", 2)],
+        )
+
+    def test_completion_payload_keeps_actual_database_stage_labels_for_filtered_cohort(self):
+        intake_period = AcademicPeriod.objects.create(
+            external_id=204001,
+            academic_year="1",
+            semester="1",
+            name="2040 Jan - June",
+        )
+        later_period = AcademicPeriod.objects.create(
+            external_id=204501,
+            academic_year="5",
+            semester="1",
+            name="2045 Jan - June",
+        )
+        student = Student.objects.create(
+            registration_number="REG010",
+            first_names="Faith",
+            surname="Mhlanga",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        first_registration = Registration.objects.create(
+            external_id=40,
+            student=student,
+            programme=self.science_programme,
+            period=intake_period,
+            decision="proceed",
+            carrying=0,
+        )
+        later_registration = Registration.objects.create(
+            external_id=41,
+            student=student,
+            programme=self.science_programme,
+            period=later_period,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=first_registration, course=self.course, mark=76)
+        CourseResult.objects.create(registration=later_registration, course=self.course, mark=71)
+
+        response = self.client.get(
+            reverse("dashboard:completion-payload"),
+            {"year": "2040", "period": "Jan - June"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        data = response.json()["data"]
+        cohort_rows = [
+            row for row in data["charts"]["cohort_completion"]
+            if row["effective_cohort_label"] == "2040 Jan - June"
+            and row["student_count"] > 0
+        ]
+
+        self.assertEqual(
+            [(row["progression_period"], row["progression_label"]) for row in cohort_rows],
+            [(1, "Y1 S1")],
+        )
+
+    def test_completion_payload_builds_cumulative_progression_by_cohort_timeline(self):
+        period_y1s1 = AcademicPeriod.objects.create(
+            external_id=205001,
+            academic_year="1",
+            semester="1",
+            name="2050 Jan - June",
+        )
+        period_y1s2 = AcademicPeriod.objects.create(
+            external_id=205002,
+            academic_year="1",
+            semester="2",
+            name="2050 July - December",
+        )
+        period_y2s1 = AcademicPeriod.objects.create(
+            external_id=205101,
+            academic_year="2",
+            semester="1",
+            name="2051 Jan - June",
+        )
+
+        intake_a = Student.objects.create(
+            registration_number="REG011",
+            first_names="Alice",
+            surname="Moyo",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        intake_b = Student.objects.create(
+            registration_number="REG012",
+            first_names="Bongani",
+            surname="Dube",
+            gender="Male",
+            place_of_birth="Bulawayo",
+        )
+        intake_c = Student.objects.create(
+            registration_number="REG013",
+            first_names="Chipo",
+            surname="Ncube",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+
+        registrations = [
+            Registration.objects.create(
+                external_id=50,
+                student=intake_a,
+                programme=self.science_programme,
+                period=period_y1s1,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=51,
+                student=intake_a,
+                programme=self.science_programme,
+                period=period_y1s2,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=52,
+                student=intake_a,
+                programme=self.science_programme,
+                period=period_y2s1,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=53,
+                student=intake_b,
+                programme=self.science_programme,
+                period=period_y1s2,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=54,
+                student=intake_b,
+                programme=self.science_programme,
+                period=period_y2s1,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=55,
+                student=intake_c,
+                programme=self.science_programme,
+                period=period_y2s1,
+                decision="proceed",
+                carrying=0,
+            ),
+        ]
+        for registration, mark in zip(registrations, [78, 75, 72, 69, 74, 81]):
+            CourseResult.objects.create(registration=registration, course=self.course, mark=mark)
+
+        response = self.client.get(
+            reverse("dashboard:completion-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        data = response.json()["data"]
+
+        def rows_for(label):
+            return [
+                row for row in data["charts"]["cohort_completion"]
+                if row["effective_cohort_label"] == label and row["student_count"] > 0
+            ]
+
+        self.assertEqual(
+            [(row["progression_period"], row["progression_label"]) for row in rows_for("2050 Jan - June")],
+            [(1, "Y1 S1")],
+        )
+        self.assertEqual(
+            [(row["progression_period"], row["progression_label"]) for row in rows_for("2050 July - December")],
+            [(1, "Y1 S1"), (2, "Y1 S2")],
+        )
+        self.assertEqual(
+            [(row["progression_period"], row["progression_label"]) for row in rows_for("2051 Jan - June")],
+            [(1, "Y1 S1"), (2, "Y1 S2"), (3, "Y2 S1")],
+        )
+
+    def test_completion_cohort_drilldown_uses_original_cohort_membership(self):
+        period_2026_second = AcademicPeriod.objects.create(
+            external_id=202602,
+            academic_year="1",
+            semester="2",
+            name="2026 July - December",
+        )
+        student = Student.objects.create(
+            registration_number="REG007",
+            first_names="Nothando",
+            surname="Moyo",
+            gender="Female",
+            place_of_birth="Bulawayo",
+        )
+        first_registration = Registration.objects.create(
+            external_id=23,
+            student=student,
+            programme=self.science_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=0,
+        )
+        second_registration = Registration.objects.create(
+            external_id=24,
+            student=student,
+            programme=self.science_programme,
+            period=period_2026_second,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=first_registration, course=self.course, mark=78)
+        CourseResult.objects.create(registration=second_registration, course=self.course, mark=71)
+
+        response = self.client.get(
+            reverse("dashboard:completion-drilldown"),
+            {
+                "chart_key": "cohorts",
+                "bucket_key": "2026 Jan - June",
+                "year": "2026",
+                "period": "Jan - June",
+            },
+        )
+
+        payload = response.json()["data"]
+        names = [row["name"] for row in payload["rows"]]
+        self.assertIn(student.full_name, names)
+
 
 class CompletionRuleTests(TestCase):
     """Verify the documented completion rule helpers."""

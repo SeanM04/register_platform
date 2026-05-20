@@ -27,6 +27,10 @@ This folder contains implementation notes and operational guidance for the regis
   Landing dashboard layout, filter bar, and drill-down behavior
 - [COMPLETION_ANALYTICS.md](COMPLETION_ANALYTICS.md)
   Completion rules, effective cohorts, narratives, and frontend wiring
+- [pages/students.md](pages/students.md)
+  Student detail display rules, repeat-semester grouping, and profile behavior
+- [pages/demographics.md](pages/demographics.md)
+  Demographic charts, cohort-aware year distribution, and map behavior
 - [GRADUATION_ANALYTICS.md](GRADUATION_ANALYTICS.md)
   Graduation rules, effective cohorts, narratives, and frontend wiring
 
@@ -87,9 +91,19 @@ Covers:
 
 - documented completion and zero-completion rules
 - effective cohort shifting logic
+- cumulative cohort-timeline heatmap behavior
 - completion payload and narratives endpoints
 - frontend chart rendering and chart footer badge states
 - troubleshooting for stale routes, missing endpoints, and fallback guidance
+
+### Reports
+
+File: `dashboard/reports/views.py`
+
+Current note:
+
+- report `%` outputs are rounded to whole numbers before they reach the page
+- report `Avg Mark` values are also rounded to whole numbers for display
 
 ### Graduation Analytics
 

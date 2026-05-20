@@ -7,6 +7,15 @@ import re
 PASS_MARK = 50
 
 
+def _registration_results(registration):
+    """Return course results, preferring prefetched results when present."""
+
+    prefetched_results = getattr(registration, "prefetched_course_results", None)
+    if prefetched_results is not None:
+        return prefetched_results
+    return registration.course_results.all()
+
+
 def _coerce_int(value, default=None):
     """Return the first integer found in a value."""
 
@@ -82,7 +91,7 @@ def _registration_course_codes(registration):
     """Return normalized course codes attached to a registration."""
 
     codes = []
-    for result in registration.course_results.all():
+    for result in _registration_results(registration):
         course = getattr(result, "course", None)
         code = str(getattr(course, "code", "") or "").strip()
         if code:
@@ -170,7 +179,7 @@ def build_student_timeline(registrations):
             )
 
         registration_results = sorted(
-            registration.course_results.all(),
+            _registration_results(registration),
             key=lambda result: (
                 getattr(getattr(result, "course", None), "code", "") or "",
                 getattr(getattr(result, "course", None), "name", "") or "",
@@ -269,7 +278,14 @@ def build_student_timeline(registrations):
             row["semester_label"] = format_semester_label(display_semester)
             row["academic_level_label"] = format_academic_level_label(display_year, display_semester)
 
-        group["period_display"] = " / ".join(group["period_names"]) if group["period_names"] else group["semester_label"]
+        has_repeat_history = any(row["is_repeat_attempt"] for row in group["results"])
+        latest_period_name = str(
+            getattr(getattr(group["latest_registration"], "period", None), "name", "") or ""
+        ).strip()
+        if has_repeat_history and group["period_names"]:
+            group["period_display"] = " / ".join(group["period_names"])
+        else:
+            group["period_display"] = latest_period_name or (group["period_names"][-1] if group["period_names"] else group["semester_label"])
         group.pop("course_codes", None)
 
     for attempts in course_attempts.values():

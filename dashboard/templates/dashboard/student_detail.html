@@ -164,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </thead>
                     <tbody>
 {% if student.result_sections %}
+                            {% if student.show_result_sections %}
                             {% for section in student.result_sections %}
                             <tr class="results-section-row">
                                 <td colspan="5" class="results-section-title">{{ section.period_name }}</td>
@@ -189,6 +190,28 @@ document.addEventListener('DOMContentLoaded', function() {
                             </tr>
                             {% endfor %}
                             {% endfor %}
+                            {% else %}
+                            {% for result in student.results %}
+                            <tr>
+                                <td class="results-td-code">{{ result.code }}</td>
+                                <td class="results-td-course">
+                                    <div class="results-course-name">{{ result.course }}</div>
+                                    {% if result.attempt_tags %}
+                                    <div class="results-attempt-tags">
+                                        {% for tag in result.attempt_tags %}
+                                        <span class="results-attempt-tag{% if tag == 'Carried' %} is-carried{% elif tag == 'Repeated' %} is-repeat{% elif tag == 'First Attempt' %} is-first{% endif %}">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ result.period }}</td>
+                                <td class="results-td-mark{% if result.is_failing %} failing-mark{% endif %}">{% if result.mark == '--' %}--{% else %}{{ result.mark }}%{% endif %}</td>
+                                <td>
+                                    <span class="results-status-pill{% if result.is_awaiting %} is-awaiting{% elif result.is_failing %} is-fail{% else %} is-pass{% endif %}">{{ result.status }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
                         {% else %}
                             <tr>
                                 <td colspan="5" class="empty-results">

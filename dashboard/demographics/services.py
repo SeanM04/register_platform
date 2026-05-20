@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from ..models import Registration
+from services.completion_service import _build_progression_overrides, _cohort_period_map
 from ..student_history import extract_registration_year_semester
 from ..views import build_registration_filter_q, normalize_gender_key
 from .constants import BIRTH_LOCATION_MAP_ALIASES, BIRTH_LOCATION_MAP_POINTS
@@ -62,7 +63,7 @@ def _calculate_age_from_dob(date_of_birth):
 
 def build_registration_pk_to_progression_year_map(student_ids):
     """
-    Map each registration PK to the official programme year stored on the period.
+    Map each registration PK to the cohort-timeline progression year used by completion heatmaps.
     """
     if not student_ids:
         return {}
@@ -71,10 +72,23 @@ def build_registration_pk_to_progression_year_map(student_ids):
         .select_related("period")
         .order_by("student_id", "period__external_id", "id")
     )
-    return {
-        registration.id: extract_registration_year_semester(registration)[0]
-        for registration in rows
-    }
+    period_index_map, _, _ = _cohort_period_map()
+    registrations_by_student = defaultdict(list)
+    for registration in rows:
+        registrations_by_student[registration.student_id].append(registration)
+
+    progression_year_map = {}
+    for student_registrations in registrations_by_student.values():
+        progression_overrides = _build_progression_overrides(student_registrations, period_index_map)
+        for registration in student_registrations:
+            override = progression_overrides.get(registration.id, {})
+            progression_index = override.get("progression_period_index")
+            if progression_index is not None:
+                progression_year_map[registration.id] = ((int(progression_index) - 1) // 2) + 1
+                continue
+            progression_year_map[registration.id] = extract_registration_year_semester(registration)[0]
+
+    return progression_year_map
 
 
 def _age_group_for_years(age):

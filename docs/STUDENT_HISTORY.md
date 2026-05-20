@@ -14,6 +14,8 @@ It is used to:
 - preserve repeat, carry, and supplementary attempt history
 - support cumulative grade calculations
 - support transcript summary totals
+- control how semester period labels are shown in the student dropdowns
+- control when repeated-semester section headers appear in the module table
 
 The file is especially important for students with:
 
@@ -74,6 +76,13 @@ It converts a flat list of registrations into grouped semester containers. Each 
 - the latest registration in the group
 - a combined period display string
 
+Two display outputs now depend on the same grouped structure:
+
+- `period_display`
+  Used by the year/semester dropdown on the student detail page
+- `result_sections`
+  Used by the modules table when repeated-level history needs to be split by period
+
 The returned structure looks like:
 
 ```python
@@ -117,6 +126,38 @@ This rule is meant to separate:
 
 - true repeat attempts of the same semester
 - new module sets that were imported with the same raw stage label
+
+## Period Label Display Rules
+
+Student detail now uses two different period-label behaviors depending on whether
+the selected displayed semester is an ordinary sitting or a repeated-history
+semester.
+
+### Dropdown period label
+
+`group["period_display"]` is built with these rules:
+
+- if the group contains repeat-history attempts, show the merged audit history
+  such as `May 2022 - August 2022 / September 2022 - December 2022`
+- otherwise show only the latest single period name for that displayed semester
+
+This avoids confusing users with joined period strings for normal semesters.
+
+### Results-table section headers
+
+The student detail modules table only shows centered period-section header rows
+when the selected displayed semester actually contains repeated or carried
+history split across more than one registration period.
+
+For ordinary students:
+
+- `result_sections` may still exist internally
+- but the template should render a flat table without centered section-title rows
+
+For repeated-level students:
+
+- the latest repeat period should be shown first
+- earlier attempts should be shown below it
 
 ## Display-Year Rebasing
 
@@ -180,6 +221,10 @@ Behavior:
 
 This prevents repeated attempts from being double-counted.
 
+On the student detail page, the displayed cumulative grade is now rounded to a
+whole number for presentation, even though the helper still returns a numeric
+average value suitable for further calculation.
+
 ## Transcript Summary
 
 Key helper:
@@ -235,8 +280,10 @@ Pay special attention to tests covering:
 
 - repeated semesters collapsing into one tab
 - repeated semester results split by period
+- ordinary semesters hiding centered section headers
 - non-contiguous imported years rebased for display
 - new module sets promoted out of repeated-semester buckets
+- non-repeat dropdown period labels showing only one period
 - transcript retake history
 
 ## Known Design Tradeoff

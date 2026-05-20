@@ -10,13 +10,14 @@ completion, zero-progress cases, and effective cohort movement.
 ## What This Page Does
 
 The Completion Analysis page measures semester progress using the documented
-completion rules. It shows completion rates by effective cohort, programme, and
-zero-completion driver.
+completion rules. It shows completion rates by visible cohort period,
+programme, and zero-completion driver.
 
 For non-technical users, this page answers:
 
 - What is the average completion rate for the visible students?
 - Which cohorts are progressing well or poorly?
+- Which visible cohort periods now contain students at each progression stage?
 - Which programmes have stronger or weaker completion?
 - Why are students sitting at zero completion?
 - How many students have shifted into later effective cohorts?
@@ -35,6 +36,9 @@ For technical users, the page is built around shared completion rules in
 - `Suspended for two semesters` shifts the next effective cohort by `+2`.
 - If no zero-completion rule applies, completion is calculated from passed
   courses over total courses.
+- Heatmap stages are displayed on a cumulative cohort timeline:
+  `Y1 S1`, `Y1 S2`, `Y2 S1`, and so on.
+- A later visible cohort period can contain several displayed stages at once.
 
 ## Page Architecture
 
@@ -87,6 +91,23 @@ flowchart TD
 - `Registration` and `CourseResult` support rule-based recalculation.
 - `Cohort`, `AcademicDecision`, and `ZeroCompletionReason` provide cohort and
   driver classification.
+
+## Cohort Timeline Note
+
+The completion heatmap does not simply trust the raw `academic_year` and
+`semester` imported on every registration row.
+
+Instead, it maps each visible registration to a displayed progression stage
+based on how far that registration is from the student's first visible intake
+period in the ordered cohort timeline.
+
+That means a manually validated cohort progression such as:
+
+- first visible period -> `Y1 S1`
+- next visible period -> `Y1 S2`
+- third visible period -> `Y2 S1`
+
+is preserved even when the raw imported stage fields are noisy or offset.
 
 ## User Experience Notes
 

@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
 
+from ..models import AcademicPeriod, CourseResult, Registration, Student
 from ..test_support import DashboardFixtureMixin
 
 
@@ -118,7 +119,6 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["male"], 0)
         self.assertEqual(metrics["female"], 1)
         self.assertEqual(metrics["birth_locations"], 1)
-
         self.assertEqual(gender_rows[0]["count"], 0)
         self.assertEqual(gender_rows[1]["count"], 1)
         self.assertEqual(gender_rows[1]["share"], "100%")
@@ -133,6 +133,8 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(programme_rows[0]["programme"], self.science_programme.name)
         self.assertEqual(programme_rows[0]["female"], 1)
         self.assertEqual(programme_rows[0]["total"], 1)
+
+    def test_demographic_metrics_endpoint_respects_visible_scope(self):
         """Demographic metrics should summarise the currently visible cohort."""
 
         response = self.client.get(
@@ -145,6 +147,116 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["male"], 0)
         self.assertEqual(metrics["female"], 1)
         self.assertEqual(metrics["birth_locations"], 1)
+
+    def test_demographic_year_distribution_uses_cohort_timeline_under_topbar_filter(self):
+        period_y1s1 = AcademicPeriod.objects.create(
+            external_id=205001,
+            academic_year="1",
+            semester="1",
+            name="2050 Jan - June",
+        )
+        period_y1s2 = AcademicPeriod.objects.create(
+            external_id=205002,
+            academic_year="1",
+            semester="2",
+            name="2050 July - December",
+        )
+        period_y2s1 = AcademicPeriod.objects.create(
+            external_id=205101,
+            academic_year="2",
+            semester="1",
+            name="2051 Jan - June",
+        )
+
+        intake_a = Student.objects.create(
+            registration_number="REG101",
+            first_names="Alice",
+            surname="Moyo",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        intake_b = Student.objects.create(
+            registration_number="REG102",
+            first_names="Brian",
+            surname="Dube",
+            gender="Male",
+            place_of_birth="Bulawayo",
+        )
+        intake_c = Student.objects.create(
+            registration_number="REG103",
+            first_names="Chipo",
+            surname="Ncube",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+
+        registrations = [
+            Registration.objects.create(
+                external_id=50,
+                student=intake_a,
+                programme=self.science_programme,
+                period=period_y1s1,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=51,
+                student=intake_a,
+                programme=self.science_programme,
+                period=period_y1s2,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=52,
+                student=intake_a,
+                programme=self.science_programme,
+                period=period_y2s1,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=53,
+                student=intake_b,
+                programme=self.science_programme,
+                period=period_y1s2,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=54,
+                student=intake_b,
+                programme=self.science_programme,
+                period=period_y2s1,
+                decision="proceed",
+                carrying=0,
+            ),
+            Registration.objects.create(
+                external_id=55,
+                student=intake_c,
+                programme=self.science_programme,
+                period=period_y2s1,
+                decision="proceed",
+                carrying=0,
+            ),
+        ]
+        for registration, mark in zip(registrations, [78, 75, 72, 69, 74, 81]):
+            CourseResult.objects.create(registration=registration, course=self.course, mark=mark)
+
+        response = self.client.get(
+            reverse("dashboard:demographic-payload"),
+            {"year": "2051", "period": "Jan - June"},
+        )
+
+        data = response.json()
+        year_rows = {row["year"]: row for row in data["year_distribution_rows"]}
+
+        self.assertEqual(year_rows["1"]["total"], 2)
+        self.assertEqual(year_rows["1"]["male"], 1)
+        self.assertEqual(year_rows["1"]["female"], 1)
+        self.assertEqual(year_rows["2"]["total"], 1)
+        self.assertEqual(year_rows["2"]["male"], 0)
+        self.assertEqual(year_rows["2"]["female"], 1)
 
     def test_demographic_narratives_endpoint_supplies_rule_based_narratives(self):
         """Demographics narratives endpoint should expose deterministic narratives when AI is off."""

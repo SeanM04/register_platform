@@ -470,10 +470,59 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
 
         self.assertEqual(response.context["student"]["term_name"], "September 2022 - December 2022")
         result_sections = response.context["student"]["result_sections"]
+        self.assertTrue(response.context["student"]["show_result_sections"])
         self.assertEqual(
             [section["period_name"] for section in result_sections],
             ["September 2022 - December 2022", "May 2022 - August 2022"],
         )
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        active_semester = next(
+            option
+            for tab in year_tabs
+            for option in tab["semesters"]
+            if option["is_active"]
+        )
+        self.assertEqual(active_semester["period_name"], "May 2022 - August 2022 / September 2022 - December 2022")
+
+    def test_student_detail_hides_period_section_headers_for_non_repeating_stage(self):
+        """Standard semester tables should render without the centered period section header rows."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+            {"faculty": self.science_faculty.name},
+        )
+
+        self.assertFalse(response.context["student"]["show_result_sections"])
+        self.assertNotContains(response, 'class="results-section-title"')
+
+    def test_student_detail_rounds_cumulative_grade_to_whole_number(self):
+        """Cumulative grade on student detail should display as a whole number."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+            {"faculty": self.science_faculty.name},
+        )
+
+        self.assertEqual(response.context["student"]["cumulative_grade"], 78)
+
+    def test_reports_page_rounds_percentage_values_to_whole_numbers(self):
+        """Reports payload should round displayed percentage values to whole numbers."""
+
+        response = self.client.get(
+            reverse("dashboard:reports-generate"),
+            {
+                "report_type": "pass_rate",
+                "year": "1",
+                "period": "2026 Jan - June",
+                "faculty": self.science_faculty.name,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["rows"][0][5], 100)
+        self.assertEqual(payload["summary"]["Overall Pass Rate"], "100%")
+        self.assertEqual(payload["rows"][0][6], 78)
 
     def test_student_detail_promotes_new_module_set_out_of_repeated_semester_bucket(self):
         """A later same-stage registration with new modules should become the next displayed semester."""
@@ -569,6 +618,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         year_tabs = response.context["student"]["year_dropdown_tabs"]
         self.assertEqual(year_tabs[-1]["year_label"], "Year 1")
         self.assertEqual([option["label"] for option in year_tabs[-1]["semesters"]], ["Semester 2", "Semester 1"])
+        self.assertEqual(year_tabs[-1]["semesters"][0]["period_name"], "September 2022 - December 2022")
 
     def test_student_transcript_keeps_retakes_in_their_actual_semester(self):
         """Transcript rows should preserve attempt history without creating fake years."""

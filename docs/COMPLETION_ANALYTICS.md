@@ -98,24 +98,40 @@ If a registration carries a zero-completion decision, that registration stays at
 
 ### Cohort completion heatmap logic
 
-The cohort completion heatmap is generated with the following key principles:
+The completion heatmap now uses a cumulative cohort-timeline model instead of
+raw imported `academic_year` and `semester` labels.
 
-1. **Complete X-Axis**: Always shows all progression levels from Y1 S1 to Y5 S2 using `_get_all_progression_levels()`
-2. **Original Cohort Tracking**: Students are grouped by `original_cohort_label` to ensure they never change cohorts
-3. **Data-Driven Display**: 
-   - Levels with students: Show actual completion rates (rounded to 1 decimal place)
-   - Levels without students: Return `None` values for blank cells
-4. **Progression Index Calculation**: Uses formula `((year - 1) * 2) + semester` for consistent level mapping
-5. **Aggregation**: Each student contributes only once using `latest_visible_profiles`
+Key principles:
+
+1. **Rows represent visible cohort periods**
+   The row label comes from the actual registration period shown by the selected
+   completion scope.
+2. **Displayed progression is intake-relative**
+   A student's first visible registration is treated as `Y1 S1`, the next cohort
+   period as `Y1 S2`, then `Y2 S1`, and so on.
+3. **Cumulative cohort rows**
+   Later cohort rows can contain students at several displayed stages at once,
+   which is why one row can show `Y1 S1`, `Y1 S2`, `Y2 S1`, etc.
+4. **Topbar cohort filtering uses the actual selected period**
+   Selecting a year and period filters the visible registrations first, then the
+   heatmap groups those registrations by their actual visible cohort period.
+5. **Empty cells stay blank**
+   Cells with no students return `None` so the frontend renders a blank tile.
 
 #### Heatmap Data Structure
+
 ```python
-# For each cohort and progression level
 if profiles:
     completion_rate = round(sum(profile["completion_rate"] for profile in profiles) / len(profiles), 1)
 else:
-    completion_rate = None  # Creates blank space in frontend
+    completion_rate = None
 ```
+
+Important distinction:
+
+- completion percentage values still keep one decimal place internally
+- progression labels use the cohort timeline (`Y1 S1` ... `Y5 S2`)
+- the heatmap row itself is still the real visible cohort period label
 
 ### Page aggregation
 
@@ -137,7 +153,10 @@ else:
 #### Charts
 
 - `cohort_completion`
-  Average completion by original cohort and progression point. The heatmap displays all progression levels from Y1 S1 to Y5 S2 on the x-axis for complete timeline visibility. Cells with actual student data show real completion rates, while cells without students display as blank spaces (light gray) using `null` values.
+  Average completion by visible cohort period and cumulative progression point.
+  The x-axis displays the cohort-timeline stages from `Y1 S1` onward. Cells with
+  actual student data show completion rates, while cells without students are
+  returned as `null` so the frontend leaves them blank.
 - `programme_completion`
   Average completion by programme, plus zero-completion share
 - `zero_completion_drivers`

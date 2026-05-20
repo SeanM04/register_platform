@@ -409,7 +409,7 @@ def _cr_base_qs(year, period, faculty):
 
 
 def _pct(numerator, denominator):
-    return round(numerator / denominator * 100, 1) if denominator else 0
+    return round(numerator / denominator * 100) if denominator else 0
 
 
 # ---------------------------------------------------------------------------
@@ -463,7 +463,7 @@ def _report_enrolment(year, period, faculty, threshold, cap=MAX_ROWS):  # noqa: 
 def _build_pass_rate_row(r, threshold):
     total  = r["total"]
     passed = r["passed"]
-    avg    = round(float(r["avg_mark"]), 1) if r["avg_mark"] is not None else "—"
+    avg    = round(float(r["avg_mark"])) if r["avg_mark"] is not None else "—"
     return [
         _d(r["registration__programme__department__faculty__name"]),
         _d(r["registration__programme__name"]),
@@ -521,7 +521,7 @@ def _build_at_risk_row(r):
         _d(r["registration__programme__name"]),
         _d(r["registration__programme__department__faculty__name"]),
         _d(r["registration__period__name"]),
-        round(float(r["avg_mark"]), 1),
+        round(float(r["avg_mark"])),
         r["courses_failed"],
         r["total_courses"],
     ]
@@ -576,7 +576,7 @@ def _build_programme_rows(reg_map, cr_map, threshold, keys):
         cr   = cr_map.get((prog, fac), {})
         tot  = cr.get("total_results", 0)
         pas  = cr.get("passed", 0)
-        avg  = round(float(cr["avg_mark"]), 1) if cr.get("avg_mark") is not None else "—"
+        avg  = round(float(cr["avg_mark"])) if cr.get("avg_mark") is not None else "—"
         rows.append([
             _d(prog), _d(fac),
             reg.get("students", 0), reg.get("enrolments", 0),

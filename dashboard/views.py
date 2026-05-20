@@ -1048,6 +1048,7 @@ def student_detail(request, slug):
 
     results = []
     result_sections = []
+    show_result_sections = False
     if selected_group:
         registrations_in_display_order = sorted(
             selected_group["registrations"],
@@ -1086,6 +1087,11 @@ def student_detail(request, slug):
                 }
             )
             results.extend(registration_rows)
+
+        show_result_sections = len(result_sections) > 1 and any(
+            row["is_repeat_attempt"] or row["is_carried_attempt"]
+            for row in results
+        )
 
     year_dropdown_tabs = []
     years_present = sorted({group["year"] for group in groups}, reverse=True)
@@ -1192,11 +1198,12 @@ def student_detail(request, slug):
         "age_category": student_record.age_category,
         "date_of_birth": student_record.date_of_birth.strftime('%B %d, %Y') if student_record.date_of_birth else None,
         "place_of_birth": student_record.place_of_birth,
-        "cumulative_grade": round(average_mark, 1),
+        "cumulative_grade": round(average_mark),
         "term_tabs": term_tabs,
         "year_dropdown_tabs": year_dropdown_tabs,
         "results": results,
         "result_sections": result_sections,
+        "show_result_sections": show_result_sections,
         "show_empty_content": show_empty_content,
         "no_data_message": empty_state_message,
         "selected_filters": {

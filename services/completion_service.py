@@ -64,6 +64,10 @@ def _build_stage_label(registration: Registration) -> str:
     return registration.period.name
 
 
+def _display_stage_label(year: int, semester: int) -> str:
+    return f"Year {year}, Semester {semester}"
+
+
 def _progression_period_index(registration: Registration) -> Optional[int]:
     year = _parse_int(registration.period.academic_year)
     semester = _parse_int(registration.period.semester)
@@ -78,6 +82,12 @@ def _progression_period_label(registration: Registration) -> str:
     if year and semester:
         return f"Y{year} S{semester}"
     return registration.period.name
+
+
+def _progression_label_from_index(index: int) -> str:
+    year = ((index - 1) // 2) + 1
+    semester = 1 if index % 2 == 1 else 2
+    return f"Y{year} S{semester}"
 
 
 def _display_decision(decision: str) -> str:
@@ -172,6 +182,7 @@ def _build_student_records(
     registrations: List[Registration],
     period_index_map: Dict[int, int],
     ordered_periods: List[AcademicPeriod],
+    progression_overrides: Optional[Dict[int, Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     ordered_registrations = sorted(
         registrations,
@@ -183,6 +194,7 @@ def _build_student_records(
     original_registration = ordered_registrations[0]
     original_cohort_label = _cohort_label(original_registration.period)
     original_cohort_external_id = original_registration.period.external_id
+    original_cohort_sort_index = period_index_map.get(original_cohort_external_id, 0)
     shift_offset = 0
     records: List[Dict[str, Any]] = []
 
@@ -198,7 +210,7 @@ def _build_student_records(
             period_index_map,
             ordered_periods,
         )
-
+        progression_override = (progression_overrides or {}).get(registration.id, {})
         records.append(
             {
                 "registration_id": registration.id,
@@ -206,21 +218,22 @@ def _build_student_records(
                 "student_name": registration.student.full_name,
                 "programme_id": registration.programme.external_id or registration.programme.id,
                 "programme_name": registration.programme.normalized_name,
-                "academic_stage": _build_stage_label(registration),
+                "academic_stage": progression_override.get("academic_stage") or _build_stage_label(registration),
                 "decision": _display_decision(registration.decision),
                 "decision_key": str(registration.decision or "").strip().lower(),
                 "completion_rate": completion_rate,
                 "zero_completion_reason": _zero_completion_reason(marks, registration.decision),
                 "gender_key": _normalise_gender(registration.student.gender),
                 "period_external_id": registration.period.external_id,
-                "progression_period_index": _progression_period_index(registration),
-                "progression_period_label": _progression_period_label(registration),
+                "progression_period_index": progression_override.get("progression_period_index", _progression_period_index(registration)),
+                "progression_period_label": progression_override.get("progression_period_label") or _progression_period_label(registration),
                 "detail_slug": registration.student.registration_number.lower(),
                 "effective_cohort_external_id": effective_cohort_external_id,
                 "effective_cohort_label": effective_cohort_label,
                 "effective_cohort_sort_index": cohort_sort_index,
                 "original_cohort_external_id": original_cohort_external_id,
                 "original_cohort_label": original_cohort_label,
+                "original_cohort_sort_index": original_cohort_sort_index,
                 "cumulative_shift": shift_offset,
                 "is_shifted": shift_offset > 0,
                 "shift_rule_label": decision_rule.label if decision_rule else None,
@@ -242,18 +255,58 @@ def _registration_matches_filters(
     year: Optional[str] = None,
     period: Optional[str] = None,
 ) -> bool:
-    if year and _extract_period_year(registration.period.name) != str(year).strip():
+    return _period_name_matches_filters(registration.period.name, year=year, period=period)
+
+
+def _period_name_matches_filters(
+    period_name: str,
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+) -> bool:
+    if year and _extract_period_year(period_name) != str(year).strip():
         return False
 
     if period:
         normalized_period = str(period).strip().lower()
         if normalized_period not in {
-            str(registration.period.name or "").strip().lower(),
-            _format_period_label(registration.period.name).lower(),
+            str(period_name or "").strip().lower(),
+            _format_period_label(period_name).lower(),
         }:
             return False
 
     return True
+
+
+def _build_progression_overrides(
+    registrations: List[Registration],
+    period_index_map: Dict[int, int],
+) -> Dict[int, Dict[str, Any]]:
+    ordered_registrations = sorted(
+        registrations,
+        key=lambda registration: (registration.period.external_id, registration.id),
+    )
+    if not ordered_registrations:
+        return {}
+
+    first_registration = ordered_registrations[0]
+    first_period_index = period_index_map.get(first_registration.period.external_id)
+    if first_period_index is None:
+        return {}
+
+    overrides: Dict[int, Dict[str, Any]] = {}
+    for registration in ordered_registrations:
+        current_period_index = period_index_map.get(registration.period.external_id)
+        if current_period_index is None:
+            continue
+        progression_index = min((current_period_index - first_period_index) + 1, 10)
+        display_year = ((progression_index - 1) // 2) + 1
+        display_semester = 1 if progression_index % 2 == 1 else 2
+        overrides[registration.id] = {
+            "progression_period_index": progression_index,
+            "progression_period_label": _progression_label_from_index(progression_index),
+            "academic_stage": _display_stage_label(display_year, display_semester),
+        }
+    return overrides
 
 
 def _get_registration_history(faculty: Optional[str] = None) -> List[Registration]:
@@ -266,7 +319,13 @@ def _get_registration_history(faculty: Optional[str] = None) -> List[Registratio
         .prefetch_related(
             Prefetch(
                 "course_results",
-                queryset=CourseResult.objects.only("registration_id", "mark"),
+                queryset=CourseResult.objects.select_related("course").only(
+                    "registration_id",
+                    "mark",
+                    "attendance_type",
+                    "course__code",
+                    "course__name",
+                ),
                 to_attr="prefetched_course_results",
             )
         )
@@ -296,6 +355,79 @@ def _empty_completion_payload() -> Dict[str, Any]:
         },
         "students": [],
     }
+
+
+def _build_student_histories(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    registration_history = _get_registration_history(faculty=faculty)
+    if not registration_history:
+        return []
+
+    period_index_map, ordered_periods, _ = _cohort_period_map()
+    registrations_by_student: Dict[str, List[Registration]] = defaultdict(list)
+    for registration in registration_history:
+        registrations_by_student[registration.student.registration_number].append(registration)
+
+    student_histories: List[Dict[str, Any]] = []
+    for student_registrations in registrations_by_student.values():
+        ordered_registrations = sorted(
+            student_registrations,
+            key=lambda registration: (registration.period.external_id, registration.id),
+        )
+        if not ordered_registrations:
+            continue
+        original_registration = ordered_registrations[0]
+
+        progression_overrides = _build_progression_overrides(
+            ordered_registrations,
+            period_index_map,
+        )
+        student_records = _build_student_records(
+            ordered_registrations,
+            period_index_map,
+            ordered_periods,
+            progression_overrides=progression_overrides,
+        )
+        if not student_records:
+            continue
+
+        latest_by_progression: Dict[int, Dict[str, Any]] = {}
+        for record, registration in zip(student_records, ordered_registrations):
+            record["period_name"] = registration.period.name
+            record["period_label"] = _format_period_label(registration.period.name)
+            record["faculty_name"] = registration.programme.department.faculty.name
+            progression_index = record.get("progression_period_index")
+            if progression_index is None:
+                continue
+            existing = latest_by_progression.get(int(progression_index))
+            if existing is None or (
+                record["period_external_id"],
+                record["registration_id"],
+            ) > (
+                existing["period_external_id"],
+                existing["registration_id"],
+            ):
+                latest_by_progression[int(progression_index)] = record
+
+        student_histories.append(
+            {
+                "regnum": original_registration.student.registration_number,
+                "original_registration": original_registration,
+                "original_cohort_label": student_records[0]["original_cohort_label"],
+                "original_cohort_sort_index": student_records[0]["original_cohort_sort_index"],
+                "records": student_records,
+                "latest_record": max(
+                    student_records,
+                    key=lambda record: (record["period_external_id"], record["registration_id"]),
+                ),
+                "latest_by_progression": latest_by_progression,
+            }
+        )
+
+    return student_histories
 
 
 def count_students_in_y1s1_august_december_2025() -> Dict[str, Any]:
@@ -357,41 +489,25 @@ def get_completion_page_data(
 ) -> Dict[str, Any]:
     """Return completion analytics using documented zero-completion and shift rules."""
 
-    registration_history = _get_registration_history(faculty=faculty)
-    if not registration_history:
+    student_histories = _build_student_histories(year=year, period=period, faculty=faculty)
+    if not student_histories:
         return _empty_completion_payload()
 
-    period_index_map, ordered_periods, _ = _cohort_period_map()
-    registrations_by_student: Dict[str, List[Registration]] = defaultdict(list)
-    for registration in registration_history:
-        registrations_by_student[registration.student.registration_number].append(registration)
-
-    latest_visible_profiles: List[Dict[str, Any]] = []
-
-    for student_registrations in registrations_by_student.values():
-        student_records = _build_student_records(student_registrations, period_index_map, ordered_periods)
-        for record, registration in zip(student_records, sorted(student_registrations, key=lambda row: (row.period.external_id, row.id))):
-            record["period_name"] = registration.period.name
-            record["period_label"] = _format_period_label(registration.period.name)
-
+    latest_visible_profiles = []
+    for history in student_histories:
         visible_records = [
             record
-            for record, registration in zip(student_records, sorted(student_registrations, key=lambda row: (row.period.external_id, row.id)))
-            if _registration_matches_filters(registration, year=year, period=period)
-        ]
+            for record in history["records"]
+            if _period_name_matches_filters(record["period_name"], year=year, period=period)
+        ] if (year or period) else history["records"]
         if not visible_records:
             continue
-
-        # Use only the latest visible record for each student (no duplication)
         latest_visible_profiles.append(
             max(
                 visible_records,
-                key=lambda row: (row["period_external_id"], row["registration_id"]),
+                key=lambda record: (record["period_external_id"], record["registration_id"]),
             )
         )
-
-    if not latest_visible_profiles:
-        return _empty_completion_payload()
 
     latest_visible_profiles.sort(key=lambda row: (row["student_name"], row["regnum"]))
 
@@ -403,69 +519,61 @@ def get_completion_page_data(
     completion_sum = sum(profile["completion_rate"] for profile in latest_visible_profiles)
     completion_average = round(completion_sum / len(latest_visible_profiles), 1) if latest_visible_profiles else 0.0
 
-    # Refactor: Use ORIGINAL cohort as the only cohort key - students never change cohorts
-    # Use only progression_index for lookup to avoid label matching issues
     cohort_groups: Dict[tuple[str, int], List[Dict[str, Any]]] = defaultdict(list)
-    for profile in latest_visible_profiles:
-        cohort_groups[
-            (
-                profile["original_cohort_label"],           # Original cohort - students stay here forever
-                profile["progression_period_index"],       # Current progression level (standardized)
-            )
-        ].append(profile)
-
-    # Get all possible progression levels (Y1 S1 to Y5 S2) for complete x-axis
-    all_progression_levels = _get_all_progression_levels()
-    
-    # Also get actual progression levels from data
-    actual_progression_levels = sorted({
-        (profile["progression_period_index"], profile["progression_period_label"])
-        for profile in latest_visible_profiles
-    })
-    
-    # Use ALL standard levels for complete x-axis, but only show data where it exists
-    combined_progression_levels = all_progression_levels
-    
-    # Get all unique cohorts from the data
-    all_cohorts = sorted({profile["original_cohort_label"] for profile in latest_visible_profiles})
-    
+    all_cohorts: List[tuple[str, int]] = []
+    seen_cohorts = set()
+    for history in student_histories:
+        for record in history["records"]:
+            if year or period:
+                if not _period_name_matches_filters(record["period_name"], year=year, period=period):
+                    continue
+            cohort_label = record["period_name"]
+            cohort_sort_index = record["period_external_id"]
+            if cohort_label not in seen_cohorts:
+                seen_cohorts.add(cohort_label)
+                all_cohorts.append((cohort_label, cohort_sort_index))
+            progression_index = record.get("progression_period_index")
+            if progression_index is None:
+                continue
+            cohort_groups[(cohort_label, progression_index)].append(record)
+    progression_label_map = {
+        record["progression_period_index"]: record["progression_period_label"]
+        for history in student_histories
+        for record in history["records"]
+        if record.get("progression_period_index") is not None
+        and (not (year or period) or _period_name_matches_filters(record["period_name"], year=year, period=period))
+    }
+    combined_progression_levels = [
+        (index, progression_label_map.get(index, f"P{index}"))
+        for index in sorted(progression_label_map.keys())
+    ]
+    all_cohorts.sort(key=lambda item: item[1])
     cohort_completion = []
-    
-    # For each cohort, include ALL progression levels (complete x-axis)
-    for cohort_label in all_cohorts:
-        cohort_sort_index = _get_cohort_sort_index(cohort_label)
-        
-        # For each progression level (complete x-axis), create a record
+
+    for cohort_label, cohort_sort_index in all_cohorts:
         for progression_index, progression_label in combined_progression_levels:
-            # Find students at this specific level in this cohort (using simplified key)
             profiles = cohort_groups.get((cohort_label, progression_index), [])
-            
-            # Calculate completion metrics (blank for levels without students)
             if profiles:
                 completion_sum = sum(profile["completion_rate"] for profile in profiles)
                 completion_rate = round(completion_sum / len(profiles), 1) if profiles else 0.0
                 zero_completion_count = sum(1 for profile in profiles if profile["completion_rate"] == 0.0)
                 student_count = len(profiles)
             else:
-                # No students at this level for this cohort - leave blank
-                completion_rate = None  # None will create blank space in heatmap
+                completion_rate = None
                 zero_completion_count = 0
                 student_count = 0
-            
             cohort_completion.append(
                 {
-                    "effective_cohort_label": cohort_label,           # Keep field name for API compatibility
-                    "effective_cohort_sort_index": cohort_sort_index,  # Derive from cohort label
+                    "effective_cohort_label": cohort_label,
+                    "effective_cohort_sort_index": cohort_sort_index,
                     "progression_period": progression_index,
                     "progression_label": progression_label,
                     "completion_rate": completion_rate,
-                    "student_count": student_count,  # 0 if no students at this level (blank cell)
+                    "student_count": student_count,
                     "zero_completion_count": zero_completion_count,
                     "pass_share_rate": _safe_rate(student_count - zero_completion_count, student_count),
                 }
             )
-    
-    # Sort final output: by cohort first, then by progression level
     cohort_completion.sort(key=lambda row: (row["effective_cohort_sort_index"], row["progression_period"]))
 
     # Refactor: Use latest_visible_profiles ONLY for consistent aggregation
@@ -493,12 +601,12 @@ def get_completion_page_data(
         )
     programme_completion.sort(key=lambda row: row["completion_rate"], reverse=True)
 
-    # Refactor: Use latest_visible_profiles ONLY for consistent zero completion metrics
     driver_counts: Dict[str, int] = defaultdict(int)
-    for profile in latest_visible_profiles:
-        if profile["completion_rate"] != 0.0:
-            continue
-        driver_counts[profile["zero_completion_reason"] or "Zero completion"] += 1
+    for history in student_histories:
+        for record in history["records"]:
+            if record["completion_rate"] != 0.0:
+                continue
+            driver_counts[record["zero_completion_reason"] or "Zero completion"] += 1
 
     zero_completion_drivers = [
         {"label": label, "count": count}
@@ -508,7 +616,7 @@ def get_completion_page_data(
     return {
         "kpis": {
             "total_students": len(latest_visible_profiles),
-            "total_cohorts": len({profile["original_cohort_label"] for profile in latest_visible_profiles}),  # Use original cohort for consistency
+            "total_cohorts": len(all_cohorts),
             "average_completion_rate": completion_average,
             "zero_completion_students": sum(1 for profile in latest_visible_profiles if profile["completion_rate"] == 0.0),
             "shifted_students": sum(1 for profile in latest_visible_profiles if profile["is_shifted"]),

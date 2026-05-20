@@ -51,26 +51,12 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
             registrations = registrations.filter(programme__name__iexact=bucket_key)
             registrations = registrations.select_related('student', 'programme', 'programme__department')
         elif chart_key == "cohorts":
-            # Filter by effective cohort (computed field)
-            # Since effective_cohort is computed, we need to filter in Python
-            # For cohort drilldown, we should ignore the period filter since the user is selecting a specific period
-            from django.db.models import Q
-            # Remove period filter from base_filter for cohort drilldown
-            base_filter = build_registration_filter_q(request)
-            # Remove period-related filters
-            base_filter_without_period = Q()
-            for child in base_filter.children:
-                if not (child[0].startswith('period__') or child[0] == 'period'):
-                    base_filter_without_period &= Q(child)
-            registrations = Registration.objects.filter(base_filter_without_period)
-            registrations = registrations.select_related('student', 'programme', 'programme__department', 'period')
-            filtered_registrations = []
-            for registration in registrations:
-                # Compute effective cohort label similar to completion service
-                cohort_label = f"{registration.period.name}"
-                if cohort_label == bucket_key:
-                    filtered_registrations.append(registration)
-            registrations = filtered_registrations
+            registrations = registrations.filter(period__name=bucket_key).select_related(
+                'student',
+                'programme',
+                'programme__department',
+                'period',
+            )
         else:
             # Default case - return all filtered registrations
             registrations = registrations.select_related('student', 'programme', 'programme__department')

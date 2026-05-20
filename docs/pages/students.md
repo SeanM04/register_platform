@@ -27,6 +27,14 @@ filters. The year, period, and faculty dropdowns are restricted to records that
 actually exist for the selected student, and empty result years are omitted to
 avoid confusing users.
 
+The student detail page also distinguishes clearly between ordinary semesters
+and repeated-history semesters:
+
+- ordinary semesters show one period label in the dropdown and a flat modules table
+- repeated semesters can show merged period history in the dropdown
+- repeated semesters can split the modules table into separate period sections,
+  latest attempt first
+
 ## Page Architecture
 
 ```mermaid
@@ -77,6 +85,14 @@ erDiagram
 - Selecting a global year or period updates the table below to the matching
   student record.
 
+## Student Detail Display Rules
+
+- Cumulative grade is shown as a whole number on the profile card.
+- The dropdown semester label should show a single period unless that displayed
+  semester contains true repeat history.
+- The centered period-section rows in the modules table should only appear for
+  repeated or carried semester history, not for normal students.
+
 ## User Experience Notes
 
 - The page should never offer filters that cannot return data for the learner.
@@ -84,6 +100,8 @@ erDiagram
   marks, or no matching registration.
 - The current term shown in the profile card should match the selected topbar
   context.
+- The modules table should not imply multiple periods for one semester unless
+  the student actually repeated that semester.
 
 ## Maintenance Checklist
 
