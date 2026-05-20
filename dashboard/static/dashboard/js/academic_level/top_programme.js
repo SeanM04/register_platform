@@ -152,7 +152,7 @@ const buildTopProgrammeDetailOption = (programme, chartWidth = 0) => {
         grid: {
             top: 20,
             right: isCompact ? 44 : 52,
-            bottom: isCompact ? 78 : 62,
+            bottom: isCompact ? 112 : 96,
             left: isCompact ? 42 : 50,
             containLabel: true,
         },
@@ -182,6 +182,7 @@ const buildTopProgrammeDetailOption = (programme, chartWidth = 0) => {
                 lineHeight: isCompact ? 14 : 16,
                 margin: 14,
                 interval: 0,
+                rotate: 35,
                 formatter: (value) => formatAcademicLevelTick(value, isCompact),
             },
         },

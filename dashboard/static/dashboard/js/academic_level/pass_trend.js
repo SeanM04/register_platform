@@ -84,7 +84,7 @@ const buildPassTrendSeriesData = (rows) => rows.map((row) => {
 const buildPassChartOption = (rows) => ({
     ...buildAnimationConfig(rows),
     axisPointer: buildHiddenAxisPointerStyle(),
-    grid: { top: 28, right: 28, bottom: rows.length > 8 ? 88 : 40, left: 52, containLabel: true },
+    grid: { top: 28, right: 28, bottom: rows.length > 8 ? 100 : 72, left: 52, containLabel: true },
     dataZoom: buildHorizontalCategoryZoom(rows),
     tooltip: {
         ...buildTooltipBase("axis"),
@@ -112,7 +112,8 @@ const buildPassChartOption = (rows) => ({
             color: "#082340",
             fontWeight: 600,
             interval: 0,
-            rotate: rows.length > 5 ? 18 : 0,
+            rotate: rows.length > 3 ? 35 : 0,
+            margin: 16,
         },
     },
     yAxis: {
@@ -191,7 +192,7 @@ const buildPassLevelDetailOption = (
         grid: {
             top: 28,
             right: isCompact ? 34 : 40,
-            bottom: rows.length > 6 ? 112 : 92,
+            bottom: rows.length > 6 ? 128 : 108,
             left: 52,
             containLabel: true,
         },
@@ -226,6 +227,7 @@ const buildPassLevelDetailOption = (
                 margin: 14,
                 interval: 0,
                 hideOverlap: false,
+                rotate: 35,
                 formatter: (_value, index) => axisLabels[index] || "",
             },
         },
