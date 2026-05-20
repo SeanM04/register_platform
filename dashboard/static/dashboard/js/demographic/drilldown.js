@@ -254,12 +254,15 @@ export const addDemographicDrilldownHandlers = (context) => {
         if (programmeGenderChart) {
             programmeGenderChart.on('click', (params) => {
                 console.log('Programme gender chart clicked:', params);
-                // For programme gender, we need to extract programme and gender from the data
-                const data = params.data;
-                if (data && data.programme && data.gender) {
-                    const bucketKey = `${data.programme}|${data.gender}`;
-                    const label = `${data.gender.charAt(0).toUpperCase() + data.gender.slice(1)} Students in ${data.programme}`;
-                    
+                const rows = context?.data?.programmeGenderRows || [];
+                const programmeRow = rows[params.dataIndex] || null;
+                const programme = String(programmeRow?.programme || params.name || '').trim();
+                const gender = String(params.seriesName || '').trim().toLowerCase();
+
+                if (programme && (gender === "male" || gender === "female")) {
+                    const bucketKey = `${programme}|${gender}`;
+                    const label = `${gender.charAt(0).toUpperCase() + gender.slice(1)} Students in ${programme}`;
+
                     openDemographicDrillDown(context, {
                         chartKey: "programme_gender",
                         bucketKey: bucketKey,

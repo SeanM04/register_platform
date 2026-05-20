@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.test.utils import override_settings
 
 from ..test_support import DashboardFixtureMixin
-from ..models import AcademicPeriod, Course, CourseResult, Registration, Student
+from ..models import AcademicPeriod, Course, CourseResult, Programme, Registration, Student
 from services.completion_rules import get_zero_completion_decision, student_completion_percentage
 
 
@@ -599,6 +599,86 @@ class CompletionViewTests(DashboardFixtureMixin, TestCase):
         payload = response.json()["data"]
         names = [row["name"] for row in payload["rows"]]
         self.assertIn(student.full_name, names)
+
+    def test_completion_drilldown_paginates_programme_students(self):
+        extra_student = Student.objects.create(
+            registration_number="REG099",
+            first_names="Extra",
+            surname="Student",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        extra_registration = Registration.objects.create(
+            external_id=99,
+            student=extra_student,
+            programme=self.science_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=extra_registration, course=self.course, mark=67)
+
+        first_page = self.client.get(
+            reverse("dashboard:completion-drilldown"),
+            {
+                "chart_key": "programme_load",
+                "bucket_key": self.science_programme.name,
+                "page": 1,
+                "page_size": 1,
+            },
+        ).json()["data"]
+        second_page = self.client.get(
+            reverse("dashboard:completion-drilldown"),
+            {
+                "chart_key": "programme_load",
+                "bucket_key": self.science_programme.name,
+                "page": 2,
+                "page_size": 1,
+            },
+        ).json()["data"]
+
+        self.assertEqual(first_page["pagination"]["total_pages"], 2)
+        self.assertTrue(first_page["pagination"]["has_next"])
+        self.assertFalse(first_page["pagination"]["has_previous"])
+        self.assertFalse(second_page["pagination"]["has_next"])
+        self.assertTrue(second_page["pagination"]["has_previous"])
+        self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
+
+    def test_completion_drilldown_matches_normalized_programme_names(self):
+        engineering_programme = Programme.objects.create(
+            department=self.science_department,
+            external_id=105,
+            code="BENG-MIN",
+            name="Bachelor of Engineering in Mining And Mineral Processing Honours Degree",
+        )
+
+        student = Student.objects.create(
+            registration_number="REG105",
+            first_names="Tendai",
+            surname="Mhlanga",
+            gender="Male",
+            place_of_birth="Gweru",
+        )
+        registration = Registration.objects.create(
+            external_id=105,
+            student=student,
+            programme=engineering_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=registration, course=self.course, mark=74)
+
+        payload = self.client.get(
+            reverse("dashboard:completion-drilldown"),
+            {
+                "chart_key": "programme_load",
+                "bucket_key": engineering_programme.normalized_name,
+            },
+        ).json()["data"]
+
+        self.assertEqual(payload["rows"][0]["programme"], engineering_programme.name)
+        self.assertEqual(payload["rows"][0]["name"], student.full_name)
 
 
 class CompletionRuleTests(TestCase):

@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Registration
+from ..models import CourseResult, Registration, Student
 from ..test_support import DashboardFixtureMixin
 from .ai_insights import build_overview_fact_pack
 from .services import _calculate_first_year_retention
@@ -142,6 +142,42 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
         self.assertIn("detail_url", data["rows"][0])
         self.assertNotIn("risk_score", data["rows"][0])
         self.assertNotIn("risk_level", data["rows"][0])
+
+    def test_overview_drilldown_paginates_outcome_rows(self):
+        extra_student = Student.objects.create(
+            registration_number="REG090",
+            first_names="Extra",
+            surname="Failure",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        extra_registration = Registration.objects.create(
+            external_id=90,
+            student=extra_student,
+            programme=self.commerce_programme,
+            period=self.period_2025,
+            decision="retake",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=extra_registration,
+            course=self.course,
+            mark=32,
+        )
+
+        first_page = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "outcomes", "bucket": "failed", "page": 1, "page_size": 1},
+        ).json()
+        second_page = self.client.get(
+            reverse("dashboard:home-drilldown"),
+            {"chart": "outcomes", "bucket": "failed", "page": 2, "page_size": 1},
+        ).json()
+
+        self.assertEqual(first_page["page_count"], 2)
+        self.assertEqual(first_page["page"], 1)
+        self.assertEqual(second_page["page"], 2)
+        self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
 
     def test_overview_drilldown_rows_only_return_minimal_fields(self):
         """Drill-down rows should only include the minimal fields needed for the table."""

@@ -19,8 +19,8 @@ from ..views import (
 from .constants import OVERVIEW_SUMMARY_CARD_SPECS, PROGRESS_STATUS_CONFIG, RISK_BAND_CONFIG
 
 OVERVIEW_CACHE_TTL_SECONDS = 30
-DEFAULT_DRILLDOWN_PAGE_SIZE = 10
-MAX_DRILLDOWN_PAGE_SIZE = 10
+DEFAULT_DRILLDOWN_PAGE_SIZE = 100
+MAX_DRILLDOWN_PAGE_SIZE = 100
 
 
 def _is_first_semester_value(value):
@@ -649,6 +649,7 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
         "subtitle": f"{_format_count(len(outcome_profiles))} students in the {label.lower()} outcome slice.",
         "columns": [
             {"key": "name", "label": "Student"},
+            {"key": "registration_number", "label": "Registration Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -656,6 +657,7 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
     minimal_rows = [
         {
             "name": profile["name"],
+            "registration_number": profile["registration_number"],
             "programme": profile["programme"],
             "detail_url": profile["detail_url"],
         }
@@ -685,6 +687,7 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         minimal_rows.append(
             {
                 "name": profile["name"],
+                "registration_number": profile["registration_number"],
                 "programme": profile["programme"],
                 "detail_url": _build_student_detail_url(request, profile["detail_slug"]),
             }
@@ -695,6 +698,7 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         "subtitle": f"{_format_count(len(minimal_rows))} students in the {selected_band['label'].lower()} risk band.",
         "columns": [
             {"key": "name", "label": "Student"},
+            {"key": "registration_number", "label": "Registration Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -973,6 +977,7 @@ def _build_progress_drilldown_payload(request, registrations, bucket_key, page, 
         
         student_rows.append({
             "name": student.full_name,
+            "registration_number": reg_number,
             "programme": registration.programme.name if registration.programme else "Unassigned",
             "decision": normalize_decision_label(registration.decision),
             "detail_url": reverse("dashboard:student-detail", args=[reg_number.lower()]),
@@ -982,11 +987,27 @@ def _build_progress_drilldown_payload(request, registrations, bucket_key, page, 
     paginated_rows = student_rows
     
     return {
+        "title": f"{bucket_key.title()} Students",
+        "subtitle": f"{total_count} students match the selected progress status.",
+        "columns": [
+            {"key": "name", "label": "Student"},
+            {"key": "registration_number", "label": "Registration Number"},
+            {"key": "programme", "label": "Programme"},
+            {"key": "decision", "label": "Decision"},
+        ],
         "rows": paginated_rows,
         "total_count": total_count,
         "page": page,
         "page_size": page_size,
         "page_count": total_pages,
+        "pagination": {
+            "current_page": page,
+            "page_size": page_size,
+            "total_items": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_previous": page > 1,
+        },
     }
 
 

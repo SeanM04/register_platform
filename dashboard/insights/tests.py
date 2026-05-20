@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from ..models import CourseResult, Registration, Student
 from ..test_support import DashboardFixtureMixin
 
 
@@ -93,6 +94,63 @@ class InsightViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(distribution_rows[2]["count"], 0)
         self.assertEqual(distribution_rows[3]["count"], 0)
         self.assertEqual(driver_rows, [])
+
+    def test_insights_drilldown_paginates_student_rows(self):
+        low_risk_student_a = Student.objects.create(
+            registration_number="REG201",
+            first_names="Lindiwe",
+            surname="Moyo",
+            gender="Female",
+            place_of_birth="Gweru",
+        )
+        low_risk_student_b = Student.objects.create(
+            registration_number="REG202",
+            first_names="Nomsa",
+            surname="Dube",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        for external_id, student in [(201, low_risk_student_a), (202, low_risk_student_b)]:
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.science_programme,
+                period=self.period_2026,
+                decision="proceed",
+                carrying=0,
+            )
+            CourseResult.objects.create(registration=registration, course=self.course, mark=74)
+
+        first_page = self.client.get(
+            reverse("dashboard:insights-drilldown"),
+            {"chart": "risk_distribution", "bucket": "low", "page": 1, "page_size": 1},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+        second_page = self.client.get(
+            reverse("dashboard:insights-drilldown"),
+            {"chart": "risk_distribution", "bucket": "low", "page": 2, "page_size": 1},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+
+        self.assertEqual(first_page["page_count"], 2)
+        self.assertEqual(first_page["page"], 1)
+        self.assertEqual(second_page["page"], 2)
+        self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
+
+    def test_insights_hierarchical_drilldown_returns_departments_for_faculty(self):
+        response = self.client.get(
+            reverse("dashboard:insights-drilldown"),
+            {
+                "chart": "faculty_load",
+                "bucket": self.commerce_faculty.name,
+                "type": "departments",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+        self.assertEqual(payload["type"], "departments")
+        self.assertTrue(any(row["label"] == self.commerce_department.name for row in payload["data"]))
 
     def test_insights_payload_supplies_rule_based_card_narratives_by_default(self):
         """Insights payload should expose deterministic narratives when AI is off."""

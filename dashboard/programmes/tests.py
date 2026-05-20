@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from ..models import CourseResult, Registration
 from ..test_support import DashboardFixtureMixin
 
 
@@ -63,6 +64,49 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(payload["top_load_rows"][0]["faculty"], self.science_faculty.name)
         self.assertEqual(payload["register_meta"]["visible_count"], 1)
         self.assertEqual(payload["top_load_rows"][0]["axis_label"], self.science_programme.code)
+
+    def test_programme_drilldown_paginates_student_rows(self):
+        extra_registration = Registration.objects.create(
+            external_id=88,
+            student=self.student_secondary,
+            programme=self.science_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(
+            registration=extra_registration,
+            course=self.course,
+            mark=64,
+        )
+
+        first_page = self.client.get(
+            reverse("dashboard:programme-drilldown"),
+            {
+                "chart": "programme_load",
+                "bucket": self.science_programme.name,
+                "page": 1,
+                "page_size": 1,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+        second_page = self.client.get(
+            reverse("dashboard:programme-drilldown"),
+            {
+                "chart": "programme_load",
+                "bucket": self.science_programme.name,
+                "page": 2,
+                "page_size": 1,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+
+        self.assertEqual(first_page["pagination"]["total_pages"], 2)
+        self.assertTrue(first_page["pagination"]["has_next"])
+        self.assertFalse(first_page["pagination"]["has_previous"])
+        self.assertFalse(second_page["pagination"]["has_next"])
+        self.assertTrue(second_page["pagination"]["has_previous"])
+        self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
 
     def test_programme_payload_endpoint_sorts_programme_rows_by_query_parameters(self):
         """Programme register rows should respect sort and direction query parameters."""

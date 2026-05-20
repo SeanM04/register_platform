@@ -45,21 +45,52 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
                 decision_rule = get_zero_completion_decision(registration.decision)
                 if decision_rule and decision_rule.label == bucket_key:
                     filtered_registrations.append(registration)
-            registrations = filtered_registrations
+            registrations = sorted(
+                filtered_registrations,
+                key=lambda registration: (
+                    registration.student.registration_number,
+                    -(registration.period.external_id or 0),
+                    -registration.id,
+                ),
+            )
         elif chart_key == "programme_load":
-            # Filter by programme name
-            registrations = registrations.filter(programme__name__iexact=bucket_key)
-            registrations = registrations.select_related('student', 'programme', 'programme__department')
+            # Filter by the chart label, which uses Programme.normalized_name rather than raw name.
+            registrations = registrations.select_related(
+                'student',
+                'programme',
+                'programme__department',
+                'programme__department__faculty',
+                'period',
+            ).order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
+            normalized_bucket = str(bucket_key or "").strip().lower()
+            registrations = [
+                registration
+                for registration in registrations
+                if str(registration.programme.name or "").strip().lower() == normalized_bucket
+                or str(registration.programme.normalized_name or "").strip().lower() == normalized_bucket
+            ]
         elif chart_key == "cohorts":
             registrations = registrations.filter(period__name=bucket_key).select_related(
                 'student',
                 'programme',
                 'programme__department',
                 'period',
+            ).order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
             )
         else:
             # Default case - return all filtered registrations
-            registrations = registrations.select_related('student', 'programme', 'programme__department')
+            registrations = registrations.select_related('student', 'programme', 'programme__department').order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
         
         logger.info(f"Filtered registrations count: {len(registrations) if isinstance(registrations, list) else registrations.count()}")
         
@@ -73,7 +104,6 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
             
             # Skip if we've already processed this student
             if reg_number in seen_students:
-                logger.info(f"DEBUG: Skipping duplicate student {reg_number}")
                 continue
                 
             seen_students.add(reg_number)
@@ -88,8 +118,6 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
         
         # Convert to list for pagination
         unique_student_list = list(unique_students.values())
-        logger.info(f"DEBUG: Deduplicated {len(registrations) if isinstance(registrations, list) else registrations.count()} registrations to {len(unique_student_list)} unique students")
-        
         # Get total count for pagination (now based on unique students)
         total_count = len(unique_student_list)
         total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1

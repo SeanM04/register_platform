@@ -439,54 +439,47 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
     # URL decode the bucket key to handle special characters
     bucket_key = unquote_plus(bucket_key)
     
-    # Debug logging
-    print(f"DEBUG: Programme drilldown - chart_key='{chart_key}', bucket_key='{bucket_key}'")
-    
     try:
         # Build base registration filter
         base_filter = build_registration_filter_q(request)
         registrations = Registration.objects.filter(base_filter)
-        
-        print(f"DEBUG: Base registrations count: {registrations.count()}")
-        
+
         if chart_key == "programme_load":
             # Get students in the specified programme - use name field for matching
             registrations = registrations.filter(
                 programme__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department')
-            
-            print(f"DEBUG: Programme load filtered count: {registrations.count()}")
-            # Let's also check what programmes exist
-            from ..models import Programme
-            programmes = Programme.objects.filter(name__iexact=bucket_key)
-            print(f"DEBUG: Programmes found with name='{bucket_key}': {programmes.count()}")
-            for prog in programmes[:3]:
-                print(f"DEBUG: Programme - name: '{prog.name}', normalized_name: '{prog.normalized_name}'")
-            
+            ).select_related('student', 'programme', 'programme__department').order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
         elif chart_key == "departments":
             # Get students in the specified department
             registrations = registrations.filter(
                 programme__department__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department')
-            
-            print(f"DEBUG: Department filtered count: {registrations.count()}")
-            
+            ).select_related('student', 'programme', 'programme__department').order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
         elif chart_key == "low_pass":
             # Get students in programmes with low pass rates - use name field for matching
             registrations = registrations.filter(
                 programme__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department')
-            
-            print(f"DEBUG: Low pass filtered count: {registrations.count()}")
-            
+            ).select_related('student', 'programme', 'programme__department').order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
         elif chart_key == "performance":
             # Get students in performance chart programmes - use name field for matching
             registrations = registrations.filter(
                 programme__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department')
-            
-            print(f"DEBUG: Performance filtered count: {registrations.count()}")
-            
+            ).select_related('student', 'programme', 'programme__department').order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
         else:
             raise ValueError(f"Unsupported programme drill-down chart: {chart_key}")
         

@@ -1424,7 +1424,9 @@ class GraduationAnalysis {
 
     row.innerHTML = `
         <td class="students-td-name">
-            <span class="graduation-student-name">${escapeTooltipHtml(student.student_name || "")}</span>
+            <a class="student-link" href="/students/${encodeURIComponent(student.detail_slug || String(student.regnum || "").toLowerCase())}/" aria-label="View ${escapeTooltipHtml(student.student_name || "")} profile">
+                <span class="student-link-name">${escapeTooltipHtml(student.student_name || "")}</span>
+            </a>
         </td>
         <td>${escapeTooltipHtml(student.programme_name || "")}</td>
         <td>${escapeTooltipHtml(student.faculty || "")}</td>

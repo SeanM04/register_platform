@@ -258,6 +258,67 @@ class DemographicViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(year_rows["2"]["male"], 0)
         self.assertEqual(year_rows["2"]["female"], 1)
 
+    def test_demographic_drilldown_paginates_gender_results(self):
+        extra_student = Student.objects.create(
+            registration_number="REG104",
+            first_names="Daisy",
+            surname="Mpofu",
+            gender="Female",
+            place_of_birth="Gweru",
+        )
+        extra_registration = Registration.objects.create(
+            external_id=104,
+            student=extra_student,
+            programme=self.science_programme,
+            period=self.period_2026,
+            decision="proceed",
+            carrying=0,
+        )
+        CourseResult.objects.create(registration=extra_registration, course=self.course, mark=71)
+
+        first_page = self.client.get(
+            reverse("dashboard:demographic-drilldown"),
+            {
+                "chart": "gender",
+                "bucket": "female",
+                "page": 1,
+                "page_size": 1,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+        second_page = self.client.get(
+            reverse("dashboard:demographic-drilldown"),
+            {
+                "chart": "gender",
+                "bucket": "female",
+                "page": 2,
+                "page_size": 1,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+
+        self.assertEqual(first_page["page_count"], 2)
+        self.assertEqual(first_page["page"], 1)
+        self.assertEqual(second_page["page"], 2)
+        self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
+
+    def test_demographic_drilldown_returns_programme_gender_students(self):
+        response = self.client.get(
+            reverse("dashboard:demographic-drilldown"),
+            {
+                "chart": "programme_gender",
+                "bucket": f"{self.science_programme.name}|female",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["total_count"], 1)
+        self.assertEqual(payload["rows"][0]["gender"], "Female")
+        self.assertEqual(payload["rows"][0]["programme"], self.science_programme.name)
+
     def test_demographic_narratives_endpoint_supplies_rule_based_narratives(self):
         """Demographics narratives endpoint should expose deterministic narratives when AI is off."""
 

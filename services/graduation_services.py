@@ -188,11 +188,23 @@ def _graduation_period_label(programme_name: str, student_regnum: str = None) ->
 
 def _decision_indicates_graduation(decision: str) -> bool:
     normalized = str(decision or "").strip().lower()
-    # Check for graduation decisions per user requirements
     return any(term in normalized for term in (
-        "graduat", "complet", "award",  # Original criteria
-        "pending", "proceed", "resubmit dissertation within 3 months"  # New criteria per user requirements
+        "graduat", "complet", "award"
     ))
+
+
+def _decision_allows_inferred_graduation(decision: str) -> bool:
+    normalized = str(decision or "").strip().lower()
+    if not normalized:
+        return False
+    if _decision_indicates_graduation(normalized):
+        return True
+    return normalized == "proceed"
+
+
+def _programme_supports_inferred_graduation(programme_name: str) -> bool:
+    normalized = str(programme_name or "").strip().lower()
+    return not any(token in normalized for token in ("masters", "master", "msc"))
 
 
 def _build_completion_lookup(student_histories: List[Dict[str, Any]]) -> Dict[tuple[str, int], float]:
@@ -253,13 +265,17 @@ def _relative_programme_progression(record: Dict[str, Any], start_progression_pe
 
 
 def _is_graduated_record(record: Dict[str, Any], target_period: int, start_progression_period: Optional[int]) -> bool:
-    progression_period = _relative_programme_progression(record, start_progression_period)
     decision_key = record.get("decision_key", "")
-    
-    # Student must meet BOTH criteria: complete semesters AND have valid decision
-    if progression_period is not None and progression_period >= target_period and _decision_indicates_graduation(decision_key):
+    if _decision_indicates_graduation(decision_key):
         return True
-    return False
+
+    progression_period = _relative_programme_progression(record, start_progression_period)
+    return (
+        progression_period is not None
+        and progression_period >= target_period
+        and _programme_supports_inferred_graduation(record.get("programme_name", ""))
+        and _decision_allows_inferred_graduation(decision_key)
+    )
 
 
 def _build_student_histories(faculty: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -435,6 +451,7 @@ def get_graduation_page_data(
         graduated_students.append(
             {
                 "regnum": latest_visible["regnum"],
+                "detail_slug": str(latest_visible["regnum"] or "").lower(),
                 "student_name": latest_visible["student_name"],
                 "programme_id": latest_visible["programme_id"],
                 "programme_name": latest_visible["programme_name"],
@@ -460,9 +477,9 @@ def get_graduation_page_data(
     readiness_profiles = [
         profile
         for profile in latest_visible_profiles
-        if not profile["is_graduated"] and profile["steps_remaining"] is not None and profile["steps_remaining"] > 0
+        if not profile["is_graduated"] and profile["steps_remaining"] is not None and profile["steps_remaining"] >= 0
     ]
-    one_step_profiles = [profile for profile in readiness_profiles if profile["steps_remaining"] == 1]
+    one_step_profiles = [profile for profile in readiness_profiles if profile["steps_remaining"] <= 1]
     within_two_profiles = [profile for profile in readiness_profiles if profile["steps_remaining"] <= 2]
     graduation_like_decision_count = sum(
         1
@@ -763,6 +780,7 @@ def get_graduation_page_data(
         "students": [
             {
                 "regnum": student["regnum"],
+                "detail_slug": student["detail_slug"],
                 "student_name": student["student_name"],
                 "programme_name": student["programme_name"],
                 "department_name": student.get("department_name", "Unknown"),

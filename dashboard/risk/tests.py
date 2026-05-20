@@ -20,16 +20,16 @@ from .services import format_risk_monitor_drivers
 class RiskViewTests(DashboardFixtureMixin, TestCase):
     """Exercise risk analytics against the shared dashboard fixture."""
 
-    def _add_low_risk_student(self):
+    def _add_low_risk_student(self, regnum="REG003", external_id=4):
         low_risk_student = Student.objects.create(
-            registration_number="REG003",
-            first_names="Chipo",
-            surname="Sibanda",
+            registration_number=regnum,
+            first_names=f"Chipo{regnum[-1]}",
+            surname=f"Sibanda{regnum[-1]}",
             gender="Female",
             place_of_birth="Gweru",
         )
         low_risk_registration = Registration.objects.create(
-            external_id=4,
+            external_id=external_id,
             student=low_risk_student,
             programme=self.science_programme,
             period=self.period_2026,
@@ -124,6 +124,26 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(payload["title"], "Low Risk (0-1) Students")
         self.assertIn(low_risk_student.full_name, row_names)
         self.assertTrue(all("detail_url" in row for row in payload["rows"]))
+
+    def test_risk_drilldown_payload_supports_next_and_previous_pages(self):
+        self._add_low_risk_student("REG003", 4)
+        self._add_low_risk_student("REG004", 5)
+
+        first_page = self.client.get(
+            reverse("dashboard:risk-drilldown"),
+            {"chart": "distribution", "bucket": "low", "page": 1, "page_size": 1},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+        second_page = self.client.get(
+            reverse("dashboard:risk-drilldown"),
+            {"chart": "distribution", "bucket": "low", "page": 2, "page_size": 1},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+
+        self.assertEqual(first_page["page_count"], 2)
+        self.assertEqual(first_page["page"], 1)
+        self.assertEqual(second_page["page"], 2)
+        self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
 
     def test_risk_driver_copy_hides_redundant_average_below_50_text(self):
         """Risk rows should omit the repeated average-below-50 phrase from the table copy."""
