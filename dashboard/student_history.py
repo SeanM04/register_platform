@@ -120,14 +120,7 @@ def _course_progression_band(course_codes):
 
 
 def _registration_has_repeat_signal(registration, registration_course_codes):
-    """Return True when the registration still looks like the same repeated stage."""
-
-    if getattr(registration, "carrying", 0):
-        return True
-
-    decision_text = _decision_text(registration)
-    if any(token in decision_text for token in ("repeat", "carry", "fail", "supp", "refer")):
-        return True
+    """Return True when course-level evidence still supports the same repeated stage."""
 
     for result in _registration_results(registration):
         attendance_type = str(getattr(result, "attendance_type", "") or "").strip().lower()
@@ -143,21 +136,22 @@ def _should_merge_with_group(group, registration, year, semester, registration_c
     if group["raw_year"] != year or group["raw_semester"] != semester:
         return False
 
-    overlap = group["course_codes"].intersection(registration_course_codes)
-    if overlap:
-        return True
-
-    if _registration_has_repeat_signal(registration, registration_course_codes):
-        return True
-
     registration_band = _course_progression_band(registration_course_codes)
     group_band = group.get("progression_band")
     if (
         registration_band is not None
         and group_band is not None
         and registration_band > group_band
+        and not group["course_codes"].intersection(registration_course_codes)
     ):
         return False
+
+    overlap = group["course_codes"].intersection(registration_course_codes)
+    if overlap:
+        return True
+
+    if _registration_has_repeat_signal(registration, registration_course_codes):
+        return True
 
     return True
 
@@ -275,6 +269,12 @@ def build_student_timeline(registrations):
                 "period": format_semester_label(semester),
                 "semester_label": format_semester_label(semester),
                 "academic_level_label": format_academic_level_label(year, semester),
+                "display_year": year,
+                "display_semester": semester,
+                "display_academic_year": format_year_label(year),
+                "display_period": format_semester_label(semester),
+                "display_semester_label": format_semester_label(semester),
+                "display_academic_level_label": format_academic_level_label(year, semester),
                 "period_name": period_name or format_semester_label(semester),
                 "course_code": course_code,
                 "course_name": str(getattr(course, "name", "") or "Unknown"),
@@ -325,12 +325,12 @@ def build_student_timeline(registrations):
             row["raw_year"] = row["year"]
             row["raw_semester"] = row["semester"]
             row["group_key"] = group["key"]
-            row["year"] = display_year
-            row["semester"] = display_semester
-            row["academic_year"] = format_year_label(display_year)
-            row["period"] = format_semester_label(display_semester)
-            row["semester_label"] = format_semester_label(display_semester)
-            row["academic_level_label"] = format_academic_level_label(display_year, display_semester)
+            row["display_year"] = display_year
+            row["display_semester"] = display_semester
+            row["display_academic_year"] = format_year_label(display_year)
+            row["display_period"] = format_semester_label(display_semester)
+            row["display_semester_label"] = format_semester_label(display_semester)
+            row["display_academic_level_label"] = format_academic_level_label(display_year, display_semester)
 
         has_repeat_history = any(row["is_repeat_attempt"] for row in group["results"])
         latest_period_name = str(

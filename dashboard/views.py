@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
-from django.db.models import Avg, CharField, Count, FloatField, OuterRef, Q, Subquery
+from django.db.models import Avg, CharField, Count, FloatField, OuterRef, Prefetch, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -683,7 +683,18 @@ def get_filtered_registrations(request, include_course_results=True):
         .order_by("student__surname", "student__first_names")
     )
     if include_course_results:
-        registrations = registrations.prefetch_related("course_results")
+        registrations = registrations.prefetch_related(
+            Prefetch(
+                "course_results",
+                queryset=CourseResult.objects.select_related("course").only(
+                    "registration_id",
+                    "mark",
+                    "attendance_type",
+                    "course__code",
+                    "course__name",
+                ),
+            )
+        )
 
     return registrations.filter(build_registration_filter_q(request))
 

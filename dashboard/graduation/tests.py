@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 
-from ..models import AcademicPeriod, Programme, Registration, Student
+from ..models import AcademicPeriod, CourseResult, Programme, Registration, Student
 from ..test_support import DashboardFixtureMixin
 
 
@@ -357,6 +357,67 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         target_row = next(row for row in payload["rows"] if row["name"] == readiness_student.full_name)
 
         self.assertEqual(target_row["graduation_stage"], "Year 4 Semester 1")
+
+    def test_graduation_payload_and_drilldown_keep_display_stage_while_history_keeps_real_attempt_periods(self):
+        from ..models import Course
+
+        student = Student.objects.create(
+            registration_number="REG398",
+            first_names="Mapped",
+            surname="History",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (305001, "1", "1", "2050 January - June", [("CHEP101", "Intro A")]),
+            (305002, "1", "2", "2050 July - December", [("CHEP121", "Sem Two A")]),
+            (305101, "1", "1", "2051 January - June", [("CHEP211", "Level Two A")]),
+            (305102, "1", "1", "2051 July - December", [("CHEP221", "Level Two Sem Two A")]),
+            (305201, "1", "1", "2052 January - June", [("CHEP311", "Level Three A")]),
+            (305202, "1", "2", "2052 July - December", [("CHEP321", "Level Three Sem Two A")]),
+            (305301, "2", "1", "2053 January - June", [("CHEP401", "Level Four A")]),
+            (305302, "2", "2", "2053 July - December", [("CHEP421", "Level Four Sem Two A")]),
+        ]
+
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision="Proceed",
+                carrying=0,
+            )
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        payload = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()["data"]
+        mapped_student = next(row for row in payload["students"] if row["regnum"] == student.registration_number)
+        self.assertEqual(mapped_student["graduation_stage"], "Year 4 Semester 2")
+
+        drilldown = self.client.get(
+            reverse("dashboard:graduation-drilldown"),
+            {
+                "chart_key": "graduation_programmes",
+                "bucket_key": self.commerce_programme.name,
+            },
+        ).json()["data"]
+        drilldown_row = next(row for row in drilldown["rows"] if row["regnum"] == student.registration_number)
+        self.assertEqual(drilldown_row["graduation_stage"], "Year 4 Semester 2")
 
     def test_graduation_filter_endpoints_return_database_options(self):
         programmes_response = self.client.get(reverse("dashboard:graduation-programmes"))
