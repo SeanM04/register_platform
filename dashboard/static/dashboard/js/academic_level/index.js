@@ -303,9 +303,9 @@ const renderTableImmediately = (rows) => {
             <td>${escapeTooltipHtml(row.students)}</td>
             <td>${escapeTooltipHtml(row.registrations)}</td>
             <td>${escapeTooltipHtml(row.average_mark)}</td>
-            <td class="level-td-pass">
-                <span class="level-pass-pill${row.below_target ? " is-below-target" : ""}">${escapeTooltipHtml(row.pass_rate)}</span>
-            </td>
+           <td class="level-td-pass">
+          ${escapeTooltipHtml(row.pass_rate)}
+          </td>
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
     `).join("").trim();
@@ -338,8 +338,8 @@ const renderLevelTable = (context) => {
             <td>${escapeTooltipHtml(row.registrations)}</td>
             <td>${escapeTooltipHtml(row.average_mark)}</td>
             <td class="level-td-pass">
-                <span class="level-pass-pill${row.below_target ? " is-below-target" : ""}">${escapeTooltipHtml(row.pass_rate)}</span>
-            </td>
+           ${escapeTooltipHtml(row.pass_rate)}
+          </td>
             <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
         </tr>
     `).join("").trim();

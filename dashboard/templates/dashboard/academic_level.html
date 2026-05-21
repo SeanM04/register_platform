@@ -404,7 +404,7 @@
                                 <td>{{ row.registrations }}</td>
                                 <td>{{ row.average_mark }}%</td>
                                 <td class="level-td-pass">
-                                    <span class="level-pass-pill{% if row.below_target %} is-below-target{% endif %}">{{ row.pass_rate }}</span>
+                                 ${escapeTooltipHtml(row.pass_rate)}
                                 </td>
                                 <td class="level-td-programme">{{ row.top_programme }}</td>
                             </tr>
