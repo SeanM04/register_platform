@@ -3,9 +3,15 @@
 from urllib.parse import urlencode
 
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Avg, Q
 
-from ..views import format_academic_level_label, get_filtered_registrations, normalize_decision_label
+from ..models import CourseResult
+from ..student_history import (
+    build_registration_display_level_index,
+    build_registration_display_level_index_for_student_ids,
+    extract_registration_year_semester,
+)
+from ..views import get_filtered_registrations, normalize_decision_label
 from .constants import (
     HIGH_RISK_DECISIONS,
     RISK_BAND_DEFINITIONS,
@@ -145,9 +151,40 @@ def assess_student_risk(registrations):
     }
 
 
-def build_student_risk_profiles_from_registrations(registrations):
+def _build_student_average_fallback_map(student_ids, faculty_name=""):
+    """Return per-student average marks from broader history when the scoped rows have no marks."""
+
+    if not student_ids:
+        return {}
+
+    fallback_results = CourseResult.objects.filter(
+        registration__student_id__in=student_ids,
+    ).exclude(mark__isnull=True)
+    if faculty_name:
+        fallback_results = fallback_results.filter(
+            registration__programme__department__faculty__name=faculty_name,
+        )
+
+    averages = (
+        fallback_results.values("registration__student_id")
+        .annotate(value=Avg("mark"))
+    )
+    return {
+        row["registration__student_id"]: round(float(row["value"]))
+        for row in averages
+        if row.get("value") is not None
+    }
+
+
+def build_student_risk_profiles_from_registrations(
+    registrations,
+    registration_level_index=None,
+    average_mark_fallback_map=None,
+):
     """Build per-student risk profiles from an already-filtered registration iterable."""
 
+    registration_level_index = registration_level_index or build_registration_display_level_index(registrations)
+    average_mark_fallback_map = average_mark_fallback_map or {}
     student_registrations = {}
     for registration in registrations:
         student_registrations.setdefault(registration.student_id, []).append(registration)
@@ -156,10 +193,19 @@ def build_student_risk_profiles_from_registrations(registrations):
     for grouped_registrations in student_registrations.values():
         assessment = assess_student_risk(grouped_registrations)
         latest_registration = assessment["latest_registration"]
+        average_mark = assessment["average_mark"]
+        if average_mark is None:
+            average_mark = average_mark_fallback_map.get(latest_registration.student_id)
         department = latest_registration.programme.department if latest_registration.programme else None
         faculty = department.faculty if department else None
-        academic_year_value = _safe_int(latest_registration.period.academic_year)
-        semester_value = _safe_int(latest_registration.period.semester)
+        level_meta = registration_level_index.get(latest_registration.id)
+        if level_meta:
+            academic_year_value = level_meta["display_year"]
+            semester_value = level_meta["display_semester"]
+            academic_level_label = level_meta["academic_level_label"]
+        else:
+            academic_year_value, semester_value = extract_registration_year_semester(latest_registration)
+            academic_level_label = f"Year {academic_year_value} Semester {semester_value}"
         risk_rows.append(
             {
                 "name": latest_registration.student.full_name,
@@ -167,14 +213,11 @@ def build_student_risk_profiles_from_registrations(registrations):
                 "programme": latest_registration.programme.normalized_name,
                 "faculty": faculty.name if faculty else "Unassigned",
                 "department": department.name if department else "Unassigned",
-                "academic_level": format_academic_level_label(
-                    latest_registration.period.academic_year,
-                    latest_registration.period.semester,
-                ),
+                "academic_level": academic_level_label,
                 "academic_year_value": academic_year_value,
                 "semester_value": semester_value,
-                "average_mark": assessment["average_mark"] if assessment["average_mark"] is not None else "-",
-                "average_mark_sort": assessment["average_mark"] if assessment["average_mark"] is not None else 999,
+                "average_mark": average_mark if average_mark is not None else "-",
+                "average_mark_sort": average_mark if average_mark is not None else 999,
                 "failed_courses": assessment["failed_courses"],
                 "total_modules": assessment["total_modules"],
                 "carrying": assessment["carrying"],
@@ -214,7 +257,20 @@ def build_student_risk_profiles(request, search_query=""):
             | Q(decision__icontains=search_query)
         )
 
-    return build_student_risk_profiles_from_registrations(list(registrations))
+    visible_registrations = list(registrations)
+    registration_level_index = build_registration_display_level_index_for_student_ids(
+        {registration.student_id for registration in visible_registrations},
+        faculty_name=request.GET.get("faculty", "").strip(),
+    )
+    average_mark_fallback_map = _build_student_average_fallback_map(
+        {registration.student_id for registration in visible_registrations},
+        faculty_name=request.GET.get("faculty", "").strip(),
+    )
+    return build_student_risk_profiles_from_registrations(
+        visible_registrations,
+        registration_level_index,
+        average_mark_fallback_map,
+    )
 
 
 def format_risk_monitor_drivers(risk_driver_text):

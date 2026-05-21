@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from dashboard.models import Registration
+from dashboard.student_history import build_registration_display_level_index, extract_registration_year_semester
 from services.completion_service import (
     _build_student_records,
     _cohort_period_map,
@@ -199,22 +200,102 @@ def _graduation_period_label(programme_name: str, student_regnum: str = None) ->
 def _decision_indicates_graduation(decision: str) -> bool:
     normalized = str(decision or "").strip().lower()
     return any(term in normalized for term in (
-        "graduat", "complet", "award"
+        "graduat",
+        "complet",
+        "award",
+        "pending",
+        "proceed",
+        "senate",
+        "dissertation complete",
+        "thesis complete",
+        "resubmit dissertation within 3 months",
     ))
 
 
-def _decision_allows_inferred_graduation(decision: str) -> bool:
-    normalized = str(decision or "").strip().lower()
-    if not normalized:
-        return False
-    if _decision_indicates_graduation(normalized):
-        return True
-    return normalized == "proceed"
+def _iter_registration_results(registration: Registration) -> List[Any]:
+    prefetched_results = getattr(registration, "prefetched_course_results", None)
+    if prefetched_results is not None:
+        return list(prefetched_results)
+    return list(registration.course_results.select_related("course").all())
 
 
-def _programme_supports_inferred_graduation(programme_name: str) -> bool:
-    normalized = str(programme_name or "").strip().lower()
-    return not any(token in normalized for token in ("masters", "master", "msc"))
+def _result_mark_value(result: Any) -> Optional[float]:
+    mark = getattr(result, "mark", None)
+    if mark is None:
+        return None
+    return float(mark)
+
+
+def _course_text(result: Any) -> str:
+    course = getattr(result, "course", None)
+    code = str(getattr(course, "code", "") or "").strip()
+    name = str(getattr(course, "name", "") or "").strip()
+    return f"{code} {name}".strip().lower()
+
+
+def _build_academic_completion_state(
+    visible_registrations: List[Registration],
+    latest_record: Dict[str, Any],
+) -> Dict[str, Any]:
+    latest_attempt_by_course: Dict[str, Any] = {}
+    dissertation_completed = True
+    internship_completed = True
+
+    for registration in visible_registrations:
+        for result in _iter_registration_results(registration):
+            course = getattr(result, "course", None)
+            course_key = str(getattr(course, "code", "") or "").strip() or f"COURSE-{getattr(result, 'id', '')}"
+            latest_attempt_by_course[course_key] = result
+
+    earned_credits = 0
+    required_credits = 0
+    failed_modules_remaining = 0
+
+    for result in latest_attempt_by_course.values():
+        required_credits += 1
+        mark_value = _result_mark_value(result)
+        if mark_value is not None and mark_value >= 50:
+            earned_credits += 1
+        else:
+            failed_modules_remaining += 1
+
+        course_text = _course_text(result)
+        if any(keyword in course_text for keyword in ("dissertation", "thesis")):
+            dissertation_completed = mark_value is not None and mark_value >= 50 and dissertation_completed
+        if any(keyword in course_text for keyword in ("internship", "attachment")):
+            internship_completed = mark_value is not None and mark_value >= 50 and internship_completed
+
+    latest_decision = str(latest_record.get("decision_key", "") or "").strip().lower()
+    has_unresolved_suspension = "suspend" in latest_decision
+    has_unresolved_exclusion = any(term in latest_decision for term in ("exclude", "expel", "discontinue"))
+    academically_excluded = has_unresolved_suspension or has_unresolved_exclusion
+    latest_failed_courses = int(latest_record.get("failed_courses", 0) or 0)
+    latest_carrying = int(latest_record.get("carrying", 0) or 0)
+
+    failed_modules_remaining = max(
+        failed_modules_remaining,
+        latest_failed_courses,
+        latest_carrying,
+    )
+
+    academic_requirements_completed = (
+        failed_modules_remaining == 0
+        and not academically_excluded
+        and dissertation_completed
+        and internship_completed
+    )
+
+    return {
+        "academic_requirements_completed": academic_requirements_completed,
+        "earned_credits": earned_credits,
+        "required_credits": required_credits,
+        "failed_modules_remaining": failed_modules_remaining,
+        "dissertation_completed": dissertation_completed,
+        "internship_completed": internship_completed,
+        "has_unresolved_suspension": has_unresolved_suspension,
+        "has_unresolved_exclusion": has_unresolved_exclusion,
+        "academically_excluded": academically_excluded,
+    }
 
 
 def _build_completion_lookup(student_histories: List[Dict[str, Any]]) -> Dict[tuple[str, int], float]:
@@ -263,6 +344,31 @@ def _graduate_rate(effective_cohort_label: str, target_period: int, completion_l
     return round(sum(completion_values) / target_period)
 
 
+def _is_graduation_eligible(
+    record: Dict[str, Any],
+    target_period: int,
+    academic_state: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """Return whether the visible record has reached the documented graduation-eligibility stage."""
+
+    chronological_progression = record.get("chronological_progression_index")
+    if chronological_progression is None:
+        return False
+    state = academic_state or {}
+    academic_requirements_completed = bool(state.get("academic_requirements_completed", True))
+    earned_credits = int(state.get("earned_credits", 0) or 0)
+    required_credits = int(state.get("required_credits", 0) or 0)
+    failed_modules_remaining = int(state.get("failed_modules_remaining", 0) or 0)
+    academically_excluded = bool(state.get("academically_excluded", False))
+    return (
+        int(chronological_progression) >= int(target_period)
+        and academic_requirements_completed
+        and earned_credits >= required_credits
+        and failed_modules_remaining == 0
+        and not academically_excluded
+    )
+
+
 def _relative_programme_progression(record: Dict[str, Any], start_progression_period: Optional[int]) -> Optional[int]:
     chronological_progression = record.get("chronological_progression_index")
     if chronological_progression is not None:
@@ -274,18 +380,39 @@ def _relative_programme_progression(record: Dict[str, Any], start_progression_pe
     return int(progression_period) - int(start_progression_period) + 1
 
 
-def _is_graduated_record(record: Dict[str, Any], target_period: int, start_progression_period: Optional[int]) -> bool:
+def _is_graduated_record(
+    record: Dict[str, Any],
+    target_period: int,
+    start_progression_period: Optional[int],
+    academic_state: Optional[Dict[str, Any]] = None,
+) -> bool:
     decision_key = record.get("decision_key", "")
-    if _decision_indicates_graduation(decision_key):
-        return True
+    return _is_graduation_eligible(record, target_period, academic_state) and _decision_indicates_graduation(decision_key)
 
-    progression_period = _relative_programme_progression(record, start_progression_period)
-    return (
-        progression_period is not None
-        and progression_period >= target_period
-        and _programme_supports_inferred_graduation(record.get("programme_name", ""))
-        and _decision_allows_inferred_graduation(decision_key)
-    )
+
+def _classify_graduation_status(
+    record: Dict[str, Any],
+    target_period: int,
+    academic_state: Dict[str, Any],
+    is_eligible: bool,
+    is_graduated: bool,
+    steps_remaining: Optional[int],
+) -> str:
+    if is_graduated:
+        return "graduated"
+    if is_eligible:
+        return "eligible"
+    if steps_remaining == 1:
+        return "near_eligible"
+    if steps_remaining is not None and steps_remaining < 0:
+        return "delayed"
+    if (
+        int(academic_state.get("failed_modules_remaining", 0) or 0) > 0
+        or bool(academic_state.get("academically_excluded"))
+        or float(record.get("completion_rate", 0.0) or 0.0) < 50.0
+    ):
+        return "at_risk"
+    return "active"
 
 
 def _build_student_histories(faculty: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -304,6 +431,7 @@ def _build_student_histories(faculty: Optional[str] = None) -> List[Dict[str, An
             student_registrations,
             key=lambda registration: (registration.period.external_id, registration.id),
         )
+        registration_level_index = build_registration_display_level_index(ordered_registrations)
         student_records = _build_student_records(ordered_registrations, period_index_map, ordered_periods)
         if not student_records:
             continue
@@ -314,13 +442,22 @@ def _build_student_histories(faculty: Optional[str] = None) -> List[Dict[str, An
             start=1,
         ):
             department = registration.programme.department if registration.programme else None
+            level_meta = registration_level_index.get(registration.id)
+            if level_meta:
+                display_year = level_meta["display_year"]
+                display_semester = level_meta["display_semester"]
+                academic_level_label = level_meta["academic_level_label"]
+            else:
+                display_year, display_semester = extract_registration_year_semester(registration)
+                academic_level_label = f"Year {display_year} Semester {display_semester}"
             record["faculty_name"] = registration.programme.department.faculty.name
             record["department_name"] = department.name if department else "Unknown"
             record["period_name"] = registration.period.name
-            record["period_year"] = registration.period.academic_year
-            record["period_semester"] = registration.period.semester
-            record["academic_level_label"] = f"Year {registration.period.academic_year}, Semester {registration.period.semester}"
+            record["period_year"] = display_year
+            record["period_semester"] = display_semester
+            record["academic_level_label"] = academic_level_label
             record["chronological_progression_index"] = chronological_index
+            record["carrying"] = int(getattr(registration, "carrying", 0) or 0)
             record["relative_programme_progression_index"] = _relative_programme_progression(
                 record,
                 start_progression_period,
@@ -367,6 +504,18 @@ def _empty_graduation_payload() -> Dict[str, Any]:
             "students_one_step_from_target": 0,
             "students_within_two_steps": 0,
             "readiness_population": 0,
+            "eligible_students_count": 0,
+            "non_eligible_students_count": 0,
+            "graduated_students_count": 0,
+            "official_graduated_count": 0,
+            "on_time_graduates": 0,
+            "delayed_graduates": 0,
+            "near_eligible_students_count": 0,
+            "delayed_students_count": 0,
+            "active_students_count": 0,
+            "at_risk_students_count": 0,
+            "faculty_eligible_students": {},
+            "programme_eligible_students": {},
         },
         "students": [],
     }
@@ -410,15 +559,8 @@ def get_graduation_page_data(
     _batch_get_attendance_types(all_student_regnums)
 
     completion_lookup = _build_completion_lookup(student_histories)
-    original_cohort_enrollment: Dict[str, set[str]] = defaultdict(set)
-    faculty_population: Dict[str, set[str]] = defaultdict(set)
     cohort_sort_indexes: Dict[str, int] = {}
     for history in student_histories:
-        first_record = history["records"][0]
-        latest_record = history["latest_record"]
-        original_cohort_enrollment[first_record["original_cohort_label"]].add(history["regnum"])
-        faculty_population[latest_record["faculty_name"]].add(history["regnum"])
-        
         for record in history["records"]:
             cohort_sort_indexes.setdefault(
                 record["effective_cohort_label"],
@@ -428,28 +570,49 @@ def get_graduation_page_data(
     latest_visible_profiles: List[Dict[str, Any]] = []
     graduated_students: List[Dict[str, Any]] = []
     for history in student_histories:
-        visible_records = [
-            record
+        visible_pairs = [
+            (record, registration)
             for record, registration in zip(history["records"], history["registrations"])
             if _registration_matches_filters(registration, year=year, period=period)
         ]
+        visible_records = [record for record, _ in visible_pairs]
         if not visible_records:
             continue
+        visible_registrations = [registration for _, registration in visible_pairs]
 
         latest_visible = max(
             visible_records,
             key=lambda record: (record["period_external_id"], record["registration_id"]),
         )
         target_period = _target_period_from_programme(latest_visible["programme_name"], latest_visible["regnum"])
+        academic_state = _build_academic_completion_state(visible_registrations, latest_visible)
+        is_eligible = _is_graduation_eligible(latest_visible, target_period, academic_state)
         steps_remaining = _steps_remaining(latest_visible, target_period)
-        is_graduated = _is_graduated_record(latest_visible, target_period, history.get("start_progression_period"))
+        is_graduated = _is_graduated_record(
+            latest_visible,
+            target_period,
+            history.get("start_progression_period"),
+            academic_state,
+        )
+        status = _classify_graduation_status(
+            latest_visible,
+            target_period,
+            academic_state,
+            is_eligible,
+            is_graduated,
+            steps_remaining,
+        )
         latest_visible_profiles.append(
             {
                 "history": history,
                 "record": latest_visible,
+                "visible_registrations": visible_registrations,
                 "target_period": target_period,
+                "is_eligible": is_eligible,
                 "steps_remaining": steps_remaining,
                 "is_graduated": is_graduated,
+                "academic_state": academic_state,
+                "status": status,
             }
         )
 
@@ -474,12 +637,16 @@ def get_graduation_page_data(
                 "on_time": effective_cohort_label == original_cohort_label,
                 "target_period": target_period,
                 "actual_progression": actual_progression,
+                "chronological_progression_index": int(latest_visible.get("chronological_progression_index", 0) or 0),
                 "steps_remaining": steps_remaining,
-                "graduation_stage": _graduation_stage_label(latest_visible["programme_name"], latest_visible["regnum"]),
-                "graduation_period_label": _graduation_period_label(latest_visible["programme_name"], latest_visible["regnum"]),
+                "graduation_stage": latest_visible.get("academic_level_label") or "",
+                "graduation_period_label": latest_visible.get("academic_level_label") or "",
+                "target_graduation_stage": _graduation_stage_label(latest_visible["programme_name"], latest_visible["regnum"]),
+                "target_graduation_period_label": _graduation_period_label(latest_visible["programme_name"], latest_visible["regnum"]),
                 "effective_cohort": effective_cohort_label,
                 "original_cohort": original_cohort_label,
                 "period_external_id": latest_visible["period_external_id"],
+                "status": status,
             }
         )
 
@@ -492,7 +659,12 @@ def get_graduation_page_data(
     readiness_profiles = [
         profile
         for profile in latest_visible_profiles
-        if not profile["is_graduated"] and profile["steps_remaining"] is not None and profile["steps_remaining"] >= 0
+        if (
+            not profile["is_graduated"]
+            and not profile["is_eligible"]
+            and profile["steps_remaining"] is not None
+            and profile["steps_remaining"] >= 0
+        )
     ]
     one_step_profiles = [profile for profile in readiness_profiles if profile["steps_remaining"] <= 1]
     within_two_profiles = [profile for profile in readiness_profiles if profile["steps_remaining"] <= 2]
@@ -545,53 +717,101 @@ def get_graduation_page_data(
         )
 
     total_graduated_students = len(graduated_students)
-    # Calculate average graduation rate using cohort-based logic (not individual rates)
-    # This will be calculated later after we compute cohort rates
-    average_graduation_rate = 0.0  # Will be updated after cohort calculations
+    eligible_profiles = [profile for profile in latest_visible_profiles if profile["is_eligible"]]
+    non_eligible_profiles = [profile for profile in latest_visible_profiles if not profile["is_eligible"]]
+    near_eligible_profiles = [profile for profile in latest_visible_profiles if profile["status"] == "near_eligible"]
+    delayed_profiles = [profile for profile in latest_visible_profiles if profile["status"] == "delayed"]
+    active_profiles = [profile for profile in latest_visible_profiles if profile["status"] == "active"]
+    at_risk_profiles = [profile for profile in latest_visible_profiles if profile["status"] == "at_risk"]
+    eligible_profile_regnums = {profile["record"]["regnum"] for profile in eligible_profiles}
+    eligible_graduated_students = [
+        student
+        for student in graduated_students
+        if student["regnum"] in eligible_profile_regnums
+    ]
+    eligible_graduated_regnums = {student["regnum"] for student in eligible_graduated_students}
+    eligible_students_count = len(eligible_profiles)
+    non_eligible_students_count = len(non_eligible_profiles)
+
+    average_graduation_rate = _safe_rate(len(eligible_graduated_students), eligible_students_count)
     on_time_graduation_rate = _safe_rate(
-        sum(1 for student in graduated_students if student["on_time"]),
-        total_graduated_students,
+        sum(
+            1
+            for student in eligible_graduated_students
+            if student["on_time"] and int(student.get("chronological_progression_index", 0) or 0) <= int(student["target_period"])
+        ),
+        len(eligible_graduated_students),
     )
 
     programme_rates: Dict[tuple[int, str], List[float]] = defaultdict(list)
     cohort_graduated: Dict[str, int] = defaultdict(int)
     timing_counts = {"On-time": 0, "Delayed": 0}
 
-    # Build faculty-cohort-student mapping for strict cohort isolation using original_cohort
+    visible_cohort_population: Dict[str, set[str]] = defaultdict(set)
+    visible_faculty_population: Dict[str, set[str]] = defaultdict(set)
+    visible_programme_population: Dict[tuple[int, str], set[str]] = defaultdict(set)
     faculty_cohort_population: Dict[str, Dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     faculty_cohort_graduated: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    original_cohort_eligible: Dict[str, set[str]] = defaultdict(set)
+    programme_eligible_population: Dict[tuple[int, str], set[str]] = defaultdict(set)
+    faculty_eligible_students: Dict[str, int] = defaultdict(int)
+    programme_eligible_students: Dict[str, int] = defaultdict(int)
 
-    # Populate faculty-cohort population (all students) using original_cohort
-    for history in student_histories:
-        faculty_name = history["latest_record"]["faculty_name"]
-        cohort_label = history["latest_record"]["original_cohort_label"]
-        regnum = history["regnum"]
+    for profile in latest_visible_profiles:
+        record = profile["record"]
+        regnum = record["regnum"]
+        faculty_name = record["faculty_name"]
+        cohort_label = record["original_cohort_label"]
+        programme_key = (record["programme_id"], record["programme_name"])
+
+        visible_cohort_population[cohort_label].add(regnum)
+        visible_faculty_population[faculty_name].add(regnum)
+        visible_programme_population[programme_key].add(regnum)
+
+    for profile in eligible_profiles:
+        record = profile["record"]
+        regnum = record["regnum"]
+        faculty_name = record["faculty_name"]
+        cohort_label = record["original_cohort_label"]
+        programme_key = (record["programme_id"], record["programme_name"])
+
         faculty_cohort_population[faculty_name][cohort_label].add(regnum)
+        original_cohort_eligible[cohort_label].add(regnum)
+        programme_eligible_population[programme_key].add(regnum)
 
-    # Populate faculty-cohort graduated (only graduated students) using original_cohort
-    for student in graduated_students:
+    for faculty_name in visible_faculty_population:
+        faculty_eligible_students[faculty_name] = len(
+            {regnum for cohort_students in faculty_cohort_population[faculty_name].values() for regnum in cohort_students}
+        )
+    for programme_key, students in visible_programme_population.items():
+        programme_eligible_students[programme_key[1]] = len(programme_eligible_population.get(programme_key, set()))
+
+    for student in eligible_graduated_students:
         faculty_name = student["faculty"]
         cohort_label = student["original_cohort"]
         programme_rates[(student["programme_id"], student["programme_name"])].append(0)  # No individual graduation rate
-        cohort_graduated[student["original_cohort"]] += 1
-        timing_counts["On-time" if student["on_time"] else "Delayed"] += 1
+        cohort_graduated[cohort_label] += 1
         faculty_cohort_graduated[faculty_name][cohort_label] += 1
 
-    # Calculate faculty graduation rates with strict cohort isolation and weighted aggregation
+    for student in graduated_students:
+        graduated_on_time = student["on_time"] and int(student.get("chronological_progression_index", 0) or 0) <= int(student["target_period"])
+        timing_counts["On-time" if graduated_on_time else "Delayed"] += 1
+
     graduation_rate_by_faculty: Dict[str, float] = {}
     faculty_cohort_details: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
-    for faculty_name in faculty_cohort_population:
-        total_faculty_students = 0
+    for faculty_name in visible_faculty_population:
+        total_faculty_eligible = 0
         total_faculty_graduated = 0
         
         for cohort_label, student_numbers in faculty_cohort_population[faculty_name].items():
             cohort_total = len(student_numbers)
             cohort_graduated_count = faculty_cohort_graduated[faculty_name].get(cohort_label, 0)
+            visible_cohort_total = len(visible_cohort_population.get(cohort_label, set()))
             cohort_rate = _safe_rate(cohort_graduated_count, cohort_total)
             
-            # Add to faculty totals for weighted aggregation
-            total_faculty_students += cohort_total
+            # Add to faculty totals for weighted aggregation across eligible students only.
+            total_faculty_eligible += cohort_total
             total_faculty_graduated += cohort_graduated_count
             
             # Extract cohort year from label (e.g., "May 2020 - August 2020" -> 2020)
@@ -601,33 +821,28 @@ def get_graduation_page_data(
                 "year": int(cohort_year) if cohort_year.isdigit() else 0,
                 "cohort_label": cohort_label,
                 "total_students": cohort_total,
+                "eligible_students": cohort_total,
+                "visible_students": visible_cohort_total,
                 "graduated": cohort_graduated_count,
                 "graduation_rate": cohort_rate
             })
         
-        # Calculate weighted faculty graduation rate
-        faculty_overall_rate = _safe_rate(total_faculty_graduated, total_faculty_students)
+        faculty_overall_rate = _safe_rate(total_faculty_graduated, total_faculty_eligible)
         graduation_rate_by_faculty[faculty_name] = faculty_overall_rate
         
-        # Sort cohorts by year
         faculty_cohort_details[faculty_name].sort(key=lambda x: x["year"])
-    
-    # Calculate overall average graduation rate using cohort-based logic
-    total_all_students = sum(len(students) for students in original_cohort_enrollment.values())
-    average_graduation_rate = _safe_rate(total_graduated_students, total_all_students)
     
     best_faculty_name = ""
     best_faculty_rate = 0.0
-    if total_graduated_students and graduation_rate_by_faculty:
+    if graduation_rate_by_faculty:
         best_faculty_name, best_faculty_rate = max(
             graduation_rate_by_faculty.items(),
             key=lambda item: item[1],
         )
 
-    # Calculate programme graduation rates using cohort-based logic
     programme_cohort_stats: Dict[tuple[int, str], Dict[str, Any]] = {}
     
-    for student in graduated_students:
+    for student in eligible_graduated_students:
         programme_key = (student["programme_id"], student["programme_name"])
         cohort_label = student["original_cohort"]
         
@@ -641,18 +856,21 @@ def get_graduation_page_data(
         programme_cohort_stats[programme_key]["cohorts"].add(cohort_label)
     
     programme_graduation_rate = []
-    for (programme_id, programme_name), stats in programme_cohort_stats.items():
-        # Calculate total students in this programme across all cohorts
-        total_programme_students = 0
-        for cohort in stats["cohorts"]:
-            total_programme_students += len(original_cohort_enrollment.get(cohort, set()))
-        
-        graduation_rate = _safe_rate(stats["total_graduated"], total_programme_students)
+    for (programme_id, programme_name), visible_students in visible_programme_population.items():
+        stats = programme_cohort_stats.get(
+            (programme_id, programme_name),
+            {"total_graduated": 0, "cohorts": set()},
+        )
+        eligible_students = programme_eligible_population.get((programme_id, programme_name), set())
+        graduation_rate = _safe_rate(stats["total_graduated"], len(eligible_students))
         programme_graduation_rate.append({
             "programme_id": programme_id,
             "programme_name": programme_name,
             "graduation_rate": graduation_rate,
             "graduated_count": stats["total_graduated"],
+            "enrolled_count": len(visible_students),
+            "eligible_students_count": len(eligible_students),
+            "official_graduated_count": stats["total_graduated"],
         })
     
     programme_graduation_rate.sort(key=lambda row: row["graduation_rate"], reverse=True)
@@ -661,15 +879,17 @@ def get_graduation_page_data(
         {
             "original_cohort_label": cohort_label,
             "effective_cohort_sort_index": cohort_sort_indexes.get(cohort_label, 0),
-            "graduated_count": graduated_count,
-            "enrolled_count": len(original_cohort_enrollment.get(cohort_label, set())),
+            "graduated_count": cohort_graduated.get(cohort_label, 0),
+            "enrolled_count": len(student_numbers),
+            "eligible_students_count": len(original_cohort_eligible.get(cohort_label, set())),
             "graduation_rate": _safe_rate(
-                graduated_count,
-                len(original_cohort_enrollment.get(cohort_label, set())),
+                cohort_graduated.get(cohort_label, 0),
+                len(original_cohort_eligible.get(cohort_label, set())),
             ),
+            "official_graduated_count": cohort_graduated.get(cohort_label, 0),
         }
-        for cohort_label, graduated_count in sorted(
-            cohort_graduated.items(),
+        for cohort_label, student_numbers in sorted(
+            visible_cohort_population.items(),
             key=lambda item: (
                 cohort_sort_indexes.get(item[0], 0),
                 item[0],
@@ -683,16 +903,19 @@ def get_graduation_page_data(
         key=lambda item: item[1],
         reverse=True,
     ):
-        # Calculate total faculty students and graduates for this faculty
-        total_faculty_students = sum(len(students) for students in faculty_cohort_population[faculty_name].values())
+        total_faculty_eligible = len(
+            {regnum for cohort_students in faculty_cohort_population[faculty_name].values() for regnum in cohort_students}
+        )
+        total_faculty_students = len(visible_faculty_population.get(faculty_name, set()))
         total_faculty_graduated = sum(faculty_cohort_graduated[faculty_name].values())
         
-        # Build hierarchical data structure
         faculty_data = {
             "faculty": faculty_name,
             "graduation_rate": round(rate, 0),
             "graduated_count": total_faculty_graduated,
             "enrolled_count": total_faculty_students,
+            "eligible_students_count": total_faculty_eligible,
+            "official_graduated_count": total_faculty_graduated,
             "cohorts": faculty_cohort_details[faculty_name],
             "overall_rate": round(rate, 0),
             "hierarchy": {
@@ -701,60 +924,69 @@ def get_graduation_page_data(
             }
         }
         
-        # Add department level data using student histories
         department_stats = defaultdict(lambda: {"enrolled": set(), "graduated": set()})
         programme_stats = defaultdict(lambda: {"enrolled": set(), "graduated": set()})
         
-        # Get student histories for this faculty
-        faculty_histories = [h for h in student_histories if h["latest_record"]["faculty_name"] == faculty_name]
-        
-        # Create a set of graduated registration numbers for this faculty
-        graduated_regnums = set()
-        for student in graduated_students:
-            if student["faculty"] == faculty_name:
-                graduated_regnums.add(student["regnum"])
-        
-        for history in faculty_histories:
-            regnum = history["regnum"]
-            student_record = history["latest_record"]
-            
-            # Department level
+        faculty_profiles = [
+            profile
+            for profile in eligible_profiles
+            if profile["record"]["faculty_name"] == faculty_name
+        ]
+
+        for profile in faculty_profiles:
+            regnum = profile["record"]["regnum"]
+            student_record = profile["record"]
             dept_name = student_record.get("department_name", "Unknown")
             department_stats[dept_name]["enrolled"].add(regnum)
-            
-            # Programme level  
+
             prog_name = student_record.get("programme_name", "Unknown")
             programme_stats[prog_name]["enrolled"].add(regnum)
-            
-            # Check if graduated
-            if regnum in graduated_regnums:
+
+            if regnum in eligible_graduated_regnums:
                 department_stats[dept_name]["graduated"].add(regnum)
                 programme_stats[prog_name]["graduated"].add(regnum)
-        
-        # Calculate department graduation rates
+
         for dept_name, stats in department_stats.items():
+            visible_dept_total = len(
+                {
+                    profile["record"]["regnum"]
+                    for profile in latest_visible_profiles
+                    if profile["record"].get("department_name", "Unknown") == dept_name
+                    and profile["record"]["faculty_name"] == faculty_name
+                }
+            )
             dept_rate = _safe_rate(len(stats["graduated"]), len(stats["enrolled"]))
             faculty_data["hierarchy"]["departments"].append({
                 "department": dept_name,
                 "graduation_rate": dept_rate,
                 "graduated_count": len(stats["graduated"]),
-                "enrolled_count": len(stats["enrolled"]),
+                "enrolled_count": visible_dept_total,
+                "eligible_students_count": len(stats["enrolled"]),
+                "official_graduated_count": len(stats["graduated"]),
                 "faculty": faculty_name
             })
-        
-        # Calculate programme graduation rates
+
         for prog_name, stats in programme_stats.items():
+            visible_prog_total = len(
+                {
+                    profile["record"]["regnum"]
+                    for profile in latest_visible_profiles
+                    if profile["record"]["programme_name"] == prog_name
+                    and profile["record"]["faculty_name"] == faculty_name
+                }
+            )
             prog_rate = _safe_rate(len(stats["graduated"]), len(stats["enrolled"]))
-            
-            # Get department for this programme
-            prog_histories = [h for h in faculty_histories if h["latest_record"]["programme_name"] == prog_name]
-            dept_name = prog_histories[0]["latest_record"].get("department_name", "Unknown") if prog_histories else "Unknown"
-            
+
+            prog_profiles = [profile for profile in faculty_profiles if profile["record"]["programme_name"] == prog_name]
+            dept_name = prog_profiles[0]["record"].get("department_name", "Unknown") if prog_profiles else "Unknown"
+
             faculty_data["hierarchy"]["programmes"].append({
                 "programme": prog_name,
                 "graduation_rate": prog_rate,
                 "graduated_count": len(stats["graduated"]),
-                "enrolled_count": len(stats["enrolled"]),
+                "enrolled_count": visible_prog_total,
+                "eligible_students_count": len(stats["enrolled"]),
+                "official_graduated_count": len(stats["graduated"]),
                 "faculty": faculty_name,
                 "department": dept_name
             })
@@ -791,6 +1023,26 @@ def get_graduation_page_data(
             "students_one_step_from_target": len(one_step_profiles),
             "students_within_two_steps": len(within_two_profiles),
             "readiness_population": len(readiness_profiles),
+            "eligible_students_count": eligible_students_count,
+            "non_eligible_students_count": non_eligible_students_count,
+            "graduated_students_count": total_graduated_students,
+            "official_graduated_count": total_graduated_students,
+            "on_time_graduates": sum(
+                1
+                for student in eligible_graduated_students
+                if student["on_time"] and int(student.get("chronological_progression_index", 0) or 0) <= int(student["target_period"])
+            ),
+            "delayed_graduates": sum(
+                1
+                for student in eligible_graduated_students
+                if not (student["on_time"] and int(student.get("chronological_progression_index", 0) or 0) <= int(student["target_period"]))
+            ),
+            "near_eligible_students_count": len(near_eligible_profiles),
+            "delayed_students_count": len(delayed_profiles),
+            "active_students_count": len(active_profiles),
+            "at_risk_students_count": len(at_risk_profiles),
+            "faculty_eligible_students": dict(sorted(faculty_eligible_students.items())),
+            "programme_eligible_students": dict(sorted(programme_eligible_students.items())),
         },
         "students": [
             {
@@ -807,6 +1059,8 @@ def get_graduation_page_data(
                 "steps_remaining": student["steps_remaining"],
                 "graduation_stage": student["graduation_stage"],
                 "graduation_period_label": student["graduation_period_label"],
+                "target_graduation_stage": student["target_graduation_stage"],
+                "target_graduation_period_label": student["target_graduation_period_label"],
                 "effective_cohort": student["effective_cohort"],
                 "original_cohort": student["original_cohort"],
                 # Backward compatibility: individual graduation rate (100% for graduated students)

@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from ..models import AcademicPeriod, CourseResult, Registration, Student
 from ..test_support import DashboardFixtureMixin
 
 
@@ -42,15 +43,17 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
 
         self.assertEqual(level_rows[0]["pass_rate_value"], 100)
         self.assertFalse(level_rows[0]["below_target"])
-        self.assertEqual(level_rows[1]["pass_rate_value"], 50)
+        self.assertEqual(level_rows[1]["pass_rate_value"], 0)
         self.assertTrue(level_rows[1]["below_target"])
-        self.assertEqual(level_chart_rows[0]["level"], "Year 1, Semester 1")
+        self.assertEqual(level_chart_rows[0]["level"], "Year 1 Semester 1")
         self.assertEqual(level_chart_rows[0]["pass_rate"], "100%")
-        self.assertEqual(level_chart_rows[0]["top_programme"], self.science_programme.name)
-        self.assertEqual(level_chart_rows[0]["programme_breakdown"][0]["programme"], self.science_programme.name)
-        self.assertEqual(level_chart_rows[0]["programme_breakdown"][0]["registrations"], 1)
-        self.assertEqual(level_chart_rows[1]["level"], "Year 1, Semester 2")
-        self.assertEqual(level_chart_rows[1]["pass_rate"], "50%")
+        self.assertEqual(level_chart_rows[0]["top_programme"], self.commerce_programme.name)
+        commerce_breakdown = next(
+            row for row in level_chart_rows[0]["programme_breakdown"] if row["programme"] == self.commerce_programme.name
+        )
+        self.assertEqual(commerce_breakdown["registrations"], 1)
+        self.assertEqual(level_chart_rows[1]["level"], "Year 1 Semester 2")
+        self.assertEqual(level_chart_rows[1]["pass_rate"], "0%")
 
         self.assertEqual(gender_rows[0]["label"], "Male")
         self.assertEqual(gender_rows[0]["pass_rate"], "100%")
@@ -60,10 +63,10 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
 
         self.assertEqual(programme_rows[0]["programme"], self.science_programme.name)
         self.assertEqual(programme_rows[0]["pass_rate"], "100%")
-        self.assertEqual(programme_rows[0]["level_breakdown"][0]["level"], "Year 1, Semester 1")
+        self.assertEqual(programme_rows[0]["level_breakdown"][0]["level"], "Year 1 Semester 1")
         self.assertEqual(programme_rows[0]["level_breakdown"][0]["registrations"], 1)
         self.assertEqual(programme_rows[1]["programme"], self.commerce_programme.name)
-        self.assertEqual(programme_rows[1]["lead_level"], "Year 1, Semester 2")
+        self.assertEqual(programme_rows[1]["lead_level"], "Year 1 Semester 2")
 
     def test_academic_level_payload_breakdowns_follow_faculty_filter(self):
         """The academic-level payload should respect active faculty filters."""
@@ -80,7 +83,7 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         programme_rows = payload["programme_performance_rows"]
 
         self.assertEqual(len(level_rows), 1)
-        self.assertEqual(level_chart_rows[0]["level"], "Year 1, Semester 1")
+        self.assertEqual(level_chart_rows[0]["level"], "Year 1 Semester 1")
         self.assertEqual(level_chart_rows[0]["pass_rate"], "100%")
         self.assertEqual(level_chart_rows[0]["programme_breakdown"][0]["programme"], self.science_programme.name)
         self.assertEqual(gender_rows[0]["students"], 0)
@@ -101,9 +104,42 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(metrics["registrations"], 3)
         self.assertEqual(metrics["students"], 3)
         self.assertEqual(metrics["average_pass_rate"], "75%")
-        self.assertEqual(story_payload["level_rows"][0]["level"], "Year 1, Semester 1")
+        self.assertEqual(story_payload["level_rows"][0]["level"], "Year 1 Semester 1")
         self.assertEqual(story_payload["gender_rows"][0]["label"], "Male")
         self.assertEqual(story_payload["programme_rows"][0]["programme"], self.commerce_programme.name)
+
+    def test_academic_level_payload_rebases_imported_stage_labels_like_student_detail(self):
+        student = Student.objects.create(
+            registration_number="REG778",
+            first_names="Academic",
+            surname="Shift",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        year_two_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="2",
+            semester="1",
+            name="2027 January - June",
+        )
+        registration = Registration.objects.create(
+            external_id=778,
+            student=student,
+            programme=self.science_programme,
+            period=year_two_period,
+            decision="repeat",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=registration,
+            course=self.course,
+            mark=44,
+        )
+
+        payload = self.client.get(reverse("dashboard:academic-level-payload")).json()
+        target_row = next(row for row in payload["level_rows"] if row["level"] == "Year 1 Semester 1")
+
+        self.assertEqual(target_row["registrations"], 2)
 
     def test_academic_level_payload_supplies_rule_based_card_narratives_by_default(self):
         """Academic-level payload should have deterministic narratives when AI insights are disabled."""

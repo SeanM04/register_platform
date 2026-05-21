@@ -3,6 +3,28 @@
 This document explains the current structure of the landing dashboard shown at
 `dashboard:home`.
 
+## Route And Audience
+
+Route: `/`
+
+Sidebar label: `Dashboard`
+
+Primary audience: administrators and academic leaders monitoring institution-wide
+outcomes, risk distribution, faculty load, and high-level progression signals.
+
+## What This Page Does
+
+The landing dashboard is the shared institutional overview page. It combines
+headline KPIs, outcome and risk charts, faculty-level comparisons, and drilldown
+entry points that lead users into filtered student lists.
+
+For non-technical users, this page answers:
+
+- What is happening across the institution right now?
+- Which outcome or risk buckets need attention first?
+- Which faculties carry the heaviest visible load?
+- Which chart slice should I drill into to see the affected students?
+
 ## 1. Why The Page Is Split
 
 The landing dashboard now uses a shell-plus-hydration flow so the first paint is

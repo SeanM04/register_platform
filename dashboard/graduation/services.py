@@ -4,8 +4,10 @@ import logging
 from typing import Any, Dict, List
 
 from services.graduation_services import (
+    _build_academic_completion_state,
     _build_student_histories,
-    _graduation_period_label,
+    _classify_graduation_status,
+    _is_graduation_eligible,
     _is_graduated_record,
     _registration_matches_filters,
     _steps_remaining,
@@ -26,13 +28,15 @@ def _build_visible_profiles(request) -> List[Dict[str, Any]]:
     student_histories = _build_student_histories(faculty=faculty)
     profiles: List[Dict[str, Any]] = []
     for history in student_histories:
-        visible_records = [
-            record
+        visible_pairs = [
+            (record, registration)
             for record, registration in zip(history["records"], history["registrations"])
             if _registration_matches_filters(registration, year=year, period=period)
         ]
+        visible_records = [record for record, _ in visible_pairs]
         if not visible_records:
             continue
+        visible_registrations = [registration for _, registration in visible_pairs]
 
         latest_visible = max(
             visible_records,
@@ -42,11 +46,22 @@ def _build_visible_profiles(request) -> List[Dict[str, Any]]:
             latest_visible["programme_name"],
             latest_visible["regnum"],
         )
+        academic_state = _build_academic_completion_state(visible_registrations, latest_visible)
         steps_remaining = _steps_remaining(latest_visible, target_period)
+        is_eligible = _is_graduation_eligible(latest_visible, target_period, academic_state)
         is_graduated = _is_graduated_record(
             latest_visible,
             target_period,
             history.get("start_progression_period"),
+            academic_state,
+        )
+        status = _classify_graduation_status(
+            latest_visible,
+            target_period,
+            academic_state,
+            is_eligible,
+            is_graduated,
+            steps_remaining,
         )
         profiles.append(
             {
@@ -54,7 +69,9 @@ def _build_visible_profiles(request) -> List[Dict[str, Any]]:
                 "record": latest_visible,
                 "target_period": target_period,
                 "steps_remaining": steps_remaining,
+                "is_eligible": is_eligible,
                 "is_graduated": is_graduated,
+                "status": status,
             }
         )
 
@@ -73,10 +90,8 @@ def _build_graduated_students(profiles: List[Dict[str, Any]]) -> List[Dict[str, 
                 "programme": record["programme_name"],
                 "department": record.get("department_name", "Unknown"),
                 "faculty": record["faculty_name"],
-                "graduation_stage": _graduation_period_label(
-                    record["programme_name"],
-                    record["regnum"],
-                ),
+                "graduation_stage": record.get("academic_level_label")
+                    or f"Year {record.get('period_year', '')} Semester {record.get('period_semester', '')}".strip(),
                 "cohort": record["original_cohort_label"],
                 "status": "On time" if record["effective_cohort_label"] == record["original_cohort_label"] else "Delayed",
                 "detail_url": f"/students/{str(record['regnum']).lower()}/",
@@ -96,7 +111,7 @@ def _build_graduated_students(profiles: List[Dict[str, Any]]) -> List[Dict[str, 
 def _build_one_step_students(profiles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for profile in profiles:
-        if profile["is_graduated"]:
+        if profile["is_graduated"] or profile.get("is_eligible"):
             continue
         steps_remaining = profile["steps_remaining"]
         if steps_remaining is None or steps_remaining > 1 or steps_remaining < 0:

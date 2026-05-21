@@ -5,9 +5,13 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from ..models import CourseResult, Registration, Student
+from ..models import AcademicPeriod, CourseResult, Registration, Student
 from ..test_support import DashboardFixtureMixin
-from .services import assess_student_risk, format_risk_monitor_drivers
+from .services import (
+    assess_student_risk,
+    build_student_risk_profiles_from_registrations,
+    format_risk_monitor_drivers,
+)
 
 
 @override_settings(
@@ -109,17 +113,101 @@ class RiskViewTests(DashboardFixtureMixin, TestCase):
         level_rows = payload["risk_level_rows"]
         programme_rows = payload["risk_programme_rows"]
 
-        self.assertEqual(distribution_rows[0]["key"], "critical")
-        self.assertEqual(distribution_rows[1]["key"], "high")
+        self.assertEqual(distribution_rows[0]["key"], "low")
+        self.assertEqual(distribution_rows[1]["key"], "moderate")
         self.assertEqual(distribution_rows[1]["count"], 1)
-        self.assertEqual(distribution_rows[2]["key"], "moderate")
+        self.assertEqual(distribution_rows[2]["key"], "high")
         self.assertEqual(distribution_rows[2]["count"], 1)
-        self.assertEqual(driver_rows[0]["label"], "Average 50-59%")
-        self.assertEqual(driver_rows[0]["count"], 2)
-        self.assertEqual(level_rows[0]["level"], "Year 1, Semester 2")
+        self.assertEqual(driver_rows[0]["label"], "1 carried module")
+        self.assertEqual(driver_rows[0]["count"], 3)
+        self.assertEqual(level_rows[0]["level"], "Year 1 Semester 1")
         self.assertEqual(level_rows[0]["high_risk"], 1)
+        self.assertEqual(level_rows[0]["medium_risk"], 1)
         self.assertEqual(programme_rows[0]["programme"], self.commerce_programme.name)
         self.assertEqual(programme_rows[0]["high_risk"], 1)
+
+    def test_risk_payload_rebases_imported_levels_like_student_detail(self):
+        student = Student.objects.create(
+            registration_number="REG777",
+            first_names="Level",
+            surname="Shift",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        year_two_period = AcademicPeriod.objects.create(
+            external_id=202701,
+            academic_year="2",
+            semester="1",
+            name="2027 January - June",
+        )
+        raw_year_two = Registration.objects.create(
+            external_id=777,
+            student=student,
+            programme=self.science_programme,
+            period=year_two_period,
+            decision="repeat",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=raw_year_two,
+            course=self.course,
+            mark=42,
+        )
+
+        risk_row = build_student_risk_profiles_from_registrations([raw_year_two])[0]
+
+        self.assertEqual(risk_row["academic_level"], "Year 1 Semester 1")
+
+    def test_risk_profiles_fall_back_to_historical_average_when_visible_registration_has_no_marks(self):
+        older_period = AcademicPeriod.objects.create(
+            external_id=202401,
+            academic_year="1",
+            semester="1",
+            name="2024 January - June",
+        )
+        latest_period = AcademicPeriod.objects.create(
+            external_id=202402,
+            academic_year="1",
+            semester="2",
+            name="2024 July - December",
+        )
+        student = Student.objects.create(
+            registration_number="REG778",
+            first_names="Average",
+            surname="Fallback",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        older_registration = Registration.objects.create(
+            external_id=778,
+            student=student,
+            programme=self.science_programme,
+            period=older_period,
+            decision="proceed",
+            carrying=0,
+        )
+        latest_registration = Registration.objects.create(
+            external_id=779,
+            student=student,
+            programme=self.science_programme,
+            period=latest_period,
+            decision="retake",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=older_registration,
+            course=self.course,
+            mark=66,
+        )
+
+        response = self.client.get(
+            reverse("dashboard:risk-payload"),
+            {"year": "2024", "period": "July - December"},
+        )
+        payload = response.json()
+        row = next(item for item in payload["register"]["rows"] if item["name"] == student.full_name)
+
+        self.assertEqual(row["average_mark"], 66)
 
     def test_risk_metrics_endpoint_returns_expected_counts(self):
         """Risk metrics JSON should summarise current medium/high-risk students."""

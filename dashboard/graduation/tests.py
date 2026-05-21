@@ -13,8 +13,28 @@ from ..test_support import DashboardFixtureMixin
 class GraduationViewTests(DashboardFixtureMixin, TestCase):
     """Verify graduation analytics and narratives are served from dashboard models."""
 
+    def _create_progression_history(self, student, programme, periods, final_decision="graduated"):
+        for offset, period in enumerate(periods, start=1):
+            Registration.objects.create(
+                external_id=4000 + student.id * 100 + offset,
+                student=student,
+                programme=programme,
+                period=period,
+                decision=final_decision if period == periods[-1] else "Proceed",
+                carrying=0,
+            )
+
     def setUp(self):
         super().setUp()
+        self.science_progression_periods = [
+            AcademicPeriod.objects.create(external_id=202101, academic_year="1", semester="1", name="2021 January - June"),
+            AcademicPeriod.objects.create(external_id=202102, academic_year="1", semester="2", name="2021 July - December"),
+            AcademicPeriod.objects.create(external_id=202201, academic_year="2", semester="1", name="2022 January - June"),
+            AcademicPeriod.objects.create(external_id=202202, academic_year="2", semester="2", name="2022 July - December"),
+            AcademicPeriod.objects.create(external_id=202301, academic_year="3", semester="1", name="2023 January - June"),
+            AcademicPeriod.objects.create(external_id=202302, academic_year="3", semester="2", name="2023 July - December"),
+            AcademicPeriod.objects.create(external_id=202401, academic_year="4", semester="1", name="2024 January - June"),
+        ]
         self.period_2028 = AcademicPeriod.objects.create(
             external_id=202802,
             academic_year="4",
@@ -28,13 +48,11 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
             gender="Female",
             place_of_birth="Gweru",
         )
-        Registration.objects.create(
-            external_id=4,
-            student=self.graduating_student,
-            programme=self.science_programme,
-            period=self.period_2028,
-            decision="graduated",
-            carrying=0,
+        self._create_progression_history(
+            self.graduating_student,
+            self.science_programme,
+            [*self.science_progression_periods, self.period_2028],
+            final_decision="graduated",
         )
 
     def test_graduation_payload_uses_database_backed_analytics(self):
@@ -55,7 +73,9 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(len(data["students"]), 1)
         self.assertEqual(data["students"][0]["regnum"], self.graduating_student.registration_number)
         self.assertEqual(data["students"][0]["detail_slug"], self.graduating_student.registration_number.lower())
-        self.assertEqual(data["students"][0]["graduation_stage"], "4.2")
+        self.assertEqual(data["students"][0]["graduation_stage"], "Year 4 Semester 2")
+        self.assertEqual(data["students"][0]["target_graduation_stage"], "4.2")
+        self.assertEqual(data["students"][0]["target_graduation_period_label"], "Year 4, Semester 2")
         self.assertTrue(data["students"][0]["on_time"])
         self.assertTrue(data["charts"]["programme_graduation_rate"])
         self.assertTrue(data["charts"]["cohort_graduation_rate"])
@@ -70,13 +90,11 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
             gender="Female",
             place_of_birth="Harare",
         )
-        Registration.objects.create(
-            external_id=5,
-            student=second_graduate,
-            programme=self.science_programme,
-            period=self.period_2028,
-            decision="graduated",
-            carrying=0,
+        self._create_progression_history(
+            second_graduate,
+            self.science_programme,
+            [*self.science_progression_periods, self.period_2028],
+            final_decision="graduated",
         )
 
         response = self.client.get(
@@ -86,6 +104,84 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
 
         regnums = [row["regnum"] for row in response.json()["data"]["students"]]
         self.assertEqual(regnums, [second_graduate.registration_number, self.graduating_student.registration_number])
+
+    def test_graduation_rates_use_only_eligible_students_in_denominators(self):
+        eligible_science_student = Student.objects.create(
+            registration_number="REG010",
+            first_names="Eligible",
+            surname="Graduate",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        science_periods = [
+            AcademicPeriod.objects.create(external_id=206001, academic_year="1", semester="1", name="2060 January - June"),
+            AcademicPeriod.objects.create(external_id=206002, academic_year="1", semester="2", name="2060 July - December"),
+            AcademicPeriod.objects.create(external_id=206101, academic_year="2", semester="1", name="2061 January - June"),
+            AcademicPeriod.objects.create(external_id=206102, academic_year="2", semester="2", name="2061 July - December"),
+            AcademicPeriod.objects.create(external_id=206201, academic_year="3", semester="1", name="2062 January - June"),
+            AcademicPeriod.objects.create(external_id=206202, academic_year="3", semester="2", name="2062 July - December"),
+            AcademicPeriod.objects.create(external_id=206301, academic_year="4", semester="1", name="2063 January - June"),
+            AcademicPeriod.objects.create(external_id=206302, academic_year="4", semester="2", name="2063 July - December"),
+        ]
+        for external_id, period in enumerate(science_periods, start=100):
+            Registration.objects.create(
+                external_id=external_id,
+                student=eligible_science_student,
+                programme=self.science_programme,
+                period=period,
+                decision="graduated" if period == science_periods[-1] else "Proceed",
+                carrying=0,
+            )
+
+        masters_programme = Programme.objects.create(
+            department=self.commerce_department,
+            external_id=150,
+            code="MSC-ELIG",
+            name="Masters of Science in Eligibility Studies",
+        )
+        eligible_non_graduate = Student.objects.create(
+            registration_number="REG011",
+            first_names="Eligible",
+            surname="Pending",
+            gender="Male",
+            place_of_birth="Bulawayo",
+        )
+        masters_periods = [
+            AcademicPeriod.objects.create(external_id=207001, academic_year="1", semester="1", name="2070 January - June"),
+            AcademicPeriod.objects.create(external_id=207002, academic_year="1", semester="2", name="2070 July - December"),
+            AcademicPeriod.objects.create(external_id=207101, academic_year="2", semester="1", name="2071 January - June"),
+        ]
+        for external_id, period in enumerate(masters_periods, start=200):
+            Registration.objects.create(
+                external_id=external_id,
+                student=eligible_non_graduate,
+                programme=masters_programme,
+                period=period,
+                decision="" if period == masters_periods[-1] else "Proceed",
+                carrying=0,
+            )
+
+        response = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        data = response.json()["data"]
+        self.assertEqual(data["kpis"]["total_graduated_students"], 2)
+        self.assertEqual(data["kpis"]["average_graduation_rate"], 67)
+        self.assertEqual(data["kpis"]["on_time_graduation_rate"], 100)
+        self.assertEqual(data["kpis"]["best_faculty_name"], self.science_faculty.name)
+        self.assertEqual(data["kpis"]["best_faculty_rate"], 100)
+        self.assertEqual(data["meta"]["eligible_students_count"], 3)
+        self.assertGreaterEqual(data["meta"]["non_eligible_students_count"], 1)
+        self.assertEqual(data["meta"]["faculty_eligible_students"][self.science_faculty.name], 2)
+        self.assertEqual(data["meta"]["faculty_eligible_students"][self.commerce_faculty.name], 1)
+        self.assertEqual(data["meta"]["programme_eligible_students"][self.science_programme.name], 2)
+        self.assertEqual(data["meta"]["programme_eligible_students"][masters_programme.name], 1)
+
+        programme_rates = {row["programme_name"]: row["graduation_rate"] for row in data["charts"]["programme_graduation_rate"]}
+        self.assertEqual(programme_rates[self.science_programme.name], 100)
+        self.assertEqual(programme_rates[masters_programme.name], 0)
 
     def test_graduation_drilldown_returns_filtered_student_rows(self):
         response = self.client.get(
@@ -110,13 +206,11 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
             gender="Female",
             place_of_birth="Mutare",
         )
-        Registration.objects.create(
-            external_id=98,
-            student=second_student,
-            programme=self.science_programme,
-            period=self.period_2028,
-            decision="graduated",
-            carrying=0,
+        self._create_progression_history(
+            second_student,
+            self.science_programme,
+            [*self.science_progression_periods, self.period_2028],
+            final_decision="graduated",
         )
 
         first_page = self.client.get(
@@ -226,6 +320,44 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(payload["rows"][0]["name"], readiness_student.full_name)
         self.assertEqual(payload["rows"][0]["status"], "One step away")
 
+    def test_graduation_readiness_uses_rebased_student_facing_stage_labels(self):
+        readiness_student = Student.objects.create(
+            registration_number="REG299",
+            first_names="Shifted",
+            surname="Progression",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        periods = [
+            AcademicPeriod.objects.create(external_id=205001, academic_year="2", semester="1", name="2050 January - June"),
+            AcademicPeriod.objects.create(external_id=205002, academic_year="2", semester="2", name="2050 July - December"),
+            AcademicPeriod.objects.create(external_id=205101, academic_year="3", semester="1", name="2051 January - June"),
+            AcademicPeriod.objects.create(external_id=205102, academic_year="3", semester="2", name="2051 July - December"),
+            AcademicPeriod.objects.create(external_id=205301, academic_year="5", semester="1", name="2053 January - June"),
+            AcademicPeriod.objects.create(external_id=205302, academic_year="5", semester="2", name="2053 July - December"),
+            AcademicPeriod.objects.create(external_id=205401, academic_year="6", semester="1", name="2054 January - June"),
+        ]
+        for external_id, period in enumerate(periods, start=60):
+            Registration.objects.create(
+                external_id=external_id,
+                student=readiness_student,
+                programme=self.science_programme,
+                period=period,
+                decision="Proceed",
+                carrying=0,
+            )
+
+        payload = self.client.get(
+            reverse("dashboard:graduation-drilldown"),
+            {
+                "chart_key": "readiness_programmes",
+                "bucket_key": self.science_programme.name,
+            },
+        ).json()["data"]
+        target_row = next(row for row in payload["rows"] if row["name"] == readiness_student.full_name)
+
+        self.assertEqual(target_row["graduation_stage"], "Year 4 Semester 1")
+
     def test_graduation_filter_endpoints_return_database_options(self):
         programmes_response = self.client.get(reverse("dashboard:graduation-programmes"))
         faculties_response = self.client.get(reverse("dashboard:graduation-faculties"))
@@ -241,7 +373,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertIn(self.science_faculty.name, faculty_names)
         self.assertIn(self.commerce_faculty.name, faculty_names)
 
-    def test_late_starting_masters_records_do_not_count_as_graduated_without_relative_target_completion(self):
+    def test_late_starting_masters_records_count_as_graduated_when_latest_decision_is_recognized(self):
         masters_programme = Programme.objects.create(
             department=self.commerce_department,
             external_id=103,
@@ -305,9 +437,9 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
 
         data = response.json()["data"]
         graduate_regnums = {row["regnum"] for row in data["students"]}
-        self.assertNotIn(masters_student.registration_number, graduate_regnums)
+        self.assertIn(masters_student.registration_number, graduate_regnums)
 
-    def test_jumped_academic_year_labels_do_not_create_phantom_masters_graduates(self):
+    def test_jumped_academic_year_labels_still_use_chronological_masters_progression(self):
         masters_programme = Programme.objects.create(
             department=self.commerce_department,
             external_id=104,
@@ -371,13 +503,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
 
         data = response.json()["data"]
         graduate_regnums = {row["regnum"] for row in data["students"]}
-        self.assertNotIn(masters_student.registration_number, graduate_regnums)
-        self.assertTrue(
-            any(
-                row["programme_id"] == masters_programme.external_id and row["student_count"] >= 1
-                for row in data["charts"]["readiness_programmes"]
-            )
-        )
+        self.assertIn(masters_student.registration_number, graduate_regnums)
 
     def test_target_stage_with_proceed_decision_counts_as_graduated(self):
         target_stage_student = Student.objects.create(
@@ -464,6 +590,44 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         graduate_regnums = {row["regnum"] for row in data["students"]}
 
         self.assertIn(target_stage_student.registration_number, graduate_regnums)
+
+    def test_target_progression_with_failed_modules_does_not_become_eligible_or_graduated(self):
+        incomplete_student = Student.objects.create(
+            registration_number="REG007",
+            first_names="Tawanda",
+            surname="Ndlovu",
+            gender="Male",
+            place_of_birth="Gweru",
+        )
+        progression_periods = [
+            AcademicPeriod.objects.create(external_id=303501, academic_year="1", semester="1", name="2035 January - June"),
+            AcademicPeriod.objects.create(external_id=303502, academic_year="1", semester="2", name="2035 July - December"),
+            AcademicPeriod.objects.create(external_id=303601, academic_year="2", semester="1", name="2036 January - June"),
+            AcademicPeriod.objects.create(external_id=303602, academic_year="2", semester="2", name="2036 July - December"),
+            AcademicPeriod.objects.create(external_id=303701, academic_year="3", semester="1", name="2037 January - June"),
+            AcademicPeriod.objects.create(external_id=303702, academic_year="3", semester="2", name="2037 July - December"),
+            AcademicPeriod.objects.create(external_id=303801, academic_year="4", semester="1", name="2038 January - June"),
+            AcademicPeriod.objects.create(external_id=303802, academic_year="4", semester="2", name="2038 July - December"),
+        ]
+        for external_id, period in enumerate(progression_periods, start=500):
+            Registration.objects.create(
+                external_id=external_id,
+                student=incomplete_student,
+                programme=self.commerce_programme,
+                period=period,
+                decision="Proceed",
+                carrying=1 if period == progression_periods[-1] else 0,
+            )
+
+        data = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()["data"]
+
+        graduate_regnums = {row["regnum"] for row in data["students"]}
+        self.assertNotIn(incomplete_student.registration_number, graduate_regnums)
+        self.assertGreaterEqual(data["meta"]["at_risk_students_count"], 1)
+        self.assertGreaterEqual(data["meta"]["non_eligible_students_count"], 1)
 
     @override_settings(
         AI_INSIGHTS_PROVIDER="rules",

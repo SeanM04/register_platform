@@ -6,9 +6,13 @@ from django.core.cache import cache
 from django.db.models import Prefetch, Q
 
 from ..models import CourseResult
+from ..student_history import (
+    build_registration_display_level_index,
+    build_registration_display_level_index_for_student_ids,
+    extract_registration_year_semester,
+)
 from ..views import (
     GENDER_BUCKETS,
-    format_academic_level_label,
     get_filtered_registrations,
     normalize_gender_key,
 )
@@ -62,7 +66,11 @@ def get_academic_level_registrations(request, search_query=""):
 def build_academic_level_data(request, search_query=""):
     """Build table rows plus graph-ready academic-level breakdowns."""
 
-    registrations = get_academic_level_registrations(request, search_query)
+    registrations = list(get_academic_level_registrations(request, search_query))
+    registration_level_index = build_registration_display_level_index_for_student_ids(
+        {registration.student_id for registration in registrations},
+        faculty_name=request.GET.get("faculty", "").strip(),
+    ) or build_registration_display_level_index(registrations)
     level_map = {}
     programme_map = {}
     gender_map = {
@@ -77,10 +85,15 @@ def build_academic_level_data(request, search_query=""):
     }
 
     for registration in registrations:
-        year = registration.period.academic_year or "?"
-        semester = registration.period.semester or "?"
+        level_meta = registration_level_index.get(registration.id)
+        if level_meta:
+            year = level_meta["display_year"]
+            semester = level_meta["display_semester"]
+            level_label = level_meta["academic_level_label"]
+        else:
+            year, semester = extract_registration_year_semester(registration)
+            level_label = f"Year {year} Semester {semester}"
         level_key = f"{year}.{semester}"
-        level_label = format_academic_level_label(year, semester)
         gender_key = normalize_gender_key(registration.student.gender)
         programme_name = registration.programme.normalized_name
 
@@ -339,7 +352,11 @@ def build_academic_level_data(request, search_query=""):
 def build_academic_level_summary_snapshot(request, search_query=""):
     """Build a lightweight summary snapshot without the full chart payload structures."""
 
-    registrations = get_academic_level_registrations(request, search_query)
+    registrations = list(get_academic_level_registrations(request, search_query))
+    registration_level_index = build_registration_display_level_index_for_student_ids(
+        {registration.student_id for registration in registrations},
+        faculty_name=request.GET.get("faculty", "").strip(),
+    ) or build_registration_display_level_index(registrations)
     level_summary = {}
     programme_summary = {}
     gender_summary = {
@@ -354,10 +371,15 @@ def build_academic_level_summary_snapshot(request, search_query=""):
     }
 
     for registration in registrations:
-        year = registration.period.academic_year or "?"
-        semester = registration.period.semester or "?"
+        level_meta = registration_level_index.get(registration.id)
+        if level_meta:
+            year = level_meta["display_year"]
+            semester = level_meta["display_semester"]
+            level_label = level_meta["academic_level_label"]
+        else:
+            year, semester = extract_registration_year_semester(registration)
+            level_label = f"Year {year} Semester {semester}"
         level_key = f"{year}.{semester}"
-        level_label = format_academic_level_label(year, semester)
         gender_key = normalize_gender_key(registration.student.gender)
         programme_name = registration.programme.normalized_name
 

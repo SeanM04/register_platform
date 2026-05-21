@@ -524,8 +524,8 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(payload["summary"]["Overall Pass Rate"], "100%")
         self.assertEqual(payload["rows"][0][6], 78)
 
-    def test_student_detail_promotes_new_module_set_out_of_repeated_semester_bucket(self):
-        """A later same-stage registration with new modules should become the next displayed semester."""
+    def test_student_detail_keeps_new_module_set_inside_repeated_stage(self):
+        """A repeated stage with a changed module set should not manufacture a new displayed year/semester."""
 
         first_period = AcademicPeriod.objects.create(
             external_id=202101,
@@ -609,16 +609,90 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
 
         response = self.client.get(
             reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
-            {"term": "1:2", "year": "Year 1", "period": "September - December"},
+            {"term": "1:1", "year": "Year 1", "period": "September - December"},
         )
 
-        self.assertEqual(response.context["student"]["academic_level"], "Year 1 Semester 2")
+        self.assertEqual(response.context["student"]["academic_level"], "Year 1 Semester 1")
         sections = response.context["student"]["result_sections"]
-        self.assertEqual([section["period_name"] for section in sections], ["September 2022 - December 2022"])
+        self.assertEqual(
+            [section["period_name"] for section in sections],
+            [
+                "September 2022 - December 2022",
+                "May 2022 - August 2022",
+                "September 2021 - December 2021",
+            ],
+        )
         year_tabs = response.context["student"]["year_dropdown_tabs"]
         self.assertEqual(year_tabs[-1]["year_label"], "Year 1")
         self.assertEqual([option["label"] for option in year_tabs[-1]["semesters"]], ["Semester 2", "Semester 1"])
-        self.assertEqual(year_tabs[-1]["semesters"][0]["period_name"], "September 2022 - December 2022")
+        self.assertEqual(
+            year_tabs[-1]["semesters"][1]["period_name"],
+            "September 2021 - December 2021 / May 2022 - August 2022 / September 2022 - December 2022",
+        )
+
+    def test_student_detail_uses_chronological_progression_when_imported_stage_labels_repeat(self):
+        """Later module blocks must not be collapsed into earlier years just because raw stage labels repeat."""
+
+        period_specs = [
+            (200, "1", "1", "October 2020 - March 2021", [("CHEP101", "Intro A"), ("CHEP102", "Intro B")]),
+            (201, "1", "2", "May 2021 - August 2021", [("CHEP121", "Sem Two A"), ("CHEP122", "Sem Two B")]),
+            (202, "1", "1", "September 2021 - December 2021", [("CHEP211", "Level Two A"), ("CHEP212", "Level Two B")]),
+            (203, "1", "1", "May 2022 - August 2022", [("CHEP221", "Level Two Sem Two A"), ("CHEP222", "Level Two Sem Two B")]),
+            (206, "1", "1", "September 2022 - December 2022", [("CHEP311", "Level Three A"), ("CHEP312", "Level Three B")]),
+            (208, "1", "2", "March 2023 - July 2023", [("CHEP321", "Level Three Sem Two A"), ("CHEP322", "Level Three Sem Two B")]),
+            (210, "2", "1", "September 2023 - December 2023", []),
+            (212, "2", "2", "March 2024 - July 2024", [("CHEP401", "Level Four A"), ("CHEP402", "Level Four B")]),
+            (214, "3", "1", "August 2024 - December 2024", [("CHEP511", "Level Five A"), ("CHEP512", "Level Five B")]),
+            (216, "3", "2", "March 2025 - July 2025", [("CHEP521", "Level Five Sem Two A"), ("CHEP522", "Level Five Sem Two B")]),
+        ]
+
+        from .models import Course
+
+        student = Student.objects.create(
+            registration_number="REG007",
+            first_names="Casey",
+            surname="Allen",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.science_programme,
+                period=period,
+                decision="proceed" if semester == "2" else "pending",
+                carrying=0,
+            )
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+        )
+
+        self.assertEqual(response.context["student"]["academic_level"], "Year 5 Semester 2")
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        self.assertEqual([tab["year"] for tab in year_tabs], [5, 4, 3, 2, 1])
+        self.assertEqual(
+            [semester["label"] for semester in year_tabs[0]["semesters"]],
+            ["Semester 2", "Semester 1"],
+        )
+        self.assertEqual(year_tabs[0]["semesters"][0]["period_name"], "March 2025 - July 2025")
+        self.assertEqual(year_tabs[-1]["semesters"][0]["period_name"], "May 2021 - August 2021")
+        self.assertEqual(year_tabs[-1]["semesters"][1]["period_name"], "October 2020 - March 2021")
 
     def test_student_transcript_keeps_retakes_in_their_actual_semester(self):
         """Transcript rows should preserve attempt history without creating fake years."""

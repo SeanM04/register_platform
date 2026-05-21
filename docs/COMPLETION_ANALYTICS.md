@@ -2,6 +2,15 @@
 
 This document explains the current completion analysis implementation, including the backend rule engine, the page payload assembly, the optional AI narrative flow, and the frontend chart rendering.
 
+## Route And Audience
+
+Route: `/completion/`
+
+Sidebar label: `Completion Analysis`
+
+Primary audience: registrars and academic leaders monitoring semester
+completion, zero-progress cases, and effective cohort movement.
+
 ## Purpose
 
 The completion page answers four related questions:
@@ -10,6 +19,13 @@ The completion page answers four related questions:
 - how zero-completion decisions shift a student into a later effective cohort
 - how cohort and programme completion rates are aggregated for charts
 - whether chart-level narrative copy came from an AI provider or from the local rule-based fallback
+
+For non-technical users, this page also answers:
+
+- What is the average completion rate for the visible students?
+- Which visible cohort periods now contain students at each progression stage?
+- Why are students sitting at zero completion?
+- Which students make up the current completion table, 10 at a time?
 
 ## Main Routes
 

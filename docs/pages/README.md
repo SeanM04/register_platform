@@ -11,13 +11,13 @@ written for two audiences:
 
 | Sidebar label | Route | Guide |
 | --- | --- | --- |
-| Dashboard | `/` | [dashboard.md](dashboard.md) |
+| Dashboard | `/` | [../DASHBOARD_HOME.md](../DASHBOARD_HOME.md) |
 | Students | `/students/` and `/students/<slug>/` | [students.md](students.md) |
 | Programmes | `/programme/` | [programmes.md](programmes.md) |
 | Demographics | `/demographic/` | [demographics.md](demographics.md) |
 | Academic Levels | `/academic-level/` | [academic-levels.md](academic-levels.md) |
-| Completion Analysis | `/completion/` | [completion-analysis.md](completion-analysis.md) |
-| Graduation Analysis | `/graduation/` | [graduation-analysis.md](graduation-analysis.md) |
+| Completion Analysis | `/completion/` | [../COMPLETION_ANALYTICS.md](../COMPLETION_ANALYTICS.md) |
+| Graduation Analysis | `/graduation/` | [../GRADUATION_ANALYTICS.md](../GRADUATION_ANALYTICS.md) |
 | Risk Analysis | `/risk/` | [risk-analysis.md](risk-analysis.md) |
 | Insights | `/insights/` | [insights.md](insights.md) |
 | System Management | `/system-management/` | [system-management.md](system-management.md) |

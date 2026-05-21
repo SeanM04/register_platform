@@ -66,15 +66,27 @@ Graduation uses the student's effective cohort after all completion-side decisio
 A graduate is marked on time when:
 
 - `effective_cohort == original_cohort`
+- the student's chronological progression index is less than or equal to the
+  programme target period
 
-Any shift makes the graduate delayed.
+Any cohort shift or progression beyond the documented target duration makes the
+graduate delayed.
 
 ### Graduation qualification check
 
-The page only counts a visible student as graduated when one of these is true:
+The page must distinguish graduation eligibility from actual graduation outcome.
 
-- the latest visible decision explicitly indicates graduation, completion, or award
-- the student's latest visible record reaches the programme target period in that student's chronological registration sequence
+A visible student becomes **graduation-eligible** when the student's
+chronological registration sequence reaches or exceeds the programme target
+period.
+
+A visible student is counted as **graduated** only when both of these are true:
+
+- the student has reached or exceeded the programme target period in the
+  chronological registration sequence
+- the latest visible decision explicitly indicates graduation, completion,
+  award, senate approval, dissertation completion, or another recognized
+  graduation outcome
 
 That chronological check matters because some source files store raw academic-year labels that jump or arrive out of order, for example `1.2`, `3.2`, then `3.1`. The page must not manufacture missing semesters from those labels. A master's student with only three visible registration periods is therefore one step from the documented period-4 target unless an explicit graduation-like decision exists.
 
@@ -82,10 +94,13 @@ That chronological check matters because some source files store raw academic-ye
 
 The system recognizes graduation decisions using `_decision_indicates_graduation()` which checks for:
 
-- "graduat", "complet", "award" (original criteria)
-- "pending", "proceed", "resubmit dissertation within 3 months" (extended criteria)
+- "graduat", "complet", "award"
+- other explicit graduation-like outcomes surfaced by institutional data, such
+  as senate approval or dissertation-completion outcomes when they are present
+  in the source decisions
 
-This allows for more comprehensive graduation status detection.
+This logic is used to separate officially recognized graduation outcomes from
+mere progression to the target period.
 
 ## Backend Data Flow
 
@@ -133,13 +148,18 @@ This lookup powers the graduation-rate calculation for each graduate.
 #### KPIs
 
 - `total_graduated_students`
-  Count of all students who meet graduation criteria across all cohorts
+  Count of all students who are officially recognized as graduated in the
+  current scope
 - `average_graduation_rate`
-  Overall institutional graduation rate: `(total_graduated / total_enrolled) * 100`
-  Calculated using cohort-based logic with all enrolled students as denominator
+  Overall institutional graduation rate:
+  `(eligible_graduated_students / eligible_students_count) * 100`
+  Calculated using officially graduated students from eligible cohorts as the
+  numerator and eligible students as the denominator
 - `on_time_graduation_rate`
-  Percentage of graduates who graduated on time: `(on_time_graduates / total_graduates) * 100`
-  On-time is defined as `effective_cohort == original_cohort`
+  Percentage of eligible graduates who graduated on time:
+  `(eligible_on_time_graduates / eligible_graduated_students) * 100`
+  On-time is defined as `effective_cohort == original_cohort` and finishing
+  within the target chronological duration
 - `best_faculty_rate`
   Highest graduation rate among all faculties
 - `best_faculty_name`
@@ -154,17 +174,29 @@ This lookup powers the graduation-rate calculation for each graduate.
   - `programme_id`, `programme_name`
   - `graduation_rate` (percentage)
   - `graduated_count`, `enrolled_count`
+  - `graduated_count` represents the programme's graduated-student numerator
+  - `enrolled_count` represents the programme's eligible-student denominator
+  - optional `official_graduated_count` can preserve a stricter explicit-award
+    subset when needed for diagnostics
 - `cohort_graduation_rate`
   Individual cohort graduation rates with fields:
   - `original_cohort_label` (e.g., "May 2020 - August 2020")
   - `effective_cohort_sort_index` (for chronological ordering)
   - `graduation_rate` (percentage)
   - `graduated_count`, `enrolled_count`
+  - `graduated_count` represents the cohort's graduated-student numerator
+  - `enrolled_count` represents the cohort's eligible-student denominator
+  - optional `official_graduated_count` can preserve a stricter explicit-award
+    subset when needed for diagnostics
 - `faculty_graduation_rate`
   Graduation rate by faculty with hierarchical structure:
   - `faculty` (faculty name)
   - `graduation_rate` (percentage)
   - `graduated_count`, `enrolled_count`
+  - `graduated_count` represents the faculty's graduated-student numerator
+  - `enrolled_count` represents the faculty's eligible-student denominator
+  - optional `official_graduated_count` can preserve a stricter explicit-award
+    subset when needed for diagnostics
   - `hierarchy` (nested departments and programmes data)
     - `departments`: Array of department-level graduation stats
     - `programmes`: Array of programme-level graduation stats
@@ -187,6 +219,16 @@ The payload also returns snapshot-state metadata:
 - `students_one_step_from_target`
 - `students_within_two_steps`
 - `readiness_population`
+- `eligible_students_count`
+- `graduated_students_count`
+- `official_graduated_count`
+- `non_eligible_students_count`
+- `near_eligible_students_count`
+- `delayed_students_count`
+- `active_students_count`
+- `at_risk_students_count`
+- `faculty_eligible_students`
+- `programme_eligible_students`
 
 #### Student table
 
@@ -195,12 +237,18 @@ The table uses each visible graduate and shows:
 - student identity
 - programme
 - faculty
-- graduation stage
-- graduation period label
+- current displayed academic level
+- current displayed academic level label
 - effective cohort
 - original cohort
 - on-time flag
 - graduation rate
+
+The payload also preserves the programme target stage separately for consumers
+that need it:
+
+- `target_graduation_stage`
+- `target_graduation_period_label`
 
 ## Views Layer
 
@@ -416,40 +464,70 @@ If drilldown is not working:
 
 ### Average Graduation Rate
 
-Formula: `(total_graduated_students / total_all_students) * 100`
+Formula: `(eligible_graduated_students / eligible_students_count) * 100`
 
-- `total_graduated_students`: Count of all students meeting graduation criteria
-- `total_all_students`: Sum of all unique students across all original cohorts
-- Uses cohort-based logic with all enrolled students as denominator
-- Represents overall institutional effectiveness across all time
+- `eligible_graduated_students`: Students who are academically eligible and are
+  also officially recognized as graduated
+- `eligible_students_count`: Visible students whose chronological progression
+  has reached or exceeded the programme target period
+- Newly admitted or not-yet-mature cohorts do not dilute this rate
+- This KPI measures graduation conversion among students who have reached
+  graduation maturity, not eligibility penetration through the whole dataset
 
 ### Faculty Graduation Rate
 
-Formula: `(total_faculty_graduated / total_faculty_students) * 100`
+Formula: `(total_faculty_graduated / total_faculty_eligible_students) * 100`
 
-- `total_faculty_graduated`: Sum of graduated students across all cohorts in faculty
-- `total_faculty_students`: Sum of enrolled students across all cohorts in faculty
-- Weighted aggregation (not simple average of cohort rates)
+- `total_faculty_graduated`: Officially graduated students across all faculty cohorts
+- `total_faculty_eligible_students`: Eligible students across all faculty cohorts
+- Weighted aggregation (not simple average of programme rates)
 - Larger cohorts have proportionally more impact on rate
 - Best faculty rate is the maximum value from `graduation_rate_by_faculty`
 
 ### Individual Cohort Graduation Rate
 
-Formula: `(cohort_graduated / cohort_enrolled) * 100`
+Formula: `(cohort_graduated_students / cohort_eligible_students) * 100`
 
 - Calculated for each individual cohort separately
 - Uses `original_cohort_label` for cohort identification
 - Sorted by `effective_cohort_sort_index` for chronological display
-- Enables cohort-by-cohort performance analysis
+- `graduated_count` in the chart row is the graduated-student numerator
+- `enrolled_count` in the chart row is the eligible-student denominator
+- Enables cohort-by-cohort graduation-conversion analysis among mature cohorts
+
+### Programme Graduation Rate
+
+Formula: `(programme_graduated_students / programme_eligible_students) * 100`
+
+- `graduated_count` in the chart row is the graduated-student numerator
+- `enrolled_count` in the chart row is the eligible-student denominator
+- Optional `official_graduated_count` preserves the students who also have an
+  explicit graduation-like decision when that distinction is exposed
 
 ### On-Time Graduation Rate
 
-Formula: `(on_time_graduates / total_graduates) * 100`
+Formula: `(eligible_on_time_graduates / eligible_graduated_students) * 100`
 
-- `on_time_graduates`: Students where `effective_cohort == original_cohort`
-- `total_graduates`: All graduated students
-- Measures timeliness of graduation completion
+- `eligible_on_time_graduates`: Graduated students where
+  `effective_cohort == original_cohort` and `chronological_progression_index <= target_period`
+- `eligible_graduated_students`: Graduated students from eligible cohorts
+- Measures timeliness among officially graduated students who already satisfy
+  the academic eligibility requirements
 - Any cohort shift makes a graduate "delayed"
+
+### Displayed Level Versus Target Stage
+
+The graduation page now separates two concepts that were previously conflated:
+
+- `graduation_stage` and `graduation_period_label`
+  These now represent the student's current displayed academic level, aligned
+  with the student detail page and built from `dashboard.student_history`.
+- `target_graduation_stage` and `target_graduation_period_label`
+  These represent the programme's documented target graduation stage.
+
+This prevents a student list row from showing a target such as `Year 5, Semester 2`
+when the detail page is intentionally displaying the student's current rebased
+visible level.
 
 Recommended checks after changing graduation code:
 

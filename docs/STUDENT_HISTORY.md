@@ -51,12 +51,12 @@ Key helper:
 
 Sorting order:
 
-1. parsed academic year
-2. parsed semester
-3. period external id
-4. registration id
+1. period external id
+2. registration id
 
-This keeps the timeline stable even when the raw import order is noisy.
+This keeps the timeline aligned with the source chronology even when imported
+academic year and semester labels are duplicated, offset, or reused for later
+module blocks.
 
 ### 3. Build displayed semester groups
 
@@ -107,25 +107,31 @@ Some imported students have multiple registrations with the same raw academic ye
 Not all of those should be treated the same way.
 
 - A true repeat should remain in the same displayed semester bucket.
-- A later registration with a mostly new module set should become the next displayed semester, even if the imported raw stage is still the same.
+- A later registration with a clearly more advanced module block should move to
+  the next displayed semester, even if the imported raw stage is still the same.
 
-### Course-overlap rule
+### Merge heuristics
 
 Key helpers:
 
 - `_registration_course_codes(registration)`
-- `_should_merge_with_group(group, year, semester, registration_course_codes)`
+- `_registration_has_repeat_signal(registration, registration_course_codes)`
+- `_course_progression_band(course_codes)`
+- `_should_merge_with_group(group, registration, year, semester, registration_course_codes)`
 
 Current merge behavior:
 
 - registrations can only merge if the raw year and raw semester match the current group
-- if the registration has no course rows, it can still merge into the current group
-- if the registration has courses, at least 50% of its course codes must overlap with the group's existing course set
+- if the new registration shares course codes with the current group, it stays merged
+- if the new registration has explicit repeat, carry, fail, or supplementary signals, it stays merged
+- if the new registration has no course rows, it can still merge into the current group
+- if the new registration carries a more advanced course-code progression band than the current group, it is split into a new displayed semester
 
 This rule is meant to separate:
 
 - true repeat attempts of the same semester
-- new module sets that were imported with the same raw stage label
+- carried or supplementary history that still belongs to the same displayed stage
+- new progression blocks that were imported with the same raw stage label
 
 ## Period Label Display Rules
 
@@ -181,6 +187,11 @@ The raw imported structure is still preserved on each group and row as:
 
 - `raw_year`
 - `raw_semester`
+
+The important design detail is that rebasing now happens after chronological
+grouping, not before. This prevents later module sets from being trapped inside
+earlier displayed years simply because the import reused the same raw year and
+semester values.
 
 ## Attempt History
 
@@ -252,7 +263,9 @@ Primary consumers:
 
 - `dashboard.views.student_detail`
 - `dashboard.views.student_transcript`
-- academic-level and demographic helpers that need consistent year/semester resolution
+- `services.graduation_services._build_student_histories`
+- academic-level, graduation, risk, and demographic helpers that need
+  consistent year/semester resolution
 
 Because this file is shared, changes here can affect:
 
@@ -282,7 +295,8 @@ Pay special attention to tests covering:
 - repeated semester results split by period
 - ordinary semesters hiding centered section headers
 - non-contiguous imported years rebased for display
-- new module sets promoted out of repeated-semester buckets
+- later progression surviving repeated imported raw stage labels
+- genuine repeats staying inside one displayed stage
 - non-repeat dropdown period labels showing only one period
 - transcript retake history
 

@@ -75,12 +75,11 @@ def build_registration_group_key(registration):
 
 
 def sort_registrations_by_structure(registrations):
-    """Sort registrations by programme structure instead of raw attempt count."""
+    """Sort registrations chronologically using the source period ordering."""
 
     return sorted(
         registrations,
         key=lambda registration: (
-            *extract_registration_year_semester(registration),
             getattr(getattr(registration, "period", None), "external_id", 0) or 0,
             registration.id or 0,
         ),
@@ -99,22 +98,68 @@ def _registration_course_codes(registration):
     return codes
 
 
-def _should_merge_with_group(group, year, semester, registration_course_codes):
+def _decision_text(registration):
+    """Return a normalized decision label for merge heuristics."""
+
+    return str(getattr(registration, "decision", "") or "").strip().lower()
+
+
+def _course_progression_band(course_codes):
+    """Infer a rough progression band from course codes like CHEP101 or CHEP221."""
+
+    bands = []
+    for code in course_codes:
+        match = re.search(r"(\d{3})", str(code or ""))
+        if not match:
+            continue
+        bands.append(int(match.group(1)) // 10)
+
+    if not bands:
+        return None
+    return max(bands)
+
+
+def _registration_has_repeat_signal(registration, registration_course_codes):
+    """Return True when the registration still looks like the same repeated stage."""
+
+    if getattr(registration, "carrying", 0):
+        return True
+
+    decision_text = _decision_text(registration)
+    if any(token in decision_text for token in ("repeat", "carry", "fail", "supp", "refer")):
+        return True
+
+    for result in _registration_results(registration):
+        attendance_type = str(getattr(result, "attendance_type", "") or "").strip().lower()
+        if any(token in attendance_type for token in ("repeat", "carry", "supp")):
+            return True
+
+    return not registration_course_codes
+
+
+def _should_merge_with_group(group, registration, year, semester, registration_course_codes):
     """Decide whether a registration continues the current displayed semester."""
 
     if group["raw_year"] != year or group["raw_semester"] != semester:
         return False
 
-    if not registration_course_codes:
+    overlap = group["course_codes"].intersection(registration_course_codes)
+    if overlap:
         return True
 
-    existing_codes = group["course_codes"]
-    if not existing_codes:
+    if _registration_has_repeat_signal(registration, registration_course_codes):
+        return True
+
+    registration_band = _course_progression_band(registration_course_codes)
+    group_band = group.get("progression_band")
+    if (
+        registration_band is not None
+        and group_band is not None
+        and registration_band > group_band
+    ):
         return False
 
-    overlap = sum(1 for code in registration_course_codes if code in existing_codes)
-    overlap_ratio = overlap / len(registration_course_codes)
-    return overlap_ratio >= 0.5
+    return True
 
 
 def build_student_timeline(registrations):
@@ -133,7 +178,11 @@ def build_student_timeline(registrations):
     for registration in ordered_registrations:
         year, semester = extract_registration_year_semester(registration)
         registration_course_codes = _registration_course_codes(registration)
-        group = groups[-1] if groups and _should_merge_with_group(groups[-1], year, semester, registration_course_codes) else None
+        group = (
+            groups[-1]
+            if groups and _should_merge_with_group(groups[-1], registration, year, semester, registration_course_codes)
+            else None
+        )
         if group is None:
             group = {
                 "key": f"slot-{len(groups) + 1}",
@@ -149,9 +198,8 @@ def build_student_timeline(registrations):
                 "results": [],
                 "course_codes": set(),
                 "latest_registration": registration,
+                "progression_band": _course_progression_band(registration_course_codes),
                 "sort_key": (
-                    year,
-                    semester,
                     getattr(getattr(registration, "period", None), "external_id", 0) or 0,
                     registration.id or 0,
                 ),
@@ -160,6 +208,14 @@ def build_student_timeline(registrations):
 
         group["registrations"].append(registration)
         group["course_codes"].update(registration_course_codes)
+        registration_band = _course_progression_band(registration_course_codes)
+        if registration_band is not None:
+            existing_band = group.get("progression_band")
+            group["progression_band"] = (
+                registration_band
+                if existing_band is None
+                else max(existing_band, registration_band)
+            )
         period_name = str(getattr(getattr(registration, "period", None), "name", "") or "").strip()
         if period_name and period_name not in group["period_names"]:
             group["period_names"].append(period_name)
@@ -172,8 +228,6 @@ def build_student_timeline(registrations):
         ):
             group["latest_registration"] = registration
             group["sort_key"] = (
-                year,
-                semester,
                 getattr(getattr(registration, "period", None), "external_id", 0) or 0,
                 registration.id or 0,
             )
@@ -287,6 +341,7 @@ def build_student_timeline(registrations):
         else:
             group["period_display"] = latest_period_name or (group["period_names"][-1] if group["period_names"] else group["semester_label"])
         group.pop("course_codes", None)
+        group.pop("progression_band", None)
 
     for attempts in course_attempts.values():
         if len(attempts) > 1:
@@ -306,6 +361,62 @@ def build_student_timeline(registrations):
         "groups": groups,
         "groups_by_key": {group["key"]: group for group in groups},
     }
+
+
+def build_registration_display_level_index(registrations):
+    """Map each registration to the student-facing academic level used in detail views."""
+
+    registrations_by_student = defaultdict(list)
+    for registration in registrations:
+        registrations_by_student[registration.student_id].append(registration)
+
+    level_index = {}
+    for student_registrations in registrations_by_student.values():
+        timeline = build_student_timeline(student_registrations)
+        for group in timeline["groups"]:
+            level_meta = {
+                "display_year": group["year"],
+                "display_semester": group["semester"],
+                "academic_level_label": group["academic_level_label"],
+            }
+            for registration in group["registrations"]:
+                level_index[registration.id] = level_meta
+
+    return level_index
+
+
+def build_registration_display_level_index_for_student_ids(student_ids, faculty_name=""):
+    """Load registration history for students and map each registration to its display level."""
+
+    if not student_ids:
+        return {}
+
+    from django.db.models import Prefetch
+
+    from .models import CourseResult, Registration
+
+    registrations = (
+        Registration.objects.filter(student_id__in=student_ids)
+        .select_related("student", "programme__department__faculty", "period")
+        .prefetch_related(
+            Prefetch(
+                "course_results",
+                queryset=CourseResult.objects.select_related("course").only(
+                    "registration_id",
+                    "mark",
+                    "attendance_type",
+                    "course__code",
+                    "course__name",
+                ),
+                to_attr="prefetched_course_results",
+            )
+        )
+        .order_by("student_id", "period__external_id", "id")
+    )
+    if faculty_name:
+        registrations = registrations.filter(programme__department__faculty__name=faculty_name)
+
+    return build_registration_display_level_index(list(registrations))
 
 
 def calculate_cumulative_average(groups, selected_group_key=None):

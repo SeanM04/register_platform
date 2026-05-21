@@ -35,6 +35,11 @@ and repeated-history semesters:
 - repeated semesters can split the modules table into separate period sections,
   latest attempt first
 
+The detail page also rebases messy imported academic stages into a contiguous
+student-facing progression. That rebasing now happens after chronological
+grouping, so later module blocks are not incorrectly hidden inside earlier
+displayed years simply because the import reused the same raw year/semester.
+
 ## Page Architecture
 
 ```mermaid
@@ -92,6 +97,8 @@ erDiagram
   semester contains true repeat history.
 - The centered period-section rows in the modules table should only appear for
   repeated or carried semester history, not for normal students.
+- The displayed academic level should reflect chronological progression and
+  module progression signals, not just the raw imported academic-year label.
 
 ## User Experience Notes
 

@@ -27,12 +27,12 @@ This folder contains implementation notes and operational guidance for the regis
   Landing dashboard layout, filter bar, and drill-down behavior
 - [COMPLETION_ANALYTICS.md](COMPLETION_ANALYTICS.md)
   Completion rules, effective cohorts, narratives, and frontend wiring
+- [GRADUATION_ANALYTICS.md](GRADUATION_ANALYTICS.md)
+  Graduation rules, eligible-denominator KPIs, narratives, and frontend wiring
 - [pages/students.md](pages/students.md)
   Student detail display rules, repeat-semester grouping, and profile behavior
 - [pages/demographics.md](pages/demographics.md)
   Demographic charts, cohort-aware year distribution, and map behavior
-- [GRADUATION_ANALYTICS.md](GRADUATION_ANALYTICS.md)
-  Graduation rules, effective cohorts, narratives, and frontend wiring
 
 ### Performance And Drill-Downs
 
@@ -49,13 +49,13 @@ Folder: [pages/](pages/README.md)
 
 Covers every sidebar destination:
 
-- [Dashboard](pages/dashboard.md)
+- [Dashboard](DASHBOARD_HOME.md)
 - [Students](pages/students.md)
 - [Programmes](pages/programmes.md)
 - [Demographics](pages/demographics.md)
 - [Academic Levels](pages/academic-levels.md)
-- [Completion Analysis](pages/completion-analysis.md)
-- [Graduation Analysis](pages/graduation-analysis.md)
+- [Completion Analysis](COMPLETION_ANALYTICS.md)
+- [Graduation Analysis](GRADUATION_ANALYTICS.md)
 - [Risk Analysis](pages/risk-analysis.md)
 - [Insights](pages/insights.md)
 - [System Management](pages/system-management.md)
@@ -160,13 +160,10 @@ docs/
 |-- DASHBOARD_HOME.md
 |-- pages/
 |   |-- README.md
-|   |-- dashboard.md
 |   |-- students.md
 |   |-- programmes.md
 |   |-- demographics.md
 |   |-- academic-levels.md
-|   |-- completion-analysis.md
-|   |-- graduation-analysis.md
 |   |-- risk-analysis.md
 |   |-- insights.md
 |   `-- system-management.md
