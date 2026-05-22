@@ -119,6 +119,125 @@ def _course_progression_band(course_codes):
     return max(bands)
 
 
+def _progression_band_to_stage(band):
+    """Convert a band like 31 or 42 into a displayed year/semester pair."""
+
+    if band is None:
+        return None
+
+    year = max(int(band) // 10, 1)
+    semester = 2 if int(band) % 10 >= 2 else 1
+    return year, semester
+
+
+def _programme_stage_cap(programme_name):
+    """Return the maximum displayed stage index allowed for a programme."""
+
+    normalized = str(programme_name or "").strip().lower()
+    if "masters" in normalized or "master" in normalized or "msc" in normalized:
+        return 3
+    if _programme_is_engineering(programme_name):
+        return 10
+    return 8
+
+
+def _programme_is_engineering(programme_name):
+    """Return True when a programme should follow engineering stage rules."""
+
+    normalized = str(programme_name or "").strip().lower()
+    return bool(
+        "engineering" in normalized
+        or "beng" in normalized
+        or re.search(r"\beng\b", normalized)
+    )
+
+
+def _group_has_attachment_signal(group):
+    """Return True when a group contains attachment/work-related-learning modules."""
+
+    attachment_terms = (
+        "attachment",
+        "internship",
+        "industrial training",
+        "work related learning",
+        "work-related learning",
+        "supervisor's assessment report",
+        "supervisors assessment report",
+        "academic supervisor's assessment report",
+        "academic supervisors assessment report",
+        "employer's assessment report",
+        "employers assessment report",
+    )
+
+    for row in group.get("results", []):
+        course_text = " ".join(
+            [
+                str(row.get("course_code", "") or "").strip().lower(),
+                str(row.get("course_name", "") or "").strip().lower(),
+            ]
+        ).strip()
+        if any(term in course_text for term in attachment_terms):
+            return True
+    return False
+
+
+def _group_has_work_related_signal(group):
+    """Return True when a group contains any work-related module naming."""
+
+    work_related_terms = (
+        "work related",
+        "work-related",
+    )
+
+    for row in group.get("results", []):
+        course_text = " ".join(
+            [
+                str(row.get("course_code", "") or "").strip().lower(),
+                str(row.get("course_name", "") or "").strip().lower(),
+            ]
+        ).strip()
+        if any(term in course_text for term in work_related_terms):
+            return True
+    return False
+
+
+def _infer_group_display_stage(group):
+    """Infer the best display stage from module progression signals."""
+
+    if _group_has_work_related_signal(group):
+        programme = getattr(group.get("latest_registration"), "programme", None)
+        programme_name = getattr(programme, "name", "") or ""
+        if _programme_is_engineering(programme_name):
+            return 4, 2
+        if "masters" not in programme_name.lower() and "master" not in programme_name.lower() and "msc" not in programme_name.lower():
+            return 3, 2
+
+    if _group_has_attachment_signal(group):
+        programme = getattr(group.get("latest_registration"), "programme", None)
+        programme_name = getattr(programme, "name", "") or ""
+        if _programme_is_engineering(programme_name):
+            return 4, 2
+        if "masters" not in programme_name.lower() and "master" not in programme_name.lower() and "msc" not in programme_name.lower():
+            return 3, 2
+
+    return None
+
+
+def _stage_to_index(year, semester):
+    """Convert a year/semester pair into a monotonic semester index."""
+
+    return (max(int(year), 1) - 1) * 2 + max(int(semester), 1)
+
+
+def _index_to_stage(index):
+    """Convert a monotonic semester index back into year/semester."""
+
+    safe_index = max(int(index), 1)
+    year = ((safe_index - 1) // 2) + 1
+    semester = 2 if safe_index % 2 == 0 else 1
+    return year, semester
+
+
 def _registration_has_repeat_signal(registration, registration_course_codes):
     """Return True when course-level evidence still supports the same repeated stage."""
 
@@ -127,7 +246,7 @@ def _registration_has_repeat_signal(registration, registration_course_codes):
         if any(token in attendance_type for token in ("repeat", "carry", "supp")):
             return True
 
-    return not registration_course_codes
+    return False
 
 
 def _should_merge_with_group(group, registration, year, semester, registration_course_codes):
@@ -152,6 +271,9 @@ def _should_merge_with_group(group, registration, year, semester, registration_c
 
     if _registration_has_repeat_signal(registration, registration_course_codes):
         return True
+
+    if not registration_course_codes:
+        return False
 
     return True
 
@@ -299,12 +421,37 @@ def build_student_timeline(registrations):
     groups.sort(key=lambda group: group["sort_key"])
 
     # Imported stage labels can be offset or skip semesters entirely.
-    # Rebase the student-facing timeline to contiguous progression slots.
+    # Rebase the student-facing timeline using module progression signals first,
+    # then preserve chronological raw-stage gaps when the import is sparse.
+    previous_display_stage = None
+    previous_raw_stage = None
     for index, group in enumerate(groups):
         raw_year = group["raw_year"]
         raw_semester = group["raw_semester"]
-        display_year = (index // 2) + 1
-        display_semester = 1 if index % 2 == 0 else 2
+        programme = getattr(group.get("latest_registration"), "programme", None)
+        programme_name = getattr(programme, "name", "") or ""
+        max_stage_index = _programme_stage_cap(programme_name)
+        inferred_stage = _infer_group_display_stage(group)
+        if inferred_stage is not None:
+            display_year, display_semester = inferred_stage
+        elif previous_display_stage is None:
+            display_year, display_semester = 1, 1
+        else:
+            previous_display_index = _stage_to_index(*previous_display_stage)
+            current_raw_index = _stage_to_index(raw_year, raw_semester)
+            previous_raw_index = _stage_to_index(*previous_raw_stage) if previous_raw_stage else None
+            raw_step = (
+                current_raw_index - previous_raw_index
+                if previous_raw_index is not None
+                else 1
+            )
+            display_year, display_semester = _index_to_stage(
+                previous_display_index + max(raw_step, 1)
+            )
+        display_stage_index = min(_stage_to_index(display_year, display_semester), max_stage_index)
+        display_year, display_semester = _index_to_stage(display_stage_index)
+        previous_display_stage = (display_year, display_semester)
+        previous_raw_stage = (raw_year, raw_semester)
 
         group["key"] = f"{display_year}:{display_semester}"
         group["year"] = display_year

@@ -848,6 +848,293 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual((chep402_row["academic_year"], chep402_row["period"]), ("Year 2", "Semester 2"))
         self.assertEqual(chep402_row["period_name"], "March 2024 - July 2024")
 
+    def test_chronology_wins_over_high_module_codes_and_conventional_stage_is_capped(self):
+        """High module codes should not force a conventional student beyond chronological final stages."""
+
+        from .student_history import build_student_timeline
+        from .models import Course
+
+        student = Student.objects.create(
+            registration_number="REG014",
+            first_names="Jordan",
+            surname="Allen",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (6100, "1", "1", "September 2022 - December 2022", [("AEDT101", "Intro A")]),
+            (6101, "1", "2", "March 2023 - July 2023", [("AEDT121", "Sem Two A")]),
+            (6102, "2", "2", "March 2024 - July 2024", [("AEDT211", "Level Two A")]),
+            (6103, "3", "1", "August 2024 - December 2024", [("AEDT221", "Level Two Sem Two A"), ("BMAN421", "Advanced Cross Faculty Module")]),
+            (6104, "3", "2", "March 2025 - July 2025", []),
+            (6105, "5", "1", "August 2025 - December 2025", []),
+        ]
+
+        registrations = []
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision="proceed",
+                carrying=0,
+            )
+            registrations.append(registration)
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        timeline = build_student_timeline(registrations)
+        labels = [group["academic_level_label"] for group in timeline["groups"]]
+        periods_by_label = {group["academic_level_label"]: group["period_display"] for group in timeline["groups"]}
+
+        self.assertEqual(
+            labels,
+            [
+                "Year 1 Semester 1",
+                "Year 1 Semester 2",
+                "Year 2 Semester 2",
+                "Year 3 Semester 1",
+                "Year 3 Semester 2",
+                "Year 4 Semester 2",
+            ],
+        )
+        self.assertEqual(periods_by_label["Year 3 Semester 1"], "August 2024 - December 2024")
+        self.assertNotIn("Year 6 Semester 2", labels)
+
+    def test_bsc_eng_programmes_map_work_related_block_to_engineering_attachment_stage(self):
+        """Programmes named like 'Bsc Eng ...' should still use the engineering attachment stage."""
+
+        from .student_history import build_student_timeline
+        from .models import Course, Department, Faculty, Programme
+
+        engineering_faculty = Faculty.objects.create(name="Engineering Faculty")
+        engineering_department = Department.objects.create(
+            faculty=engineering_faculty,
+            name="Department of Engineering",
+        )
+        engineering_programme = Programme.objects.create(
+            department=engineering_department,
+            external_id=181,
+            code="BSC-ENG-MIN",
+            name="Bsc Eng Mining and Mineral Processing",
+        )
+        student = Student.objects.create(
+            registration_number="REG015",
+            first_names="Chris",
+            surname="Moyo",
+            gender="Male",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (7100, "2", "1", "September 2023 - December 2023", [("ENG321", "Research Methods")]),
+            (7101, "2", "2", "March 2024 - July 2024", []),
+            (
+                7102,
+                "3",
+                "1",
+                "August 2024 - December 2024",
+                [
+                    ("ENGP401", "Work Related Learning Report"),
+                    ("ENGP402", "Academic Supervisor's Report"),
+                    ("ENGP404", "Employer's Assessment Report"),
+                ],
+            ),
+        ]
+
+        registrations = []
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=engineering_programme,
+                period=period,
+                decision="proceed",
+                carrying=0,
+            )
+            registrations.append(registration)
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        timeline = build_student_timeline(registrations)
+        labels = [group["academic_level_label"] for group in timeline["groups"]]
+        periods_by_label = {group["academic_level_label"]: group["period_display"] for group in timeline["groups"]}
+
+        self.assertEqual(labels[-1], "Year 4 Semester 2")
+        self.assertEqual(labels.count("Year 4 Semester 2"), 1)
+        self.assertEqual(periods_by_label["Year 4 Semester 2"], "August 2024 - December 2024")
+
+    def test_empty_same_stage_registration_does_not_merge_into_previous_semester_before_attachment(self):
+        """An empty stage before attachment should stay distinct so work-related results remain in the following semester."""
+
+        from .models import Course
+
+        student = Student.objects.create(
+            registration_number="REG013",
+            first_names="Tracey",
+            surname="Moyo",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (5100, "1", "1", "October 2020 - March 2021", [("ACC101", "Level One A")]),
+            (5101, "1", "2", "May 2021 - August 2021", [("ACC121", "Level One Sem Two A")]),
+            (5102, "1", "1", "September 2021 - December 2021", [("ACC211", "Level Two A")]),
+            (5103, "1", "1", "May 2022 - August 2022", [("ACC221", "Level Two Sem Two A")]),
+            (5104, "1", "1", "September 2022 - December 2022", []),
+            (
+                5105,
+                "1",
+                "2",
+                "March 2023 - July 2023",
+                [
+                    ("ACC311", "Work Related Learning Report"),
+                    ("ACC312", "Academic Supervisors Report"),
+                    ("ACC313", "Employer's Assessment Report"),
+                ],
+            ),
+        ]
+
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision="proceed" if semester == "2" else "pending",
+                carrying=0,
+            )
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+        )
+
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        year_three = next(tab for tab in year_tabs if tab["year"] == 3)
+        semester_labels = [semester["label"] for semester in year_three["semesters"]]
+        period_names = [semester["period_name"] for semester in year_three["semesters"]]
+
+        self.assertEqual(semester_labels, ["Semester 2", "Semester 1"])
+        self.assertIn("March 2023 - July 2023", period_names)
+        self.assertIn("September 2022 - December 2022", period_names)
+
+        attachment_response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+            {"term": "3:2"},
+        )
+        attachment_codes = [row["code"] for row in attachment_response.context["student"]["results"]]
+        self.assertEqual(
+            sorted(attachment_codes),
+            ["ACC311", "ACC312", "ACC313"],
+        )
+
+    def test_sparse_imported_progression_uses_same_stage_logic_as_logan_pattern(self):
+        """Sparse imported stages should preserve accurate module blocks without collapsing chronology."""
+
+        from .models import Course
+
+        student = Student.objects.create(
+            registration_number="REG014",
+            first_names="Pattern",
+            surname="Student",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (6200, "1", "1", "May 2022 - August 2022", [("ACC101X", "Level One A")], "pending"),
+            (6201, "1", "1", "September 2022 - December 2022", [("ACC121X", "Level One Sem Two A")], "Proceed Carrying"),
+            (6202, "1", "2", "March 2023 - July 2023", [("ACC211X", "Level Two A"), ("ACC212X", "Level Two B")], "Retake"),
+            (6203, "2", "1", "September 2023 - December 2023", [("ACC221X", "Level Two Sem Two A"), ("ACC222X", "Level Two Sem Two B")], "Proceed"),
+            (6204, "2", "2", "March 2024 - July 2024", [], "Pending"),
+            (
+                6205,
+                "3",
+                "1",
+                "August 2024 - December 2024",
+                [("ACC311X", "Work Related Learning Report"), ("ACC312X", "Academic Supervisors Report"), ("ACC313X", "Employer's Assessment Report")],
+                "Proceed",
+            ),
+            (6206, "3", "2", "March 2025 - July 2025", [("ACC411X", "Level Four A"), ("ACC412X", "Level Four B")], "Pending"),
+            (6207, "5", "1", "August 2025 - December 2025", [("ACC421X", "Level Five A"), ("ACC422X", "Level Five B")], "Proceed"),
+        ]
+
+        for external_id, academic_year, semester, period_name, course_specs, decision in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision=decision,
+                carrying=0,
+            )
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+        )
+
+        year_tabs = response.context["student"]["year_dropdown_tabs"]
+        self.assertEqual([tab["year"] for tab in year_tabs], [4, 3, 2, 1])
+
+        year_three = next(tab for tab in year_tabs if tab["year"] == 3)
+        self.assertEqual(
+            [semester["period_name"] for semester in year_three["semesters"]],
+            ["August 2024 - December 2024", "March 2024 - July 2024"],
+        )
+
+        year_four = next(tab for tab in year_tabs if tab["year"] == 4)
+        self.assertEqual(
+            [semester["period_name"] for semester in year_four["semesters"]],
+            ["August 2025 - December 2025", "March 2025 - July 2025"],
+        )
+
     @override_settings(
         CHATBOT_ENABLED=True,
         CHATBOT_PROVIDER="google",

@@ -390,6 +390,19 @@ def _is_graduated_record(
     return _is_graduation_eligible(record, target_period, academic_state) and _decision_indicates_graduation(decision_key)
 
 
+def _graduation_display_stage(
+    record: Dict[str, Any],
+    programme_name: str,
+    student_regnum: str,
+    is_eligible: bool,
+) -> str:
+    """Return the graduation page stage label for a visible student profile."""
+
+    if is_eligible:
+        return _graduation_period_label(programme_name, student_regnum)
+    return record.get("academic_level_label") or ""
+
+
 def _classify_graduation_status(
     record: Dict[str, Any],
     target_period: int,
@@ -594,6 +607,12 @@ def get_graduation_page_data(
             history.get("start_progression_period"),
             academic_state,
         )
+        graduation_stage_label = _graduation_display_stage(
+            latest_visible,
+            latest_visible["programme_name"],
+            latest_visible["regnum"],
+            is_eligible,
+        )
         status = _classify_graduation_status(
             latest_visible,
             target_period,
@@ -613,6 +632,7 @@ def get_graduation_page_data(
                 "is_graduated": is_graduated,
                 "academic_state": academic_state,
                 "status": status,
+                "graduation_stage_label": graduation_stage_label,
             }
         )
 
@@ -639,8 +659,8 @@ def get_graduation_page_data(
                 "actual_progression": actual_progression,
                 "chronological_progression_index": int(latest_visible.get("chronological_progression_index", 0) or 0),
                 "steps_remaining": steps_remaining,
-                "graduation_stage": latest_visible.get("academic_level_label") or "",
-                "graduation_period_label": latest_visible.get("academic_level_label") or "",
+                "graduation_stage": graduation_stage_label,
+                "graduation_period_label": graduation_stage_label,
                 "target_graduation_stage": _graduation_stage_label(latest_visible["programme_name"], latest_visible["regnum"]),
                 "target_graduation_period_label": _graduation_period_label(latest_visible["programme_name"], latest_visible["regnum"]),
                 "effective_cohort": effective_cohort_label,

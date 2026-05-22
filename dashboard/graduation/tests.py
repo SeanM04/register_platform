@@ -407,7 +407,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         ).json()["data"]
         mapped_student = next(row for row in payload["students"] if row["regnum"] == student.registration_number)
-        self.assertEqual(mapped_student["graduation_stage"], "Year 4 Semester 2")
+        self.assertEqual(mapped_student["graduation_stage"], "Year 4, Semester 2")
 
         drilldown = self.client.get(
             reverse("dashboard:graduation-drilldown"),
@@ -417,7 +417,89 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
             },
         ).json()["data"]
         drilldown_row = next(row for row in drilldown["rows"] if row["regnum"] == student.registration_number)
-        self.assertEqual(drilldown_row["graduation_stage"], "Year 4 Semester 2")
+        self.assertEqual(drilldown_row["graduation_stage"], "Year 4, Semester 2")
+
+    def test_graduation_page_uses_target_stage_for_eligible_completed_students(self):
+        from ..models import Course
+
+        student = Student.objects.create(
+            registration_number="REG499",
+            first_names="Eligible",
+            surname="Completed",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (401200, "1", "1", "October 2020 - March 2021", [("AEDT101", "Intro A")], "Pending"),
+            (401201, "1", "2", "May 2021 - August 2021", [("AEDT121", "Sem Two A")], "Proceed"),
+            (401202, "1", "1", "September 2021 - December 2021", [("AEDT211", "Level Two A")], "Retake"),
+            (401203, "1", "1", "May 2022 - August 2022", [("AEDT221", "Level Two Sem Two A")], "Supplement"),
+            (401210, "2", "1", "September 2023 - December 2023", [("AEDT125", "Recovered Module")], "Proceed Carrying"),
+            (401212, "2", "2", "March 2024 - July 2024", [], "Pending"),
+            (
+                401214,
+                "3",
+                "1",
+                "August 2024 - December 2024",
+                [
+                    ("AEDT301", "Work Related Learning Report"),
+                    ("AEDT302", "Academic Supervisor's Assessment Report"),
+                    ("AEDT303", "Supervisor's Assessment Report"),
+                ],
+                "Proceed Carrying",
+            ),
+            (
+                401216,
+                "3",
+                "2",
+                "March 2025 - July 2025",
+                [
+                    ("AEDT411", "Agricultural Price Analysis and Forecasting"),
+                    ("AEDT412", "Agricultural Trade"),
+                ],
+                "Pending",
+            ),
+        ]
+
+        for external_id, academic_year, semester, period_name, course_specs, decision in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision=decision,
+                carrying=0,
+            )
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=70 + offset,
+                )
+
+        payload = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()["data"]
+        target_student = next(row for row in payload["students"] if row["regnum"] == student.registration_number)
+        self.assertEqual(target_student["graduation_stage"], "Year 4, Semester 2")
+
+        drilldown = self.client.get(
+            reverse("dashboard:graduation-drilldown"),
+            {
+                "chart_key": "graduation_programmes",
+                "bucket_key": self.commerce_programme.name,
+            },
+        ).json()["data"]
+        drilldown_row = next(row for row in drilldown["rows"] if row["regnum"] == student.registration_number)
+        self.assertEqual(drilldown_row["graduation_stage"], "Year 4, Semester 2")
 
     def test_graduation_filter_endpoints_return_database_options(self):
         programmes_response = self.client.get(reverse("dashboard:graduation-programmes"))

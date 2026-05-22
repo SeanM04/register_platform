@@ -422,9 +422,11 @@
 .page-link {
     min-width: 34px;
     padding: 0.42rem 0.6rem;
+    border: none;
     border-radius: 10px;
     background: #eef2f7;
     color: var(--navy);
+    cursor: pointer;
     text-align: center;
     font-weight: 600;
     font-size: 0.8rem;

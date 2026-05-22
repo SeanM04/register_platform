@@ -7,6 +7,7 @@ from services.graduation_services import (
     _build_academic_completion_state,
     _build_student_histories,
     _classify_graduation_status,
+    _graduation_display_stage,
     _is_graduation_eligible,
     _is_graduated_record,
     _registration_matches_filters,
@@ -55,6 +56,12 @@ def _build_visible_profiles(request) -> List[Dict[str, Any]]:
             history.get("start_progression_period"),
             academic_state,
         )
+        graduation_stage_label = _graduation_display_stage(
+            latest_visible,
+            latest_visible["programme_name"],
+            latest_visible["regnum"],
+            is_eligible,
+        )
         status = _classify_graduation_status(
             latest_visible,
             target_period,
@@ -72,6 +79,7 @@ def _build_visible_profiles(request) -> List[Dict[str, Any]]:
                 "is_eligible": is_eligible,
                 "is_graduated": is_graduated,
                 "status": status,
+                "graduation_stage_label": graduation_stage_label,
             }
         )
 
@@ -90,7 +98,8 @@ def _build_graduated_students(profiles: List[Dict[str, Any]]) -> List[Dict[str, 
                 "programme": record["programme_name"],
                 "department": record.get("department_name", "Unknown"),
                 "faculty": record["faculty_name"],
-                "graduation_stage": record.get("academic_level_label")
+                "graduation_stage": profile.get("graduation_stage_label")
+                    or record.get("academic_level_label")
                     or f"Year {record.get('period_year', '')} Semester {record.get('period_semester', '')}".strip(),
                 "cohort": record["original_cohort_label"],
                 "status": "On time" if record["effective_cohort_label"] == record["original_cohort_label"] else "Delayed",

@@ -1504,22 +1504,21 @@ class GraduationAnalysis {
     }
 
     buildPaginationLink(label, disabled, onClick) {
-        const link = document.createElement("a");
+        const link = document.createElement("button");
+        link.type = "button";
         link.className = "page-link";
         if (label === "Prev" || label === "Next") {
             link.classList.add("page-link-arrow");
         }
         if (disabled) {
             link.classList.add("is-disabled");
-            link.href = "#";
+            link.disabled = true;
             link.textContent = label;
             return link;
         }
 
-        link.href = "#";
         link.textContent = label;
-        link.addEventListener("click", (event) => {
-            event.preventDefault();
+        link.addEventListener("click", () => {
             onClick();
         }, { passive: true });
         return link;
