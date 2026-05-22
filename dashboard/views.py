@@ -142,7 +142,7 @@ CHATBOT_SUGGESTIONS = {
 def extract_period_year(period_name):
     """Extract a four-digit year from an academic period label."""
 
-    match = re.search(r"(20\d{2})", period_name or "")
+    match = re.search(r"\b(\d{4})\b", period_name or "")
     return match.group(1) if match else ""
 
 
@@ -151,14 +151,10 @@ def format_period_label(period_name):
 
     if not period_name:
         return ""
-    
-    # Extract year & remove it completely
-    year_match = re.search(r"(20\d{2})", period_name)
-    if year_match:
-        text = period_name.replace(year_match.group(0), "").strip()
-    else:
-        text = period_name
-    
+
+    # Remove any standalone four-digit year from the display label.
+    text = re.sub(r"\b\d{4}\b", "", period_name).strip()
+
     # Clean up remaining text
     text = re.sub(r"\s+", " ", text.replace("-", " - ")).strip(" -")
     return text.title()
@@ -328,7 +324,12 @@ def build_filters(request):
     selected_period = request.GET.get("period", "").strip()
     selected_faculty = request.GET.get("faculty", "").strip()
 
-    periods = list(AcademicPeriod.objects.order_by("name").values("name"))
+    periods = list(
+        AcademicPeriod.objects.filter(registrations__isnull=False)
+        .order_by("name")
+        .values("name")
+        .distinct()
+    )
     years = sorted({extract_period_year(period["name"]) for period in periods if extract_period_year(period["name"])}, reverse=True)
     
     # Filter periods by selected year & create options with display labels

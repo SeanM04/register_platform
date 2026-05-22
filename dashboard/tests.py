@@ -75,6 +75,43 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(all(card["value"] == "--" for card in response.context["summary_cards"]))
         self.assertContains(response, reverse("dashboard:insights-payload"))
 
+    def test_shared_filters_use_backend_faculties_and_month_only_period_labels(self):
+        """Shared filters should expose real faculty names and period month ranges only."""
+
+        AcademicPeriod.objects.create(
+            external_id=202103,
+            academic_year="2",
+            semester="1",
+            name="October - March 2021",
+        )
+        AcademicPeriod.objects.create(
+            external_id=302401,
+            academic_year="3",
+            semester="1",
+            name="3024 January - June",
+        )
+        AcademicPeriod.objects.create(
+            external_id=302402,
+            academic_year="3",
+            semester="2",
+            name="3024 July - December",
+        )
+
+        response = self.client.get(reverse("dashboard:graduation"))
+
+        filters = {row["name"]: row for row in response.context["filters"]}
+        self.assertEqual(
+            filters["faculty"]["options"],
+            [self.commerce_faculty.name, self.science_faculty.name],
+        )
+        self.assertNotIn("Dbg Faculty", filters["faculty"]["options"])
+        self.assertNotIn("3024", filters["year"]["options"])
+        self.assertIn("Jan - June", filters["period"]["options"])
+        self.assertIn("July - December", filters["period"]["options"])
+        self.assertNotIn("3024 January - June", filters["period"]["options"])
+        self.assertNotIn("3024 July - December", filters["period"]["options"])
+        self.assertNotIn("October - March 2021", filters["period"]["options"])
+
     def test_layout_context_exposes_chatbot_bootstrap(self):
         """Shared dashboard context should expose chatbot config to the base template."""
 
