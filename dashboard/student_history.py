@@ -247,22 +247,124 @@ def _group_has_work_related_signal(group):
     return False
 
 
+def _group_signal_row_count(group, predicate):
+    """Return how many module rows in a group match a signal predicate."""
+
+    count = 0
+    total = 0
+    for row in group.get("results", []):
+        total += 1
+        if predicate(row):
+            count += 1
+    return count, total
+
+
+def _row_has_attachment_signal(row):
+    """Return True when a single module row looks like attachment/work-related learning."""
+
+    attachment_terms = (
+        "attachment",
+        "internship",
+        "industrial training",
+        "work related learning",
+        "work-related learning",
+        "supervisor's assessment report",
+        "supervisors assessment report",
+        "academic supervisor's assessment report",
+        "academic supervisors assessment report",
+        "employer's assessment report",
+        "employers assessment report",
+    )
+    course_text = " ".join(
+        [
+            str(row.get("course_code", "") or "").strip().lower(),
+            str(row.get("course_name", "") or "").strip().lower(),
+        ]
+    ).strip()
+    return any(term in course_text for term in attachment_terms)
+
+
+def _row_has_work_related_signal(row):
+    """Return True when a single module row contains work-related naming."""
+
+    work_related_terms = (
+        "work related",
+        "work-related",
+    )
+    course_text = " ".join(
+        [
+            str(row.get("course_code", "") or "").strip().lower(),
+            str(row.get("course_name", "") or "").strip().lower(),
+        ]
+    ).strip()
+    return any(term in course_text for term in work_related_terms)
+
+
+def _group_is_attachment_style_block(group):
+    """Return True when a group is predominantly an attachment/work-related block."""
+
+    signal_count, total_rows = _group_signal_row_count(group, _row_has_attachment_signal)
+    if not signal_count or not total_rows:
+        return False
+    return True
+
+
+def _group_is_work_related_block(group):
+    """Return True when a group is predominantly a work-related block."""
+
+    signal_count, total_rows = _group_signal_row_count(group, _row_has_work_related_signal)
+    if not signal_count or not total_rows:
+        return False
+    return True
+
+
+def _row_progression_stage_index(row):
+    """Return a stage index inferred from a module row's course code."""
+
+    stage = _progression_band_to_stage(
+        _course_progression_band([str(row.get("course_code", "") or "").strip()])
+    )
+    if stage is None:
+        return None
+    return _stage_to_index(*stage)
+
+
+def _group_has_lower_stage_non_signal_rows(group, signal_predicate, minimum_stage_index):
+    """Return True when mixed ordinary modules still belong to an earlier stage."""
+
+    for row in group.get("results", []):
+        if signal_predicate(row):
+            continue
+        stage_index = _row_progression_stage_index(row)
+        if stage_index is not None and stage_index < minimum_stage_index:
+            return True
+    return False
+
+
 def _infer_group_display_stage(group):
     """Infer the best display stage from module progression signals."""
 
-    if _group_has_work_related_signal(group):
+    if _group_is_work_related_block(group):
         programme = getattr(group.get("latest_registration"), "programme", None)
         programme_name = getattr(programme, "name", "") or ""
         if _programme_is_engineering(programme_name):
+            if _group_has_lower_stage_non_signal_rows(group, _row_has_work_related_signal, _stage_to_index(4, 1)):
+                return None
             return 4, 2
+        if _group_has_lower_stage_non_signal_rows(group, _row_has_work_related_signal, _stage_to_index(3, 1)):
+            return None
         if "masters" not in programme_name.lower() and "master" not in programme_name.lower() and "msc" not in programme_name.lower():
             return 3, 2
 
-    if _group_has_attachment_signal(group):
+    if _group_is_attachment_style_block(group):
         programme = getattr(group.get("latest_registration"), "programme", None)
         programme_name = getattr(programme, "name", "") or ""
         if _programme_is_engineering(programme_name):
+            if _group_has_lower_stage_non_signal_rows(group, _row_has_attachment_signal, _stage_to_index(4, 1)):
+                return None
             return 4, 2
+        if _group_has_lower_stage_non_signal_rows(group, _row_has_attachment_signal, _stage_to_index(3, 1)):
+            return None
         if "masters" not in programme_name.lower() and "master" not in programme_name.lower() and "msc" not in programme_name.lower():
             return 3, 2
 

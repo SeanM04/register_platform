@@ -1148,6 +1148,91 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(timeline["groups"][-1]["academic_level_label"], "Year 3 Semester 2")
         self.assertEqual(timeline["groups"][-1]["results"][0]["display_academic_level_label"], "Year 3 Semester 2")
 
+    def test_visiting_non_engineering_mixed_work_related_registration_keeps_year_two_modules_in_year_two(self):
+        """A mixed visiting registration should not force ordinary Year 2 modules into the attachment semester."""
+
+        from .models import Course
+        from .student_history import build_student_timeline
+
+        visiting_type = AttendanceType.objects.create(
+            external_id=302,
+            name="Visiting",
+            normalized_key="timeline-visiting-mixed-work-related",
+        )
+        student = Student.objects.create(
+            registration_number="REG020",
+            first_names="Marley",
+            surname="Thompson",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (9000, "1", "1", "May 2022 - August 2022", [("INSY101", "Intro A")]),
+            (9001, "1", "1", "September 2022 - December 2022", [("INSY121", "Level One Sem Two")]),
+            (9002, "1", "2", "March 2023 - July 2023", [("INSY211", "Level Two Sem One")]),
+            (
+                9003,
+                "2",
+                "1",
+                "September 2023 - December 2023",
+                [
+                    ("INSY221", "Level Two Sem Two A"),
+                    ("INSY222", "Level Two Sem Two B"),
+                    ("INSY321", "Work Related Learning Student Report"),
+                    ("INSY322", "Work Related Learning Project"),
+                    ("INSY323", "Work Related Learning Supervisor's Report"),
+                ],
+            ),
+            (9004, "2", "2", "March 2024 - July 2024", [("INSY411", "Level Three Sem One")]),
+            (9005, "3", "1", "August 2024 - December 2024", [("INSY421", "Level Three Sem Two")]),
+        ]
+
+        registrations = []
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.science_programme,
+                period=period,
+                decision="Proceed",
+                carrying=0,
+                attendance_type_record=visiting_type,
+            )
+            registrations.append(registration)
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                    attendance_type_record=visiting_type,
+                )
+
+        timeline = build_student_timeline(registrations)
+        labels = [group["academic_level_label"] for group in timeline["groups"]]
+        periods_by_label = {group["academic_level_label"]: group["period_display"] for group in timeline["groups"]}
+
+        self.assertEqual(
+            labels,
+            [
+                "Year 1 Semester 1",
+                "Year 1 Semester 2",
+                "Year 2 Semester 1",
+                "Year 2 Semester 2",
+                "Year 3 Semester 1",
+                "Year 3 Semester 2",
+            ],
+        )
+        self.assertEqual(periods_by_label["Year 2 Semester 2"], "September 2023 - December 2023")
+        self.assertEqual(periods_by_label["Year 3 Semester 1"], "March 2024 - July 2024")
+        self.assertEqual(periods_by_label["Year 3 Semester 2"], "August 2024 - December 2024")
+
     def test_visiting_engineering_timeline_caps_modules_at_year_4_semester_2(self):
         """Visiting engineering students should not progress beyond Year 4 Semester 2."""
 
