@@ -311,7 +311,7 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertContains(response, "Year 2")
 
     def test_student_detail_orders_latest_year_left_and_latest_semester_first(self):
-        """Student year dropdowns should show newest years first and semester 2 above semester 1."""
+        """Student year dropdowns should show the newest year first and Semester 2 before Semester 1."""
 
         year2_period = AcademicPeriod.objects.create(
             external_id=202701,
@@ -894,16 +894,19 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
             reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
         )
 
-        self.assertEqual(response.context["student"]["academic_level"], "Year 5 Semester 2")
+        self.assertEqual(response.context["student"]["academic_level"], "Year 4 Semester 2")
         year_tabs = response.context["student"]["year_dropdown_tabs"]
-        self.assertEqual([tab["year"] for tab in year_tabs], [5, 4, 3, 2, 1])
+        self.assertEqual([tab["year"] for tab in year_tabs], [4, 3, 2, 1])
         self.assertEqual(
             [semester["label"] for semester in year_tabs[0]["semesters"]],
             ["Semester 2", "Semester 1"],
         )
-        self.assertEqual(year_tabs[0]["semesters"][0]["period_name"], "March 2025 - July 2025")
-        self.assertEqual(year_tabs[-1]["semesters"][0]["period_name"], "May 2021 - August 2021")
+        self.assertEqual(
+            year_tabs[0]["semesters"][0]["period_name"],
+            "March 2024 - July 2024 / August 2024 - December 2024 / March 2025 - July 2025",
+        )
         self.assertEqual(year_tabs[-1]["semesters"][1]["period_name"], "October 2020 - March 2021")
+        self.assertEqual(year_tabs[-1]["semesters"][0]["period_name"], "May 2021 - August 2021")
 
     def test_student_transcript_keeps_retakes_in_their_actual_semester(self):
         """Transcript rows should preserve attempt history without creating fake years."""
@@ -1077,13 +1080,13 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
             [
                 "Year 1 Semester 1",
                 "Year 1 Semester 2",
+                "Year 2 Semester 1",
                 "Year 2 Semester 2",
                 "Year 3 Semester 1",
                 "Year 3 Semester 2",
-                "Year 4 Semester 2",
             ],
         )
-        self.assertEqual(periods_by_label["Year 3 Semester 1"], "August 2024 - December 2024")
+        self.assertEqual(periods_by_label["Year 2 Semester 2"], "August 2024 - December 2024")
         self.assertNotIn("Year 6 Semester 2", labels)
 
     def test_visiting_non_engineering_timeline_caps_modules_at_year_3_semester_2(self):

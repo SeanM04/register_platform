@@ -344,6 +344,36 @@ def _log_merge_decision(group, registration, merge_allowed, reasons):
     )
 
 
+def _merge_group_into_display_group(target_group, source_group):
+    """Preserve later raw registrations inside the same displayed stage."""
+
+    target_group["registrations"].extend(source_group.get("registrations", []))
+    target_group["results"].extend(source_group.get("results", []))
+    target_group["course_codes"].update(source_group.get("course_codes", set()))
+    target_group["failed_course_codes"].update(source_group.get("failed_course_codes", set()))
+
+    source_band = source_group.get("progression_band")
+    target_band = target_group.get("progression_band")
+    if source_band is not None:
+        target_group["progression_band"] = (
+            source_band
+            if target_band is None
+            else max(target_band, source_band)
+        )
+
+    for period_name in source_group.get("period_names", []):
+        if period_name and period_name not in target_group["period_names"]:
+            target_group["period_names"].append(period_name)
+
+    source_sort_key = source_group.get("sort_key", (0, 0))
+    target_sort_key = target_group.get("sort_key", (0, 0))
+    if source_sort_key >= target_sort_key:
+        target_group["latest_registration"] = source_group.get("latest_registration")
+        target_group["sort_key"] = source_sort_key
+
+    target_group["merged_display_overflow"] = True
+
+
 def _should_merge_with_group(group, registration, year, semester, registration_course_codes):
     """Decide whether a registration continues the current displayed semester."""
 
@@ -614,8 +644,8 @@ def build_student_timeline(registrations):
     # Rebase the student-facing timeline using module progression signals first,
     # then preserve chronological raw-stage gaps when the import is sparse.
     previous_display_stage = None
-    previous_raw_stage = None
     stage_occurrence_counts = defaultdict(int)
+    finalized_groups = []
     for index, group in enumerate(groups):
         raw_year = group["raw_year"]
         raw_semester = group["raw_semester"]
@@ -631,25 +661,36 @@ def build_student_timeline(registrations):
             stage_reason = "timeline_start=1:1"
         else:
             previous_display_index = _stage_to_index(*previous_display_stage)
-            current_raw_index = _stage_to_index(raw_year, raw_semester)
-            previous_raw_index = _stage_to_index(*previous_raw_stage) if previous_raw_stage else None
-            raw_step = (
-                current_raw_index - previous_raw_index
-                if previous_raw_index is not None
-                else 1
-            )
             display_year, display_semester = _index_to_stage(
-                previous_display_index + max(raw_step, 1)
+                previous_display_index + 1
             )
             stage_reason = (
-                f"chronological_advance previous_display={previous_display_stage[0]}:{previous_display_stage[1]} "
-                f"raw_step={max(raw_step, 1)}"
+                f"sequential_advance previous_display={previous_display_stage[0]}:{previous_display_stage[1]} "
+                f"next_index={previous_display_index + 1}"
             )
         display_stage_index = min(_stage_to_index(display_year, display_semester), max_stage_index)
         display_year, display_semester = _index_to_stage(display_stage_index)
         stage_reason = f"{stage_reason} capped_to={display_year}:{display_semester} max_stage_index={max_stage_index}"
         previous_display_stage = (display_year, display_semester)
-        previous_raw_stage = (raw_year, raw_semester)
+
+        if (
+            finalized_groups
+            and display_stage_index == max_stage_index
+            and finalized_groups[-1]["year"] == display_year
+            and finalized_groups[-1]["semester"] == display_semester
+        ):
+            _merge_group_into_display_group(finalized_groups[-1], group)
+            logger.debug(
+                "student_timeline.stage_assignment_overflow merged_into=%s raw_stage=%s:%s display_stage=%s:%s reason=%s registrations=%s",
+                finalized_groups[-1]["key"],
+                raw_year,
+                raw_semester,
+                display_year,
+                display_semester,
+                stage_reason,
+                [getattr(registration, "id", None) for registration in group["registrations"]],
+            )
+            continue
 
         base_group_key = f"{display_year}:{display_semester}"
         stage_occurrence_counts[base_group_key] += 1
@@ -673,7 +714,10 @@ def build_student_timeline(registrations):
             stage_reason,
             [getattr(registration, "id", None) for registration in group["registrations"]],
         )
+        finalized_groups.append(group)
 
+    groups = finalized_groups
+    for group in groups:
         group["results"].sort(
             key=lambda row: (
                 row["course_code"],
@@ -697,13 +741,14 @@ def build_student_timeline(registrations):
         latest_period_name = str(
             getattr(getattr(group["latest_registration"], "period", None), "name", "") or ""
         ).strip()
-        if has_repeat_history and group["period_names"]:
+        if (has_repeat_history or group.get("merged_display_overflow")) and group["period_names"]:
             group["period_display"] = " / ".join(group["period_names"])
         else:
             group["period_display"] = latest_period_name or (group["period_names"][-1] if group["period_names"] else group["semester_label"])
         group.pop("course_codes", None)
         group.pop("failed_course_codes", None)
         group.pop("progression_band", None)
+        group.pop("merged_display_overflow", None)
 
     for attempts in course_attempts.values():
         if len(attempts) > 1:

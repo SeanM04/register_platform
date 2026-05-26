@@ -1,16 +1,23 @@
 """Database-backed graduation analysis service."""
 
 from collections import defaultdict
+import logging
 from typing import Any, Dict, List, Optional
 
 from dashboard.models import Registration
-from dashboard.student_history import build_registration_display_level_index, extract_registration_year_semester
+from dashboard.student_history import (
+    _programme_is_engineering,
+    build_registration_display_level_index,
+    extract_registration_year_semester,
+)
 from services.completion_service import (
     _build_student_records,
     _cohort_period_map,
     _get_registration_history,
     _registration_matches_filters,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_int(value: Any) -> Optional[int]:
@@ -78,6 +85,14 @@ def _target_period_from_programme(programme_name: str, student_regnum: str = Non
                 result = 8
     
     # Cache the result
+    logger.debug(
+        "graduation.target_period programme=%s regnum=%s engineering=%s attendance_type=%s target_period=%s",
+        programme_name,
+        student_regnum,
+        _programme_is_engineering(programme_name),
+        _get_student_attendance_type(student_regnum) if student_regnum else "",
+        result,
+    )
     _target_period_cache[cache_key] = result
     return result
 
@@ -656,8 +671,26 @@ def get_graduation_page_data(
                 "graduation_stage_label": graduation_stage_label,
             }
         )
+        logger.debug(
+            "graduation.profile regnum=%s programme=%s target_period=%s chronological=%s eligible=%s graduated=%s status=%s attendance_type=%s",
+            latest_visible["regnum"],
+            latest_visible["programme_name"],
+            target_period,
+            latest_visible.get("chronological_progression_index"),
+            is_eligible,
+            is_graduated,
+            status,
+            _get_student_attendance_type(latest_visible["regnum"]),
+        )
 
         if not is_graduated:
+            logger.debug(
+                "graduation.profile_skipped regnum=%s reason=not_graduated target_period=%s eligible=%s status=%s",
+                latest_visible["regnum"],
+                target_period,
+                is_eligible,
+                status,
+            )
             continue
 
         effective_cohort_label = latest_visible["effective_cohort_label"]

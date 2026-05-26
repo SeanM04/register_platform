@@ -1076,7 +1076,7 @@ def student_detail(request, slug):
             rows_by_registration_id.setdefault(registration_id, []).append(
                 {
                     "code": row["course_code"],
-                    "course": row["course_display_name"],
+                    "course": row["course_name"],
                     "period": row["period_name"],
                     "mark": row["mark_value"] if row["mark_value"] is not None else "--",
                     "status": row["status_label"],
