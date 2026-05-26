@@ -122,9 +122,12 @@ Key helpers:
 Current merge behavior:
 
 - registrations can only merge if the raw year and raw semester match the current group
-- if the new registration shares course codes with the current group, it stays merged
-- if the new registration has explicit repeat, carry, fail, or supplementary signals, it stays merged
-- if the new registration has no course rows, it can still merge into the current group
+- the registration must show strong repeat-stage evidence:
+  repeat, carry, retake, fail, or supplementary signals
+- the registration must also share overlapping course codes with the current group
+- registrations with mostly new progression modules must create a new displayed stage
+- registrations with no module rows must not merge into the current group
+- weak overlap by itself must not merge unrelated progression blocks
 - if the new registration carries a more advanced course-code progression band than the current group, it is split into a new displayed semester
 
 This rule is meant to separate:
@@ -193,6 +196,31 @@ grouping, not before. This prevents later module sets from being trapped inside
 earlier displayed years simply because the import reused the same raw year and
 semester values.
 
+### Sequential progression and stage caps
+
+Displayed progression now advances sequentially:
+
+- `Year 1 Semester 1`
+- `Year 1 Semester 2`
+- `Year 2 Semester 1`
+- `Year 2 Semester 2`
+- and so on
+
+This prevents broken chains such as repeated `Semester 2` labels or an older
+`Semester 1` appearing after later semesters in the UI.
+
+The displayed path is also capped by programme type:
+
+- conventional undergraduate: `Year 4 Semester 2`
+- engineering: `Year 5 Semester 2`
+- visiting non-engineering: `Year 3 Semester 2`
+- visiting engineering: `Year 4 Semester 2`
+- masters: `3` semesters
+
+If later raw registrations would overflow the cap, they now merge into the
+final valid displayed stage instead of creating duplicate terminal tabs such as
+multiple `Year 4 Semester 2` entries.
+
 ## Attempt History
 
 Each course result row tracks attempt history across the full ordered registration list.
@@ -215,7 +243,15 @@ Tag examples:
 - `Carried`
 - `Supplementary`
 
-This allows the student detail page and transcript page to show both the latest state and the audit trail.
+This allows the transcript and backend helpers to preserve the audit trail.
+
+Important UI note:
+
+- the student detail page no longer renders the visible attempt pills
+  (`First Attempt`, `Carried`, `Repeated`, etc.)
+- the transcript and backend rows still retain the metadata
+- student detail now shows the plain course name while keeping attempt history
+  available in the backend structures
 
 ## Cumulative Average
 
@@ -270,10 +306,12 @@ Primary consumers:
 Because this file is shared, changes here can affect:
 
 - student detail dropdown tabs
+- latest-year-first / latest-semester-first tab ordering
 - repeated-semester table grouping
 - transcript attempt ordering
 - cumulative grade values
 - year and semester labels across analytics helpers
+- graduation-stage mapping and graduation payload performance
 
 ## Safe Change Guidelines
 

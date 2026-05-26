@@ -325,14 +325,16 @@ def _get_registration_history(faculty: Optional[str] = None) -> List[Registratio
             "student",
             "programme__department__faculty",
             "period",
+            "attendance_type_record",
         )
         .prefetch_related(
             Prefetch(
                 "course_results",
-                queryset=CourseResult.objects.select_related("course").only(
+                queryset=CourseResult.objects.select_related("course", "attendance_type_record").only(
                     "registration_id",
                     "mark",
                     "attendance_type",
+                    "attendance_type_record__name",
                     "course__code",
                     "course__name",
                 ),

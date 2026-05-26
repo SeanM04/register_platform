@@ -35,10 +35,21 @@ and repeated-history semesters:
 - repeated semesters can split the modules table into separate period sections,
   latest attempt first
 
+The year/semester tabs are now displayed latest-first:
+
+- the most recent year appears on the left
+- inside each year, `Semester 2` appears before `Semester 1`
+
 The detail page also rebases messy imported academic stages into a contiguous
 student-facing progression. That rebasing now happens after chronological
 grouping, so later module blocks are not incorrectly hidden inside earlier
 displayed years simply because the import reused the same raw year/semester.
+
+The detail page also keeps the module table visually simpler than the transcript:
+
+- attempt badges such as `First Attempt`, `Carried`, and `Repeated` are no longer shown
+- the course name is rendered without appended attempt-tag text
+- repeat and carry metadata still remain in the backend timeline and transcript flow
 
 ## Page Architecture
 
@@ -89,6 +100,8 @@ erDiagram
 - Years or periods with no course results are hidden from the result tabs.
 - Selecting a global year or period updates the table below to the matching
   student record.
+- shared dashboard filters should only surface backend-linked values; debug
+  faculties or stray period records should not appear
 
 ## Student Detail Display Rules
 
@@ -99,6 +112,10 @@ erDiagram
   repeated or carried semester history, not for normal students.
 - The displayed academic level should reflect chronological progression and
   module progression signals, not just the raw imported academic-year label.
+- empty semesters must stay empty; modules must not be borrowed from previous
+  or later semesters
+- visiting students must stay on the documented capped paths:
+  `Year 3 Semester 2` for non-engineering and `Year 4 Semester 2` for engineering
 
 ## User Experience Notes
 

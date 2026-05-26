@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from dashboard.models import Registration
 from dashboard.student_history import (
     _programme_is_engineering,
-    build_registration_display_level_index,
+    build_student_timeline,
     extract_registration_year_semester,
 )
 from services.completion_service import (
@@ -480,7 +480,16 @@ def _build_student_histories(faculty: Optional[str] = None) -> List[Dict[str, An
             student_registrations,
             key=lambda registration: (registration.period.external_id, registration.id),
         )
-        registration_level_index = build_registration_display_level_index(ordered_registrations)
+        timeline = build_student_timeline(ordered_registrations)
+        registration_level_index = {}
+        for group in timeline["groups"]:
+            level_meta = {
+                "display_year": group["year"],
+                "display_semester": group["semester"],
+                "academic_level_label": group["academic_level_label"],
+            }
+            for registration in group["registrations"]:
+                registration_level_index[registration.id] = level_meta
         student_records = _build_student_records(ordered_registrations, period_index_map, ordered_periods)
         if not student_records:
             continue

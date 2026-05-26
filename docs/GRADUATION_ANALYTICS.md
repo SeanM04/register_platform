@@ -46,9 +46,14 @@ The graduation page depends on the shared completion logic and then applies grad
   - 6 semesters if visiting attendance
 
 The system determines attendance type by:
-1. Checking student's course results for attendance type when student registration number is available
-2. Fallback to programme name analysis if no student registration number is provided
-3. Visiting programmes identified by keywords: "visiting", "exchange", "short"
+1. Checking `Registration.attendance_type_record` first
+2. Falling back to course-result attendance type when student registration number is available
+3. Falling back to programme name analysis if no attendance signal is available
+4. Visiting programmes identified by keywords: "visiting", "exchange", "short"
+
+Engineering classification is also shared with `dashboard.student_history`, so
+programme names such as `BSc Eng ...` are treated consistently as engineering
+across both the graduation page and the student-detail timeline.
 
 ### Effective cohort
 
@@ -126,6 +131,12 @@ The service reuses completion-side helpers to build ordered student histories an
 - chronological progression index
 
 Each student history also tracks the latest derived record.
+
+The display-level year/semester now comes directly from
+`dashboard.student_history.build_student_timeline()` for each student's ordered
+registrations. This keeps graduation-stage labels aligned with the student
+detail page and avoids rebuilding display-level indexes through a slower
+shared-path helper.
 
 ### Completion lookup
 
@@ -237,8 +248,7 @@ The table uses each visible graduate and shows:
 - student identity
 - programme
 - faculty
-- current displayed academic level
-- current displayed academic level label
+- graduation page display stage
 - effective cohort
 - original cohort
 - on-time flag
@@ -247,8 +257,14 @@ The table uses each visible graduate and shows:
 The payload also preserves the programme target stage separately for consumers
 that need it:
 
+- `graduation_stage`
+- `graduation_period_label`
 - `target_graduation_stage`
 - `target_graduation_period_label`
+
+When a student is already graduation-eligible or completed, the graduation page
+now uses the documented target stage for the main table label instead of the
+latest module-bearing stage.
 
 ## Views Layer
 
@@ -379,6 +395,7 @@ Responsibilities:
 - implement hierarchical drilldown for faculty charts (Faculty → Departments → Programmes → Students)
 - handle chart click events with proper data mapping
 - manage pagination with filter preservation
+- keep table pagination in place without jumping the browser to the top
 - display professional hierarchical drilldown modal with interactive department/programme cards
 
 #### Chart Data Mapping
@@ -433,6 +450,18 @@ If the graduation page shows very few or zero graduates, verify the data before 
 2. Check whether the dataset actually reaches the terminal target periods required by the documented rules
 3. Confirm the latest visible records are being evaluated relative to the student's programme start, not against raw academic-year labels alone
 4. Use the readiness charts to confirm whether the snapshot is close to producing graduates but is still one or two visible steps short
+
+If the graduation page appears not to load or takes too long to become usable:
+
+1. Check `/metrics/graduation/payload/` response time before assuming a frontend crash
+2. Inspect `services.graduation_services._build_student_histories()`
+3. Confirm registration history is eager-loading attendance and course-result relationships
+4. Re-run the graduation payload test after performance changes
+
+Recent performance note:
+
+- the graduation payload was optimized by removing repeated display-level index rebuilding inside `_build_student_histories()`
+- the registration-history query now eagerly loads attendance relationships needed by visiting-path and timeline logic
 
 If charts are not displaying correctly:
 

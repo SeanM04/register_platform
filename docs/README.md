@@ -15,12 +15,10 @@ This folder contains implementation notes and operational guidance for the regis
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
   Django app structure, models, and platform design notes
-- [pages/README.md](pages/README.md)
-  Sidebar page-by-page documentation for non-technical users and maintainers
 - [AI_INSIGHTS.md](AI_INSIGHTS.md)
   Shared AI narrative generation patterns across dashboards
 - [STUDENT_HISTORY.md](STUDENT_HISTORY.md)
-  Student timeline grouping, repeat-attempt handling, and transcript helper logic
+  Student timeline grouping, repeat-attempt handling, visiting-stage caps, latest-first detail tabs, and transcript helper logic
 - [CHATBOT.md](CHATBOT.md)
   UniStudio chatbot widget — async SSE streaming, real-time status feedback, 20-handler dispatch, rate limiting, and provider fallback
 - [DASHBOARD_HOME.md](DASHBOARD_HOME.md)
@@ -28,9 +26,9 @@ This folder contains implementation notes and operational guidance for the regis
 - [COMPLETION_ANALYTICS.md](COMPLETION_ANALYTICS.md)
   Completion rules, effective cohorts, narratives, and frontend wiring
 - [GRADUATION_ANALYTICS.md](GRADUATION_ANALYTICS.md)
-  Graduation rules, eligible-denominator KPIs, narratives, and frontend wiring
+  Graduation rules, visiting/engineering stage mapping, eligible-denominator KPIs, payload performance notes, and frontend wiring
 - [pages/students.md](pages/students.md)
-  Student detail display rules, repeat-semester grouping, and profile behavior
+  Student detail display rules, latest-first year tabs, repeat-semester grouping, and profile behavior
 - [pages/demographics.md](pages/demographics.md)
   Demographic charts, cohort-aware year distribution, and map behavior
 
@@ -45,7 +43,7 @@ This folder contains implementation notes and operational guidance for the regis
 
 ### Sidebar Page Guides
 
-Folder: [pages/](pages/README.md)
+Folder: `docs/pages/`
 
 Covers every sidebar destination:
 
@@ -59,6 +57,20 @@ Covers every sidebar destination:
 - [Risk Analysis](pages/risk-analysis.md)
 - [Insights](pages/insights.md)
 - [System Management](pages/system-management.md)
+
+Shared sidebar pattern:
+
+- each page starts from a Django route
+- the route renders a page shell template
+- optional metrics, payload, or narratives endpoints hydrate charts and tables
+- page-scoped JavaScript turns the payload into the visible UI
+
+Shared sidebar data model:
+
+- `Faculty -> Department -> Programme -> Registration`
+- `Student -> Registration`
+- `AcademicPeriod -> Registration`
+- `Registration -> CourseResult -> Course`
 
 ### Landing Dashboard
 
