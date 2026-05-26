@@ -122,6 +122,15 @@
         radial-gradient(circle at top right, rgba(79, 176, 209, 0.12), transparent 30%),
         linear-gradient(180deg, rgba(245, 251, 255, 0.99), rgba(236, 246, 252, 0.97));
 }
+
+.search-results-count {
+    font-size: 0.75rem;
+    color: #4b5563;
+    margin-left: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: #f3f4f6;
+    border-radius: 20px;
+}
 </style>
 {% endblock %}
 
@@ -146,7 +155,6 @@
         <p class="programme-banner-loading">Loading the programme story & visual payload...</p>
     </section>
 
-
     <section class="programme-story-flow" aria-label="Programme storytelling flow">
         <div class="demographic-accordion">
             <section class="demographic-flow-stage demographic-flow-stage-primary demographic-accordion-item" data-accordion-section="programme-load-status">
@@ -159,42 +167,39 @@
                 </div>
 
                 <div class="demographic-accordion-content is-hidden" id="programme-load-status-content">
+                    <div class="programme-stage-grid programme-stage-grid-primary">
+                        <article class="programme-card programme-card-wide">
+                            <div class="programme-card-header">
+                                <div>
+                                    <p class="programme-card-kicker">Programme Load</p>
+                                    <h2 class="programme-card-title">Registrations By Programme</h2>
+                                    <p class="programme-card-copy" id="programme-load-copy">Start with the strongest load signal so the page answers which programmes currently carry the widest registration footprint.</p>
+                                    <div class="programme-chart-hints" id="programme-load-hints" aria-label="Chart interaction hints"></div>
+                                </div>
+                                <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Visible Registrations By Programme" aria-controls="programme-load-chart" aria-label="View Visible Registrations By Programme in full screen" aria-pressed="false">Full screen</button>
+                            </div>
+                            <div class="programme-chart-stage">
+                                <div class="programme-chart-canvas is-empty" id="programme-load-chart" role="img" aria-label="Visible registrations by programme chart">Loading programme load chart...</div>
+                            </div>
+                            <p class="programme-chart-note" id="programme-load-note">This view keeps the flagship programmes visible before the page moves into quality & review pressure.</p>
+                        </article>
 
-            <div class="programme-stage-grid programme-stage-grid-primary">
-                <article class="programme-card programme-card-wide">
-                    <div class="programme-card-header">
-                        <div>
-                            <p class="programme-card-kicker">Programme Load</p>
-                            <h2 class="programme-card-title">Registrations By Programme</h2>
-                            <p class="programme-card-copy" id="programme-load-copy">Start with the strongest load signal so the page answers which programmes currently carry the widest registration footprint.</p>
-                            <div class="programme-chart-hints" id="programme-load-hints" aria-label="Chart interaction hints"></div>
-                        </div>
-                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Visible Registrations By Programme" aria-controls="programme-load-chart" aria-label="View Visible Registrations By Programme in full screen" aria-pressed="false">Full screen</button>
+                        <article class="programme-card">
+                            <div class="programme-card-header">
+                                <div>
+                                    <p class="programme-card-kicker">Department Pressure</p>
+                                    <h2 class="programme-card-title">Portfolio Load Concentration</h2>
+                                    <p class="programme-card-copy" id="programme-departments-copy">Use the department roll-up to see whether programme demand is isolated to one portfolio or already spread across multiple teams.</p>
+                                    <div class="programme-chart-hints" id="programme-departments-hints" aria-label="Chart interaction hints"></div>
+                                </div>
+                                <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Portfolio Load Concentration" aria-controls="programme-departments-chart" aria-label="View Portfolio Load Concentration in full screen" aria-pressed="false">Full screen</button>
+                            </div>
+                            <div class="programme-chart-stage">
+                                <div class="programme-chart-canvas is-empty" id="programme-departments-chart" role="img" aria-label="Department programme load chart">Loading department concentration chart...</div>
+                            </div>
+                            <p class="programme-chart-note" id="programme-departments-note">Department concentration helps managers judge which academic teams are carrying the broadest programme footprint.</p>
+                        </article>
                     </div>
-
-                    <div class="programme-chart-stage">
-                        <div class="programme-chart-canvas is-empty" id="programme-load-chart" role="img" aria-label="Visible registrations by programme chart">Loading programme load chart...</div>
-                    </div>
-                    <p class="programme-chart-note" id="programme-load-note">This view keeps the flagship programmes visible before the page moves into quality & review pressure.</p>
-                </article>
-
-                <article class="programme-card">
-                    <div class="programme-card-header">
-                        <div>
-                            <p class="programme-card-kicker">Department Pressure</p>
-                            <h2 class="programme-card-title">Portfolio Load Concentration</h2>
-                            <p class="programme-card-copy" id="programme-departments-copy">Use the department roll-up to see whether programme demand is isolated to one portfolio or already spread across multiple teams.</p>
-                            <div class="programme-chart-hints" id="programme-departments-hints" aria-label="Chart interaction hints"></div>
-                        </div>
-                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Portfolio Load Concentration" aria-controls="programme-departments-chart" aria-label="View Portfolio Load Concentration in full screen" aria-pressed="false">Full screen</button>
-                    </div>
-
-                    <div class="programme-chart-stage">
-                        <div class="programme-chart-canvas is-empty" id="programme-departments-chart" role="img" aria-label="Department programme load chart">Loading department concentration chart...</div>
-                    </div>
-                    <p class="programme-chart-note" id="programme-departments-note">Department concentration helps managers judge which academic teams are carrying the broadest programme footprint.</p>
-                </article>
-            </div>
                 </div>
             </section>
 
@@ -208,42 +213,39 @@
                 </div>
 
                 <div class="demographic-accordion-content is-hidden" id="priority-programmes-content">
+                    <div class="programme-stage-grid">
+                        <article class="programme-card">
+                            <div class="programme-card-header">
+                                <div>
+                                    <p class="programme-card-kicker">Quality Watch</p>
+                                    <h2 class="programme-card-title">Weakest Visible Pass Rates</h2>
+                                    <p class="programme-card-copy" id="programme-quality-copy">This ranking makes it easy to spot the programmes whose visible pass rates are most likely to justify academic review.</p>
+                                    <div class="programme-chart-hints" id="programme-quality-hints" aria-label="Chart interaction hints"></div>
+                                </div>
+                                <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Weakest Visible Pass Rates" aria-controls="programme-quality-chart" aria-label="View Weakest Visible Pass Rates in full screen" aria-pressed="false">Full screen</button>
+                            </div>
+                            <div class="programme-chart-stage">
+                                <div class="programme-chart-canvas is-empty" id="programme-quality-chart" role="img" aria-label="Weakest visible pass rates chart">Loading pass-rate review chart...</div>
+                            </div>
+                            <p class="programme-chart-note" id="programme-quality-note">The weakest-pass chart keeps the underperforming programmes visible before users inspect the detailed register.</p>
+                        </article>
 
-            <div class="programme-stage-grid">
-                <article class="programme-card">
-                    <div class="programme-card-header">
-                        <div>
-                            <p class="programme-card-kicker">Quality Watch</p>
-                            <h2 class="programme-card-title">Weakest Visible Pass Rates</h2>
-                            <p class="programme-card-copy" id="programme-quality-copy">This ranking makes it easy to spot the programmes whose visible pass rates are most likely to justify academic review.</p>
-                            <div class="programme-chart-hints" id="programme-quality-hints" aria-label="Chart interaction hints"></div>
-                        </div>
-                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Weakest Visible Pass Rates" aria-controls="programme-quality-chart" aria-label="View Weakest Visible Pass Rates in full screen" aria-pressed="false">Full screen</button>
+                        <article class="programme-card">
+                            <div class="programme-card-header">
+                                <div>
+                                    <p class="programme-card-kicker">Performance Map</p>
+                                    <h2 class="programme-card-title">Scale Versus Pass Rate</h2>
+                                    <p class="programme-card-copy" id="programme-performance-copy">Compare registrations against pass rate so the page reveals whether the largest programmes are also the healthiest ones.</p>
+                                    <div class="programme-chart-hints" id="programme-performance-hints" aria-label="Chart interaction hints"></div>
+                                </div>
+                                <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Scale Versus Pass Rate" aria-controls="programme-performance-chart" aria-label="View Scale Versus Pass Rate in full screen" aria-pressed="false">Full screen</button>
+                            </div>
+                            <div class="programme-chart-stage programme-chart-stage-performance">
+                                <div class="programme-chart-canvas is-empty" id="programme-performance-chart" role="img" aria-label="Scale versus pass rate chart">Loading registrations versus pass-rate view...</div>
+                            </div>
+                            <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale & quality in one view, which is much harder to see in a flat programme table.</p>
+                        </article>
                     </div>
-
-                    <div class="programme-chart-stage">
-                        <div class="programme-chart-canvas is-empty" id="programme-quality-chart" role="img" aria-label="Weakest visible pass rates chart">Loading pass-rate review chart...</div>
-                    </div>
-                    <p class="programme-chart-note" id="programme-quality-note">The weakest-pass chart keeps the underperforming programmes visible before users inspect the detailed register.</p>
-                </article>
-
-                <article class="programme-card">
-                    <div class="programme-card-header">
-                        <div>
-                            <p class="programme-card-kicker">Performance Map</p>
-                            <h2 class="programme-card-title">Scale Versus Pass Rate</h2>
-                            <p class="programme-card-copy" id="programme-performance-copy">Compare registrations against pass rate so the page reveals whether the largest programmes are also the healthiest ones.</p>
-                            <div class="programme-chart-hints" id="programme-performance-hints" aria-label="Chart interaction hints"></div>
-                        </div>
-                        <button class="programme-chart-expand" type="button" data-chart-fullscreen-toggle data-chart-title="Scale Versus Pass Rate" aria-controls="programme-performance-chart" aria-label="View Scale Versus Pass Rate in full screen" aria-pressed="false">Full screen</button>
-                    </div>
-
-                    <div class="programme-chart-stage programme-chart-stage-performance">
-                        <div class="programme-chart-canvas is-empty" id="programme-performance-chart" role="img" aria-label="Scale versus pass rate chart">Loading registrations versus pass-rate view...</div>
-                    </div>
-                    <p class="programme-chart-note" id="programme-performance-note">The performance map balances scale & quality in one view, which is much harder to see in a flat programme table.</p>
-                </article>
-            </div>
                 </div>
             </section>
 
@@ -257,75 +259,70 @@
                 </div>
 
                 <div class="demographic-accordion-content is-hidden" id="programme-register-content">
+                    <article class="programme-card programme-card-register">
+                        <div class="programme-register-header">
+                            <div>
+                                <p class="programme-card-kicker">Detailed Register</p>
+                                <h2 class="programme-card-title">Searchable Programme Reference</h2>
+                                <p class="programme-card-copy">Use the register when you need the exact row values behind the story cards & charts above.</p>
+                            </div>
 
-            <article class="programme-card programme-card-register">
-                <div class="programme-register-header">
-                    <div>
-                        <p class="programme-card-kicker">Detailed Register</p>
-                        <h2 class="programme-card-title">Searchable Programme Reference</h2>
-                        <p class="programme-card-copy">Use the register when you need the exact row values behind the story cards & charts above.</p>
-                    </div>
+                            <form class="programme-toolbar" onsubmit="return false;">
+                                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                                {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
+                                {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
+                                <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programme" aria-label="Search programme">
+                                <button class="programme-search-button" type="submit">Search</button>
+                                <span class="search-results-count" id="programme-search-count"></span>
+                            </form>
+                        </div>
 
-                    <form class="programme-toolbar" method="get">
-                        {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
-                        {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
-                        {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
-                        {% if sort_key %}<input type="hidden" name="sort" value="{{ sort_key }}">{% endif %}
-                        {% if sort_direction %}<input type="hidden" name="direction" value="{{ sort_direction }}">{% endif %}
-                        <input class="programme-search" type="search" name="q" value="{{ search_query }}" placeholder="Search programme register" aria-label="Search programme register">
-                        <button class="programme-search-button" type="submit">Search</button>
-                    </form>
-                </div>
-
-                <div class="programme-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme register table">
-                    <table class="programme-table">
-                        <colgroup>
-                            <col class="programme-col-code">
-                            <col class="programme-col-name">
-                            <col class="programme-col-faculty">
-                            <col class="programme-col-department">
-                            <col class="programme-col-students">
-                            <col class="programme-col-registrations">
-                            <col class="programme-col-average">
-                            <col class="programme-col-pass">
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th class="programme-th-code">
-                                    <span>Code</span>
-                                </th>
-                                <th>
-                                    <span>Programme</span>
-                                </th>
-                                <th>
-                                    <span>Faculty</span>
-                                </th>
-                                <th>
-                                    <span>Department</span>
-                                </th>
-                                <th>
-                                    <span>Total Students</span>
-                                </th>
-                                <th>
-                                    <span>Total Registrations</span>
-                                </th>
-                                <th>
-                                    <span>Average Mark</span>
-                                </th>
-                                <th class="programme-th-pass">
-                                    <span>Pass Rate</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="programme-register-body">
-                            <tr>
-                                <td class="programme-empty" colspan="8">Loading programme register...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p class="programme-register-meta" id="programme-register-meta">Loading programme rows...</p>
-            </article>
+                        <div class="programme-table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Programme register table">
+                            <table class="programme-table" id="programme-table">
+                                <colgroup>
+                                    <col class="programme-col-code">
+                                    <col class="programme-col-name">
+                                    <col class="programme-col-faculty">
+                                    <col class="programme-col-department">
+                                    <col class="programme-col-students">
+                                    <col class="programme-col-registrations">
+                                    <col class="programme-col-average">
+                                    <col class="programme-col-pass">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th class="programme-th-code"><span>Code</span></th>
+                                        <th><span>Programme</span></th>
+                                        <th><span>Faculty</span></th>
+                                        <th><span>Department</span></th>
+                                        <th><span>Total Students</span></th>
+                                        <th><span>Total Registrations</span></th>
+                                        <th><span>Average Mark</span></th>
+                                        <th class="programme-th-pass"><span>Pass Rate</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="programme-register-body">
+                                    {% for programme in programmes %}
+                                    <tr data-programme-code="{{ programme.code|lower }}" data-programme-name="{{ programme.name|lower }}" data-programme-department="{{ programme.department|lower }}">
+                                        <td>{{ programme.code }}</td>
+                                        <td>{{ programme.name }}</td>
+                                        <td>{{ programme.faculty }}</td>
+                                        <td>{{ programme.department }}</td>
+                                        <td>{{ programme.total_students }}</td>
+                                        <td>{{ programme.total_registrations }}</td>
+                                        <td>{{ programme.average_mark }}%</td
+                                        <td>{{ programme.pass_rate }}%</td
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td class="programme-empty" colspan="8">Loading programme register...</td
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="programme-register-meta" id="programme-register-meta">Loading programme rows...</p>
+                    </article>
                 </div>
             </section>
         </div>
@@ -336,4 +333,107 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
 <script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260416-programme-drilldown20"></script>
+
+<!-- LIVE SEARCH - Real-time filtering as you type (No Highlight) -->
+<script>
+(function() {
+    'use strict';
+    
+    function liveSearchProgrammes() {
+        const searchInput = document.querySelector('.programme-search');
+        const searchButton = document.querySelector('.programme-search-button');
+        const tableBody = document.getElementById('programme-register-body');
+        const searchCountSpan = document.getElementById('programme-search-count');
+        
+        if (!searchInput || !tableBody) {
+            console.warn('Programme live search elements not found');
+            return;
+        }
+        
+        let allRows = [];
+        
+        function storeOriginalRows() {
+            const rows = tableBody.querySelectorAll('tr');
+            allRows = Array.from(rows).filter(row => {
+                return row.cells.length > 1 && !row.querySelector('.programme-empty');
+            });
+        }
+        
+        function filterRows() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            
+            if (!allRows.length) {
+                storeOriginalRows();
+            }
+            
+            if (!searchTerm) {
+                tableBody.innerHTML = '';
+                allRows.forEach(row => {
+                    const clonedRow = row.cloneNode(true);
+                    tableBody.appendChild(clonedRow);
+                });
+                if (searchCountSpan) {
+                    searchCountSpan.textContent = `Showing ${allRows.length} programmes`;
+                }
+                return;
+            }
+            
+            const matchedRows = [];
+            allRows.forEach(originalRow => {
+                const code = (originalRow.cells[0]?.textContent || '').toLowerCase();
+                const name = (originalRow.cells[1]?.textContent || '').toLowerCase();
+                const department = (originalRow.cells[3]?.textContent || '').toLowerCase();
+                
+                if (code.includes(searchTerm) || name.includes(searchTerm) || department.includes(searchTerm)) {
+                    const clonedRow = originalRow.cloneNode(true);
+                    matchedRows.push(clonedRow);
+                }
+            });
+            
+            tableBody.innerHTML = '';
+            if (matchedRows.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="programme-empty">No programmes match your search.</td></tr>';
+            } else {
+                matchedRows.forEach(row => tableBody.appendChild(row));
+            }
+            
+            if (searchCountSpan) {
+                searchCountSpan.textContent = `Showing ${matchedRows.length} of ${allRows.length} programmes`;
+            }
+        }
+        
+        let debounceTimer;
+        function debounceFilter() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(filterRows, 250);
+        }
+        
+        setTimeout(storeOriginalRows, 500);
+        
+        searchInput.addEventListener('input', debounceFilter);
+        
+        if (searchButton) {
+            searchButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                filterRows();
+            });
+        }
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                filterRows();
+            }
+        });
+        
+        console.log('Programme live search initialized - results show as you type');
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', liveSearchProgrammes);
+    } else {
+        liveSearchProgrammes();
+    }
+})();
+</script>
 {% endblock %}
