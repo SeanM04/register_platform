@@ -13,7 +13,7 @@
         <div class="table-topbar">
             <p class="table-hint">Select a student name to view the full profile</p>
 
-            <form class="table-toolbar" method="get">
+            <form class="table-toolbar" onsubmit="return false;">
                 {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
                 {% if selected_period %}<input type="hidden" name="period" value="{{ selected_period }}">{% endif %}
                 {% if selected_faculty %}<input type="hidden" name="faculty" value="{{ selected_faculty }}">{% endif %}
@@ -25,7 +25,7 @@
         </div>
 
         <div class="table-wrap is-scroll-start" data-scroll-region tabindex="0" aria-label="Student directory table">
-            <table class="students-table">
+            <table class="students-table" id="students-table">
                 <colgroup>
                     <col class="students-col-name">
                     <col class="students-col-department">
@@ -38,7 +38,7 @@
                 <thead>
                     <tr>
                         <th class="students-th-name"><span>Student</span></th>
-                       <th class="students-th-department"><span>Department</span></th>
+                        <th class="students-th-department"><span>Department</span></th>
                         <th class="students-th-programme"><span>Programme</span></th>
                         <th><span>Average Mark</span></th>
                         <th><span>Decision</span></th>
@@ -46,11 +46,11 @@
                         <th class="students-th-age"><span>Age</span></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="students-table-body">
                     {% for student in students %}
-                    <tr>
+                    <tr data-student-name="{{ student.name|lower }}" data-student-department="{{ student.department|lower }}" data-student-programme="{{ student.programme|lower }}">
                         <td class="students-td-name">
-                            <a class="student-link" href="{% url 'dashboard:student-detail' student.detail_slug %}?return_to={{ request.get_full_path|urlencode }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" aria-label="View {{ student.name }} profile">
+                            <a class="student-link" href="{% url 'dashboard:student-detail' student.detail_slug %}?return_to={{ request.get_full_path|urlencode }}" aria-label="View {{ student.name }} profile">
                                 <span class="student-link-name">{{ student.name }}</span>
                             </a>
                         </td>
@@ -69,7 +69,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td class="empty-state" colspan="7">No students matched your search.</td>
+                        <td class="empty-state" colspan="7">No students found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -77,11 +77,11 @@
         </div>
 
         <div class="table-footer">
-            <p class="results-meta">
+            <p class="results-meta" id="students-results-meta">
                 Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_students }} students
             </p>
 
-            <nav class="pagination" aria-label="Student table pages">
+            <nav class="pagination" aria-label="Student table pages" id="students-pagination">
                 {% if page_obj.has_previous %}
                 <a class="page-link page-link-arrow" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if selected_year %}&year={{ selected_year|urlencode }}{% endif %}{% if selected_period %}&period={{ selected_period|urlencode }}{% endif %}{% if selected_faculty %}&faculty={{ selected_faculty|urlencode }}{% endif %}{% if sort_key %}&sort={{ sort_key }}{% endif %}{% if sort_direction %}&direction={{ sort_direction }}{% endif %}">Prev</a>
                 {% else %}
@@ -109,4 +109,120 @@
 
 {% block extra_js %}
 <script src="{% static 'dashboard/js/students.js' %}"></script>
+
+<!-- LIVE SEARCH - Real-time filtering as you type (No page reload, No highlight) -->
+<script>
+(function() {
+    'use strict';
+    
+    const searchInput = document.querySelector('.search-input');
+    const searchButton = document.querySelector('.search-button');
+    const tableBody = document.getElementById('students-table-body');
+    const resultsMeta = document.getElementById('students-results-meta');
+    let allRows = [];
+    let originalTotalCount = 0;
+    
+    // Store original rows from the table
+    function storeOriginalRows() {
+        const rows = tableBody.querySelectorAll('tr');
+        allRows = Array.from(rows).filter(row => {
+            // Filter out empty/error rows
+            return !row.querySelector('.empty-state') && row.cells.length > 1;
+        });
+        originalTotalCount = allRows.length;
+    }
+    
+    // Update the results meta text
+    function updateResultsCount(visibleCount) {
+        if (resultsMeta && originalTotalCount > 0) {
+            if (visibleCount === originalTotalCount) {
+                resultsMeta.innerHTML = `Showing 1-${originalTotalCount} of ${originalTotalCount} students`;
+            } else {
+                resultsMeta.innerHTML = `Showing ${visibleCount} of ${originalTotalCount} students`;
+            }
+        }
+    }
+    
+    // Filter rows based on search term
+    function filterRows() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        
+        // Make sure we have stored rows
+        if (allRows.length === 0) {
+            storeOriginalRows();
+        }
+        
+        // If no search term, show all rows
+        if (!searchTerm) {
+            tableBody.innerHTML = '';
+            allRows.forEach(row => {
+                tableBody.appendChild(row.cloneNode(true));
+            });
+            updateResultsCount(allRows.length);
+            return;
+        }
+        
+        // Filter rows based on search
+        const matchedRows = [];
+        allRows.forEach(originalRow => {
+            // Get text content from relevant columns
+            const nameCell = originalRow.querySelector('.student-link-name');
+            const name = (nameCell?.textContent || originalRow.cells[0]?.textContent || '').toLowerCase();
+            const department = (originalRow.cells[1]?.textContent || '').toLowerCase();
+            const programme = (originalRow.cells[2]?.textContent || '').toLowerCase();
+            
+            // Check if search term matches any of the fields
+            if (name.includes(searchTerm) || department.includes(searchTerm) || programme.includes(searchTerm)) {
+                matchedRows.push(originalRow.cloneNode(true));
+            }
+        });
+        
+        // Update the table with filtered rows
+        tableBody.innerHTML = '';
+        
+        if (matchedRows.length === 0) {
+            tableBody.innerHTML = '<tr><td class="empty-state" colspan="7">No students match your search.</td></tr>';
+        } else {
+            matchedRows.forEach(row => tableBody.appendChild(row));
+        }
+        
+        // Update the results count
+        updateResultsCount(matchedRows.length);
+    }
+    
+    // Debounce function to avoid filtering on every keystroke
+    let debounceTimer;
+    function debounceFilter() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterRows, 250);
+    }
+    
+    // Only run if elements exist
+    if (searchInput && tableBody) {
+        // Store original rows after a short delay (ensures table is fully loaded)
+        setTimeout(storeOriginalRows, 500);
+        
+        // Listen for typing (live search)
+        searchInput.addEventListener('input', debounceFilter);
+        
+        // Handle search button click
+        if (searchButton) {
+            searchButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                filterRows();
+            });
+        }
+        
+        // Handle Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                filterRows();
+            }
+        });
+        
+        console.log('Students live search initialized - results show as you type');
+    }
+})();
+</script>
 {% endblock %}
