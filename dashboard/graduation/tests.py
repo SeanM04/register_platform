@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 
-from ..models import AcademicPeriod, CourseResult, Programme, Registration, Student
+from ..models import AcademicPeriod, AttendanceType, CourseResult, Programme, Registration, Student
 from ..test_support import DashboardFixtureMixin
 
 
@@ -73,7 +73,7 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(len(data["students"]), 1)
         self.assertEqual(data["students"][0]["regnum"], self.graduating_student.registration_number)
         self.assertEqual(data["students"][0]["detail_slug"], self.graduating_student.registration_number.lower())
-        self.assertEqual(data["students"][0]["graduation_stage"], "Year 4 Semester 2")
+        self.assertEqual(data["students"][0]["graduation_stage"], "Year 4, Semester 2")
         self.assertEqual(data["students"][0]["target_graduation_stage"], "4.2")
         self.assertEqual(data["students"][0]["target_graduation_period_label"], "Year 4, Semester 2")
         self.assertTrue(data["students"][0]["on_time"])
@@ -81,6 +81,102 @@ class GraduationViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(data["charts"]["cohort_graduation_rate"])
         self.assertTrue(data["charts"]["faculty_graduation_rate"])
         self.assertTrue(data["charts"]["graduation_timing"])
+
+    def test_visiting_engineering_students_use_year_4_semester_2_target(self):
+        visiting_type = AttendanceType.objects.create(
+            external_id=1,
+            name="Visiting",
+            normalized_key="visiting",
+        )
+        engineering_programme = Programme.objects.create(
+            department=self.science_department,
+            external_id=190,
+            code="BENG-MIN",
+            name="BSc Eng Mining",
+        )
+        student = Student.objects.create(
+            registration_number="REGVENG",
+            first_names="Tapiwa",
+            surname="Engineer",
+            gender="Male",
+            place_of_birth="Gweru",
+        )
+        periods = [
+            AcademicPeriod.objects.create(external_id=208101, academic_year="1", semester="1", name="2081 January - June"),
+            AcademicPeriod.objects.create(external_id=208102, academic_year="1", semester="2", name="2081 July - December"),
+            AcademicPeriod.objects.create(external_id=208201, academic_year="2", semester="1", name="2082 January - June"),
+            AcademicPeriod.objects.create(external_id=208202, academic_year="2", semester="2", name="2082 July - December"),
+            AcademicPeriod.objects.create(external_id=208301, academic_year="3", semester="1", name="2083 January - June"),
+            AcademicPeriod.objects.create(external_id=208302, academic_year="3", semester="2", name="2083 July - December"),
+            AcademicPeriod.objects.create(external_id=208401, academic_year="4", semester="1", name="2084 January - June"),
+            AcademicPeriod.objects.create(external_id=208402, academic_year="4", semester="2", name="2084 July - December"),
+        ]
+        for offset, period in enumerate(periods, start=1):
+            Registration.objects.create(
+                external_id=5000 + offset,
+                student=student,
+                programme=engineering_programme,
+                period=period,
+                decision="graduated" if period == periods[-1] else "Proceed",
+                carrying=0,
+                attendance_type_record=visiting_type,
+            )
+
+        response = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        student_row = next(
+            row for row in response.json()["data"]["students"]
+            if row["regnum"] == student.registration_number
+        )
+        self.assertEqual(student_row["target_period"], 8)
+        self.assertEqual(student_row["target_graduation_period_label"], "Year 4, Semester 2")
+
+    def test_visiting_non_engineering_students_use_year_3_semester_2_target(self):
+        visiting_type = AttendanceType.objects.create(
+            external_id=2,
+            name="Visiting",
+            normalized_key="visiting-non-eng",
+        )
+        student = Student.objects.create(
+            registration_number="REGVNON",
+            first_names="Rudo",
+            surname="Visitor",
+            gender="Female",
+            place_of_birth="Harare",
+        )
+        periods = [
+            AcademicPeriod.objects.create(external_id=209101, academic_year="1", semester="1", name="2091 January - June"),
+            AcademicPeriod.objects.create(external_id=209102, academic_year="1", semester="2", name="2091 July - December"),
+            AcademicPeriod.objects.create(external_id=209201, academic_year="2", semester="1", name="2092 January - June"),
+            AcademicPeriod.objects.create(external_id=209202, academic_year="2", semester="2", name="2092 July - December"),
+            AcademicPeriod.objects.create(external_id=209301, academic_year="3", semester="1", name="2093 January - June"),
+            AcademicPeriod.objects.create(external_id=209302, academic_year="3", semester="2", name="2093 July - December"),
+        ]
+        for offset, period in enumerate(periods, start=1):
+            Registration.objects.create(
+                external_id=6000 + offset,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision="graduated" if period == periods[-1] else "Proceed",
+                carrying=0,
+                attendance_type_record=visiting_type,
+            )
+
+        response = self.client.get(
+            reverse("dashboard:graduation-payload"),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        student_row = next(
+            row for row in response.json()["data"]["students"]
+            if row["regnum"] == student.registration_number
+        )
+        self.assertEqual(student_row["target_period"], 6)
+        self.assertEqual(student_row["target_graduation_period_label"], "Year 3, Semester 2")
 
     def test_graduation_payload_sorts_students_by_surname(self):
         second_graduate = Student.objects.create(

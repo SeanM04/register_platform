@@ -90,11 +90,40 @@ _target_period_cache: Dict[tuple[str, Optional[str]], int] = {}
 _graduation_stage_cache: Dict[tuple[str, Optional[str]], str] = {}
 _graduation_period_cache: Dict[tuple[str, Optional[str]], str] = {}
 
+def _normalized_attendance_text(value: Any) -> str:
+    """Return a trimmed attendance-type label."""
+
+    return str(value or "").strip()
+
+
+def _resolve_registration_attendance_type(registration: Registration) -> Optional[str]:
+    """Resolve the strongest attendance-type label from a registration and its results."""
+
+    registration_type = _normalized_attendance_text(
+        getattr(getattr(registration, "attendance_type_record", None), "name", "")
+    )
+    if registration_type:
+        return registration_type
+
+    prefetched_results = getattr(registration, "prefetched_course_results", None)
+    if prefetched_results is not None:
+        results = list(prefetched_results)
+    else:
+        results = list(registration.course_results.select_related("attendance_type_record").all())
+
+    for result in results:
+        result_type = _normalized_attendance_text(
+            getattr(getattr(result, "attendance_type_record", None), "name", "")
+        ) or _normalized_attendance_text(getattr(result, "attendance_type", ""))
+        if result_type:
+            return result_type
+
+    return None
+
+
 def _batch_get_attendance_types(student_regnums: List[str]) -> Dict[str, Optional[str]]:
     """Batch fetch attendance types for multiple students to reduce database queries."""
     try:
-        from dashboard.models import Registration, CourseResult
-        
         # Filter out already cached regnums
         uncached_regnums = [regnum for regnum in student_regnums if regnum not in _attendance_type_cache]
         if not uncached_regnums:
@@ -103,34 +132,26 @@ def _batch_get_attendance_types(student_regnums: List[str]) -> Dict[str, Optiona
         # Get all registrations for uncached students in one query
         registrations = Registration.objects.filter(
             student__registration_number__in=uncached_regnums
+        ).select_related(
+            "student",
+            "attendance_type_record",
+        ).prefetch_related(
+            "course_results__attendance_type_record",
         ).order_by('student__registration_number', '-period__external_id', '-id')
-        
-        # Group by student and get latest registration for each
-        latest_registrations = {}
+
+        resolved_regnums = set()
         for reg in registrations:
             regnum = reg.student.registration_number
-            if regnum not in latest_registrations:
-                latest_registrations[regnum] = reg
-            # Since we ordered by latest first, the first occurrence is the latest
-        
-        # Mark students with no registrations
-        for regnum in uncached_regnums:
-            if regnum not in latest_registrations:
-                _attendance_type_cache[regnum] = None
-        
-        # Batch fetch course results for all latest registrations
-        if latest_registrations:
-            registration_ids = [reg.id for reg in latest_registrations.values()]
-            course_results = CourseResult.objects.filter(registration_id__in=registration_ids)
-            course_results_map = {cr.registration_id: cr for cr in course_results}
-            
-            # Process results and cache them
-            for regnum, registration in latest_registrations.items():
-                course_result = course_results_map.get(registration.id)
-                attendance_type = None
-                if course_result and hasattr(course_result, 'attendance_type'):
-                    attendance_type = course_result.attendance_type
+            if regnum in resolved_regnums:
+                continue
+            attendance_type = _resolve_registration_attendance_type(reg)
+            if attendance_type:
                 _attendance_type_cache[regnum] = attendance_type
+                resolved_regnums.add(regnum)
+
+        for regnum in uncached_regnums:
+            if regnum not in _attendance_type_cache:
+                _attendance_type_cache[regnum] = None
         
         return _attendance_type_cache
     except Exception:
