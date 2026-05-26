@@ -216,6 +216,23 @@ class CompletionAnalysis {
         this.renderZeroDriverChart(charts.zero_completion_drivers || []);
     }
 
+    getHeatmapCellColor(completionRate) {
+        if (completionRate === null || completionRate === undefined) {
+            return "#f1f5f9";
+        }
+        const numericRate = Number(completionRate);
+        if (Number.isNaN(numericRate)) {
+            return "#f1f5f9";
+        }
+        if (numericRate < 50) {
+            return "#dc2626";
+        }
+        if (numericRate < 75) {
+            return "#f59e0b";
+        }
+        return "#16a34a";
+    }
+
     renderStoryBanner() {
         const banner = document.getElementById("completion-story-banner");
         const data = this.currentData;
@@ -538,6 +555,9 @@ class CompletionAnalysis {
                 cohortLabels.indexOf(row.effective_cohort_label),
                 row.completion_rate,  // Keep null for blank cells
             ],
+            itemStyle: {
+                color: this.getHeatmapCellColor(row.completion_rate),
+            },
             studentCount: row.student_count,
             zeroCompletionCount: row.zero_completion_count,
             passShareRate: row.pass_share_rate,
@@ -606,9 +626,9 @@ class CompletionAnalysis {
                 text: ["100%", "0%"],
                 pieces: [
         { value: null, label: "No data", color: "#f1f5f9" },
-        { min: 0, max: 49, label: "0% - 49%", color: "#dc2626" },
-        { min: 50, max: 74, label: "50% - 74%", color: "#f59e0b" },
-        { min: 75, max: 100, label: "75% - 100%", color: "#16a34a" },
+        { gte: 0, lt: 50, label: "0% - 49%", color: "#dc2626" },
+        { gte: 50, lt: 75, label: "50% - 74%", color: "#f59e0b" },
+        { gte: 75, lte: 100, label: "75% - 100%", color: "#16a34a" },
     ],
             },
             series: [
@@ -620,7 +640,11 @@ class CompletionAnalysis {
                         color: "#ffffff",
                         fontSize: 10,
                         fontWeight: 700,
-                        formatter: ({ data }) => `${Math.round(data.completionRate)}%`,
+                        formatter: ({ data }) => (
+                            data.completionRate === null || data.completionRate === undefined
+                                ? ""
+                                : `${Math.round(data.completionRate)}%`
+                        ),
                     },
                     emphasis: {
                         itemStyle: {
