@@ -521,6 +521,179 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         )
         self.assertEqual(active_semester["period_name"], "May 2022 - August 2022 / September 2022 - December 2022")
 
+    def test_same_raw_stage_with_new_progression_modules_does_not_merge(self):
+        """Normal progression registrations must not merge just because the raw imported stage repeats."""
+
+        from .models import Course
+        from .student_history import build_student_timeline
+
+        student = Student.objects.create(
+            registration_number="REG016",
+            first_names="Steady",
+            surname="Progress",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (7200, "1", "1", "September 2022 - December 2022", [("AGR101", "Level One A")], "Pending"),
+            (7201, "1", "1", "May 2023 - August 2023", [("AGR121", "Level One Sem Two A")], "Proceed"),
+            (7202, "1", "1", "September 2023 - December 2023", [("AGR211", "Level Two A")], "Proceed"),
+        ]
+
+        registrations = []
+        for external_id, academic_year, semester, period_name, course_specs, decision in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision=decision,
+                carrying=0,
+            )
+            registrations.append(registration)
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=65 + offset,
+                )
+
+        timeline = build_student_timeline(registrations)
+
+        self.assertEqual(
+            [group["period_display"] for group in timeline["groups"]],
+            ["September 2022 - December 2022", "May 2023 - August 2023", "September 2023 - December 2023"],
+        )
+        self.assertEqual(
+            [group["academic_level_label"] for group in timeline["groups"]],
+            ["Year 1 Semester 1", "Year 1 Semester 2", "Year 2 Semester 1"],
+        )
+
+    def test_same_raw_stage_with_minor_overlap_and_mostly_new_modules_does_not_merge(self):
+        """Weak overlap must not collapse a largely new semester into an older one."""
+
+        from .models import Course
+        from .student_history import build_student_timeline
+
+        student = Student.objects.create(
+            registration_number="REG017",
+            first_names="Overlap",
+            surname="Check",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        first_period = AcademicPeriod.objects.create(
+            external_id=7300,
+            academic_year="1",
+            semester="1",
+            name="September 2022 - December 2022",
+        )
+        second_period = AcademicPeriod.objects.create(
+            external_id=7301,
+            academic_year="1",
+            semester="1",
+            name="May 2023 - August 2023",
+        )
+        first_registration = Registration.objects.create(
+            external_id=7300,
+            student=student,
+            programme=self.commerce_programme,
+            period=first_period,
+            decision="Repeat",
+            carrying=1,
+        )
+        second_registration = Registration.objects.create(
+            external_id=7301,
+            student=student,
+            programme=self.commerce_programme,
+            period=second_period,
+            decision="Proceed Carrying",
+            carrying=1,
+        )
+        course_a = Course.objects.create(code="CHK101", name="Shared Module")
+        course_b = Course.objects.create(code="CHK102", name="First Stage Extra")
+        course_c = Course.objects.create(code="CHK201", name="New Stage One")
+        course_d = Course.objects.create(code="CHK202", name="New Stage Two")
+        CourseResult.objects.create(registration=first_registration, course=course_a, mark=42)
+        CourseResult.objects.create(registration=first_registration, course=course_b, mark=48)
+        CourseResult.objects.create(registration=second_registration, course=course_a, mark=61, attendance_type="Repeat")
+        CourseResult.objects.create(registration=second_registration, course=course_c, mark=66)
+        CourseResult.objects.create(registration=second_registration, course=course_d, mark=68)
+
+        timeline = build_student_timeline([first_registration, second_registration])
+
+        self.assertEqual(len(timeline["groups"]), 2)
+        self.assertEqual(
+            [group["period_display"] for group in timeline["groups"]],
+            ["September 2022 - December 2022", "May 2023 - August 2023"],
+        )
+
+    def test_student_timeline_keeps_failed_and_retaken_module_in_both_semesters(self):
+        """A retake must not overwrite the original failed attempt in the earlier semester."""
+
+        from .student_history import build_student_timeline
+
+        failed_period = AcademicPeriod.objects.create(
+            external_id=7400,
+            academic_year="1",
+            semester="1",
+            name="September 2022 - December 2022",
+        )
+        retake_period = AcademicPeriod.objects.create(
+            external_id=7401,
+            academic_year="2",
+            semester="1",
+            name="September 2023 - December 2023",
+        )
+        failed_registration = Registration.objects.create(
+            external_id=7400,
+            student=self.student_secondary,
+            programme=self.commerce_programme,
+            period=failed_period,
+            decision="Fail",
+            carrying=1,
+        )
+        retake_registration = Registration.objects.create(
+            external_id=7401,
+            student=self.student_secondary,
+            programme=self.commerce_programme,
+            period=retake_period,
+            decision="Proceed Carrying",
+            carrying=1,
+        )
+        CourseResult.objects.create(
+            registration=failed_registration,
+            course=self.course,
+            mark=42,
+        )
+        CourseResult.objects.create(
+            registration=retake_registration,
+            course=self.course,
+            mark=68,
+            attendance_type="Repeat",
+        )
+
+        timeline = build_student_timeline([failed_registration, retake_registration])
+        first_group_rows = timeline["groups"][0]["results"]
+        second_group_rows = timeline["groups"][1]["results"]
+
+        self.assertEqual(len(first_group_rows), 1)
+        self.assertEqual(len(second_group_rows), 1)
+        self.assertEqual(first_group_rows[0]["registration_id"], failed_registration.id)
+        self.assertEqual(first_group_rows[0]["status_label"], "Failed")
+        self.assertIn("First Attempt", first_group_rows[0]["attempt_tags"])
+        self.assertEqual(second_group_rows[0]["registration_id"], retake_registration.id)
+        self.assertEqual(second_group_rows[0]["status_label"], "Passed")
+        self.assertIn("Attempt 2", second_group_rows[0]["attempt_tags"])
+        self.assertIn("Carried", second_group_rows[0]["attempt_tags"])
+
     def test_student_detail_hides_period_section_headers_for_non_repeating_stage(self):
         """Standard semester tables should render without the centered period section header rows."""
 
@@ -912,6 +1085,137 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         )
         self.assertEqual(periods_by_label["Year 3 Semester 1"], "August 2024 - December 2024")
         self.assertNotIn("Year 6 Semester 2", labels)
+
+    def test_visiting_non_engineering_timeline_caps_modules_at_year_3_semester_2(self):
+        """Visiting non-engineering students should not progress beyond Year 3 Semester 2."""
+
+        from .models import Course
+        from .student_history import build_student_timeline
+
+        visiting_type = AttendanceType.objects.create(
+            external_id=30,
+            name="Visiting",
+            normalized_key="timeline-visiting-non-eng",
+        )
+        student = Student.objects.create(
+            registration_number="REG018",
+            first_names="Chrono",
+            surname="Visitor",
+            gender="Female",
+            place_of_birth="Mutare",
+        )
+        period_specs = [
+            (8100, "1", "1", "September 2022 - December 2022", [("ACC101V", "Module A")]),
+            (8101, "1", "2", "March 2023 - July 2023", [("ACC121V", "Module B")]),
+            (8102, "2", "1", "August 2023 - December 2023", [("ACC211V", "Module C")]),
+            (8103, "2", "2", "March 2024 - July 2024", [("ACC221V", "Module D")]),
+            (8104, "3", "1", "August 2024 - December 2024", [("ACC311V", "Module E")]),
+            (8105, "3", "2", "March 2025 - July 2025", [("ACC321V", "Module F")]),
+            (8106, "4", "1", "August 2025 - December 2025", [("ACC411V", "Module G")]),
+        ]
+
+        registrations = []
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=self.commerce_programme,
+                period=period,
+                decision="Proceed",
+                carrying=0,
+                attendance_type_record=visiting_type,
+            )
+            registrations.append(registration)
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        timeline = build_student_timeline(registrations)
+
+        self.assertEqual(timeline["groups"][-1]["academic_level_label"], "Year 3 Semester 2")
+        self.assertEqual(timeline["groups"][-1]["results"][0]["display_academic_level_label"], "Year 3 Semester 2")
+
+    def test_visiting_engineering_timeline_caps_modules_at_year_4_semester_2(self):
+        """Visiting engineering students should not progress beyond Year 4 Semester 2."""
+
+        from .models import Course, Department, Faculty, Programme
+        from .student_history import build_student_timeline
+
+        visiting_type = AttendanceType.objects.create(
+            external_id=31,
+            name="Visiting",
+            normalized_key="timeline-visiting-eng",
+        )
+        engineering_faculty = Faculty.objects.create(name="Engineering Timeline Faculty")
+        engineering_department = Department.objects.create(
+            faculty=engineering_faculty,
+            name="Engineering Timeline Department",
+        )
+        engineering_programme = Programme.objects.create(
+            department=engineering_department,
+            external_id=310,
+            code="BENG-TIME",
+            name="BSc Eng Timeline",
+        )
+        student = Student.objects.create(
+            registration_number="REG019",
+            first_names="Miner",
+            surname="Visitor",
+            gender="Male",
+            place_of_birth="Gweru",
+        )
+        period_specs = [
+            (8200, "1", "1", "September 2022 - December 2022", [("ENG101V", "Module A")]),
+            (8201, "1", "2", "March 2023 - July 2023", [("ENG121V", "Module B")]),
+            (8202, "2", "1", "August 2023 - December 2023", [("ENG211V", "Module C")]),
+            (8203, "2", "2", "March 2024 - July 2024", [("ENG221V", "Module D")]),
+            (8204, "3", "1", "August 2024 - December 2024", [("ENG311V", "Module E")]),
+            (8205, "3", "2", "March 2025 - July 2025", [("ENG321V", "Module F")]),
+            (8206, "4", "1", "August 2025 - December 2025", [("ENG411V", "Module G")]),
+            (8207, "4", "2", "March 2026 - July 2026", [("ENG421V", "Module H")]),
+            (8208, "5", "1", "August 2026 - December 2026", [("ENG511V", "Module I")]),
+        ]
+
+        registrations = []
+        for external_id, academic_year, semester, period_name, course_specs in period_specs:
+            period = AcademicPeriod.objects.create(
+                external_id=external_id,
+                academic_year=academic_year,
+                semester=semester,
+                name=period_name,
+            )
+            registration = Registration.objects.create(
+                external_id=external_id,
+                student=student,
+                programme=engineering_programme,
+                period=period,
+                decision="Proceed",
+                carrying=0,
+                attendance_type_record=visiting_type,
+            )
+            registrations.append(registration)
+            for offset, (code, name) in enumerate(course_specs, start=1):
+                course = Course.objects.create(code=code, name=name)
+                CourseResult.objects.create(
+                    registration=registration,
+                    course=course,
+                    mark=60 + offset,
+                )
+
+        timeline = build_student_timeline(registrations)
+
+        self.assertEqual(timeline["groups"][-1]["academic_level_label"], "Year 4 Semester 2")
+        self.assertEqual(timeline["groups"][-1]["results"][0]["display_academic_level_label"], "Year 4 Semester 2")
 
     def test_bsc_eng_programmes_map_work_related_block_to_engineering_attachment_stage(self):
         """Programmes named like 'Bsc Eng ...' should still use the engineering attachment stage."""
