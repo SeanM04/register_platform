@@ -89,27 +89,30 @@
 .insight-story-kicker {
     margin: 0;
     color: rgba(255, 255, 255, 0.72);
-    font-size: 0.68rem;
+    font-size: 0.6rem;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
 
 .insight-story-title {
-    margin: 0;
-    font-size: 1.05rem;
+    margin: 0.28rem 0 0;
+    max-width: 60rem;
+    font-size: clamp(1rem, 1.55vw, 1.26rem);
     line-height: 1.35;
+    font-weight: 800;
 }
 
 .insight-story-copy {
-    margin: 0;
-    max-width: 58rem;
+    margin: 0.45rem 0 0;
+    max-width: 56rem;
     color: rgba(255, 255, 255, 0.82);
-    font-size: 0.8rem;
+    font-size: 0.79rem;
     line-height: 1.55;
 }
 
 .insight-story-grid {
+    margin-top: 0.8rem;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.72rem;
@@ -143,7 +146,7 @@
 
 .insight-story-pill-copy {
     margin: 0;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(255, 255, 255, 0.86);
     font-size: 0.76rem;
     line-height: 1.45;
 }
