@@ -8,6 +8,8 @@ from ..models import Programme
 from ..views import build_registration_filter_q
 from .constants import PROGRAMME_SUMMARY_CARD_SPECS
 
+EXCLUDED_PROGRAMME_CODES = {"TMPC795930"}
+
 
 def _pct(count, total):
     """Return a rounded percentage while safely handling empty totals."""
@@ -103,6 +105,7 @@ def get_programmes_queryset(request, search_query=""):
             ),
         )
         .filter(registration_count__gt=0)
+        .exclude(code__in=EXCLUDED_PROGRAMME_CODES)
         .order_by("name")
     )
 
