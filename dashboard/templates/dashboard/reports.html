@@ -19,26 +19,28 @@
     {# ------------------------------------------------------------------ #}
     {# Page header                                                          #}
     {# ------------------------------------------------------------------ #}
-    <div class="rpt-page-header">
-        <div class="rpt-page-header-text">
-            <h1 class="rpt-page-title">Custom Reports</h1>
-            <p class="rpt-page-sub">Select a report type, apply filters, and generate a live table.</p>
+    <section class="rpt-hero-card" aria-label="Custom Reports controls">
+        <div class="rpt-page-header">
+            <div class="rpt-page-header-text">
+                <h1 class="rpt-page-title">Custom Reports</h1>
+                <p class="rpt-page-sub">Select a report type, apply filters, and generate a live table.</p>
+            </div>
+            <div class="rpt-page-actions">
+                <button type="button" class="rpt-btn rpt-btn-secondary" id="rpt-export" disabled>
+                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <path d="M10 3v10M6 9l4 4 4-4M4 15h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Export Excel
+                </button>
+                <button type="button" class="rpt-btn rpt-btn-primary" id="rpt-generate">
+                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <path d="M4 6h12M4 10h12M4 14h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Generate Report
+                </button>
+            </div>
         </div>
-        <div class="rpt-page-actions">
-            <button type="button" class="rpt-btn rpt-btn-secondary" id="rpt-export" disabled>
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d="M10 3v10M6 9l4 4 4-4M4 15h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                Export Excel
-            </button>
-            <button type="button" class="rpt-btn rpt-btn-primary" id="rpt-generate">
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d="M4 6h12M4 10h12M4 14h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                Generate Report
-            </button>
-        </div>
-    </div>
+    </section>
 
     {# ------------------------------------------------------------------ #}
     {# Report type selector                                                 #}
