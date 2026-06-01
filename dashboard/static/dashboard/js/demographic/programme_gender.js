@@ -108,10 +108,12 @@ const buildProgrammeGenderOption = (rows, chartWidth = 0) => {
                 stack: "gender",
                 barWidth: isNarrow ? 20 : isCompact ? 26 : 34,
                 itemStyle: {
+                    borderRadius: [0, 6, 6, 0],
                     color: buildGradient("#2b7ea2", "#4fb0d1"),
                 },
                 emphasis: {
                     itemStyle: {
+                        borderRadius: [0, 6, 6, 0],
                         color: buildGradient("#2b7ea2", "#6fc3e3"),
                     },
                 },

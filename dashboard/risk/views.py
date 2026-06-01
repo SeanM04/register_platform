@@ -12,7 +12,7 @@ from .services import (
     build_risk_drilldown_payload,
     build_student_risk_profiles,
     get_cached_risk_dashboard_data,
-    get_risk_summary_values,
+    get_cached_risk_fast_metrics,
     paginate_risk_rows,
 )
 
@@ -173,7 +173,7 @@ def risk_metrics(request):
     """Return risk dashboard summary metrics as JSON."""
 
     search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_risk_summary_values(request, search_query)})
+    return JsonResponse(get_cached_risk_fast_metrics(request, search_query))
 
 
 @ajax_login_required
@@ -187,7 +187,12 @@ def risk_payload(request):
 
     return JsonResponse(
         {
-            "metrics": get_risk_summary_values(request, search_query),
+            "metrics": {
+                "at_risk_students": risk_data["at_risk_students"],
+                "high_risk": risk_data["high_risk_count"],
+                "medium_risk": risk_data["medium_risk_count"],
+                "multi_fail": risk_data["multi_fail_count"],
+            },
             "cohort_total_students": risk_data["total_students"],
             "watchlist_total_students": risk_data["at_risk_students"],
             "risk_distribution_rows": risk_data["risk_distribution_rows"],

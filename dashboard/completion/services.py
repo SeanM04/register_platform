@@ -3,7 +3,7 @@
 import logging
 from urllib.parse import unquote_plus
 
-from services.completion_service import get_completion_page_data
+from services.completion_service import get_cached_completion_page_data
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
         page,
     )
 
-    completion_data = get_completion_page_data(
+    completion_data = get_cached_completion_page_data(
         year=year,
         period=period,
         faculty=faculty,

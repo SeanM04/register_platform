@@ -116,10 +116,12 @@ const buildOverviewOption = (rows, chartWidth = 0) => {
                 type: "bar",
                 barWidth: isNarrow ? 20 : isCompact ? 26 : 34,
                 itemStyle: {
+                    borderRadius: [6, 6, 0, 0],
                     color: buildGradient("#0d325d", "#4fb0d1"),
                 },
                 emphasis: {
                     itemStyle: {
+                        borderRadius: [6, 6, 0, 0],
                         color: buildGradient("#082340", "#2d8db6"),
                     },
                 },
@@ -187,6 +189,7 @@ const buildDetailOption = (locationRow, chartWidth = 0) => {
                 type: "bar",
                 barWidth: isNarrow ? 26 : isCompact ? 34 : 44,
                 itemStyle: {
+                    borderRadius: [6, 6, 0, 0],
                     color: ({ dataIndex }) => detailRows[dataIndex]?.color,
                 },
                 label: {

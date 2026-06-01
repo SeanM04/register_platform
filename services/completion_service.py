@@ -4,9 +4,21 @@ import re
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
+from django.core.cache import cache
 from django.db.models import Prefetch
 
 from dashboard.models import AcademicPeriod, CourseResult, Registration
+
+COMPLETION_CACHE_TTL_SECONDS = 300
+
+
+def _build_completion_cache_key(year, period, faculty):
+    parts = [
+        f"y={str(year or '').strip()}",
+        f"p={str(period or '').strip()}",
+        f"f={str(faculty or '').strip()}",
+    ]
+    return "dashboard:completion:" + "|".join(parts)
 from services.completion_rules import (
     get_zero_completion_decision,
     student_completion_percentage,
@@ -658,6 +670,66 @@ def get_completion_page_data(
             for profile in latest_visible_profiles
         ],
     }
+
+
+def get_cached_completion_page_data(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return cached completion analytics, rebuilding only on cold miss or TTL expiry."""
+
+    cache_key = _build_completion_cache_key(year, period, faculty)
+    result = cache.get(cache_key)
+    if result is None:
+        result = get_completion_page_data(year=year, period=period, faculty=faculty)
+        cache.set(cache_key, result, COMPLETION_CACHE_TTL_SECONDS)
+    return result
+
+
+def get_completion_fast_kpis(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Compute headline KPI counts from DB aggregates without building full student histories."""
+
+    qs = Registration.objects.select_related("period")
+    if faculty:
+        qs = qs.filter(programme__department__faculty__name=faculty)
+
+    if year or period:
+        matching_ids = [
+            p.external_id
+            for p in AcademicPeriod.objects.only("external_id", "name")
+            if _period_name_matches_filters(p.name, year=year, period=period)
+        ]
+        qs = qs.filter(period__external_id__in=matching_ids) if matching_ids else qs.none()
+
+    total_students = qs.values("student_id").distinct().count()
+    total_cohorts = qs.values("period__external_id").distinct().count()
+
+    return {
+        "kpis": {
+            "total_students": total_students,
+            "total_cohorts": total_cohorts,
+        },
+    }
+
+
+def get_cached_completion_fast_kpis(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return cached fast KPI counts for the current filter scope."""
+
+    cache_key = _build_completion_cache_key(year, period, faculty) + ":fast"
+    result = cache.get(cache_key)
+    if result is None:
+        result = get_completion_fast_kpis(year=year, period=period, faculty=faculty)
+        cache.set(cache_key, result, COMPLETION_CACHE_TTL_SECONDS)
+    return result
 
 
 def get_completion_programmes() -> List[Dict[str, Any]]:

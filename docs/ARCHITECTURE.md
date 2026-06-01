@@ -112,27 +112,45 @@ Most analytics pages follow a common structure:
 - summary metric cards
 - story banner plus focused chart chapters for the richer analytics pages
 - action register or primary data table lower on the page when operational follow-up is needed
-- server-rendered data with light JS enhancement
+- server-rendered shell with async JS hydration
 
-Several metrics panels are hydrated asynchronously so the page shell can load quickly before expensive summaries resolve.
+### Two-Phase Load Pattern
 
-The landing dashboard now follows that async pattern explicitly:
+All feature-rich pages use a **two-phase load** to give users immediate feedback before the expensive data is ready:
 
-- a lightweight shell from `dashboard/overview/views.py`
-- a separate payload endpoint for the heavier chart datasets
-- a separate narratives endpoint for optional AI-assisted chart copy
-- page-scoped browser modules in `dashboard/static/dashboard/js/home/`
-- shared topbar and filter layout styling in `templates/base.html` and
-  `dashboard/static/dashboard/css/base.css`
+1. **Phase 1 — fast metrics endpoint** (`/metrics/<page>/`): uses DB aggregates to return KPI card values in ~50ms. JS hydrates the summary cards as soon as this lands.
+2. **Phase 2 — payload endpoint** (`/metrics/<page>/payload/`): assembles the full chart rows, student lists, and narrative copy. JS renders charts and tables once this completes.
 
-The dashboard backend is also moving toward feature-owned packages inside `dashboard/` for the
-more complex analytics pages. Current examples:
+Pages currently using this pattern: Academic Levels, Risk Analysis, Insights, Completion.
+
+### Caching
+
+All heavy payload builds are wrapped in Django's cache backend with a 5-minute TTL:
+
+- A stable cache key is derived from the active filter scope (year, period, faculty).
+- The first request after a cold start or TTL expiry builds and caches the result.
+- Subsequent requests within the same 5-minute window hit the cache directly.
+- Fast metrics results are cached separately under the same key with a `:fast` or `:fast-metrics` suffix.
+
+This means three concurrent users loading the same page scope share one build, and drilldown clicks from any of them also benefit from the warm cache.
+
+### Chart Visual Style
+
+All bar charts across the platform use **rounded bar ends** (`borderRadius: 6`) for visual consistency:
+
+- Vertical single bars: rounded on the top corners (`[6, 6, 0, 0]`)
+- Horizontal single bars: rounded on the right end (`[0, 6, 6, 0]`)
+- Stacked bars: only the outermost segment is rounded; the segment touching the adjacent bar stays flat. Helper functions re-evaluate rounding on legend selection so toggled-off series do not leave flat edges.
+
+The dashboard backend uses feature-owned packages inside `dashboard/` for complex analytics pages:
 
 - `dashboard/academic_levels/`
 - `dashboard/demographics/`
 - `dashboard/overview/`
 - `dashboard/risk/`
 - `dashboard/insights/`
+- `dashboard/completion/`
+- `dashboard/graduation/`
 
 ## 7. Current Modules
 
@@ -146,6 +164,9 @@ The dashboard app currently includes these view modules:
 - academic levels
 - risk
 - insights
+- completion analysis
+- graduation analysis
+- reports
 - system management
 
 ## 8. Risk and Insights Logic

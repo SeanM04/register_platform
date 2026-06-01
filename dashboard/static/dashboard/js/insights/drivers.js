@@ -86,6 +86,7 @@ const buildDriversOption = (rows) => ({
                 value: row.count,
                 raw: row,
                 itemStyle: {
+                    borderRadius: [0, 6, 6, 0],
                     color: buildGradient("#0b4c6d", "#5fb7dc"),
                 },
             })),

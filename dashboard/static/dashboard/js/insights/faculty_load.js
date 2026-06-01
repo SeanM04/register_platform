@@ -86,6 +86,7 @@ const buildFacultyLoadOption = (rows) => ({
                 value: row.registrations,
                 raw: row,
                 itemStyle: {
+                    borderRadius: [0, 6, 6, 0],
                     color: buildGradient("#082340", "#5fb7dc"),
                 },
             })),

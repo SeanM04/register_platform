@@ -78,15 +78,15 @@ const buildTooltipFormatter = (selectedState) => (params) => {
 const buildHighRiskBorderRadius = (row, selectedState) => {
     const mediumRiskVisible = isSeriesVisible(selectedState, MEDIUM_RISK);
     return mediumRiskVisible && Number(row.medium_risk || 0) > 0
-        ? [0, 0, 10, 10]
-        : [10, 10, 10, 10];
+        ? [0, 0, 6, 6]
+        : [6, 6, 6, 6];
 };
 
 const buildMediumRiskBorderRadius = (row, selectedState) => {
     const highRiskVisible = isSeriesVisible(selectedState, HIGH_RISK);
     return highRiskVisible && Number(row.high_risk || 0) > 0
-        ? [10, 10, 0, 0]
-        : [10, 10, 10, 10];
+        ? [6, 6, 0, 0]
+        : [6, 6, 6, 6];
 };
 
 const buildProgrammeSeries = (rows, selectedState) => {
@@ -105,6 +105,7 @@ const buildProgrammeSeries = (rows, selectedState) => {
                 value: row.high_risk,
                 raw: row,
                 itemStyle: {
+                    borderRadius: buildHighRiskBorderRadius(row, selectedState),
                     color: buildGradient("#dc2626", "#ef4444"),
                 },
             })),
@@ -123,6 +124,7 @@ const buildProgrammeSeries = (rows, selectedState) => {
                 value: row.medium_risk,
                 raw: row,
                 itemStyle: {
+                    borderRadius: buildMediumRiskBorderRadius(row, selectedState),
                     color: buildGradient("#facc15", "#fde047"),
                 },
             })),

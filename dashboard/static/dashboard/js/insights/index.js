@@ -212,11 +212,21 @@ const setInsightShellErrorState = (context) => {
 export const initialiseInsightsPage = async () => {
     const shellContext = createInsightContext();
     const { elements } = shellContext;
+    const metricsUrl = elements.root?.dataset.metricsUrl;
     const payloadUrl = elements.root?.dataset.payloadUrl;
 
     if (!payloadUrl) {
         setInsightShellErrorState(shellContext);
         return;
+    }
+
+    if (metricsUrl) {
+        try {
+            const metricsResponse = await fetchJson(metricsUrl);
+            hydrateSummaryCards(shellContext, metricsResponse?.summary_cards || []);
+        } catch (_) {
+            // payload will fill in the cards
+        }
     }
 
     let payloadResponse = null;

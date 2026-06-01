@@ -31,10 +31,14 @@ For non-technical users, this page also answers:
 
 - `/completion/`
   Completion Analysis page shell
+- `/metrics/completion/`
+  Fast KPI counts via DB aggregates (two-phase load phase 1)
 - `/metrics/completion/payload/`
-  Main chart, KPI, and table payload
+  Main chart, KPI, and table payload (two-phase load phase 2)
 - `/metrics/completion/narratives/`
   Optional AI or rule-based chart narratives with diagnostics
+- `/metrics/completion/drilldown/`
+  Paginated student rows for chart bar clicks
 - `/api/completion/programmes`
   Programme filter options
 - `/api/completion/faculties`
@@ -80,6 +84,17 @@ Most of these shift the effective cohort by `+1` semester. Suspension shifts by 
 4. Count passed courses using `mark >= 50`
 5. If failed courses are `4+`, return `0.0`
 6. Otherwise return `(passed / total) * 100`
+
+## Caching
+
+`services/completion_service.py` wraps the heavy build in a Django cache layer.
+
+- `COMPLETION_CACHE_TTL_SECONDS = 300` — results are valid for 5 minutes.
+- `get_cached_completion_page_data(year, period, faculty)` is the primary entry point used by views. It builds and stores the full payload on cold miss, then serves the cached copy for all subsequent requests within the TTL.
+- `get_cached_completion_fast_kpis(year, period, faculty)` caches the fast KPI response separately under a `:fast` key suffix.
+- Cache keys are built from the active year, period, and faculty filter values so each distinct scope has its own entry.
+
+**Effect on concurrent requests**: `completion_payload`, `completion_narratives`, and `completion_drilldown` all share the same cache entry. Before caching was introduced, each of those endpoints rebuilt the full student history independently. Now the first request within a scope builds once and all others read from cache.
 
 ## Backend Data Flow
 
@@ -208,15 +223,19 @@ Renders the page shell and injects:
 - the page title
 - whether AI narratives are configured to be available
 
+### `completion_metrics()`
+
+Calls `get_cached_completion_fast_kpis()`. Returns fast KPI counts for `total_students` and `total_cohorts` using DB aggregates — no student history build required. The JS fetches this first so the two headline cards populate within ~50ms.
+
 ### `completion_payload()`
 
-Calls `get_completion_page_data()` and returns the main JSON payload for the frontend.
+Calls `get_cached_completion_page_data()` and returns the full JSON payload for the frontend. On a warm cache this is near-instant; on a cold miss it builds and stores the result.
 
 ### `completion_narratives()`
 
 Calls:
 
-- `get_completion_page_data()`
+- `get_cached_completion_page_data()` — reads from cache when warm
 - `dashboard.completion.ai_insights.get_completion_card_narratives_result()`
 
 This endpoint returns:
@@ -290,7 +309,8 @@ Responsibilities:
 
 Responsibilities:
 
-- fetch the completion payload
+- fetch fast KPI counts from `/metrics/completion/` and populate `Total Students` and `Effective Cohorts` cards immediately (phase 1)
+- fetch the full completion payload from `/metrics/completion/payload/` and hydrate all remaining KPIs, charts, and tables (phase 2)
 - render KPI values
 - render ECharts charts
 - render the student table and CSV export
@@ -299,6 +319,18 @@ Responsibilities:
 - show a visible diagnostics banner for loading, AI success, fallback, or endpoint failure
 - render chart-footer badges as either `AI` or `Guidance`
 - handle cohort completion heatmap with complete x-axis and blank cells for missing data
+
+#### Load Sequence
+
+```text
+shell renders (instant)
+  └─ loadFastMetrics() — awaited first
+       └─ /metrics/completion/ → Total Students + Effective Cohorts cards update (~50ms)
+  └─ loadData() — awaited after fast metrics
+       └─ /metrics/completion/payload/ → all KPIs, charts, student table
+  └─ loadNarratives() — fire-and-forget
+       └─ /metrics/completion/narratives/ → chart copy, diagnostics banner
+```
 
 #### Heatmap Implementation
 

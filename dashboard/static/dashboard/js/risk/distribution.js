@@ -82,6 +82,7 @@ const buildDistributionOption = (rows, width) => ({
                     value: row.count,
                     raw: row,
                     itemStyle: {
+                        borderRadius: [6, 6, 0, 0],
                         color: buildGradient(startColor, endColor, "vertical"),
                     },
                 };

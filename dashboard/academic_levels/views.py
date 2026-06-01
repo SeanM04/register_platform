@@ -11,7 +11,7 @@ from .presenters import build_academic_level_shell_context
 from .services import (
     build_academic_level_drilldown_data,
     get_cached_academic_level_dashboard_data,
-    get_cached_academic_level_summary_snapshot,
+    get_cached_academic_level_fast_metrics,
     get_academic_level_summary_values,
 )
 
@@ -34,7 +34,7 @@ def academic_level_metrics(request):
     """Return academic-level dashboard summary metrics as JSON."""
 
     search_query = request.GET.get("q", "").strip()
-    summary_snapshot = get_cached_academic_level_summary_snapshot(request, search_query)
+    summary_snapshot = get_cached_academic_level_fast_metrics(request, search_query)
     return JsonResponse(summary_snapshot)
 
 
@@ -49,7 +49,9 @@ def academic_level_payload(request):
 
     return JsonResponse(
         {
-            "metrics": get_academic_level_summary_values(request, search_query, academic_level_data),
+            "metrics": get_academic_level_summary_values(
+                request, search_query, academic_level_data
+            ),
             "level_rows": academic_level_data["level_rows"],
             "level_chart_rows": academic_level_data["level_chart_rows"],
             "gender_performance_rows": academic_level_data["gender_performance_rows"],

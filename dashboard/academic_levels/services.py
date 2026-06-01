@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.urls import reverse
 
 from ..models import CourseResult, Registration
@@ -22,7 +22,7 @@ from ..views import (
 
 from .constants import ACADEMIC_LEVEL_PASS_TARGET
 
-ACADEMIC_LEVEL_CACHE_TTL_SECONDS = 30
+ACADEMIC_LEVEL_CACHE_TTL_SECONDS = 300
 ACADEMIC_LEVEL_DRILLDOWN_COLUMNS = [
     {"key": "name", "label": "Student"},
     {"key": "academic_level", "label": "Academic Level"},
@@ -92,7 +92,9 @@ def build_academic_level_data(request, search_query=""):
     registration_level_index = build_registration_display_level_index_for_student_ids(
         {registration.student_id for registration in registrations},
         faculty_name=request.GET.get("faculty", "").strip(),
-    ) or build_registration_display_level_index(registrations)
+    )
+    if registration_level_index is None:
+        registration_level_index = build_registration_display_level_index(registrations)
     level_map = {}
     programme_map = {}
     gender_map = {
@@ -376,7 +378,9 @@ def build_academic_level_summary_snapshot(request, search_query=""):
     registration_level_index = build_registration_display_level_index_for_student_ids(
         {registration.student_id for registration in registrations},
         faculty_name=request.GET.get("faculty", "").strip(),
-    ) or build_registration_display_level_index(registrations)
+    )
+    if registration_level_index is None:
+        registration_level_index = build_registration_display_level_index(registrations)
     level_summary = {}
     programme_summary = {}
     gender_summary = {
@@ -515,6 +519,57 @@ def get_academic_level_summary_values(request, search_query="", academic_level_d
     return build_academic_level_summary_snapshot(request, search_query)["metrics"]
 
 
+def get_academic_level_fast_metrics(request, search_query=""):
+    """Return the 4 KPI card values via direct DB aggregates — no level-index rebuild."""
+
+    base_qs = get_filtered_registrations(request, include_course_results=False)
+    if search_query:
+        base_qs = base_qs.filter(
+            Q(period__academic_year__icontains=search_query)
+            | Q(period__semester__icontains=search_query)
+            | Q(programme__name__icontains=search_query)
+            | Q(programme__department__name__icontains=search_query)
+        )
+
+    agg = base_qs.aggregate(
+        total_registrations=Count("id"),
+        total_students=Count("student_id", distinct=True),
+    )
+
+    level_count = (
+        base_qs
+        .values("period__academic_year", "period__semester")
+        .distinct()
+        .count()
+    )
+
+    results_agg = CourseResult.objects.filter(
+        registration__in=base_qs,
+        mark__isnull=False,
+    ).aggregate(
+        total=Count("id"),
+        passed=Count("id", filter=Q(mark__gte=50)),
+    )
+
+    total_marked = results_agg["total"] or 0
+    passed = results_agg["passed"] or 0
+    pass_rate = round((passed / total_marked) * 100) if total_marked else 0
+
+    return {
+        "metrics": {
+            "levels": level_count,
+            "registrations": agg["total_registrations"],
+            "students": agg["total_students"],
+            "average_pass_rate": f"{pass_rate}%",
+        },
+        "story_payload": {
+            "level_rows": [],
+            "gender_rows": [],
+            "programme_rows": [],
+        },
+    }
+
+
 def _build_academic_level_cache_key(request, suffix):
     """Create a stable cache key for the current academic-level filter scope."""
 
@@ -544,6 +599,17 @@ def get_cached_academic_level_summary_snapshot(request, search_query=""):
     )
 
 
+def get_cached_academic_level_fast_metrics(request, search_query=""):
+    """Return cached fast KPI metrics for the academic-level page header cards."""
+
+    cache_key = _build_academic_level_cache_key(request, "fast-metrics")
+    return cache.get_or_set(
+        cache_key,
+        lambda: get_academic_level_fast_metrics(request, search_query),
+        ACADEMIC_LEVEL_CACHE_TTL_SECONDS,
+    )
+
+
 def _academic_level_registration_rows(request, search_query=""):
     """Return filtered registrations annotated with display-level metadata."""
 
@@ -553,7 +619,9 @@ def _academic_level_registration_rows(request, search_query=""):
     registration_level_index = build_registration_display_level_index_for_student_ids(
         student_ids,
         faculty_name=faculty_name,
-    ) or build_registration_display_level_index(registrations)
+    )
+    if registration_level_index is None:
+        registration_level_index = build_registration_display_level_index(registrations)
     cumulative_average_index = _build_registration_cumulative_average_index(student_ids, faculty_name)
 
     rows = []

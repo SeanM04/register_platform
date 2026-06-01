@@ -113,7 +113,7 @@ export const initialiseLoadSection = (context) => {
                     },
                 },
                 itemStyle: {
-                    borderRadius: 0,
+                    borderRadius: [0, 6, 6, 0],
                     color: buildGradient(PROGRAMME_COLORS.navy, PROGRAMME_COLORS.sky, "horizontal"),
                 },
             },

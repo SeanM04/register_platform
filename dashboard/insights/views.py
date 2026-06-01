@@ -12,6 +12,7 @@ from .presenters import build_insight_shell_context
 from .services import (
     build_insights_drilldown_payload,
     get_cached_insights_dashboard_data,
+    get_cached_insights_fast_metrics,
 )
 
 
@@ -24,6 +25,14 @@ def insights_view(request):
         "dashboard/insights.html",
         build_insight_shell_context(request),
     )
+
+
+@ajax_login_required
+@require_GET
+def insights_metrics(request):
+    """Return fast KPI card data for the insights dashboard before the heavy payload arrives."""
+
+    return JsonResponse(get_cached_insights_fast_metrics(request))
 
 
 @ajax_login_required

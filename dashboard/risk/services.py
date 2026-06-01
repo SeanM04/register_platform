@@ -3,7 +3,7 @@
 from urllib.parse import urlencode
 
 from django.core.cache import cache
-from django.db.models import Avg, Q
+from django.db.models import Avg, Count, Q
 
 from ..models import CourseResult
 from ..student_history import (
@@ -20,7 +20,7 @@ from .constants import (
     RISK_PRIORITY,
 )
 
-RISK_CACHE_TTL_SECONDS = 30
+RISK_CACHE_TTL_SECONDS = 300
 RISK_DRILLDOWN_COLUMNS = (
     {"key": "name", "label": "Student"},
     {"key": "programme", "label": "Programme"},
@@ -271,6 +271,22 @@ def build_student_risk_profiles(request, search_query=""):
         visible_registrations,
         registration_level_index,
         average_mark_fallback_map,
+    )
+
+
+def build_student_risk_profiles_from_request_and_registrations(request, registrations):
+    """Build risk profiles using already-fetched registrations, respecting request filters."""
+
+    faculty_name = request.GET.get("faculty", "").strip()
+    student_ids = {r.student_id for r in registrations}
+    registration_level_index = build_registration_display_level_index_for_student_ids(
+        student_ids, faculty_name=faculty_name
+    )
+    average_mark_fallback_map = _build_student_average_fallback_map(
+        student_ids, faculty_name=faculty_name
+    )
+    return build_student_risk_profiles_from_registrations(
+        registrations, registration_level_index, average_mark_fallback_map
     )
 
 
@@ -640,6 +656,82 @@ def paginate_risk_rows(risk_rows, page_number, page_size=20):
         "previous_page": page - 1 if page > 1 else None,
         "next_page": page + 1 if page < page_count else None,
     }
+
+
+def get_risk_fast_metrics(request, search_query=""):
+    """Approximate risk KPI card values via DB aggregates — no level-index or timeline rebuild."""
+
+    base_qs = get_filtered_registrations(request, include_course_results=False)
+    if search_query:
+        base_qs = base_qs.filter(
+            Q(student__first_names__icontains=search_query)
+            | Q(student__surname__icontains=search_query)
+            | Q(student__registration_number__icontains=search_query)
+            | Q(programme__name__icontains=search_query)
+            | Q(programme__department__name__icontains=search_query)
+            | Q(decision__icontains=search_query)
+        )
+
+    student_stats = list(
+        CourseResult.objects.filter(
+            registration__in=base_qs,
+            mark__isnull=False,
+        ).values("registration__student_id").annotate(
+            avg_mark=Avg("mark"),
+            failed_count=Count("id", filter=Q(mark__lt=50)),
+        )
+    )
+
+    at_risk = 0
+    high_risk = 0
+    medium_risk = 0
+    multi_fail = 0
+
+    for row in student_stats:
+        avg = float(row["avg_mark"] or 0)
+        failed = int(row["failed_count"] or 0)
+
+        score = 0
+        if avg < 50:
+            score += 3
+        elif avg < 60:
+            score += 1
+        if failed >= 3:
+            score += 3
+        elif failed == 2:
+            score += 2
+        elif failed == 1:
+            score += 1
+
+        if score >= 4:
+            at_risk += 1
+            high_risk += 1
+        elif score >= 2:
+            at_risk += 1
+            medium_risk += 1
+
+        if failed >= 2:
+            multi_fail += 1
+
+    return {
+        "metrics": {
+            "at_risk_students": at_risk,
+            "high_risk": high_risk,
+            "medium_risk": medium_risk,
+            "multi_fail": multi_fail,
+        }
+    }
+
+
+def get_cached_risk_fast_metrics(request, search_query=""):
+    """Return cached fast risk KPI metrics for the page header cards."""
+
+    cache_key = _build_risk_cache_key(request, "fast-metrics")
+    return cache.get_or_set(
+        cache_key,
+        lambda: get_risk_fast_metrics(request, search_query),
+        RISK_CACHE_TTL_SECONDS,
+    )
 
 
 def _build_risk_cache_key(request, suffix):

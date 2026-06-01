@@ -51,37 +51,39 @@ def completion_view(request):
 
 
 @require_GET
+def completion_metrics(request):
+    """
+    Return fast KPI counts for the completion dashboard before the full payload arrives.
+    """
+    try:
+        from services.completion_service import get_cached_completion_fast_kpis
+        return JsonResponse(get_cached_completion_fast_kpis(
+            year=request.GET.get('year'),
+            period=request.GET.get('period'),
+            faculty=request.GET.get('faculty'),
+        ))
+    except Exception as e:
+        logger.error(f"Error in completion_metrics: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@require_GET
 def completion_payload(request):
     """
     Return completion analysis data as JSON.
     This endpoint provides data for frontend completion analysis page.
     """
     try:
-        # Get topbar filter parameters
-        year = request.GET.get('year')
-        period = request.GET.get('period')
-        faculty = request.GET.get('faculty')
-        
-        # Call the completion service
-        from services.completion_service import get_completion_page_data
-        
-        data = get_completion_page_data(
-            year=year,
-            period=period,
-            faculty=faculty
+        from services.completion_service import get_cached_completion_page_data
+        data = get_cached_completion_page_data(
+            year=request.GET.get('year'),
+            period=request.GET.get('period'),
+            faculty=request.GET.get('faculty'),
         )
-        
-        return JsonResponse({
-            'status': 'success',
-            'data': data
-        }, encoder=PandasJSONEncoder)
-        
+        return JsonResponse({'status': 'success', 'data': data}, encoder=PandasJSONEncoder)
     except Exception as e:
         logger.error(f"Error in completion_payload: {e}")
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
 @require_GET
@@ -94,10 +96,10 @@ def completion_narratives(request):
         period = request.GET.get('period')
         faculty = request.GET.get('faculty')
 
-        from services.completion_service import get_completion_page_data
+        from services.completion_service import get_cached_completion_page_data
         from .ai_insights import get_completion_card_narratives_result
 
-        completion_data = get_completion_page_data(
+        completion_data = get_cached_completion_page_data(
             year=year,
             period=period,
             faculty=faculty,

@@ -18,6 +18,7 @@ import {
 class CompletionAnalysis {
     constructor() {
         this.root = document.querySelector(".completion-layout");
+        this.metricsUrl = this.root?.dataset.metricsUrl || "/metrics/completion/";
         this.payloadUrl = this.root?.dataset.payloadUrl || "/metrics/completion/payload/";
         this.narrativesUrl = this.root?.dataset.narrativesUrl || "/metrics/completion/narratives/";
         this.currentData = null;
@@ -91,8 +92,27 @@ class CompletionAnalysis {
         };
     }
 
+    async loadFastMetrics() {
+        if (!this.metricsUrl) {
+            return;
+        }
+        try {
+            const result = await this.fetchJson(this.metricsUrl);
+            const kpis = result?.kpis || {};
+            if (typeof kpis.total_students === "number") {
+                this.updateMetricValue("total_students", kpis.total_students);
+            }
+            if (typeof kpis.total_cohorts === "number") {
+                this.updateMetricValue("total_cohorts", kpis.total_cohorts);
+            }
+        } catch (_) {
+            // payload will fill in the metrics
+        }
+    }
+
     async init() {
         this.bindEvents();
+        await this.loadFastMetrics();
         await this.loadData();
         this.renderStoryBanner();
         this.renderFallbackNarratives();

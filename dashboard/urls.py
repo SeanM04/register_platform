@@ -2,7 +2,7 @@ from django.urls import path, include
 
 from .academic_levels.views import academic_level_drilldown, academic_level_metrics, academic_level_payload, academic_level_view
 from .demographics.views import demographic_drilldown, demographic_metrics, demographic_narratives, demographic_payload, demographic_view
-from .insights.views import insights_drilldown_payload, insights_payload, insights_view
+from .insights.views import insights_drilldown_payload, insights_metrics, insights_payload, insights_view
 from .overview.views import (
     dashboard_home,
     dashboard_home_drilldown,
@@ -20,11 +20,12 @@ from .views import (
 )
 from .reports.views import reports_export_csv, reports_generate, reports_periods_by_year, reports_view
 from .completion.views import (
-    completion_view, 
-    completion_payload, 
+    completion_view,
+    completion_metrics,
+    completion_payload,
     completion_narratives,
-    completion_programmes, 
-    completion_faculties, 
+    completion_programmes,
+    completion_faculties,
     completion_academic_years,
     completion_periods,
     completion_periods_by_year,
@@ -73,9 +74,11 @@ urlpatterns = [
     path("metrics/risk/payload/", risk_payload, name="risk-payload"),
     path("metrics/risk/drilldown/", risk_drilldown_payload, name="risk-drilldown"),
     path("insights/", insights_view, name="insights"),
+    path("metrics/insights/", insights_metrics, name="insights-metrics"),
     path("metrics/insights/payload/", insights_payload, name="insights-payload"),
     path("metrics/insights/drilldown/", insights_drilldown_payload, name="insights-drilldown"),
     path("completion/", completion_view, name="completion"),
+    path("metrics/completion/", completion_metrics, name="completion-metrics"),
     path("metrics/completion/payload/", completion_payload, name="completion-payload"),
     path("metrics/completion/narratives/", completion_narratives, name="completion-narratives"),
     path("metrics/completion/drilldown/", completion_drilldown, name="completion-drilldown"),

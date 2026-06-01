@@ -21,9 +21,10 @@ For non-technical users, this page answers:
 - Which students need attention under the current filter?
 - How do I move through the full attention queue 10 students at a time?
 
-For technical users, the page is intentionally payload-driven. The initial shell
-loads quickly, and `/metrics/insights/payload/` supplies the final cards, chart
-rows, recommendation content, and narrative state.
+For technical users, the page uses a two-phase load. The initial shell renders
+immediately. `/metrics/insights/` returns KPI card values within ~50ms using DB
+aggregates. `/metrics/insights/payload/` then supplies the final chart rows,
+student table, recommendation content, and narrative state.
 
 ## Page Architecture
 
@@ -32,14 +33,16 @@ flowchart TD
     A[GET /insights/] --> B[insights_view]
     B --> C[insights.html shell]
     C --> D[insights JS modules]
-    D --> E[GET /metrics/insights/payload/]
-    E --> F[Insights service]
-    F --> G[Risk profiles]
-    F --> H[Faculty pressure]
-    F --> I[Driver and intervention summaries]
-    G --> J[KPIs, charts, student table]
-    H --> J
-    I --> J
+    D --> E[GET /metrics/insights/]
+    D --> F[GET /metrics/insights/payload/]
+    E --> G[Fast KPI cards ~50ms]
+    F --> H[Insights service - full build]
+    H --> I[Risk profiles]
+    H --> J[Faculty pressure]
+    H --> K[Driver and intervention summaries]
+    I --> L[Charts, student table, recommendations]
+    J --> L
+    K --> L
 ```
 
 ## Main Files
@@ -52,8 +55,23 @@ flowchart TD
 | AI narratives | `dashboard/insights/ai_insights.py` |
 | Presenters | `dashboard/insights/presenters.py` |
 | Template | `dashboard/templates/dashboard/insights.html` |
-| JavaScript | `dashboard/static/dashboard/js/insights.js`, `dashboard/static/dashboard/js/insights/` |
+| JavaScript | `dashboard/static/dashboard/js/insights/index.js`, `dashboard/static/dashboard/js/insights/` |
 | Tests | `dashboard/insights/tests.py` |
+
+## Endpoints
+
+| Route | Function | Purpose |
+| --- | --- | --- |
+| `GET /insights/` | `insights_view` | Render HTML shell |
+| `GET /metrics/insights/` | `insights_metrics` | Fast KPI cards via DB aggregates |
+| `GET /metrics/insights/payload/` | `insights_payload` | Full chart rows, flagged students, recommendations |
+| `GET /metrics/insights/drilldown/` | `insights_drilldown_payload` | Paginated student rows for chart clicks |
+
+## Performance Notes
+
+- The full payload build calls `build_student_risk_profiles_from_request_and_registrations`, which shares a single `get_filtered_registrations` fetch with the faculty load calculation. Earlier versions fetched registrations twice.
+- Cache TTL is 300 seconds. Fast metrics and full payload results are cached under separate keys derived from the active filter scope.
+- The fast metrics endpoint uses DB-level `Avg` and `Count` aggregates with simplified risk scoring (marks and fail count only, excluding carried modules and decisions). The numbers are directionally correct for immediate display and are replaced by exact values when the full payload arrives.
 
 ## Data Inputs
 

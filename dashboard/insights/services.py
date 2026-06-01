@@ -3,13 +3,19 @@
 from urllib.parse import urlencode
 
 from django.core.cache import cache
+from django.db.models import Avg, Count, Q
 from django.urls import reverse
 
+from ..models import CourseResult
 from ..risk.constants import RISK_DRIVER_LABELS, RISK_DRIVER_PRIORITY
-from ..risk.services import build_student_risk_profiles, format_insight_flagged_meta
+from ..risk.services import (
+    build_student_risk_profiles,
+    build_student_risk_profiles_from_request_and_registrations,
+    format_insight_flagged_meta,
+)
 from ..views import RETENTION_EXIT_DECISIONS, build_initials, get_filtered_registrations
 
-INSIGHTS_CACHE_TTL_SECONDS = 30
+INSIGHTS_CACHE_TTL_SECONDS = 300
 
 
 def _pct(count, total):
@@ -295,7 +301,7 @@ def build_insights_dashboard_data(request):
 
     registrations = list(get_filtered_registrations(request))
     total_registrations = len(registrations)
-    risk_profiles = build_student_risk_profiles(request)
+    risk_profiles = build_student_risk_profiles_from_request_and_registrations(request, registrations)
     at_risk_profiles = [row for row in risk_profiles if row["risk_level"] != "Low Risk"]
     high_risk_profiles = [row for row in at_risk_profiles if row["risk_level"] == "High Risk"]
     medium_risk_profiles = [row for row in at_risk_profiles if row["risk_level"] == "Medium Risk"]
@@ -368,6 +374,81 @@ def get_cached_insights_dashboard_data(request):
         lambda: build_insights_dashboard_data(request),
         INSIGHTS_CACHE_TTL_SECONDS,
     )
+
+
+def get_insights_fast_metrics(request):
+    """Compute fast KPI cards using DB aggregates — no registration list materialisation needed."""
+
+    base_qs = get_filtered_registrations(request, include_course_results=False)
+    student_stats = list(
+        CourseResult.objects.filter(registration__in=base_qs, mark__isnull=False)
+        .values("registration__student_id")
+        .annotate(avg_mark=Avg("mark"), failed_count=Count("id", filter=Q(mark__lt=50)))
+    )
+
+    at_risk = high_risk = medium_risk = 0
+    for row in student_stats:
+        avg = float(row["avg_mark"])
+        failed = int(row["failed_count"])
+        score = 0
+        if avg < 50:
+            score += 3
+        elif avg < 60:
+            score += 1
+        if failed >= 3:
+            score += 3
+        elif failed == 2:
+            score += 2
+        elif failed == 1:
+            score += 1
+        if score >= 4:
+            at_risk += 1
+            high_risk += 1
+        elif score >= 2:
+            at_risk += 1
+            medium_risk += 1
+
+    total_students = base_qs.values("student_id").distinct().count()
+
+    return {
+        "summary_cards": [
+            {
+                "label": "At-Risk Students",
+                "value": f"{at_risk:,}",
+                "note": f"{high_risk} high priority",
+                "tone": "danger",
+            },
+            {
+                "label": "High Priority",
+                "value": f"{high_risk:,}",
+                "note": f"{medium_risk} medium priority",
+                "tone": "warning",
+            },
+            {
+                "label": "Retention Rate",
+                "value": "--",
+                "note": "Loading retention outlook…",
+                "tone": "neutral",
+            },
+            {
+                "label": "Active Cohort",
+                "value": f"{total_students:,}",
+                "note": "Loading registration breakdown…",
+                "tone": "success",
+            },
+        ],
+    }
+
+
+def get_cached_insights_fast_metrics(request):
+    """Return cached fast insight metrics for the current filter scope."""
+
+    cache_key = _build_insights_cache_key(request) + ":fast-metrics"
+    result = cache.get(cache_key)
+    if result is None:
+        result = get_insights_fast_metrics(request)
+        cache.set(cache_key, result, INSIGHTS_CACHE_TTL_SECONDS)
+    return result
 
 
 # Drilldown functionality for insights

@@ -128,6 +128,7 @@
 {% block content %}
 <section
     class="insight-layout"
+    data-metrics-url="{% url 'dashboard:insights-metrics' %}"
     data-payload-url="{% url 'dashboard:insights-payload' %}"
     data-drilldown-url="{% url 'dashboard:insights-drilldown' %}"
     data-risk-url="{% url 'dashboard:risk' %}"
