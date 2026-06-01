@@ -1,0 +1,9 @@
+[33mcommit df0dff88b5d479ef0fd3c06050d23426c8404683[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mbranch2[m[33m)[m
+Author: maccay7 <makanakakanyai@example.com>
+Date:   Tue May 26 12:25:58 2026 +0200
+
+    programme search changes
+
+Settings.py
+dashboard/templates/dashboard/programme.html
+dashboard/templates/dashboard/students.html

@@ -190,7 +190,7 @@ body {
 
 .auth-panel {
     width: min(410px, 100%);
-    padding: 1.48rem;
+    padding: 1rem 1.48rem;
     background: rgba(255, 255, 255, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.75);
     border-radius: 24px;
@@ -202,21 +202,29 @@ body {
 }
 
 .auth-brand {
-    display: flex;
-    align-items: center;
+    display: block;
     width: auto;
-    min-height: 40px;
+    min-height: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+    line-height: 0;
 }
 
 .auth-brand-image {
     display: block;
-    width: 214px;
-    height: auto;
-    max-width: 100%;
+    width: 200px;
+    height: 60px;
+    object-fit: cover;
+    object-position: left center;
+    margin-top: -20px;
+    margin-bottom: -20px;
+    margin-left: -8px;
+    margin-right: 0;
+    max-width: none;
 }
 
 .auth-header {
-    margin-top: 1.15rem;
+    margin-top: 0.75rem;
 }
 
 .auth-header h1 {
@@ -412,8 +420,17 @@ body {
     }
 
     .auth-panel {
-        padding: 1.22rem;
+        padding: 1rem;
         border-radius: 22px;
         transform: none;
+    }
+
+    .auth-brand-image {
+        width: 200px;
+        height: 50px;
+        margin-top: -15px;
+        margin-bottom: -15px;
+        margin-left: -6px;
+        margin-right: 0;
     }
 }
