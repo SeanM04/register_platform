@@ -468,6 +468,26 @@ def _student_list_back_url(request):
     return f"{base_url}?{urlencode(params)}"
 
 
+def _format_student_attendance_type(registration):
+    """Return a readable attendance type for student summary panels."""
+
+    if not registration:
+        return "Not recorded"
+
+    raw_value = (
+        str(getattr(getattr(registration, "attendance_type_record", None), "name", "") or "").strip()
+        or str(getattr(registration, "attendance_type_id", "") or "").strip()
+    )
+    normalized = raw_value.lower()
+    if not normalized:
+        return "Not recorded"
+    if normalized in {"2", "visiting", "visitor", "exchange"} or "visit" in normalized:
+        return "Visiting"
+    if normalized in {"1", "conventional", "regular", "normal"}:
+        return "Conventional"
+    return raw_value.title()
+
+
 def _build_student_detail_filter_context(registrations, requested_year, requested_period, requested_faculty):
     """Build topbar filters constrained to the selected student's own records."""
 
@@ -1198,6 +1218,7 @@ def student_detail(request, slug):
         "name": student_record.full_name,
         "student_number": student_record.registration_number,
         "programme": selected_registration.programme.normalized_name if selected_registration else "",
+        "attendance_type": _format_student_attendance_type(selected_registration),
         "academic_level": selected_group["academic_level_label"] if selected_group else "",
         "term_name": (
             str(getattr(getattr(selected_registration, "period", None), "name", "") or "").strip()
