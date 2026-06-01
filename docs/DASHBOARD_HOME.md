@@ -47,10 +47,14 @@ overview calculations and AI-assisted copy to arrive after the shell is visible.
   Renders `dashboard/templates/dashboard/home.html` with lightweight summary-card
   placeholders and the shared layout context.
 - `dashboard_home_metrics()`
-  Returns headline KPI values as JSON for metric groups that hydrate
-  independently.
+  Returns headline KPI values as JSON. Uses the **fast** `get_home_summary_values`
+  from `dashboard/views.py` which runs direct DB aggregate queries (~0.7 s).
+  This endpoint is intentionally decoupled from the heavy payload computation so
+  KPI cards always load quickly even when the 5-minute payload cache is cold.
 - `dashboard_home_payload()`
-  Returns the heavier chart datasets and route cards.
+  Returns the heavier chart datasets and route cards. Backed by
+  `get_cached_overview_dashboard_data()` with a 5-minute TTL. Cold rebuilds
+  take ~3–4 s after the N+1 fix described in section 10.
 - `dashboard_home_narratives()`
   Returns the optional AI or rule-based chart-card narratives separately from the
   chart data.
@@ -61,7 +65,7 @@ overview calculations and AI-assisted copy to arrive after the shell is visible.
   Builds the filtered overview payload from registrations, results, and derived
   risk profiles.
 - `get_cached_overview_dashboard_data()`
-  Caches the assembled overview payload per filter scope.
+  Caches the assembled overview payload per filter scope (5-minute TTL).
 - `build_overview_dashboard_data()`
   Produces:
   - `summary_metrics`
@@ -71,6 +75,11 @@ overview calculations and AI-assisted copy to arrive after the shell is visible.
   - `faculty_load_rows`
   - `progress_rows`
   - `action_cards`
+- `dashboard/views.py` → `get_home_summary_values()`
+  Lightweight alternative used exclusively by `dashboard_home_metrics()`. Computes
+  enrolled, registered, pass rate, completion rate, on-time graduation, first-year
+  retention, and at-risk count using DB-level aggregations. Does not build risk
+  profiles.
 
 ## 4. Frontend Modules
 
@@ -126,6 +135,7 @@ Important implementation details:
 Users can click on chart slices or bars to drill into filtered student lists.
 
 Drill-down requests are handled by:
+
 - `dashboard_home_drilldown()` endpoint in `dashboard/overview/views.py`
 - `build_overview_drilldown_data()` in `dashboard/overview/services.py`
 - Client-side drill-down modal in `dashboard/static/dashboard/js/home/drilldown.js` and `drilldown_modal.js`
@@ -135,17 +145,20 @@ Drill-down requests are handled by:
 The drill-down feature includes three key performance optimizations:
 
 #### 1. Minimal Payload
+
 - Only three columns returned: `Student`, `Student Number`, `Programme`
 - Extra metadata stripped from response to reduce JSON size
 - Outcome and risk drill-downs use identical lightweight row format
 
 #### 2. Server-Side Pagination
+
 - Default: 100 rows per page
 - Maximum: 100 rows per page (MAX_DRILLDOWN_PAGE_SIZE)
 - Query applies `OFFSET` and `LIMIT` at the database level
 - Frontend requests specific pages on user navigation
 
 #### 3. Short-Lived Caching
+
 - Cache TTL: 30 seconds (OVERVIEW_CACHE_TTL_SECONDS)
 - Cache key includes: filter scope, chart, bucket, page, page_size
 - Manual cache bust available via `bust_overview_drilldown_cache_for_request()`
@@ -184,3 +197,64 @@ If you add, rename, or remove a landing-page chart card, update these together:
 - `dashboard/static/dashboard/js/home/narratives.js`
 - the relevant chart module in `dashboard/static/dashboard/js/home/`
 - `dashboard/overview/tests.py`
+
+## 10. Performance Fixes (2026-06-01)
+
+### Problem: KPI Cards Stuck in Loading State
+
+The metrics and payload endpoints both called `get_cached_overview_dashboard_data()`.
+On every 5-minute cache expiry, a cold rebuild was triggered that blocked both
+endpoints for up to 71 seconds, leaving KPI cards in their skeleton loading state
+until the rebuild finished (or until the browser gave up).
+
+### Fix 1 — Decouple the Metrics Endpoint
+
+`dashboard_home_metrics()` now calls `get_home_summary_values()` from
+`dashboard/views.py` instead of the overview services version.
+
+The fast version runs 5–6 direct DB aggregate queries and returns in ~0.7 s
+regardless of cache state. It covers all KPI card keys except
+`students_satisfaction`, which is filled in when the payload arrives.
+
+The payload endpoint continues to use `get_cached_overview_dashboard_data()` for
+the full chart and card dataset.
+
+### Fix 2 — N+1 Query Explosion in Risk Profile Build
+
+**Root cause**: `build_student_risk_profiles_from_registrations()` in
+`dashboard/risk/services.py` called `build_registration_display_level_index()`
+when no pre-built index was supplied. That function called
+`build_student_timeline()` per student, which accessed
+`registration.attendance_type_record` — a relation absent from the queryset's
+`select_related` — causing one extra DB query per registration.
+
+With 6 389 registrations this produced 9 000+ queries and 68 of the 71-second
+cold rebuild time.
+
+**Fix**:
+
+- Changed the guard in `build_student_risk_profiles_from_registrations()` from
+  `registration_level_index or build_registration_display_level_index(...)` to an
+  explicit `if registration_level_index is None` check, so an empty dict `{}`
+  correctly bypasses the build.
+- `build_overview_dashboard_data()` now passes `registration_level_index={}` when
+  calling the risk profiler. The overview only needs risk scores and band labels,
+  not the detailed academic-level display metadata. The fallback path in
+  `build_student_risk_profiles_from_registrations()` uses
+  `extract_registration_year_semester()` (pure Python, zero DB queries) to derive
+  a generic level label.
+
+**Result**: Cold-cache full dashboard build went from **71 s → 3.6 s**. Risk
+distribution rows and at-risk counts are unchanged.
+
+### Chart Border Radius
+
+Rounded top corners (`borderRadius: [6, 6, 0, 0]`) were added to the bar
+`itemStyle` in:
+
+- `dashboard/static/dashboard/js/home/risk_distribution.js`
+- `dashboard/static/dashboard/js/home/progress.js`
+
+Rounded right-end corners (`borderRadius: [0, 6, 6, 0]`) were added to:
+
+- `dashboard/static/dashboard/js/home/faculty_load.js`
