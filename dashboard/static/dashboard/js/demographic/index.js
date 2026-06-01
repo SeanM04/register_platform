@@ -2,15 +2,15 @@
 /* global URL, window, fetch, document, ResizeObserver */
 
 import { createDemographicContext, updateDemographicContext } from "./context.js";
-import { initialiseFullscreenControls } from "./fullscreen.js";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260601-drilldown-numeric-align01";
 import { initialiseGenderSection } from "./gender.js";
-import { initialiseLocationSection } from "./locations.js";
+import { initialiseLocationSection } from "./locations.js?v=20260601-drilldown-click-reliability01";
 import { initialiseLocationMixSection } from "./location_mix.js";
 import { initialiseOriginMapSection } from "./origin_map.js";
 import { initialiseProgrammeMixSection } from "./programme_mix.js";
 import { initialiseYearDistributionSection } from "./level_gender.js";
 import { initialiseAgeDistributionSection } from "./age_distribution.js";
-import { addDemographicDrilldownHandlers } from "./drilldown.js";
+import { addDemographicDrilldownHandlers } from "./drilldown.js?v=20260601-drilldown-click-reliability01";
 import {
     initialiseGenderNarrative,
     initialiseLocationNarrative,

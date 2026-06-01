@@ -44,6 +44,11 @@ const buildStatusCellHtml = (value) => {
     return `<span class="home-drilldown-status ${toneClass}">${escapeTooltipHtml(text)}</span>`;
 };
 
+const getColumnClassName = (column = {}) => {
+    const key = String(column?.key || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return key ? `home-drilldown-col-${key}` : "";
+};
+
 const buildSummaryBodyHtml = (items = []) => {
     if (!items.length) {
         return `
@@ -120,9 +125,7 @@ const buildTableBodyHtml = (payload = {}) => {
             );
         })
         : [];
-    
-    console.log("DEBUG: buildTableBodyHtml - columns:", columns.length, "rows:", rows.length);
-    
+
     if (!columns.length) {
         return `
             <div class="home-drilldown-state">
@@ -132,7 +135,7 @@ const buildTableBodyHtml = (payload = {}) => {
     }
 
     const headerHtml = columns.map((column) => `
-        <th scope="col">${escapeTooltipHtml(column?.label || column?.key || "Column")}</th>
+        <th scope="col" class="${getColumnClassName(column)}">${escapeTooltipHtml(column?.label || column?.key || "Column")}</th>
     `).join("");
 
     const rowsHtml = rows.length
@@ -145,13 +148,13 @@ const buildTableBodyHtml = (payload = {}) => {
                 const detailUrl = String(row?.detail_url || "").trim();
                 if (columnIndex === 0 && detailUrl) {
                     return `
-                        <td>
+                        <td class="${getColumnClassName(column)}">
                             <a class="home-drilldown-link" href="${escapeTooltipHtml(detailUrl)}">${cellValue}</a>
                         </td>
                     `.trim();
                 }
 
-                return `<td>${cellValue}</td>`;
+                return `<td class="${getColumnClassName(column)}">${cellValue}</td>`;
             }).join("");
 
             return `<tr>${cellsHtml}</tr>`;
@@ -177,17 +180,17 @@ const buildTableBodyHtml = (payload = {}) => {
         </div>
         ${buildPaginationHtml(payload)}
     `.trim();
-    
-    console.log("DEBUG: buildTableBodyHtml - result length:", result.length);
     return result;
 };
 
 const buildPaginationHtml = (payload = {}) => {
+    const pagination = payload.pagination || {};
     // Handle both old and new pagination field names for compatibility
-    const page = Number(payload.current_page || payload.page) || 1;
-    const pageSize = Number(payload.page_size) || 100;
-    const totalCount = Number(payload.total_items || payload.total_count) || 0;
-    const pageCount = Number(payload.total_pages || payload.page_count) || (pageSize ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1);
+    const page = Number(payload.current_page || payload.page || pagination.current_page || pagination.page) || 1;
+    const pageSize = Number(payload.page_size || pagination.page_size) || 100;
+    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    const totalCount = Number(payload.total_items || payload.total_count || pagination.total_items || pagination.total_count) || rows.length || 0;
+    const pageCount = Number(payload.total_pages || payload.page_count || pagination.total_pages || pagination.page_count) || (pageSize ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1);
 
     const sizeInfoHtml = `
         <div class="home-drilldown-page-size-pill">${pageSize} rows per page</div>
@@ -224,14 +227,12 @@ const buildHierarchicalListHtml = (payload = {}) => {
         const navigateChart = item.next_chart || "";
         const navigateBucket = item.next_bucket || navigateValue;
         return `
-        <div class="home-drilldown-hierarchical-item">
-            <div class="home-drilldown-item-info">
-                <span class="home-drilldown-item-label">${escapeTooltipHtml(item.label)}</span>
-                <span class="home-drilldown-item-count">${getDisplayValue(item.count)}</span>
-                ${item.department ? `<span class="home-drilldown-item-subcount">${escapeTooltipHtml(item.department)}</span>` : ''}
-                ${item.programme_count ? `<span class="home-drilldown-item-subcount">${item.programme_count} programmes</span>` : ''}
+        <div class="home-drilldown-hierarchical-item insights-drilldown-hierarchical-item">
+            <div class="home-drilldown-item-info insights-drilldown-item-content">
+                <h3 class="home-drilldown-item-label insights-drilldown-item-title">${escapeTooltipHtml(item.label)}</h3>
+                <p class="home-drilldown-item-count insights-drilldown-item-meta">${getDisplayValue(item.count)} students${item.department ? `, ${escapeTooltipHtml(item.department)}` : ''}${item.programme_count ? `, ${item.programme_count} programmes` : ''}</p>
             </div>
-            <button class="home-drilldown-navigate-button" data-drilldown-navigate="${escapeTooltipHtml(navigateValue)}" data-drilldown-navigate-chart="${escapeTooltipHtml(navigateChart)}" data-drilldown-navigate-bucket="${escapeTooltipHtml(navigateBucket)}">
+            <button class="home-drilldown-navigate-button insights-drilldown-navigate-button" data-drilldown-navigate="${escapeTooltipHtml(navigateValue)}" data-drilldown-navigate-chart="${escapeTooltipHtml(navigateChart)}" data-drilldown-navigate-bucket="${escapeTooltipHtml(navigateBucket)}">
                 View ${type === 'departments' ? 'Programmes' : 'Students'} &rarr;
             </button>
         </div>
@@ -241,7 +242,7 @@ const buildHierarchicalListHtml = (payload = {}) => {
     return `
         ${buildBreadcrumbHtml(payload)}
         ${buildToolbarHtml(payload)}
-        <div class="home-drilldown-hierarchical-list">
+        <div class="home-drilldown-hierarchical-list insights-drilldown-hierarchical-list">
             ${itemsHtml}
         </div>
     `.trim();
@@ -379,17 +380,17 @@ const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageCha
 
     const modal = document.createElement("div");
     modal.id = DRILLDOWN_MODAL_ID;
-    modal.className = "home-drilldown-modal";
+    modal.className = "home-drilldown-modal insights-drilldown-modal";
     modal.innerHTML = `
-        <div class="home-drilldown-dialog ${toneClass}" role="dialog" aria-modal="true" aria-labelledby="home-drilldown-title" aria-describedby="home-drilldown-subtitle" tabindex="-1">
-            <div class="home-drilldown-header">
-                <div class="home-drilldown-heading">
-                    <h2 class="home-drilldown-title" id="home-drilldown-title">${escapeTooltipHtml(title)}</h2>
-                    <p class="home-drilldown-subtitle" id="home-drilldown-subtitle">${escapeTooltipHtml(subtitle)}</p>
+        <div class="home-drilldown-dialog insights-drilldown-dialog ${toneClass}" role="dialog" aria-modal="true" aria-labelledby="home-drilldown-title" aria-describedby="home-drilldown-subtitle" tabindex="-1">
+            <div class="home-drilldown-header insights-drilldown-header">
+                <div class="home-drilldown-heading insights-drilldown-heading">
+                    <h2 class="home-drilldown-title insights-drilldown-title" id="home-drilldown-title">${escapeTooltipHtml(title)}</h2>
+                    <p class="home-drilldown-subtitle insights-drilldown-subtitle" id="home-drilldown-subtitle">${escapeTooltipHtml(subtitle)}</p>
                 </div>
-                <button class="home-drilldown-close" type="button" data-drilldown-close aria-label="Close student drill-down">Close</button>
+                <button class="home-drilldown-close insights-drilldown-close" type="button" data-drilldown-close aria-label="Close student drill-down">Close</button>
             </div>
-            <div class="home-drilldown-body">
+            <div class="home-drilldown-body insights-drilldown-body">
                 ${bodyHtml}
             </div>
         </div>
@@ -501,7 +502,6 @@ export const showDrillDownErrorModal = (title, subtitle = "") => {
 };
 
 export const showDrillDownModal = (payloadOrTitle, legacyItems = [], options = {}) => {
-    console.log("DEBUG: showDrillDownModal called with:", payloadOrTitle, "options:", options);
     renderModal({
         title: buildTitle(payloadOrTitle),
         subtitle: buildSubtitle(payloadOrTitle),

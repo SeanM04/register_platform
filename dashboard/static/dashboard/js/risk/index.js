@@ -1,10 +1,10 @@
 import { createRiskContext, updateRiskContext } from "./context.js?v=20260414-risk-shell03";
-import { initialiseDistributionSection } from "./distribution.js?v=20260414-risk-drilldown01";
-import { initialiseDriversSection } from "./drivers.js?v=20260414-risk-drilldown01";
-import { initialiseFullscreenControls } from "./fullscreen.js?v=20260414-risk-modal01";
-import { initialiseLevelsSection } from "./levels.js?v=20260414-risk-drilldown01";
+import { initialiseDistributionSection } from "./distribution.js?v=20260601-drilldown-click-reliability01";
+import { initialiseDriversSection } from "./drivers.js?v=20260601-drilldown-click-reliability01";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260601-drilldown-numeric-align01";
+import { initialiseLevelsSection } from "./levels.js?v=20260601-drilldown-click-reliability01";
 import { renderStoryBanner } from "./narratives.js?v=20260403-risk-storyflow10";
-import { initialiseProgrammesSection } from "./programmes.js?v=20260414-risk-drilldown01";
+import { initialiseProgrammesSection } from "./programmes.js?v=20260601-drilldown-click-reliability01";
 import { initialiseRiskSearch } from "./search.js?v=20260403-risk-storyflow10";
 import { escapeTooltipHtml } from "./shared.js?v=20260403-risk-storyflow10";
 

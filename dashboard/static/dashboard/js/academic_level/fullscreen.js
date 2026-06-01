@@ -33,6 +33,8 @@ export const initialiseFullscreenControls = (buttons, onResize) => {
         return;
     }
 
+    let fallbackFullscreenCard = null;
+
     const fullscreenSupported = Boolean(
         document.fullscreenEnabled
         || document.webkitFullscreenEnabled
@@ -41,7 +43,7 @@ export const initialiseFullscreenControls = (buttons, onResize) => {
     );
 
     const syncFullscreenButtons = () => {
-        const activeCard = getFullscreenElement();
+        const activeCard = getFullscreenElement() || fallbackFullscreenCard;
 
         buttons.forEach((button) => {
             const card = button.closest(".level-insight-card");
@@ -65,13 +67,6 @@ export const initialiseFullscreenControls = (buttons, onResize) => {
         });
     };
 
-    if (!fullscreenSupported) {
-        buttons.forEach((button) => {
-            button.hidden = true;
-        });
-        return;
-    }
-
     buttons.forEach((button) => {
         button.addEventListener("click", async () => {
             const card = button.closest(".level-insight-card");
@@ -82,11 +77,16 @@ export const initialiseFullscreenControls = (buttons, onResize) => {
             try {
                 if (getFullscreenElement() === card) {
                     await exitActiveFullscreen();
-                } else {
+                    fallbackFullscreenCard = null;
+                } else if (fallbackFullscreenCard === card) {
+                    fallbackFullscreenCard = null;
+                } else if (fullscreenSupported) {
                     await requestElementFullscreen(card);
+                } else {
+                    fallbackFullscreenCard = card;
                 }
             } catch (error) {
-                return;
+                fallbackFullscreenCard = fallbackFullscreenCard === card ? null : card;
             }
 
             syncFullscreenButtons();

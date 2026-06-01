@@ -11,6 +11,43 @@ from .constants import PROGRAMME_SUMMARY_CARD_SPECS
 EXCLUDED_PROGRAMME_CODES = {"TMPC795930"}
 
 
+def _programme_name_variants(programme_name):
+    """Return likely stored/display variants for a programme label used as a chart bucket."""
+
+    value = str(programme_name or "").strip()
+    if not value:
+        return []
+
+    variants = {value}
+    replacements = {
+        " & ": [" And ", " and ", " AND "],
+        " And ": [" & ", " and ", " AND "],
+        " and ": [" & ", " And ", " AND "],
+        " AND ": [" & ", " And ", " and "],
+    }
+
+    for source, targets in replacements.items():
+        if source in value:
+            variants.update(value.replace(source, target) for target in targets)
+
+    more_variants = set()
+    for variant in variants:
+        more_variants.add(variant.replace("BSc", "Bsc"))
+        more_variants.add(variant.replace("BCom", "Bcom"))
+        more_variants.add(variant.replace("Bsc", "BSc"))
+        more_variants.add(variant.replace("Bcom", "BCom"))
+    variants.update(more_variants)
+
+    return sorted({variant for variant in variants if variant})
+
+
+def _programme_name_q(programme_name):
+    query = Q()
+    for variant in _programme_name_variants(programme_name):
+        query |= Q(programme__name__iexact=variant)
+    return query
+
+
 def _pct(count, total):
     """Return a rounded percentage while safely handling empty totals."""
 
@@ -450,7 +487,7 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
         if chart_key == "programme_load":
             # Get students in the specified programme - use name field for matching
             registrations = registrations.filter(
-                programme__name__iexact=bucket_key
+                _programme_name_q(bucket_key)
             ).select_related('student', 'programme', 'programme__department').order_by(
                 'student__registration_number',
                 '-period__external_id',
@@ -465,10 +502,25 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
                 '-period__external_id',
                 '-id',
             )
+            return _build_department_programme_hierarchy_payload(registrations, bucket_key)
+        elif chart_key == "department_programme":
+            parts = [part.strip() for part in bucket_key.split("|", 1)]
+            if len(parts) != 2:
+                raise ValueError("Department programme drill-down requires department and programme.")
+            department_name, programme_name = parts
+            registrations = registrations.filter(
+                programme__department__name__iexact=department_name,
+            ).filter(
+                _programme_name_q(programme_name)
+            ).select_related('student', 'programme', 'programme__department').order_by(
+                'student__registration_number',
+                '-period__external_id',
+                '-id',
+            )
         elif chart_key == "low_pass":
             # Get students in programmes with low pass rates - use name field for matching
             registrations = registrations.filter(
-                programme__name__iexact=bucket_key
+                _programme_name_q(bucket_key)
             ).select_related('student', 'programme', 'programme__department').order_by(
                 'student__registration_number',
                 '-period__external_id',
@@ -477,7 +529,7 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
         elif chart_key == "performance":
             # Get students in performance chart programmes - use name field for matching
             registrations = registrations.filter(
-                programme__name__iexact=bucket_key
+                _programme_name_q(bucket_key)
             ).select_related('student', 'programme', 'programme__department').order_by(
                 'student__registration_number',
                 '-period__external_id',
@@ -539,8 +591,8 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
             
                     
         return {
-            "title": f"{bucket_key} Students",
-            "subtitle": f"Students currently registered in {bucket_key}.",
+            "title": f"{_display_programme_bucket(chart_key, bucket_key)} Students",
+            "subtitle": f"Students currently registered in {_display_programme_bucket(chart_key, bucket_key)}.",
             "columns": [
                 {"key": "name", "label": "Student Name"},
                 {"key": "programme", "label": "Programme"},
@@ -557,10 +609,54 @@ def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_
                 "has_next": page < total_pages,
                 "has_previous": page > 1,
             },
+            "breadcrumbs": _programme_breadcrumbs(chart_key, bucket_key),
         }
         
     except Exception as e:
         raise e
+
+
+def _display_programme_bucket(chart_key, bucket_key):
+    if chart_key == "department_programme" and "|" in bucket_key:
+        return bucket_key.split("|", 1)[1].strip()
+    return bucket_key
+
+
+def _programme_breadcrumbs(chart_key, bucket_key):
+    items = [{"label": "Programmes", "chart": "", "bucket": ""}]
+    if chart_key == "department_programme" and "|" in bucket_key:
+        department_name, programme_name = [part.strip() for part in bucket_key.split("|", 1)]
+        items.append({"label": department_name, "chart": "departments", "bucket": department_name})
+        items.append({"label": programme_name, "chart": "department_programme", "bucket": bucket_key})
+        return items
+    items.append({"label": bucket_key, "chart": chart_key, "bucket": bucket_key})
+    return items
+
+
+def _build_department_programme_hierarchy_payload(registrations, department_name):
+    programmes = {}
+    for registration in registrations:
+        programme = registration.programme
+        programme_name = programme.normalized_name if programme else "Unassigned"
+        item = programmes.setdefault(
+            programme_name,
+            {
+                "label": programme_name,
+                "count": 0,
+                "department": department_name,
+                "next_chart": "department_programme",
+                "next_bucket": f"{department_name}|{programme_name}",
+            },
+        )
+        item["count"] += 1
+
+    return {
+        "type": "programmes",
+        "title": f"{department_name} Programmes",
+        "subtitle": "Select a programme to view the students in this department.",
+        "data": sorted(programmes.values(), key=lambda item: (-item["count"], item["label"])),
+        "breadcrumbs": _programme_breadcrumbs("departments", department_name),
+    }
 
 
 def _build_programme_student_drilldown_payload(request, registrations, title, subtitle, page=1, page_size=10):
@@ -594,7 +690,6 @@ def _build_programme_student_drilldown_payload(request, registrations, title, su
         "subtitle": subtitle,
         "columns": [
             {"key": "name", "label": "Student Name"},
-            {"key": "registration_number", "label": "Registration Number"},
             {"key": "programme", "label": "Programme"},
             {"key": "department", "label": "Department"},
             {"key": "decision", "label": "Decision"},

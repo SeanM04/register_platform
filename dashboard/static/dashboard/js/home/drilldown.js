@@ -3,7 +3,7 @@ import {
     showDrillDownErrorModal,
     showLoadingDrillDownModal,
     showDrillDownModal,
-} from "./drilldown_modal.js?v=20260416-home-drilldown16";
+} from "./drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeOverviewDrillDownToken = 0;
@@ -62,6 +62,11 @@ export const openOverviewDrillDown = async (context, { chartKey, bucketKey, labe
     showLoadingDrillDownModal(title, subtitle);
 
     const handleHierarchicalNavigation = (navigateTarget) => {
+        if (navigateTarget?.chart && navigateTarget?.bucket) {
+            bucketKey = navigateTarget.bucket;
+            loadPage(1, currentPageSize, navigateTarget.bucket);
+            return;
+        }
         // For faculty_load chart, build hierarchical bucket key
         const navigateValue = typeof navigateTarget === "object" ? navigateTarget.value : navigateTarget;
         if (chartKey === "faculty_load") {

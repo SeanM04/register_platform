@@ -6,7 +6,8 @@
 {% block title %}Completion Analysis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260510-skeleton-loading01">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260601-drilldown-numeric-align01">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260601-drilldown-numeric-align01">
 <link rel="stylesheet" href="{% static 'dashboard/css/completion.css' %}?v=20260510-skeleton-loading01">
 <link rel="stylesheet" href="{% static 'dashboard/css/demographic.css' %}?v=20260414-map-attribution-fix01">
 {% endblock %}
@@ -202,7 +203,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260526-heatmap-colorfix01"></script>
+<script type="module" src="{% static 'dashboard/js/completion.js' %}?v=20260601-drilldown-numeric-align01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

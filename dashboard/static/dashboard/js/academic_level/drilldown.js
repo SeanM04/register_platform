@@ -3,7 +3,7 @@ import {
     showDrillDownErrorModal,
     showLoadingDrillDownModal,
     showDrillDownModal,
-} from "../home/drilldown_modal.js?v=20260601-academic-drilldown01";
+} from "../home/drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeAcademicLevelDrillDownToken = 0;

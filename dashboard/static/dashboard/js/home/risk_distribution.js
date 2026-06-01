@@ -10,7 +10,7 @@
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
 
-import { openOverviewDrillDown } from "./drilldown.js?v=20260411-home-drilldown01";
+import { openOverviewDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 import { initialiseRiskNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 const RISK_COLORS = {

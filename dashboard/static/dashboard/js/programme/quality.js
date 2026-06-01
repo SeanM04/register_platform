@@ -12,7 +12,7 @@ import {
     wrapAxisLabel,
 } from "./shared.js?v=20260414-msc-support01";
 import { initialiseQualityNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
-import { openProgrammeDrillDown } from "./drilldown.js?v=20260430-unified-spinner01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 
 export const initialiseQualitySection = (context) => {
     initialiseQualityNarrative(context.elements, context.data.lowPassRows, context.data.cardNarratives, context.flags);

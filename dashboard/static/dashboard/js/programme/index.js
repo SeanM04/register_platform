@@ -1,7 +1,7 @@
 import { createProgrammeContext, updateProgrammeNarrativeContext } from "./context.js?v=20260411-programme-axis05";
-import { initialiseDepartmentSection } from "./departments.js?v=20260411-programme-axis04";
-import { initialiseFullscreenControls } from "./fullscreen.js?v=20260405-programmes-progressive01";
-import { initialiseLoadSection } from "./load.js?v=20260411-programme-axis04";
+import { initialiseDepartmentSection } from "./departments.js?v=20260601-drilldown-click-reliability01";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260601-drilldown-numeric-align01";
+import { initialiseLoadSection } from "./load.js?v=20260601-drilldown-click-reliability01";
 import { initialiseAccordion } from "./accordion.js?v=20260405-programmes-progressive01";
 import {
     initialiseDepartmentNarrative,
@@ -10,8 +10,8 @@ import {
     initialiseQualityNarrative,
     renderStoryBanner,
 } from "./narratives.js?v=20260411-programme-axis05";
-import { initialisePerformanceSection } from "./performance.js?v=20260405-programmes-progressive01";
-import { initialiseQualitySection } from "./quality.js?v=20260405-programmes-progressive01";
+import { initialisePerformanceSection } from "./performance.js?v=20260601-drilldown-click-reliability01";
+import { initialiseQualitySection } from "./quality.js?v=20260601-drilldown-numeric-align01";
 import { initialiseRegisterInteractions, renderProgrammeRegister } from "./register.js?v=20260414-instant01";
 
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {

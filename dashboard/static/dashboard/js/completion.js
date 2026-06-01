@@ -9,7 +9,11 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
-import { showCompletionDrillDownModal } from "./completion/drilldown_modal.js?v=20260429-pagination-debug01";
+import {
+    closeDrillDownModal,
+    showCompletionDrillDownModal,
+    showLoadingDrillDownModal,
+} from "./completion/drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 class CompletionAnalysis {
     constructor() {
@@ -1182,21 +1186,32 @@ class CompletionAnalysis {
                 } else if (document.webkitExitFullscreen) {
                     document.webkitExitFullscreen();
                 }
+                this.fallbackFullscreenCard = null;
+            } else if (this.fallbackFullscreenCard === chartCard) {
+                this.fallbackFullscreenCard = null;
             } else if (chartCard.requestFullscreen) {
                 chartCard.requestFullscreen();
             } else if (chartCard.webkitRequestFullscreen) {
                 chartCard.webkitRequestFullscreen();
+            } else {
+                this.fallbackFullscreenCard = chartCard;
             }
         } catch (error) {
-            this.showError(`Could not toggle chart fullscreen: ${error.message}`);
+            this.fallbackFullscreenCard = this.fallbackFullscreenCard === chartCard ? null : chartCard;
         }
+
+        this.syncFullscreenButtons();
+        window.requestAnimationFrame(() => this.resizeCharts());
     }
 
     syncFullscreenButtons() {
-        const fullscreenElement = document.fullscreenElement;
+        const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || this.fallbackFullscreenCard;
         document.querySelectorAll("[data-chart-fullscreen-toggle]").forEach((button) => {
             const card = button.closest(".demographic-insight-card");
             const isActive = Boolean(card && fullscreenElement === card);
+            if (card) {
+                card.classList.toggle("is-fullscreen", isActive);
+            }
             button.textContent = isActive ? "Exit full screen" : "Full screen";
             button.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
@@ -1229,6 +1244,8 @@ class CompletionAnalysis {
     }
 
     showDrilldownLoading() {
+        showLoadingDrillDownModal("Loading Drill-Down", "Loading student data.");
+        return;
         // Use renderModal approach for consistency
         const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "" }) => {
             // Close any existing modal
@@ -1331,6 +1348,8 @@ class CompletionAnalysis {
     }
 
     hideDrilldownLoading() {
+        closeDrillDownModal();
+        return;
         const loadingOverlay = document.getElementById("completion-drilldown-loading-modal");
         if (loadingOverlay) {
             loadingOverlay.remove();

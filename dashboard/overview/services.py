@@ -649,7 +649,6 @@ def _build_outcome_drilldown_payload(request, registrations, bucket_key, page, p
         "subtitle": f"{_format_count(len(outcome_profiles))} students in the {label.lower()} outcome slice.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Registration Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -698,7 +697,6 @@ def _build_risk_drilldown_payload(request, registrations, risk_profiles, bucket_
         "subtitle": f"{_format_count(len(minimal_rows))} students in the {selected_band['label'].lower()} risk band.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Registration Number"},
             {"key": "programme", "label": "Programme"},
         ],
     }
@@ -754,7 +752,6 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
     
     # Decode URL-encoded bucket key
     bucket_key = unquote_plus(bucket_key)
-    print(f"DEBUG: Faculty drilldown - decoded bucket_key: {bucket_key}")
     
     # Check if this is a hierarchical navigation request
     if "|" in bucket_key:
@@ -776,15 +773,6 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
         if len(full_parts) == 3:
             # Programme level - show students (faculty|department|programme)
             faculty_name, dept_name, prog_name = full_parts
-            print(f"DEBUG: Looking for programme: '{prog_name}' in department: '{dept_name}'")
-            
-            # Debug: Show all programmes in this department
-            dept_programmes = set()
-            for reg in faculty_registrations:
-                if reg.programme and reg.programme.department and reg.programme.department.name.lower() == dept_name.lower():
-                    dept_programmes.add(reg.programme.name)
-            print(f"DEBUG: Available programmes in '{dept_name}': {sorted(dept_programmes)}")
-            
             programme_registrations = [
                 reg for reg in faculty_registrations
                 if (reg.programme and reg.programme.department and 
@@ -792,12 +780,6 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
                     (reg.programme.normalized_name.lower() == prog_name.lower() or 
                      reg.programme.name.lower() == prog_name.lower()))
             ]
-            
-            print(f"DEBUG: Found {len(programme_registrations)} matching registrations for programme '{prog_name}'")
-            if programme_registrations:
-                print(f"DEBUG: First programme reg: {programme_registrations[0].programme.name if programme_registrations else 'None'}")
-            else:
-                print(f"DEBUG: No matching registrations found for programme '{prog_name}'")
             
             student_profiles = _build_outcome_student_profiles(programme_registrations, request)
             
@@ -827,7 +809,13 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
                     "total_pages": (total_count + page_size - 1) // page_size,
                     "has_next": page * page_size < total_count,
                     "has_previous": page > 1,
-                }
+                },
+                "breadcrumbs": [
+                    {"label": "Overview", "chart": "", "bucket": ""},
+                    {"label": faculty_name, "chart": "faculty_load", "bucket": faculty_name},
+                    {"label": dept_name, "chart": "faculty_load", "bucket": f"{faculty_name}|{dept_name}"},
+                    {"label": prog_name, "chart": "faculty_load", "bucket": bucket_key},
+                ],
             }
             return payload
             
@@ -861,10 +849,17 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
                         "label": data["name"],  # Use the display name with BSc/BCom
                         "key": prog_key,        # Use normalized name for navigation
                         "count": data["student_count"],
-                        "department": data["department"]
+                        "department": data["department"],
+                        "next_chart": "faculty_load",
+                        "next_bucket": f"{faculty_name}|{target_name}|{data['name']}",
                     }
                     for prog_key, data in sorted(programme_counts.items(), key=lambda x: (-x[1]["student_count"], x[0]))
-                ]
+                ],
+                "breadcrumbs": [
+                    {"label": "Overview", "chart": "", "bucket": ""},
+                    {"label": faculty_name, "chart": "faculty_load", "bucket": faculty_name},
+                    {"label": target_name, "chart": "faculty_load", "bucket": bucket_key},
+                ],
             }
     
     else:
@@ -896,11 +891,17 @@ def _build_faculty_drilldown_payload(request, registrations, bucket_key, page, p
                 {
                     "label": dept_name,
                     "count": data["student_count"],
-                    "programme_count": len(data["programmes"])
+                    "programme_count": len(data["programmes"]),
+                    "next_chart": "faculty_load",
+                    "next_bucket": f"{bucket_key}|{dept_name}",
                 }
                 for dept_name, data in sorted(department_counts.items(), key=lambda x: (-x[1]["student_count"], x[0]))
                 if dept_name != "Unassigned"
-            ]
+            ],
+            "breadcrumbs": [
+                {"label": "Overview", "chart": "", "bucket": ""},
+                {"label": bucket_key, "chart": "faculty_load", "bucket": bucket_key},
+            ],
         }
 
 
@@ -1005,7 +1006,6 @@ def _build_progress_drilldown_payload(request, registrations, bucket_key, page, 
         "subtitle": f"{total_count} students match the selected progress status.",
         "columns": [
             {"key": "name", "label": "Student"},
-            {"key": "registration_number", "label": "Registration Number"},
             {"key": "programme", "label": "Programme"},
             {"key": "decision", "label": "Decision"},
         ],

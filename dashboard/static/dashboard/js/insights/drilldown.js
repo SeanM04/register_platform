@@ -3,7 +3,7 @@ import {
     showInsightsDrillDownErrorModal,
     showInsightsDrillDownLoadingModal,
     showInsightsDrillDownModal,
-} from "./drilldown_modal.js?v=20260427-insights-drilldown01";
+} from "./drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeInsightsDrillDownToken = 0;

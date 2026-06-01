@@ -975,6 +975,19 @@ body.has-home-drilldown-modal {
     background: #ffffff;
 }
 
+.home-drilldown-table th.home-drilldown-col-average-mark,
+.home-drilldown-table td.home-drilldown-col-average-mark,
+.home-drilldown-table th.home-drilldown-col-failed-courses,
+.home-drilldown-table td.home-drilldown-col-failed-courses,
+.home-drilldown-table th.home-drilldown-col-failed-modules,
+.home-drilldown-table td.home-drilldown-col-failed-modules,
+.home-drilldown-table th.home-drilldown-col-total-modules,
+.home-drilldown-table td.home-drilldown-col-total-modules,
+.home-drilldown-table th.home-drilldown-col-carrying,
+.home-drilldown-table td.home-drilldown-col-carrying {
+    text-align: center;
+}
+
 .home-drilldown-table tbody tr:hover td {
     background: #fbfdff;
 }

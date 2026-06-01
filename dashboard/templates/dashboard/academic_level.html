@@ -5,7 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260510-table-maxheight-fix">
-<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260601-academic-drilldown01">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260601-drilldown-numeric-align01">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260601-drilldown-numeric-align01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -457,7 +458,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260601-academic-drilldown01"></script>
+<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260601-drilldown-numeric-align01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {
