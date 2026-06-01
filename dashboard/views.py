@@ -709,7 +709,7 @@ def get_filtered_results(registrations):
 def get_home_summary_values(request):
     """Calculate overview metrics for the home dashboard asynchronously."""
 
-    registrations = get_filtered_registrations(request)
+    registrations = get_filtered_registrations(request, include_course_results=False)
     filtered_results = get_filtered_results(registrations)
 
     total_registered = registrations.count()

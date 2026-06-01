@@ -183,7 +183,8 @@ def build_student_risk_profiles_from_registrations(
 ):
     """Build per-student risk profiles from an already-filtered registration iterable."""
 
-    registration_level_index = registration_level_index or build_registration_display_level_index(registrations)
+    if registration_level_index is None:
+        registration_level_index = build_registration_display_level_index(registrations)
     average_mark_fallback_map = average_mark_fallback_map or {}
     student_registrations = {}
     for registration in registrations:

@@ -107,6 +107,7 @@ export const initialiseProgressSection = (context) => {
                         value: row.count,
                         itemStyle: {
                             color: PROGRESS_COLORS[row.key] || HOME_COLORS.sky,
+                            borderRadius: [6, 6, 0, 0],
                         },
                         drilldown: {
                             name: row.label,

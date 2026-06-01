@@ -164,6 +164,7 @@ export const initialiseRiskDistributionSection = (context) => {
 
                     itemStyle: {
                         color: RISK_COLORS[row.key] || HOME_COLORS.sky,
+                        borderRadius: [6, 6, 0, 0],
                     },
 
                     drilldownKey: row.key,

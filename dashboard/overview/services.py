@@ -1227,7 +1227,7 @@ def build_overview_dashboard_data(request):
 
     registrations = list(get_filtered_registrations(request))
     result_summary = _build_result_summary(registrations)
-    risk_profiles = build_student_risk_profiles_from_registrations(registrations)
+    risk_profiles = build_student_risk_profiles_from_registrations(registrations, registration_level_index={})
     faculty_load_rows = _build_faculty_load_rows(registrations)
     students = _build_student_snapshot(registrations)
     gender_rows = _build_gender_rows(students)

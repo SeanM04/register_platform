@@ -97,6 +97,7 @@ export const initialiseFacultyLoadSection = (context) => {
                         value: row.registrations,
                         itemStyle: {
                             color: buildGradient(HOME_COLORS.navy, HOME_COLORS.sky, "horizontal"),
+                            borderRadius: [0, 6, 6, 0],
                         },
                         drilldown: {
                             name: row.label,
