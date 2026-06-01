@@ -23,6 +23,7 @@ import {
     setElementText,
     setPassTrendHints,
 } from "./narratives.js";
+import { openAcademicLevelDrillDown } from "./drilldown.js";
 
 const clearHighlightedLevelRow = (levelTableRows) => {
     levelTableRows.forEach((row) => {
@@ -391,7 +392,7 @@ export const initialisePassTrendSection = (context) => {
         activePassLevel = levelRow.level;
         passTrendSeriesSelection = createDefaultPassSeriesSelection();
         setPassTrendDetailState(true);
-        setChartClickability(chart, false);
+        setChartClickability(chart, true);
         setPassTrendContext(levelRow);
         highlightLevelRow(levelRow.level);
         syncPassLegendState();
@@ -406,7 +407,20 @@ export const initialisePassTrendSection = (context) => {
     if (chart && levelRows.length) {
         showPassTrendOverview();
         chart.on("click", (params) => {
-            if (passTrendMode !== "overview") {
+            if (passTrendMode === "detail" && activePassLevel) {
+                if (params.seriesType !== "bar") {
+                    return;
+                }
+
+                const levelRow = levelRows.find((row) => row.level === activePassLevel);
+                const programme = levelRow?.programme_breakdown?.[params.dataIndex]?.programme;
+                if (programme) {
+                    openAcademicLevelDrillDown(context, {
+                        chartKey: "level_programme",
+                        bucketKey: `${activePassLevel}|${programme}`,
+                        label: `${programme} in ${activePassLevel}`,
+                    });
+                }
                 return;
             }
 

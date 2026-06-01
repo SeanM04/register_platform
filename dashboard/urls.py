@@ -1,6 +1,6 @@
 from django.urls import path, include
 
-from .academic_levels.views import academic_level_metrics, academic_level_payload, academic_level_view
+from .academic_levels.views import academic_level_drilldown, academic_level_metrics, academic_level_payload, academic_level_view
 from .demographics.views import demographic_drilldown, demographic_metrics, demographic_narratives, demographic_payload, demographic_view
 from .insights.views import insights_drilldown_payload, insights_payload, insights_view
 from .overview.views import (
@@ -63,6 +63,7 @@ urlpatterns = [
     path("academic-level/", academic_level_view, name="academic-level"),
     path("metrics/academic-level/", academic_level_metrics, name="academic-level-metrics"),
     path("metrics/academic-level/payload/", academic_level_payload, name="academic-level-payload"),
+    path("metrics/academic-level/drilldown/", academic_level_drilldown, name="academic-level-drilldown"),
     path("risk/", risk_view, name="risk"),
     path("risk/band/<str:risk_band>/", risk_band_drilldown, name="risk-band-drilldown"),
     path("risk/level/<str:academic_level>/", risk_level_drilldown, name="risk-level-drilldown"),

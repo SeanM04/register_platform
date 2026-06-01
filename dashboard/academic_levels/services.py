@@ -3,12 +3,15 @@
 from urllib.parse import urlencode
 
 from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
+from django.urls import reverse
 
-from ..models import CourseResult
+from ..models import CourseResult, Registration
 from ..student_history import (
     build_registration_display_level_index,
     build_registration_display_level_index_for_student_ids,
+    build_student_timeline,
     extract_registration_year_semester,
 )
 from ..views import (
@@ -20,6 +23,16 @@ from ..views import (
 from .constants import ACADEMIC_LEVEL_PASS_TARGET
 
 ACADEMIC_LEVEL_CACHE_TTL_SECONDS = 30
+ACADEMIC_LEVEL_DRILLDOWN_COLUMNS = [
+    {"key": "name", "label": "Student"},
+    {"key": "academic_level", "label": "Academic Level"},
+    {"key": "programme", "label": "Programme"},
+    {"key": "department", "label": "Department"},
+    {"key": "gender", "label": "Gender"},
+    {"key": "study_mode", "label": "Study Mode"},
+    {"key": "average_mark", "label": "Average Mark"},
+    {"key": "decision", "label": "Decision"},
+]
 
 
 def get_academic_level_registrations(request, search_query=""):
@@ -27,22 +40,31 @@ def get_academic_level_registrations(request, search_query=""):
 
     registrations = (
         get_filtered_registrations(request, include_course_results=False)
+        .select_related("attendance_type_record")
         .only(
             "id",
             "student_id",
             "student__id",
+            "student__registration_number",
+            "student__first_names",
+            "student__surname",
             "student__gender",
             "programme_id",
             "programme__id",
             "programme__name",
             "programme__department_id",
             "programme__department__id",
+            "programme__department__name",
             "programme__department__faculty_id",
             "programme__department__faculty__id",
+            "programme__department__faculty__name",
             "period_id",
             "period__id",
             "period__academic_year",
             "period__semester",
+            "attendance_type_id",
+            "attendance_type_record_id",
+            "attendance_type_record__name",
         )
         .prefetch_related(
             Prefetch(
@@ -286,11 +308,8 @@ def build_academic_level_data(request, search_query=""):
     programme_performance_rows = []
     for programme_name, item in programme_map.items():
         mark_count = item["mark_count"]
-        if not mark_count:
-            continue
-
-        avg_mark = round(item["marks_total"] / mark_count)
-        pass_rate = round((item["pass_count"] / mark_count) * 100)
+        avg_mark = round(item["marks_total"] / mark_count) if mark_count else 0
+        pass_rate = round((item["pass_count"] / mark_count) * 100) if mark_count else 0
         lead_level = (
             max(item["level_counts"].items(), key=lambda entry: (entry[1], entry[0]))[0]
             if item["level_counts"]
@@ -318,6 +337,7 @@ def build_academic_level_data(request, search_query=""):
                     "registrations": breakdown["registrations"],
                     "students": len(breakdown["students"]),
                     "average_mark": breakdown_average_mark,
+                    "average_mark_display": breakdown_average_mark if breakdown_mark_count else "--",
                     "pass_rate": f"{breakdown_pass_rate}%",
                     "pass_rate_value": breakdown_pass_rate,
                 }
@@ -522,3 +542,361 @@ def get_cached_academic_level_summary_snapshot(request, search_query=""):
         lambda: build_academic_level_summary_snapshot(request, search_query),
         ACADEMIC_LEVEL_CACHE_TTL_SECONDS,
     )
+
+
+def _academic_level_registration_rows(request, search_query=""):
+    """Return filtered registrations annotated with display-level metadata."""
+
+    registrations = list(get_academic_level_registrations(request, search_query))
+    student_ids = {registration.student_id for registration in registrations}
+    faculty_name = request.GET.get("faculty", "").strip()
+    registration_level_index = build_registration_display_level_index_for_student_ids(
+        student_ids,
+        faculty_name=faculty_name,
+    ) or build_registration_display_level_index(registrations)
+    cumulative_average_index = _build_registration_cumulative_average_index(student_ids, faculty_name)
+
+    rows = []
+    for registration in registrations:
+        level_meta = registration_level_index.get(registration.id)
+        if level_meta:
+            year = level_meta["display_year"]
+            semester = level_meta["display_semester"]
+            level_label = level_meta["academic_level_label"]
+        else:
+            year, semester = extract_registration_year_semester(registration)
+            level_label = f"Year {year} Semester {semester}"
+
+        marks = [
+            float(result.mark)
+            for result in getattr(registration, "prefetched_course_results", [])
+            if result.mark is not None
+        ]
+        average_mark = round(sum(marks) / len(marks)) if marks else cumulative_average_index.get(registration.id)
+        study_mode = _format_study_mode(registration)
+
+        rows.append(
+            {
+                "registration": registration,
+                "student": registration.student,
+                "level": level_label,
+                "sort_year": int(year) if str(year).isdigit() else 0,
+                "sort_semester": int(semester) if str(semester).isdigit() else 0,
+                "programme": registration.programme.normalized_name,
+                "department": registration.programme.department.name if registration.programme.department else "Not recorded",
+                "faculty": (
+                    registration.programme.department.faculty.name
+                    if registration.programme.department and registration.programme.department.faculty
+                    else "Not recorded"
+                ),
+                "gender_key": normalize_gender_key(registration.student.gender),
+                "gender": registration.student.gender.title() if registration.student.gender else "Unspecified",
+                "study_mode": study_mode,
+                "average_mark": average_mark,
+            }
+        )
+
+    return rows
+
+
+def _format_study_mode(registration):
+    raw_value = (
+        getattr(registration.attendance_type_record, "name", "")
+        or str(registration.attendance_type_id or "").strip()
+    )
+    normalized = str(raw_value or "").strip().lower()
+    if not normalized:
+        return "Not recorded"
+    if normalized in {"2", "visiting", "visitor", "exchange"} or "visit" in normalized:
+        return "Visiting"
+    if normalized in {"1", "conventional", "regular", "normal"}:
+        return "Conventional"
+    return str(raw_value).strip().title()
+
+
+def _matches_bucket(value, bucket):
+    return str(value or "").strip().lower() == str(bucket or "").strip().lower()
+
+
+def _build_registration_cumulative_average_index(student_ids, faculty_name=""):
+    """Map registrations to the cumulative average shown by student detail pages."""
+
+    if not student_ids:
+        return {}
+
+    registrations = (
+        Registration.objects.filter(student_id__in=student_ids)
+        .select_related("student", "programme__department__faculty", "period", "attendance_type_record")
+        .prefetch_related(
+            Prefetch(
+                "course_results",
+                queryset=CourseResult.objects.select_related("course", "attendance_type_record").only(
+                    "registration_id",
+                    "mark",
+                    "attendance_type",
+                    "attendance_type_record__name",
+                    "course__code",
+                    "course__name",
+                ),
+                to_attr="prefetched_course_results",
+            )
+        )
+        .order_by("student_id", "period__external_id", "id")
+    )
+    if faculty_name:
+        registrations = registrations.filter(programme__department__faculty__name=faculty_name)
+
+    registrations_by_student = {}
+    for registration in registrations:
+        registrations_by_student.setdefault(registration.student_id, []).append(registration)
+
+    average_index = {}
+    for student_registrations in registrations_by_student.values():
+        timeline = build_student_timeline(student_registrations)
+        latest_results_by_course = {}
+        for group in timeline["groups"]:
+            for result_row in group["results"]:
+                latest_results_by_course[result_row["course_code"]] = result_row
+
+            marks = [
+                result_row["mark_value"]
+                for result_row in latest_results_by_course.values()
+                if result_row["mark_value"] is not None
+            ]
+            if not marks:
+                continue
+
+            average_mark = round(sum(marks) / len(marks))
+            for registration in group["registrations"]:
+                average_index[registration.id] = average_mark
+
+    return average_index
+
+
+def _filter_academic_level_drilldown_rows(rows, chart_key, bucket_key):
+    parts = [part.strip() for part in str(bucket_key or "").split("|")]
+
+    if chart_key == "level":
+        return [row for row in rows if _matches_bucket(row["level"], parts[0] if parts else "")]
+    if chart_key == "gender":
+        return [row for row in rows if _matches_bucket(row["gender_key"], parts[0] if parts else "")]
+    if chart_key == "programme":
+        return [row for row in rows if _matches_bucket(row["programme"], parts[0] if parts else "")]
+    if chart_key == "level_programme" and len(parts) >= 2:
+        return [
+            row for row in rows
+            if _matches_bucket(row["level"], parts[0]) and _matches_bucket(row["programme"], parts[1])
+        ]
+    if chart_key == "programme_level" and len(parts) >= 2:
+        return [
+            row for row in rows
+            if _matches_bucket(row["programme"], parts[0]) and _matches_bucket(row["level"], parts[1])
+        ]
+    if chart_key == "gender_programme" and len(parts) >= 2:
+        return [
+            row for row in rows
+            if _matches_bucket(row["gender_key"], parts[0]) and _matches_bucket(row["programme"], parts[1])
+        ]
+    if chart_key == "level_gender" and len(parts) >= 2:
+        return [
+            row for row in rows
+            if _matches_bucket(row["level"], parts[0]) and _matches_bucket(row["gender_key"], parts[1])
+        ]
+    if chart_key == "level_study_mode" and len(parts) >= 2:
+        return [
+            row for row in rows
+            if _matches_bucket(row["level"], parts[0]) and _matches_bucket(row["study_mode"], parts[1])
+        ]
+
+    return []
+
+
+def _display_gender(bucket_key):
+    for key, label in GENDER_BUCKETS:
+        if key == bucket_key:
+            return label
+    return str(bucket_key or "Unspecified").title()
+
+
+def _breadcrumb_items(chart_key, bucket_key):
+    parts = [part.strip() for part in str(bucket_key or "").split("|")]
+    items = [{"label": "Academic Levels", "chart": "", "bucket": ""}]
+
+    if chart_key == "level" and parts:
+        items.append({"label": parts[0], "chart": "level", "bucket": parts[0]})
+    elif chart_key == "gender" and parts:
+        items.append({"label": _display_gender(parts[0]), "chart": "gender", "bucket": parts[0]})
+    elif chart_key == "programme" and parts:
+        items.append({"label": parts[0], "chart": "programme", "bucket": parts[0]})
+    elif chart_key == "level_programme" and len(parts) >= 2:
+        items.extend([
+            {"label": parts[0], "chart": "level", "bucket": parts[0]},
+            {"label": parts[1], "chart": "level_programme", "bucket": bucket_key},
+        ])
+    elif chart_key == "programme_level" and len(parts) >= 2:
+        items.extend([
+            {"label": parts[0], "chart": "programme", "bucket": parts[0]},
+            {"label": parts[1], "chart": "programme_level", "bucket": bucket_key},
+        ])
+    elif chart_key == "gender_programme" and len(parts) >= 2:
+        items.extend([
+            {"label": _display_gender(parts[0]), "chart": "gender", "bucket": parts[0]},
+            {"label": parts[1], "chart": "gender_programme", "bucket": bucket_key},
+        ])
+    elif chart_key == "level_gender" and len(parts) >= 2:
+        items.extend([
+            {"label": parts[0], "chart": "level", "bucket": parts[0]},
+            {"label": _display_gender(parts[1]), "chart": "level_gender", "bucket": bucket_key},
+        ])
+    elif chart_key == "level_study_mode" and len(parts) >= 2:
+        items.extend([
+            {"label": parts[0], "chart": "level", "bucket": parts[0]},
+            {"label": parts[1], "chart": "level_study_mode", "bucket": bucket_key},
+        ])
+
+    return items
+
+
+def _drilldown_title(chart_key, bucket_key):
+    parts = [part.strip() for part in str(bucket_key or "").split("|")]
+    if chart_key == "level" and parts:
+        return f"{parts[0]} Drill-Down"
+    if chart_key == "gender" and parts:
+        return f"{_display_gender(parts[0])} Students"
+    if chart_key == "programme" and parts:
+        return f"{parts[0]} Drill-Down"
+    if len(parts) >= 2:
+        return f"{parts[-1]} Students"
+    return "Academic Level Drill-Down"
+
+
+def _build_hierarchy_payload(chart_key, bucket_key, matched_rows):
+    parts = [part.strip() for part in str(bucket_key or "").split("|")]
+
+    if chart_key == "level" and parts:
+        grouped = {}
+        for row in matched_rows:
+            item = grouped.setdefault(
+                row["programme"],
+                {
+                    "label": row["programme"],
+                    "count": 0,
+                    "department": row["department"],
+                    "next_chart": "level_programme",
+                    "next_bucket": f"{parts[0]}|{row['programme']}",
+                },
+            )
+            item["count"] += 1
+        return {
+            "type": "programmes",
+            "data": sorted(grouped.values(), key=lambda item: (-item["count"], item["label"])),
+        }
+
+    if chart_key == "gender" and parts:
+        grouped = {}
+        for row in matched_rows:
+            item = grouped.setdefault(
+                row["programme"],
+                {
+                    "label": row["programme"],
+                    "count": 0,
+                    "department": row["department"],
+                    "next_chart": "gender_programme",
+                    "next_bucket": f"{parts[0]}|{row['programme']}",
+                },
+            )
+            item["count"] += 1
+        return {
+            "type": "programmes",
+            "data": sorted(grouped.values(), key=lambda item: (-item["count"], item["label"])),
+        }
+
+    if chart_key == "programme" and parts:
+        grouped = {}
+        for row in matched_rows:
+            item = grouped.setdefault(
+                row["level"],
+                {
+                    "label": row["level"],
+                    "count": 0,
+                    "sort_year": row["sort_year"],
+                    "sort_semester": row["sort_semester"],
+                    "next_chart": "programme_level",
+                    "next_bucket": f"{parts[0]}|{row['level']}",
+                },
+            )
+            item["count"] += 1
+        return {
+            "type": "levels",
+            "data": sorted(grouped.values(), key=lambda item: (item["sort_year"], item["sort_semester"], item["label"])),
+        }
+
+    return None
+
+
+def _build_student_drilldown_payload(request, chart_key, bucket_key, matched_rows, page=1, page_size=10):
+    unique_rows = {}
+    for row in sorted(
+        matched_rows,
+        key=lambda item: (item["student"].surname, item["student"].first_names, item["sort_year"], item["sort_semester"]),
+    ):
+        unique_rows.setdefault(row["student"].registration_number, row)
+
+    paginator = Paginator(list(unique_rows.values()), page_size)
+    page_obj = paginator.get_page(page)
+    rows = []
+    for row in page_obj:
+        student = row["student"]
+        rows.append(
+            {
+                "name": student.full_name,
+                "registration_number": student.registration_number,
+                "academic_level": row["level"],
+                "programme": row["programme"],
+                "department": row["department"],
+                "gender": row["gender"],
+                "study_mode": row["study_mode"],
+                "average_mark": row["average_mark"] if row["average_mark"] is not None else "--",
+                "decision": row["registration"].decision.title().replace(" And ", " & ") if row["registration"].decision else "--",
+                "detail_url": reverse("dashboard:student-detail", args=[student.registration_number.lower()]),
+            }
+        )
+
+    return {
+        "type": "students",
+        "columns": ACADEMIC_LEVEL_DRILLDOWN_COLUMNS,
+        "rows": rows,
+        "total_count": paginator.count,
+        "page": page_obj.number,
+        "page_size": page_size,
+        "page_count": paginator.num_pages,
+    }
+
+
+def build_academic_level_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10, search_query=""):
+    """Build modal drill-down data for Academic Levels charts."""
+
+    chart_key = str(chart_key or "").strip().lower()
+    bucket_key = str(bucket_key or "").strip()
+    rows = _academic_level_registration_rows(request, search_query)
+    matched_rows = _filter_academic_level_drilldown_rows(rows, chart_key, bucket_key)
+    hierarchy_payload = _build_hierarchy_payload(chart_key, bucket_key, matched_rows)
+    payload = hierarchy_payload or _build_student_drilldown_payload(
+        request,
+        chart_key,
+        bucket_key,
+        matched_rows,
+        page=page,
+        page_size=page_size,
+    )
+
+    payload.update(
+        {
+            "title": _drilldown_title(chart_key, bucket_key),
+            "subtitle": "Filtered by the active dashboard scope.",
+            "chart_key": chart_key,
+            "bucket_key": bucket_key,
+            "breadcrumbs": _breadcrumb_items(chart_key, bucket_key),
+        }
+    )
+    return payload

@@ -21,6 +21,7 @@ import {
     setElementText,
     setTopProgrammeHints,
 } from "./narratives.js";
+import { openAcademicLevelDrillDown } from "./drilldown.js";
 
 const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) => {
     const isCompact = chartWidth > 0 ? chartWidth < 640 : false;
@@ -68,7 +69,7 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
                     { label: "Registrations", value: row.registrations },
                     { label: "Students", value: row.students },
                     { label: "Pass rate", value: row.pass_rate },
-                    { label: "Average mark", value: row.average_mark },
+                    { label: "Average mark", value: row.average_mark_display },
                     { label: "Top 5 share", value: `${params.percent}%` },
                 ]);
             },
@@ -165,7 +166,7 @@ const buildTopProgrammeDetailOption = (programme, chartWidth = 0) => {
                     { label: "Registrations", value: row.registrations },
                     { label: "Students", value: row.students },
                     { label: "Pass rate", value: row.pass_rate },
-                    { label: "Average mark", value: row.average_mark },
+                    { label: "Average mark", value: row.average_mark_display },
                 ], { maxWidth: 220 });
             },
         },
@@ -332,7 +333,7 @@ export const initialiseTopProgrammeSection = (context) => {
         topProgrammeMode = "detail";
         activeTopProgrammeName = programme.programme;
         setTopProgrammeDetailState(true);
-        setChartClickability(chart, false);
+        setChartClickability(chart, true);
         setTopProgrammeContext(programme);
         chart.setOption(buildTopProgrammeDetailOption(programme, chart.getWidth()), true);
         setTopProgrammeNarrative(programme);
@@ -345,7 +346,20 @@ export const initialiseTopProgrammeSection = (context) => {
     if (chart && topProgrammeRows.length) {
         showTopProgrammeOverview();
         chart.on("click", (params) => {
-            if (topProgrammeMode !== "overview") {
+            if (topProgrammeMode === "detail" && activeTopProgrammeName) {
+                if (params.seriesType !== "bar") {
+                    return;
+                }
+
+                const programme = programmeRows.find((row) => row.programme === activeTopProgrammeName);
+                const level = programme?.level_breakdown?.[params.dataIndex]?.level;
+                if (level) {
+                    openAcademicLevelDrillDown(context, {
+                        chartKey: "programme_level",
+                        bucketKey: `${activeTopProgrammeName}|${level}`,
+                        label: `${activeTopProgrammeName} in ${level}`,
+                    });
+                }
                 return;
             }
 

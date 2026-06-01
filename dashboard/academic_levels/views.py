@@ -9,6 +9,7 @@ from accounts.decorators import ajax_login_required, login_required_except_domai
 from .ai_insights import get_academic_level_card_narratives_result
 from .presenters import build_academic_level_shell_context
 from .services import (
+    build_academic_level_drilldown_data,
     get_cached_academic_level_dashboard_data,
     get_cached_academic_level_summary_snapshot,
     get_academic_level_summary_values,
@@ -57,3 +58,38 @@ def academic_level_payload(request):
             "diagnostics": narrative_result["diagnostics"],
         }
     )
+
+
+@ajax_login_required
+@require_GET
+def academic_level_drilldown(request):
+    """Return modal drill-down data for academic-level charts."""
+
+    chart_key = request.GET.get("chart", "").strip()
+    bucket_key = request.GET.get("bucket", "").strip()
+    search_query = request.GET.get("q", "").strip()
+    if not chart_key or not bucket_key:
+        return JsonResponse({"error": "Both chart and bucket are required."}, status=400)
+
+    try:
+        page = int(request.GET.get("page", 1))
+        page_size = int(request.GET.get("page_size", 10))
+    except (TypeError, ValueError):
+        page = 1
+        page_size = 10
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
+
+    try:
+        return JsonResponse(
+            build_academic_level_drilldown_data(
+                request,
+                chart_key,
+                bucket_key,
+                page=page,
+                page_size=page_size,
+                search_query=search_query,
+            )
+        )
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)

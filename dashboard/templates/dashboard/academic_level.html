@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/academic_level.css' %}?v=20260510-table-maxheight-fix">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260601-academic-drilldown01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -242,6 +243,7 @@
     class="level-layout"
     data-payload-url="{% url 'dashboard:academic-level-payload' %}"
     data-metrics-url="{% url 'dashboard:academic-level-metrics' %}"
+    data-drilldown-url="{% url 'dashboard:academic-level-drilldown' %}"
 >
     <section class="level-metrics">
         {% for card in summary_cards %}
@@ -455,7 +457,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260520-academic-diagonal-labels01"></script>
+<script type="module" src="{% static 'dashboard/js/academic_level.js' %}?v=20260601-academic-drilldown01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

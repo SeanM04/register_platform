@@ -67,6 +67,44 @@ const buildSummaryBodyHtml = (items = []) => {
     `.trim();
 };
 
+const buildBreadcrumbHtml = (payload = {}) => {
+    const breadcrumbs = Array.isArray(payload.breadcrumbs) ? payload.breadcrumbs : [];
+    if (!breadcrumbs.length) {
+        return "";
+    }
+
+    const itemsHtml = breadcrumbs.map((item, index) => {
+        const isLast = index === breadcrumbs.length - 1;
+        const label = escapeTooltipHtml(item?.label || "Details");
+        if (isLast || !item?.chart || !item?.bucket) {
+            return `<span class="home-drilldown-breadcrumb-current">${label}</span>`;
+        }
+        return `
+            <button class="home-drilldown-breadcrumb" type="button" data-drilldown-breadcrumb-chart="${escapeTooltipHtml(item.chart)}" data-drilldown-breadcrumb-bucket="${escapeTooltipHtml(item.bucket)}">${label}</button>
+        `.trim();
+    }).join('<span class="home-drilldown-breadcrumb-separator">/</span>');
+
+    return `<nav class="home-drilldown-breadcrumbs" aria-label="Drill-down breadcrumb">${itemsHtml}</nav>`;
+};
+
+const buildToolbarHtml = (payload = {}) => {
+    const hasRows = Array.isArray(payload.rows) && payload.rows.length;
+    const hasItems = Array.isArray(payload.data) && payload.data.length;
+    if (!hasRows && !hasItems) {
+        return "";
+    }
+
+    return `
+        <div class="home-drilldown-toolbar">
+            <label class="home-drilldown-search-label">
+                <span class="home-drilldown-search-text">Search</span>
+                <input class="home-drilldown-search" type="search" data-drilldown-search placeholder="Search current results">
+            </label>
+            <button class="home-drilldown-export" type="button" data-drilldown-export>Export CSV</button>
+        </div>
+    `.trim();
+};
+
 const buildTableBodyHtml = (payload = {}) => {
     const columns = Array.isArray(payload.columns) ? payload.columns : [];
     const rows = Array.isArray(payload.rows) 
@@ -125,6 +163,8 @@ const buildTableBodyHtml = (payload = {}) => {
         `.trim();
 
     const result = `
+        ${buildBreadcrumbHtml(payload)}
+        ${buildToolbarHtml(payload)}
         <div class="home-drilldown-table-wrap">
             <table class="home-drilldown-table">
                 <thead>
@@ -181,21 +221,26 @@ const buildHierarchicalListHtml = (payload = {}) => {
     const itemsHtml = data.map((item) => {
         // Use key for navigation if available (for programmes), otherwise use label (for departments)
         const navigateValue = item.key || item.label;
+        const navigateChart = item.next_chart || "";
+        const navigateBucket = item.next_bucket || navigateValue;
         return `
         <div class="home-drilldown-hierarchical-item">
             <div class="home-drilldown-item-info">
                 <span class="home-drilldown-item-label">${escapeTooltipHtml(item.label)}</span>
                 <span class="home-drilldown-item-count">${getDisplayValue(item.count)}</span>
+                ${item.department ? `<span class="home-drilldown-item-subcount">${escapeTooltipHtml(item.department)}</span>` : ''}
                 ${item.programme_count ? `<span class="home-drilldown-item-subcount">${item.programme_count} programmes</span>` : ''}
             </div>
-            <button class="home-drilldown-navigate-button" data-drilldown-navigate="${escapeTooltipHtml(navigateValue)}">
-                View ${type === 'departments' ? 'Programmes' : 'Students'} →
+            <button class="home-drilldown-navigate-button" data-drilldown-navigate="${escapeTooltipHtml(navigateValue)}" data-drilldown-navigate-chart="${escapeTooltipHtml(navigateChart)}" data-drilldown-navigate-bucket="${escapeTooltipHtml(navigateBucket)}">
+                View ${type === 'departments' ? 'Programmes' : 'Students'} &rarr;
             </button>
         </div>
         `;
     }).join("");
 
     return `
+        ${buildBreadcrumbHtml(payload)}
+        ${buildToolbarHtml(payload)}
         <div class="home-drilldown-hierarchical-list">
             ${itemsHtml}
         </div>
@@ -214,7 +259,7 @@ const buildBodyHtml = (payloadOrTitle, legacyItems = []) => {
     }
 
     // Handle hierarchical drilldown data
-    if (payload.type && (payload.type === 'departments' || payload.type === 'programmes')) {
+    if (payload.type && (payload.type === 'departments' || payload.type === 'programmes' || payload.type === 'levels')) {
         return buildHierarchicalListHtml(payload);
     }
 
@@ -243,6 +288,73 @@ const handleEscapeKey = (event) => {
     }
 };
 
+const normaliseCsvValue = (value) => {
+    const text = String(value ?? "").replace(/\s+/g, " ").trim();
+    return `"${text.replace(/"/g, '""')}"`;
+};
+
+const downloadCsv = (filename, rows) => {
+    const csv = rows.map((row) => row.map(normaliseCsvValue).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+};
+
+const initialiseSearchAndExport = (modal, payload = {}) => {
+    const searchInput = modal.querySelector("[data-drilldown-search]");
+    const exportButton = modal.querySelector("[data-drilldown-export]");
+
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.trim().toLowerCase();
+            modal.querySelectorAll(".home-drilldown-table tbody tr, .home-drilldown-hierarchical-item").forEach((row) => {
+                row.hidden = Boolean(query) && !row.textContent.toLowerCase().includes(query);
+            });
+        });
+    }
+
+    if (!exportButton) {
+        return;
+    }
+
+    exportButton.addEventListener("click", () => {
+        const columns = Array.isArray(payload.columns) ? payload.columns : [];
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        const hierarchy = Array.isArray(payload.data) ? payload.data : [];
+        const filenameBase = String(payload.title || "drilldown")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") || "drilldown";
+
+        if (columns.length && rows.length) {
+            downloadCsv(
+                `${filenameBase}.csv`,
+                [
+                    columns.map((column) => column.label || column.key || "Column"),
+                    ...rows.map((row) => columns.map((column) => row?.[column.key] ?? "")),
+                ],
+            );
+            return;
+        }
+
+        if (hierarchy.length) {
+            downloadCsv(
+                `${filenameBase}.csv`,
+                [
+                    ["Label", "Count", "Department"],
+                    ...hierarchy.map((item) => [item.label || "", item.count || "", item.department || ""]),
+                ],
+            );
+        }
+    });
+};
+
 export const isDrillDownModalOpen = () => Boolean(document.getElementById(DRILLDOWN_MODAL_ID));
 
 export const closeDrillDownModal = () => {
@@ -260,7 +372,7 @@ export const closeDrillDownModal = () => {
     lastFocusedElement = null;
 };
 
-const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageChange = null, onPageSizeChange = null, onNavigate = null }) => {
+const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageChange = null, onPageSizeChange = null, onNavigate = null, payload = null }) => {
     closeDrillDownModal();
 
     lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -325,11 +437,29 @@ const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "", onPageCha
             button.addEventListener("click", () => {
                 const navigateValue = button.dataset.drilldownNavigate;
                 if (navigateValue) {
-                    onNavigate(navigateValue);
+                    onNavigate({
+                        value: navigateValue,
+                        chart: button.dataset.drilldownNavigateChart || "",
+                        bucket: button.dataset.drilldownNavigateBucket || navigateValue,
+                    });
                 }
             });
         });
     }
+
+    const breadcrumbButtons = modal.querySelectorAll("[data-drilldown-breadcrumb-chart]");
+    if (typeof onNavigate === "function" && breadcrumbButtons.length) {
+        breadcrumbButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                onNavigate({
+                    chart: button.dataset.drilldownBreadcrumbChart || "",
+                    bucket: button.dataset.drilldownBreadcrumbBucket || "",
+                });
+            });
+        });
+    }
+
+    initialiseSearchAndExport(modal, payload || {});
 
     document.body.appendChild(modal);
     document.body.classList.add("has-home-drilldown-modal");
@@ -379,5 +509,6 @@ export const showDrillDownModal = (payloadOrTitle, legacyItems = [], options = {
         onPageChange: options.onPageChange,
         onPageSizeChange: options.onPageSizeChange,
         onNavigate: options.onNavigate,
+        payload: typeof payloadOrTitle === "string" ? null : payloadOrTitle,
     });
 };

@@ -61,8 +61,9 @@ export const openOverviewDrillDown = async (context, { chartKey, bucketKey, labe
 
     showLoadingDrillDownModal(title, subtitle);
 
-    const handleHierarchicalNavigation = (navigateValue) => {
+    const handleHierarchicalNavigation = (navigateTarget) => {
         // For faculty_load chart, build hierarchical bucket key
+        const navigateValue = typeof navigateTarget === "object" ? navigateTarget.value : navigateTarget;
         if (chartKey === "faculty_load") {
             bucketKey = `${bucketKey}|${navigateValue}`;
             console.log("DEBUG: Hierarchical navigation - updated bucketKey:", bucketKey, "navigateValue:", navigateValue);
