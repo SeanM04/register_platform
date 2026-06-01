@@ -9,7 +9,7 @@ import {
     setChartFallback,
 } from "./shared.js?v=20260405-programmes-progressive01";
 import { initialiseDepartmentNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
-import { openProgrammeDrillDown } from "./drilldown.js?v=20260430-unified-spinner01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 
 export const initialiseDepartmentSection = (context) => {
     initialiseDepartmentNarrative(context.elements, context.data.departmentRows, context.data.cardNarratives, context.flags);
@@ -120,7 +120,7 @@ export const initialiseDepartmentSection = (context) => {
 
     // Add drill-down click handler
     chart.on("click", (params) => {
-        const row = rows[params.dataIndex];
+        const row = sortedRows[params.dataIndex];
         if (row && row.department) {
             openProgrammeDrillDown(context, {
                 chartKey: "departments",

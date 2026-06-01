@@ -7,7 +7,7 @@ import {
     showDrillDownErrorModal,
     showLoadingDrillDownModal,
     showDrillDownModal,
-} from "./drilldown_modal.js?v=20260501-demographic-drilldown01";
+} from "./drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
 let activeDemographicDrillDownToken = 0;
@@ -65,14 +65,14 @@ export const openDemographicDrillDown = async (context, { chartKey, bucketKey, l
 
     showLoadingDrillDownModal(title, subtitle);
 
-    const loadPage = async (page, pageSize = currentPageSize) => {
+    const loadPage = async (page, pageSize = currentPageSize, nextChartKey = chartKey, nextBucketKey = bucketKey) => {
         currentPageSize = pageSize || DEFAULT_DRILLDOWN_PAGE_SIZE;
         showLoadingDrillDownModal(title, subtitle);
 
         try {
             const payload = await fetchDrillDownPayload(endpoint, {
-                chart: chartKey,
-                bucket: bucketKey,
+                chart: nextChartKey,
+                bucket: nextBucketKey,
                 page,
                 page_size: currentPageSize,
             });
@@ -82,8 +82,14 @@ export const openDemographicDrillDown = async (context, { chartKey, bucketKey, l
             }
 
             showDrillDownModal(payload, [], {
-                onPageChange: (newPage) => loadPage(newPage, currentPageSize),
-                onPageSizeChange: (newPageSize) => loadPage(1, newPageSize),
+                onPageChange: (newPage) => loadPage(newPage, currentPageSize, nextChartKey, nextBucketKey),
+                onPageSizeChange: (newPageSize) => loadPage(1, newPageSize, nextChartKey, nextBucketKey),
+                onNavigate: (target) => {
+                    if (!target?.chart || !target?.bucket) {
+                        return;
+                    }
+                    loadPage(1, currentPageSize, target.chart, target.bucket);
+                },
             });
         } catch (error) {
             if (requestToken !== activeDemographicDrillDownToken || !isDrillDownModalOpen()) {
@@ -123,27 +129,6 @@ export const addDemographicDrilldownHandlers = (context) => {
                         chartKey: "gender",
                         bucketKey: genderLower,
                         label: label,
-                    });
-                }
-            });
-        }
-    }
-
-    // Location chart handler
-    const locationChartElement = context.elements.locationChart;
-    if (locationChartElement) {
-        const locationChart = getEChartsInstance(locationChartElement);
-        if (locationChart) {
-            locationChart.on('click', (params) => {
-                console.log('Location chart clicked:', params);
-                // For location charts, use params.name or params.data.place
-                const location = params.name || (params.data && params.data.place) || '';
-                
-                if (location) {
-                    openDemographicDrillDown(context, {
-                        chartKey: "locations",
-                        bucketKey: location,
-                        label: `Students from ${location}`,
                     });
                 }
             });
@@ -195,23 +180,15 @@ export const addDemographicDrilldownHandlers = (context) => {
         const programmeChart = getEChartsInstance(programmeChartElement);
         if (programmeChart) {
             programmeChart.on('click', (params) => {
-                console.log('Programme chart clicked:', params);
-                console.log('Programme chart params data:', params.data);
-                console.log('Programme chart params name:', params.name);
-                
-                // For programme charts, try multiple sources for the programme name
-                let programme = '';
-                if (params.name && params.name !== 'ENGP') {
-                    programme = params.name;
-                } else if (params.data && params.data.programme) {
-                    programme = params.data.programme;
-                } else if (params.data && params.data.name) {
-                    programme = params.data.name;
-                } else if (params.seriesName && params.seriesName !== 'ENGP') {
-                    programme = params.seriesName;
-                }
-                
-                console.log('Extracted programme:', programme);
+                const rows = context?.data?.programmeRows || [];
+                const programmeRow = rows[params.dataIndex] || null;
+                const programme = String(
+                    programmeRow?.programme
+                    || params.data?.programme
+                    || params.data?.name
+                    || params.name
+                    || "",
+                ).trim();
                 
                 if (programme) {
                     openDemographicDrillDown(context, {
@@ -230,12 +207,13 @@ export const addDemographicDrilldownHandlers = (context) => {
         const locationMixChart = getEChartsInstance(locationMixChartElement);
         if (locationMixChart) {
             locationMixChart.on('click', (params) => {
-                console.log('Location mix chart clicked:', params);
-                // For location mix, we need to extract location and gender from the data
                 const data = params.data;
-                if (data && data.location && data.gender) {
-                    const bucketKey = `${data.location}|${data.gender}`;
-                    const label = `${data.gender.charAt(0).toUpperCase() + data.gender.slice(1)} Students from ${data.location}`;
+                const location = String(data?.location || data?.place || "").trim();
+                const gender = String(data?.gender || data?.genderLabel || "").trim().toLowerCase();
+
+                if (location && gender) {
+                    const bucketKey = `${location}|${gender}`;
+                    const label = `${gender.charAt(0).toUpperCase() + gender.slice(1)} Students from ${location}`;
                     
                     openDemographicDrillDown(context, {
                         chartKey: "location_mix",

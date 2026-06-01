@@ -14,6 +14,7 @@ import {
     setElementText,
     setGenderHints,
 } from "./narratives.js";
+import { openAcademicLevelDrillDown } from "./drilldown.js";
 
 const buildGenderChartOption = (rows, chartWidth = 0) => {
     const visibleRows = rows.filter((row) => Number(row.students) > 0);
@@ -143,6 +144,22 @@ export const initialiseGenderSection = (context) => {
         (rows) => hasMeaningfulRows(rows, "students"),
         { renderer: "svg" },
     );
+
+    if (chart && genderRows.length) {
+        chart.getDom().style.cursor = "pointer";
+        chart.on("click", (params) => {
+            const row = genderRows.find((item) => item.label === params.name) || genderRows[params.dataIndex];
+            if (!row?.key) {
+                return;
+            }
+
+            openAcademicLevelDrillDown(context, {
+                chartKey: "gender",
+                bucketKey: row.key,
+                label: `${row.label} Students`,
+            });
+        });
+    }
 
     return {
         getChart: () => chart,

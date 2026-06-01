@@ -9,7 +9,12 @@ import {
     getEchartsLib,
     setChartFallback,
 } from "./insights/shared.js";
-import { showGraduationDrillDownModal } from "./graduation/drilldown_modal.js?v=20260429-graduation-refactor01";
+import {
+    closeDrillDownModal,
+    showDrillDownModal,
+    showGraduationDrillDownModal,
+    showLoadingDrillDownModal,
+} from "./graduation/drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 class GraduationAnalysis {
     constructor() {
@@ -887,152 +892,45 @@ class GraduationAnalysis {
         const hierarchy = faculty.hierarchy || {};
         const departments = hierarchy.departments || [];
         const programmes = hierarchy.programmes || [];
-        
-        // Create modal content
-        const modalContent = `
-            <div class="hierarchical-drilldown-modal">
-                <div class="hierarchical-header">
-                    <h3>Drilldown: ${faculty.faculty}</h3>
-                    <p>Choose a level to explore:</p>
-                </div>
-                <div class="hierarchical-options">
-                    <div class="hierarchical-section">
-                        <h4>Departments (${departments.length})</h4>
-                        <div class="hierarchical-grid">
-                            ${departments.map(dept => `
-                                <div class="hierarchical-item" onclick="window.graduationAnalysis.openDrillDown('departments', '${dept.department.replace(/'/g, "\\'")}')">
-                                    <div class="hierarchical-name">${dept.department}</div>
-                                    <div class="hierarchical-stats">
-                                        <span>${dept.graduation_rate}%</span>
-                                        <span>${dept.graduated_count}/${dept.enrolled_count}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="hierarchical-section">
-                        <h4>Programmes (${programmes.length})</h4>
-                        <div class="hierarchical-grid">
-                            ${programmes.map(prog => `
-                                <div class="hierarchical-item" onclick="window.graduationAnalysis.openDrillDown('programmes', '${prog.programme.replace(/'/g, "\\'")}')">
-                                    <div class="hierarchical-name">${prog.programme}</div>
-                                    <div class="hierarchical-stats">
-                                        <span>${prog.graduation_rate}%</span>
-                                        <span>${prog.graduated_count}/${prog.enrolled_count}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-                <div class="hierarchical-actions">
-                    <button class="btn btn-secondary" onclick="this.closest('.hierarchical-drilldown-overlay').remove()">Close</button>
-                    <button class="btn btn-primary" onclick="window.graduationAnalysis.openDrillDown('faculties', '${faculty.faculty.replace(/'/g, "\\'")}')">View All Students</button>
-                </div>
-            </div>
-        `;
-        
-        // Create and show modal
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay hierarchical-drilldown-overlay';
-        modal.innerHTML = modalContent;
-        document.body.appendChild(modal);
-        
-        // Add styles if not already present
-        if (!document.querySelector('#hierarchical-drilldown-styles')) {
-            const styles = document.createElement('style');
-            styles.id = 'hierarchical-drilldown-styles';
-            styles.textContent = `
-                .hierarchical-drilldown-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
+
+        const data = [
+            {
+                label: `All ${faculty.faculty} students`,
+                count: Number(faculty.enrolled_count || 0),
+                department: `Faculty total, ${Math.round(faculty.graduation_rate || 0)}% graduation rate`,
+                next_chart: "faculties",
+                next_bucket: faculty.faculty,
+            },
+            ...departments.map((dept) => ({
+                label: dept.department,
+                count: Number(dept.enrolled_count || dept.graduated_count || 0),
+                department: `Department, ${Math.round(dept.graduation_rate || 0)}% graduation rate`,
+                next_chart: "departments",
+                next_bucket: dept.department,
+            })),
+            ...programmes.map((programme) => ({
+                label: programme.programme,
+                count: Number(programme.enrolled_count || programme.graduated_count || 0),
+                department: `Programme, ${Math.round(programme.graduation_rate || 0)}% graduation rate`,
+                next_chart: "programmes",
+                next_bucket: programme.programme,
+            })),
+        ];
+
+        showDrillDownModal({
+            title: `${faculty.faculty} Drill-Down`,
+            subtitle: "Choose a department or programme to view matching students.",
+            type: "programmes",
+            data,
+            breadcrumbs: [{ label: faculty.faculty }],
+        }, [], {
+            onNavigate: (target) => {
+                if (!target?.chart || !target?.bucket) {
+                    return;
                 }
-                .hierarchical-drilldown-modal {
-                    background: white;
-                    border-radius: 8px;
-                    padding: 24px;
-                    max-width: 800px;
-                    max-height: 80vh;
-                    overflow-y: auto;
-                    width: 90%;
-                }
-                .hierarchical-header h3 {
-                    margin: 0 0 8px 0;
-                    color: #1f2937;
-                }
-                .hierarchical-header p {
-                    margin: 0 0 24px 0;
-                    color: #6b7280;
-                }
-                .hierarchical-section {
-                    margin-bottom: 32px;
-                }
-                .hierarchical-section h4 {
-                    margin: 0 0 16px 0;
-                    color: #374151;
-                    font-size: 16px;
-                }
-                .hierarchical-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 12px;
-                }
-                .hierarchical-item {
-                    border: 1px solid #e5e7eb;
-                    border-radius: 6px;
-                    padding: 12px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .hierarchical-item:hover {
-                    border-color: #3b82f6;
-                    background: #f8fafc;
-                }
-                .hierarchical-name {
-                    font-weight: 600;
-                    color: #1f2937;
-                    margin-bottom: 8px;
-                }
-                .hierarchical-stats {
-                    display: flex;
-                    justify-content: space-between;
-                    color: #6b7280;
-                    font-size: 14px;
-                }
-                .hierarchical-actions {
-                    display: flex;
-                    gap: 12px;
-                    justify-content: flex-end;
-                    margin-top: 24px;
-                    padding-top: 24px;
-                    border-top: 1px solid #e5e7eb;
-                }
-                .btn {
-                    padding: 8px 16px;
-                    border-radius: 4px;
-                    border: none;
-                    cursor: pointer;
-                    font-size: 14px;
-                }
-                .btn-primary {
-                    background: #3b82f6;
-                    color: white;
-                }
-                .btn-secondary {
-                    background: #f3f4f6;
-                    color: #374151;
-                }
-            `;
-            document.head.appendChild(styles);
-        }
+                this.openDrillDown(target.chart, target.bucket);
+            },
+        });
     }
 
     renderTimingChart(rows) {
@@ -1573,21 +1471,32 @@ class GraduationAnalysis {
                 } else if (document.webkitExitFullscreen) {
                     document.webkitExitFullscreen();
                 }
+                this.fallbackFullscreenCard = null;
+            } else if (this.fallbackFullscreenCard === chartCard) {
+                this.fallbackFullscreenCard = null;
             } else if (chartCard.requestFullscreen) {
                 chartCard.requestFullscreen();
             } else if (chartCard.webkitRequestFullscreen) {
                 chartCard.webkitRequestFullscreen();
+            } else {
+                this.fallbackFullscreenCard = chartCard;
             }
         } catch (error) {
-            this.showError(`Could not toggle chart fullscreen: ${error.message}`);
+            this.fallbackFullscreenCard = this.fallbackFullscreenCard === chartCard ? null : chartCard;
         }
+
+        this.syncFullscreenButtons();
+        window.requestAnimationFrame(() => this.resizeCharts());
     }
 
     syncFullscreenButtons() {
-        const fullscreenElement = document.fullscreenElement;
+        const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || this.fallbackFullscreenCard;
         document.querySelectorAll("[data-chart-fullscreen-toggle]").forEach((button) => {
             const card = button.closest(".demographic-insight-card");
             const isActive = Boolean(card && fullscreenElement === card);
+            if (card) {
+                card.classList.toggle("is-fullscreen", isActive);
+            }
             button.textContent = isActive ? "Exit full screen" : "Full screen";
             button.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
@@ -1632,6 +1541,8 @@ class GraduationAnalysis {
     }
 
     showDrilldownLoading() {
+        showLoadingDrillDownModal("Loading Drill-Down", "Loading student data.");
+        return;
         // Use renderModal approach for consistency
         const renderModal = ({ title, subtitle = "", bodyHtml, toneClass = "" }) => {
             // Close any existing modal
@@ -1734,6 +1645,8 @@ class GraduationAnalysis {
     }
 
     hideDrilldownLoading() {
+        closeDrillDownModal();
+        return;
         const loadingOverlay = document.getElementById("graduation-drilldown-loading-modal");
         if (loadingOverlay) {
             loadingOverlay.remove();

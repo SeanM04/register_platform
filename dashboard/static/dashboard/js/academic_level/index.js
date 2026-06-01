@@ -1,5 +1,5 @@
 import { createAcademicLevelContext, refreshAcademicLevelTableDomRefs, updateAcademicLevelContext } from "./context.js";
-import { initialiseFullscreenControls } from "./fullscreen.js";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260601-drilldown-numeric-align01";
 import { initialiseGenderSection } from "./gender.js";
 import { renderStoryBanner } from "./narratives.js";
 import { initialisePassTrendSection } from "./pass_trend.js";

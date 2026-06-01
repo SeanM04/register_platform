@@ -9,8 +9,8 @@ import {
     setChartFallback,
     wrapAxisLabel,
 } from "./shared.js?v=20260403-home-story04";
-import { cancelOverviewDrillDownRequests, openOverviewDrillDown } from "./drilldown.js?v=20260416-home-drilldown16";
-import { showDrillDownModal } from "./drilldown_modal.js?v=20260416-home-drilldown16";
+import { cancelOverviewDrillDownRequests, openOverviewDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
+import { showDrillDownModal } from "./drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 import { initialiseFacultyNarrative } from "./narratives.js?v=20260408-home-ai02";
 
 /**

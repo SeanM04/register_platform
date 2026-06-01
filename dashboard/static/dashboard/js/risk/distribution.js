@@ -6,7 +6,7 @@ import {
     buildTooltipMarkup,
     initialiseChart,
 } from "./shared.js";
-import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
+import { openRiskDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 
 const TONE_GRADIENTS = {
     critical: ["#dc2626", "#ef4444"],
@@ -112,7 +112,7 @@ export const initialiseDistributionSection = (context) => {
 
     if (chart) {
         chart.on("click", (params) => {
-            const row = params.data.raw;
+            const row = params.data?.raw || data.distributionRows[params.dataIndex];
             if (row && row.key) {
                 openRiskDrillDown(context, {
                     chartKey: "distribution",

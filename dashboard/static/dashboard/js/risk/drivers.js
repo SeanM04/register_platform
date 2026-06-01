@@ -8,7 +8,7 @@ import {
     formatChartLabel,
     initialiseChart,
 } from "./shared.js";
-import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
+import { openRiskDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 
 const buildAxisMax = (value) => {
     const maxValue = Number(value?.max || 0);
@@ -116,7 +116,7 @@ export const initialiseDriversSection = (context) => {
 
     if (chart) {
         chart.on("click", (params) => {
-            const row = params.data.raw;
+            const row = params.data?.raw || data.driverRows[params.dataIndex];
             if (row && row.key) {
                 openRiskDrillDown(context, {
                     chartKey: "drivers",

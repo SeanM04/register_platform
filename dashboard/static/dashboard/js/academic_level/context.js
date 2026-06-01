@@ -61,6 +61,9 @@ export const createAcademicLevelContext = (payload = {}) => {
             levelTableBody: levelTableBody,
             levelTableRows: Array.from(document.querySelectorAll("[data-level-row]")),
         },
+        config: {
+            drilldownUrl: document.querySelector(".level-layout")?.dataset.drilldownUrl || "",
+        },
     };
 };
 

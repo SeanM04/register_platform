@@ -108,6 +108,24 @@ class ProgrammeViewTests(DashboardFixtureMixin, TestCase):
         self.assertTrue(second_page["pagination"]["has_previous"])
         self.assertNotEqual(first_page["rows"][0]["name"], second_page["rows"][0]["name"])
 
+    def test_programme_drilldown_matches_display_normalized_programme_name(self):
+        self.commerce_programme.name = "Bachelor of Commerce in Accounting And Finance"
+        self.commerce_programme.save(update_fields=["name"])
+
+        payload = self.client.get(
+            reverse("dashboard:programme-drilldown"),
+            {
+                "chart": "programme_load",
+                "bucket": self.commerce_programme.normalized_name,
+                "page": 1,
+                "page_size": 10,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        ).json()
+
+        self.assertGreater(payload["pagination"]["total_items"], 0)
+        self.assertTrue(payload["rows"])
+
     def test_programme_payload_endpoint_sorts_programme_rows_by_query_parameters(self):
         """Programme register rows should respect sort and direction query parameters."""
 

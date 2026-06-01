@@ -1,9 +1,9 @@
 import { createInsightContext, updateInsightContext } from "./context.js?v=20260420-kpi-note-fix01";
-import { initialiseDistributionSection } from "./distribution.js?v=20260403-insights-story02";
-import { initialiseDriversSection } from "./drivers.js?v=20260403-insights-story02";
-import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260403-insights-story02";
-import { initialiseFacultyPressureSection } from "./faculty_pressure.js?v=20260403-insights-story02";
-import { initialiseFullscreenControls } from "./fullscreen.js?v=20260403-insights-story02";
+import { initialiseDistributionSection } from "./distribution.js?v=20260601-drilldown-click-reliability01";
+import { initialiseDriversSection } from "./drivers.js?v=20260601-drilldown-click-reliability01";
+import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260601-drilldown-click-reliability01";
+import { initialiseFacultyPressureSection } from "./faculty_pressure.js?v=20260601-drilldown-click-reliability01";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260601-drilldown-numeric-align01";
 import { renderStoryBanner } from "./narratives.js?v=20260403-insights-story02";
 import { escapeTooltipHtml } from "./shared.js?v=20260412-insights-shell01";
 

@@ -1,4 +1,4 @@
-import { initialiseDemographicPage } from "./demographic/index.js?v=20260411-demographic-narrative-status01";
+import { initialiseDemographicPage } from "./demographic/index.js?v=20260601-drilldown-click-reliability01";
 import { initialiseAccordion } from "./demographic/accordion.js";
 
 const MAX_LIBRARY_WAIT_MS = 2200;

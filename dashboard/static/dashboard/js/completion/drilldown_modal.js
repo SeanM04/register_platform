@@ -5,13 +5,14 @@ import {
     showDrillDownErrorModal as showHomeDrillDownErrorModal,
     showLoadingDrillDownModal as showHomeLoadingDrillDownModal,
     showDrillDownModal as showHomeDrillDownModal
-} from "../home/drilldown_modal.js?v=20260416-home-drilldown16";
+} from "../home/drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 // Re-export with completion names for backward compatibility
 export const isDrillDownModalOpen = isHomeDrillDownModalOpen;
 export const closeDrillDownModal = closeHomeDrillDownModal;
 export const showDrillDownErrorModal = showHomeDrillDownErrorModal;
 export const showLoadingDrillDownModal = showHomeLoadingDrillDownModal;
+export const showDrillDownModal = showHomeDrillDownModal;
 
 export const showCompletionDrillDownModal = (payload, onPageChange = null) => {
     const pagination = payload.pagination || {};

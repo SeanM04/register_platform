@@ -1,6 +1,6 @@
 import { createHomeContext, updateHomeContext } from "./context.js?v=20260514-home-parallel-metrics01";
-import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260416-home-drilldown16";
-import { initialiseFullscreenControls } from "./fullscreen.js?v=20260403-home-story04";
+import { initialiseFacultyLoadSection } from "./faculty_load.js?v=20260601-drilldown-numeric-align01";
+import { initialiseFullscreenControls } from "./fullscreen.js?v=20260601-drilldown-numeric-align01";
 import {
     initialiseFacultyNarrative,
     initialiseChapterOneNarrative,
@@ -10,9 +10,9 @@ import {
     initialiseRiskNarrative,
     renderStoryBanner,
 } from "./narratives.js?v=20260416-home-banner-text02";
-import { initialiseOutcomeSection } from "./outcomes.js?v=20260411-home-drilldown01";
-import { initialiseProgressSection } from "./progress.js?v=20260411-home-drilldown01";
-import { initialiseRiskDistributionSection } from "./risk_distribution.js?v=20260411-home-drilldown01";
+import { initialiseOutcomeSection } from "./outcomes.js?v=20260601-drilldown-numeric-align01";
+import { initialiseProgressSection } from "./progress.js?v=20260601-drilldown-numeric-align01";
+import { initialiseRiskDistributionSection } from "./risk_distribution.js?v=20260601-drilldown-numeric-align01";
 import { escapeTooltipHtml } from "./shared.js?v=20260403-home-story04";
 
 /**

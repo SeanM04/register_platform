@@ -8,7 +8,7 @@ import {
     buildVerticalCategoryZoom,
     initialiseChart,
 } from "./shared.js";
-import { openRiskDrillDown } from "./drilldown.js?v=20260414-risk-drilldown01";
+import { openRiskDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 
 const HIGH_RISK = "High Risk";
 const MEDIUM_RISK = "Medium Risk";
@@ -239,7 +239,7 @@ export const initialiseLevelsSection = (context) => {
         });
 
         chart.on("click", (params) => {
-            const row = params.data.raw;
+            const row = params.data?.raw || data.levelRows[params.dataIndex];
             if (row && row.level) {
                 openRiskDrillDown(context, {
                     chartKey: "levels",

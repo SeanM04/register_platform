@@ -468,6 +468,26 @@ def _student_list_back_url(request):
     return f"{base_url}?{urlencode(params)}"
 
 
+def _format_student_attendance_type(registration):
+    """Return a readable attendance type for student summary panels."""
+
+    if not registration:
+        return "Not recorded"
+
+    raw_value = (
+        str(getattr(getattr(registration, "attendance_type_record", None), "name", "") or "").strip()
+        or str(getattr(registration, "attendance_type_id", "") or "").strip()
+    )
+    normalized = raw_value.lower()
+    if not normalized:
+        return "Not recorded"
+    if normalized in {"2", "visiting", "visitor", "exchange"} or "visit" in normalized:
+        return "Visiting"
+    if normalized in {"1", "conventional", "regular", "normal"}:
+        return "Conventional"
+    return raw_value.title()
+
+
 def _build_student_detail_filter_context(registrations, requested_year, requested_period, requested_faculty):
     """Build topbar filters constrained to the selected student's own records."""
 
@@ -1198,6 +1218,7 @@ def student_detail(request, slug):
         "name": student_record.full_name,
         "student_number": student_record.registration_number,
         "programme": selected_registration.programme.normalized_name if selected_registration else "",
+        "attendance_type": _format_student_attendance_type(selected_registration),
         "academic_level": selected_group["academic_level_label"] if selected_group else "",
         "term_name": (
             str(getattr(getattr(selected_registration, "period", None), "name", "") or "").strip()
@@ -1258,7 +1279,9 @@ def student_transcript(request, slug):
             [registration for registration in all_registrations if _registration_has_course_results(registration)]
         )
         transcript_results = []
+        transcript_sections = []
         for group in timeline["groups"]:
+            section_results = []
             for row in group["results"]:
                 mark_value = row["mark_value"]
                 grade = "F"
@@ -1272,28 +1295,38 @@ def student_transcript(request, slug):
                     elif mark_value >= 50:
                         grade = "3"
 
-                transcript_results.append(
-                    {
-                        "academic_year": row["academic_year"],
-                        "period": row["period"],
-                        "semester": row["semester_label"],
-                        "academic_level_label": row["academic_level_label"],
-                        "period_name": row["period_name"],
-                        "faculty": row["registration"].programme.department.faculty.name if row["registration"].programme and row["registration"].programme.department and row["registration"].programme.department.faculty else "Unknown",
-                        "programme": row["registration"].programme.normalized_name if row["registration"].programme else "Unknown",
-                        "course_code": row["course_code"],
-                        "course_name": row["course_name"],
-                        "course_display_name": row["course_display_name"],
-                        "mark": row["mark"],
-                        "mark_value": mark_value if mark_value is not None else "--",
-                        "grade": grade,
-                        "decision": "P" if row["is_pass"] else "F",
-                        "status": "Pass" if row["is_pass"] else "Fail",
-                        "is_failing": row["is_failing"],
-                        "attempt_number": row["attempt_number"],
-                        "attempt_tags": row["attempt_tags"],
-                    }
-                )
+                transcript_row = {
+                    "academic_year": group["year_label"],
+                    "period": group["semester_label"],
+                    "semester": group["semester_label"],
+                    "academic_level_label": group["academic_level_label"],
+                    "period_name": group.get("period_display") or row["period_name"],
+                    "faculty": row["registration"].programme.department.faculty.name if row["registration"].programme and row["registration"].programme.department and row["registration"].programme.department.faculty else "Unknown",
+                    "programme": row["registration"].programme.normalized_name if row["registration"].programme else "Unknown",
+                    "course_code": row["course_code"],
+                    "course_name": row["course_name"],
+                    "course_display_name": row["course_display_name"],
+                    "mark": row["mark"],
+                    "mark_value": mark_value if mark_value is not None else "--",
+                    "grade": grade,
+                    "decision": "P" if row["is_pass"] else "F",
+                    "status": "Pass" if row["is_pass"] else "Fail",
+                    "is_failing": row["is_failing"],
+                    "attempt_number": row["attempt_number"],
+                    "attempt_tags": row["attempt_tags"],
+                }
+                transcript_results.append(transcript_row)
+                section_results.append(transcript_row)
+
+            transcript_sections.append(
+                {
+                    "academic_year": group["year_label"],
+                    "semester": group["semester_label"],
+                    "academic_level_label": group["academic_level_label"],
+                    "period_name": group.get("period_display") or "",
+                    "results": section_results,
+                }
+            )
 
         summary = build_transcript_summary(timeline["groups"])
         student_programme = latest_registration.programme.normalized_name if (latest_registration := (all_registrations[-1] if all_registrations else None)) and latest_registration.programme else "N/A"
@@ -1315,6 +1348,7 @@ def student_transcript(request, slug):
                     "faculty": student_faculty,
                 },
                 "transcript_results": transcript_results,
+                "transcript_sections": transcript_sections,
                 "summary": summary,
             }
         )

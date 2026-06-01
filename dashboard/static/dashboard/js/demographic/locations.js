@@ -8,6 +8,7 @@ import {
     formatChartLabel,
     initialiseChart,
 } from "./shared.js";
+import { openDemographicDrillDown } from "./drilldown.js?v=20260601-drilldown-click-reliability01";
 import { initialiseLocationNarrative, setActionText } from "./narratives.js";
 
 const DETAIL_DIMENSIONS = [
@@ -303,7 +304,18 @@ export const initialiseLocationSection = (context) => {
                     return;
                 }
 
-                showDetailTooltip(detailRow, params.dataIndex);
+                const genderRows = getDetailRows(detailRow);
+                const genderRow = genderRows[params.dataIndex];
+                if (!genderRow) {
+                    showDetailTooltip(detailRow, params.dataIndex);
+                    return;
+                }
+
+                openDemographicDrillDown(context, {
+                    chartKey: "location_mix",
+                    bucketKey: `${detailRow.place}|${genderRow.key}`,
+                    label: `${genderRow.label} Students from ${detailRow.place}`,
+                });
                 return;
             }
 

@@ -1,5 +1,5 @@
 import { initialiseDistributionNarrative } from "./narratives.js?v=20260403-insights-story02";
-import { openInsightsDrillDown } from "./drilldown.js?v=20260427-insights-drilldown01";
+import { openInsightsDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 import {
     buildAnimationConfig,
     buildGradient,
@@ -113,7 +113,7 @@ export const initialiseDistributionSection = (context) => {
     // Add drilldown click handler
     if (chart) {
         chart.on("click", (params) => {
-            const row = params.data.raw;
+            const row = params.data?.raw || data.distributionRows[params.dataIndex];
             if (row && row.key) {
                 openInsightsDrillDown(context, {
                     chartKey: "risk_distribution",

@@ -1,4 +1,4 @@
-import { initialiseRiskPage } from "./risk/index.js?v=20260414-risk-shell03";
+import { initialiseRiskPage } from "./risk/index.js?v=20260601-drilldown-click-reliability01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.

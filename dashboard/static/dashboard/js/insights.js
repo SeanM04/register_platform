@@ -1,4 +1,4 @@
-import { initialiseInsightsPage } from "./insights/index.js?v=20260420-kpi-note-fix01";
+import { initialiseInsightsPage } from "./insights/index.js?v=20260601-drilldown-click-reliability01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.

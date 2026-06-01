@@ -4,7 +4,8 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260510-skeleton-loading01">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260601-drilldown-numeric-align01">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260601-drilldown-numeric-align01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -315,7 +316,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260520-flagged-pagination01"></script>
+<script type="module" src="{% static 'dashboard/js/insights.js' %}?v=20260601-drilldown-click-reliability01"></script>
 <script>
 /* Demographic Accordion JavaScript - Inline Implementation */
 document.addEventListener('DOMContentLoaded', function() {

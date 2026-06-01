@@ -6,6 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'dashboard/css/programme.css' %}?v=20260510-skeleton-loading01">
 <link rel="stylesheet" href="{% static 'dashboard/css/risk.css' %}?v=20260414-risk-drilldown01">
+<link rel="stylesheet" href="{% static 'dashboard/css/home.css' %}?v=20260601-drilldown-numeric-align01">
+<link rel="stylesheet" href="{% static 'dashboard/css/insights.css' %}?v=20260601-drilldown-numeric-align01">
 <style>
 /* Demographic Accordion Styles - Inline Implementation */
 .demographic-accordion {
@@ -332,7 +334,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260416-programme-drilldown20"></script>
+<script type="module" src="{% static 'dashboard/js/programme.js' %}?v=20260601-drilldown-click-reliability01"></script>
 
 <!-- LIVE SEARCH - Real-time filtering as you type (No Highlight) -->
 <script>

@@ -1,18 +1,12 @@
-/* Programme Drill-down Module */
-
 import {
-    closeDrillDownModal,
+    isDrillDownModalOpen,
     showDrillDownErrorModal,
-    showDrillDownModal,
     showLoadingDrillDownModal,
+    showDrillDownModal,
 } from "../home/drilldown_modal.js?v=20260601-drilldown-numeric-align01";
 
 const DEFAULT_DRILLDOWN_PAGE_SIZE = 10;
-let activeProgrammeDrillDownToken = 0;
-
-export const cancelProgrammeDrillDownRequests = () => {
-    activeProgrammeDrillDownToken += 1;
-};
+let activeAcademicLevelDrillDownToken = 0;
 
 const buildRequestUrl = (endpoint, params = {}) => {
     const requestUrl = new URL(endpoint, window.location.origin);
@@ -33,43 +27,41 @@ const buildRequestUrl = (endpoint, params = {}) => {
 
 const fetchDrillDownPayload = async (endpoint, params = {}) => {
     const response = await fetch(buildRequestUrl(endpoint, params), {
-        method: "GET",
+        credentials: "same-origin",
         headers: {
-            "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
         },
     });
 
     if (!response.ok) {
-        throw new Error(`Drill-down request failed: ${response.status}`);
+        throw new Error(`Request failed with status ${response.status}`);
     }
 
     return response.json();
 };
 
-export const openProgrammeDrillDown = async (context, { chartKey, bucketKey, label }) => {
-    cancelProgrammeDrillDownRequests();
+export const cancelAcademicLevelDrillDownRequests = () => {
+    activeAcademicLevelDrillDownToken += 1;
+};
 
+export const openAcademicLevelDrillDown = async (context, { chartKey, bucketKey, label }) => {
+    cancelAcademicLevelDrillDownRequests();
+
+    let currentPageSize = DEFAULT_DRILLDOWN_PAGE_SIZE;
+    const requestToken = activeAcademicLevelDrillDownToken;
     const endpoint = context?.config?.drilldownUrl;
     const safeLabel = String(label || "Selected").trim() || "Selected";
-    const requestToken = activeProgrammeDrillDownToken;
-    let currentPageSize = DEFAULT_DRILLDOWN_PAGE_SIZE;
+    const loadingTitle = `${safeLabel} Drill-Down`;
+    const loadingSubtitle = `Loading records for ${safeLabel.toLowerCase()}.`;
 
     if (!endpoint || !chartKey || !bucketKey) {
-        showDrillDownErrorModal(`${safeLabel} Students`, "This chart drill-down is not available right now.");
+        showDrillDownErrorModal(loadingTitle, "This chart drill-down is not available right now.");
         return;
     }
 
-    const loadPage = async (
-        page,
-        pageSize = currentPageSize,
-        nextChartKey = chartKey,
-        nextBucketKey = bucketKey,
-        nextLabel = safeLabel,
-    ) => {
+    const loadPage = async (page, pageSize = currentPageSize, nextChartKey = chartKey, nextBucketKey = bucketKey) => {
         currentPageSize = pageSize || DEFAULT_DRILLDOWN_PAGE_SIZE;
-        const subtitle = `Loading the students behind ${String(nextLabel).toLowerCase()}.`;
-        showLoadingDrillDownModal(`${nextLabel} Students`, subtitle);
+        showLoadingDrillDownModal(loadingTitle, loadingSubtitle);
 
         try {
             const payload = await fetchDrillDownPayload(endpoint, {
@@ -79,31 +71,28 @@ export const openProgrammeDrillDown = async (context, { chartKey, bucketKey, lab
                 page_size: currentPageSize,
             });
 
-            if (requestToken !== activeProgrammeDrillDownToken) {
+            if (requestToken !== activeAcademicLevelDrillDownToken || !isDrillDownModalOpen()) {
                 return;
             }
 
-            closeDrillDownModal();
             showDrillDownModal(payload, [], {
-                onPageChange: (newPage) => loadPage(newPage, currentPageSize, nextChartKey, nextBucketKey, nextLabel),
+                onPageChange: (newPage) => loadPage(newPage, currentPageSize, nextChartKey, nextBucketKey),
+                onPageSizeChange: (newPageSize) => loadPage(1, newPageSize, nextChartKey, nextBucketKey),
                 onNavigate: (target) => {
                     if (!target?.chart || !target?.bucket) {
                         return;
                     }
-                    loadPage(1, currentPageSize, target.chart, target.bucket, target.label || target.value || nextLabel);
+                    loadPage(1, currentPageSize, target.chart, target.bucket);
                 },
             });
         } catch (error) {
-            if (requestToken !== activeProgrammeDrillDownToken) {
+            if (requestToken !== activeAcademicLevelDrillDownToken || !isDrillDownModalOpen()) {
                 return;
             }
 
-            showDrillDownErrorModal(
-                `${safeLabel} Students`,
-                `The students behind ${safeLabel.toLowerCase()} could not be loaded right now.`,
-            );
+            showDrillDownErrorModal(loadingTitle, "The selected records could not be loaded right now.");
         }
     };
 
-    await loadPage(1, currentPageSize, chartKey, bucketKey, safeLabel);
+    await loadPage(1, currentPageSize);
 };

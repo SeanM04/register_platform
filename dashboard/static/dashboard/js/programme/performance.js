@@ -9,7 +9,7 @@ import {
     setChartFallback,
 } from "./shared.js?v=20260414-msc-support01";
 import { initialisePerformanceNarrative } from "./narratives.js?v=20260405-programmes-progressive01";
-import { openProgrammeDrillDown } from "./drilldown.js?v=20260430-unified-spinner01";
+import { openProgrammeDrillDown } from "./drilldown.js?v=20260601-drilldown-numeric-align01";
 
 const buildSymbolSize = (students, maxStudents) => {
     if (!maxStudents) {
@@ -142,7 +142,7 @@ export const initialisePerformanceSection = (context) => {
 
     // Add drill-down click handler
     chart.on("click", (params) => {
-        const row = params.data.row;
+        const row = params.data?.row || rows[params.dataIndex];
         if (row && row.name) {
             openProgrammeDrillDown(context, {
                 chartKey: "performance",
