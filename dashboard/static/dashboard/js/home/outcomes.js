@@ -43,7 +43,7 @@ export const initialiseOutcomeSection = (context) => {
             tooltip: {
                 ...buildTooltipBase("item"),
                 formatter: (params) => buildTooltipMarkup(params.name, [
-                    { label: "Results", value: formatCount(params.value) },
+                    { label: "Students", value: formatCount(params.value) },
                     { label: "Share", value: `${Math.round(params.percent)}%` },
                 ]),
             },

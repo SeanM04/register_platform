@@ -66,6 +66,8 @@ export const initialiseRiskDistributionSection = (context) => {
 
             formatter: (params) => {
                 const row = rows[params[0]?.dataIndex || 0];
+                const totalStudents = rows.reduce((sum, current) => sum + (current?.count || 0), 0);
+                const share = totalStudents ? Math.round(((row?.count || 0) / totalStudents) * 100) : 0;
 
                 return buildTooltipMarkup(
                     row?.label || "Risk band",
@@ -76,7 +78,7 @@ export const initialiseRiskDistributionSection = (context) => {
                         },
                         {
                             label: "Share",
-                            value: `${row?.percent || 0}%`,
+                            value: `${share}%`,
                         },
                     ],
                 );
