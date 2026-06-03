@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -451,21 +451,31 @@ def _ordered_unique(values):
 def _student_list_back_url(request):
     """Return the original students-list URL for Back navigation when available."""
 
+    allowed_keys = ("page", "q", "year", "period", "faculty", "sort", "direction")
+    current_params = {
+        key: request.GET.get(key, "").strip()
+        for key in allowed_keys
+        if request.GET.get(key, "").strip()
+    }
+
     return_to = request.GET.get("return_to", "").strip()
     if return_to:
-        return return_to
+        split_return_to = urlsplit(return_to)
+        merged_params = dict(parse_qsl(split_return_to.query, keep_blank_values=True))
+        merged_params.update(current_params)
+        merged_query = urlencode(merged_params)
+        return urlunsplit((
+            split_return_to.scheme,
+            split_return_to.netloc,
+            split_return_to.path or reverse("dashboard:students"),
+            merged_query,
+            split_return_to.fragment,
+        ))
 
-    allowed_keys = ("page", "q", "year", "period", "faculty", "sort", "direction")
-    params = []
-    for key in allowed_keys:
-        value = request.GET.get(key, "").strip()
-        if value:
-            params.append((key, value))
+    if not current_params:
+        return reverse("dashboard:students")
 
-    base_url = reverse("dashboard:students")
-    if not params:
-        return base_url
-    return f"{base_url}?{urlencode(params)}"
+    return f"{reverse('dashboard:students')}?{urlencode(current_params)}"
 
 
 def _format_student_attendance_type(registration):
@@ -481,10 +491,21 @@ def _format_student_attendance_type(registration):
     normalized = raw_value.lower()
     if not normalized:
         return "Not recorded"
-    if normalized in {"2", "visiting", "visitor", "exchange"} or "visit" in normalized:
+
+    code_match = re.search(r"\b([12])\b", normalized)
+    if "visit" in normalized or "exchange" in normalized or "short" in normalized:
         return "Visiting"
-    if normalized in {"1", "conventional", "regular", "normal"}:
+    if normalized in {"2", "visiting", "visitor"} or code_match and code_match.group(1) == "2":
+        return "Visiting"
+    if normalized in {"1", "conventional", "regular", "normal"} or code_match and code_match.group(1) == "1":
         return "Conventional"
+
+    if normalized.startswith("attendance type"):
+        if "2" in normalized:
+            return "Visiting"
+        if "1" in normalized:
+            return "Conventional"
+
     return raw_value.title()
 
 

@@ -26,19 +26,41 @@ def _normalized_text(value):
     return str(value or "").strip()
 
 
+def _normalized_attendance_label(value):
+    """Return a stable human-readable attendance label."""
+
+    text = _normalized_text(value)
+    if not text:
+        return ""
+
+    normalized = text.lower()
+    if "visit" in normalized or "exchange" in normalized or "short" in normalized:
+        return "Visiting"
+    if normalized in {"1", "conventional", "regular", "normal"}:
+        return "Conventional"
+    if normalized in {"2", "visiting", "visitor"}:
+        return "Visiting"
+    if normalized.startswith("attendance type"):
+        if "1" in normalized:
+            return "Conventional"
+        if "2" in normalized:
+            return "Visiting"
+    return text.title()
+
+
 def _registration_attendance_label(registration):
     """Return the most reliable attendance label for a registration."""
 
-    registration_type = _normalized_text(
+    registration_type = _normalized_attendance_label(
         getattr(getattr(registration, "attendance_type_record", None), "name", "")
     )
     if registration_type:
         return registration_type
 
     for result in _registration_results(registration):
-        result_type = _normalized_text(
+        result_type = _normalized_attendance_label(
             getattr(getattr(result, "attendance_type_record", None), "name", "")
-        ) or _normalized_text(getattr(result, "attendance_type", ""))
+        ) or _normalized_attendance_label(getattr(result, "attendance_type", ""))
         if result_type:
             return result_type
 

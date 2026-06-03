@@ -3,6 +3,7 @@
 import csv
 import shutil
 from pathlib import Path
+from urllib.parse import urlencode
 from unittest.mock import patch
 
 from django.core.management import call_command
@@ -164,6 +165,30 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(detail_response.context["back_to_students_url"], reverse("dashboard:students"))
         self.assertNotContains(detail_response, "href=\"/students?faculty=")
 
+    def test_student_detail_back_link_merges_current_filters_with_return_to(self):
+        """Changing filters on the detail page should update the back link scope."""
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+            {
+                "return_to": f"{reverse('dashboard:students')}?page=2&faculty={self.science_faculty.name}",
+                "faculty": self.commerce_faculty.name,
+                "year": "Year 1",
+                "period": "Jan - June",
+            },
+        )
+
+        expected_back_url = f"{reverse('dashboard:students')}?{urlencode({
+            'page': '2',
+            'faculty': self.commerce_faculty.name,
+            'year': 'Year 1',
+            'period': 'Jan - June',
+        })}"
+        self.assertEqual(
+            response.context["back_to_students_url"],
+            expected_back_url,
+        )
+
     def test_student_detail_scopes_topbar_filters_to_student_records(self):
         """Student detail filters should expose only years, periods, and faculties the student has."""
 
@@ -180,6 +205,26 @@ class DashboardViewTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(response.context["selected_year"], "Year 1")
         self.assertEqual(response.context["selected_period"], "Jan - June")
         self.assertContains(response, "Foundations of Computing")
+
+    def test_student_detail_formats_numeric_attendance_type_labels(self):
+        """Student detail should show a readable attendance label instead of raw numeric codes."""
+
+        attendance_type = AttendanceType.objects.create(
+            external_id=1,
+            name="Attendance Type 1",
+            normalized_key="id:1",
+        )
+        self.primary_latest_registration.attendance_type_id = 1
+        self.primary_latest_registration.attendance_type_record = attendance_type
+        self.primary_latest_registration.save(update_fields=["attendance_type_id", "attendance_type_record", "updated_at"])
+
+        response = self.client.get(
+            reverse("dashboard:student-detail", args=[self.student_primary.registration_number.lower()]),
+        )
+
+        self.assertContains(response, "Conventional")
+        self.assertNotContains(response, "Attendance Type 1")
+        self.assertNotContains(response, ">1<")
 
     def test_student_detail_locks_faculty_filter_for_single_faculty_student(self):
         """A student with one faculty should have a single locked faculty option."""
