@@ -7,13 +7,25 @@ import json
 from django.conf import settings
 
 from accounts.decorators import login_required_except_domains
-from ..views import build_layout_context
+from ..views import build_layout_context, build_summary_cards
 from .json_encoder import PandasJSONEncoder
 
 logger = logging.getLogger(__name__)
 
 GRADUATION_ACTIVE_KEY = "graduation"
 GRADUATION_PAGE_TITLE = "Graduation Analysis"
+GRADUATION_SUMMARY_CARD_SPECS = [
+    {"key": "total_graduated_students", "label": "Graduated Students", "tone": "default"},
+    {"key": "average_graduation_rate", "label": "Average Graduation Rate", "tone": "default"},
+    {"key": "on_time_graduation_rate", "label": "On-Time Graduation", "tone": "default"},
+    {"key": "best_faculty_rate", "label": "Best Faculty Rate", "tone": "success"},
+]
+GRADUATION_SUMMARY_CARD_NOTES = {
+    "total_graduated_students": "Students marked as graduated in the visible scope.",
+    "average_graduation_rate": "Average graduation rate across the current scope.",
+    "on_time_graduation_rate": "Students who graduated without a cohort shift.",
+    "best_faculty_rate": "Highest graduation rate achieved by a faculty here.",
+}
 
 
 def _graduation_ai_narratives_enabled():
@@ -46,6 +58,10 @@ def graduation_view(request):
     context.update({
         "page_title": GRADUATION_PAGE_TITLE,
         "graduation_ai_narratives_enabled": _graduation_ai_narratives_enabled(),
+        "summary_cards": build_summary_cards(
+            GRADUATION_SUMMARY_CARD_SPECS,
+            notes=GRADUATION_SUMMARY_CARD_NOTES,
+        ),
     })
     return render(request, 'dashboard/graduation.html', context)
 
@@ -69,6 +85,12 @@ def graduation_payload(request):
             year=year,
             period=period,
             faculty=faculty,
+        )
+        metrics = data.get("kpis", {})
+        data["summary_cards"] = build_summary_cards(
+            GRADUATION_SUMMARY_CARD_SPECS,
+            metrics,
+            GRADUATION_SUMMARY_CARD_NOTES,
         )
         
         return JsonResponse({

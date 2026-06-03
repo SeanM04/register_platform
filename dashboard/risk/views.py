@@ -7,13 +7,15 @@ from django.views.decorators.http import require_GET
 from accounts.decorators import ajax_login_required, login_required_except_domains
 
 from .ai_insights import get_risk_card_narratives
-from .presenters import build_risk_shell_context
+from .presenters import RISK_SHELL_NOTES, RISK_SUMMARY_CARD_NOTES, build_risk_shell_context
+from .constants import RISK_SUMMARY_CARD_SPECS
 from .services import (
     build_risk_drilldown_payload,
     build_student_risk_profiles,
     get_cached_risk_dashboard_data,
     paginate_risk_rows,
 )
+from ..views import build_summary_cards
 
 
 @login_required_except_domains()
@@ -173,14 +175,16 @@ def risk_metrics(request):
 
     search_query = request.GET.get("q", "").strip()
     risk_data = get_cached_risk_dashboard_data(request, search_query)
+    metrics = {
+        "at_risk_students": risk_data["at_risk_students"],
+        "high_risk": risk_data["high_risk_count"],
+        "medium_risk": risk_data["medium_risk_count"],
+        "multi_fail": risk_data["multi_fail_count"],
+    }
     return JsonResponse(
         {
-            "metrics": {
-                "at_risk_students": risk_data["at_risk_students"],
-                "high_risk": risk_data["high_risk_count"],
-                "medium_risk": risk_data["medium_risk_count"],
-                "multi_fail": risk_data["multi_fail_count"],
-            }
+            "metrics": metrics,
+            "summary_cards": build_summary_cards(RISK_SUMMARY_CARD_SPECS, metrics, RISK_SUMMARY_CARD_NOTES),
         }
     )
 
@@ -193,15 +197,17 @@ def risk_payload(request):
     search_query = request.GET.get("q", "").strip()
     risk_data = get_cached_risk_dashboard_data(request, search_query)
     page_data = paginate_risk_rows(risk_data["risk_rows"], request.GET.get("page"), page_size=10)
+    metrics = {
+        "at_risk_students": risk_data["at_risk_students"],
+        "high_risk": risk_data["high_risk_count"],
+        "medium_risk": risk_data["medium_risk_count"],
+        "multi_fail": risk_data["multi_fail_count"],
+    }
 
     return JsonResponse(
         {
-            "metrics": {
-                "at_risk_students": risk_data["at_risk_students"],
-                "high_risk": risk_data["high_risk_count"],
-                "medium_risk": risk_data["medium_risk_count"],
-                "multi_fail": risk_data["multi_fail_count"],
-            },
+            "metrics": metrics,
+            "summary_cards": build_summary_cards(RISK_SUMMARY_CARD_SPECS, metrics, RISK_SUMMARY_CARD_NOTES),
             "cohort_total_students": risk_data["total_students"],
             "watchlist_total_students": risk_data["at_risk_students"],
             "risk_distribution_rows": risk_data["risk_distribution_rows"],

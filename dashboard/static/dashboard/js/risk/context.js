@@ -40,6 +40,7 @@ export const createRiskContext = (payload = {}) => {
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
             searchForm: document.querySelector(".risk-toolbar"),
             searchInput: document.querySelector(".risk-search"),
+            metricNotes: Array.from(document.querySelectorAll("[data-metric-note]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
             registerBody: document.getElementById("risk-register-body"),
             resultsMeta: document.getElementById("risk-results-meta"),

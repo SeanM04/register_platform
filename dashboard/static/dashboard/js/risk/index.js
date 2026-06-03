@@ -66,7 +66,7 @@ const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     });
 };
 
-const hydrateSummaryCards = (context, metrics = {}) => {
+const hydrateSummaryCards = (context, metrics = {}, summaryCards = []) => {
     context.elements.metricValues.forEach((element) => {
         const metricKey = element.dataset.metricKey;
         if (!metricKey || !Object.prototype.hasOwnProperty.call(metrics, metricKey)) {
@@ -75,6 +75,17 @@ const hydrateSummaryCards = (context, metrics = {}) => {
 
         element.textContent = metrics[metricKey];
         element.classList.remove("is-loading");
+    });
+
+    if (!summaryCards.length || !context.elements.metricNotes?.length) {
+        return;
+    }
+
+    summaryCards.forEach((card) => {
+        const note = context.elements.metricNotes.find((node) => node.dataset.metricKey === card.key);
+        if (note) {
+            note.textContent = card.note || "";
+        }
     });
 };
 
@@ -182,7 +193,7 @@ export const initialiseRiskPage = async () => {
     });
     const { data, elements: hydratedElements } = context;
 
-    hydrateSummaryCards(context, payloadResponse?.metrics || {});
+    hydrateSummaryCards(context, payloadResponse?.metrics || {}, payloadResponse?.summary_cards || []);
     renderRiskRegister(context, payloadResponse?.register || {}, payloadResponse?.cohort_total_students || 0);
 
     renderStoryBanner(

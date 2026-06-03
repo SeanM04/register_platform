@@ -121,11 +121,6 @@ const initialiseDeferredOriginMapSection = (context, controllers, resizeCharts) 
     }, 1800);
 };
 
-const buildMetricCards = (metrics = {}) => Object.keys(metrics).map((key) => ({
-    key,
-    value: metrics[key],
-}));
-
 const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     const charts = controllers
         .map((controller) => controller.getChart())
@@ -159,11 +154,17 @@ const hydrateSummaryCards = (context, summaryCards = []) => {
         const metricValue = context.elements.metricValues.find(
             (node) => node.dataset.metricKey === card.key,
         );
+        const metricNote = context.elements.metricNotes.find(
+            (node) => node.dataset.metricKey === card.key,
+        );
 
         if (metricValue) {
             metricValue.textContent = card.value;
             metricValue.classList.remove("is-loading");
             metricValue.classList.add("is-loaded");
+        }
+        if (metricNote) {
+            metricNote.textContent = card.note || "";
         }
     });
 };
@@ -242,7 +243,7 @@ export const initialiseDemographicPage = async () => {
     };
 
     const context = updateDemographicContext(shellContext, { chartPayload });
-    hydrateSummaryCards(context, buildMetricCards(payloadResponse?.metrics || {}));
+    hydrateSummaryCards(context, payloadResponse?.summary_cards || []);
 
     renderStoryBanner(context.elements.storyBanner, context.data.genderRows, context.data.locationRows, context.data.programmeRows);
 

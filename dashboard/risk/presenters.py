@@ -14,6 +14,13 @@ RISK_SHELL_NOTES = {
     "multi_fail": "Loading the students with 2 or more failed modules.",
 }
 
+RISK_SUMMARY_CARD_NOTES = {
+    "at_risk_students": "Students currently classified as medium or high risk.",
+    "high_risk": "Students in the high-priority risk band.",
+    "medium_risk": "Students in the medium-priority risk band.",
+    "multi_fail": "Students with two or more failed modules.",
+}
+
 
 def build_risk_shell_context(request, search_query=""):
     """Build a lightweight first-paint context for the risk dashboard page."""

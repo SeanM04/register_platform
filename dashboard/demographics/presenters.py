@@ -13,6 +13,13 @@ DEMOGRAPHIC_SHELL_NOTES = {
     "birth_locations": "Loading the birth location distribution for the selected scope.",
 }
 
+DEMOGRAPHIC_SUMMARY_CARD_NOTES = {
+    "students": "Unique students currently visible in scope.",
+    "male": "Male student count in the current scope.",
+    "female": "Female student count in the current scope.",
+    "birth_locations": "Distinct birth locations represented in scope.",
+}
+
 
 def build_demographic_shell_context(request, search_query=""):
     """Build a lightweight first-paint context for the demographic dashboard page."""
@@ -44,7 +51,11 @@ def build_demographic_page_context(request, demographic_data):
     context.update(
         {
             "page_title": DEMOGRAPHICS_PAGE_TITLE,
-            "summary_cards": build_summary_cards(DEMOGRAPHIC_SUMMARY_CARD_SPECS),
+            "summary_cards": build_summary_cards(
+                DEMOGRAPHIC_SUMMARY_CARD_SPECS,
+                demographic_data.get("summary_metrics", {}),
+                DEMOGRAPHIC_SUMMARY_CARD_NOTES,
+            ),
             "gender_rows": demographic_data["gender_rows"],
             "location_rows": demographic_data["location_rows"],
             "location_mix_rows": demographic_data["location_mix_rows"],

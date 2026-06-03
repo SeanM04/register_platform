@@ -8,6 +8,7 @@ from .constants import (
     ACADEMIC_LEVEL_PAGE_TITLE,
     ACADEMIC_LEVEL_SUMMARY_CARD_SPECS,
 )
+from .services import get_academic_level_summary_values
 
 
 ACADEMIC_LEVEL_SHELL_NOTES = {
@@ -15,6 +16,13 @@ ACADEMIC_LEVEL_SHELL_NOTES = {
     "registrations": "Loading the registration footprint across the visible levels.",
     "students": "Loading the unique student count across the visible levels.",
     "average_pass_rate": "Loading the average pass rate across the visible levels.",
+}
+
+ACADEMIC_LEVEL_SUMMARY_CARD_NOTES = {
+    "levels": "Academic levels represented in the current scope.",
+    "registrations": "Registrations visible across the selected levels.",
+    "students": "Unique students visible across the selected levels.",
+    "average_pass_rate": "Average pass rate across the visible levels.",
 }
 
 
@@ -50,7 +58,15 @@ def build_academic_level_page_context(request, search_query, academic_level_data
         {
             "page_title": ACADEMIC_LEVEL_PAGE_TITLE,
             "search_query": search_query,
-            "summary_cards": build_summary_cards(ACADEMIC_LEVEL_SUMMARY_CARD_SPECS),
+            "summary_cards": build_summary_cards(
+                ACADEMIC_LEVEL_SUMMARY_CARD_SPECS,
+                get_academic_level_summary_values(
+                    None,
+                    search_query,
+                    academic_level_data,
+                ),
+                ACADEMIC_LEVEL_SUMMARY_CARD_NOTES,
+            ),
             "level_rows": academic_level_data["level_rows"],
             "level_chart_rows": academic_level_data["level_chart_rows"],
             "gender_performance_rows": academic_level_data["gender_performance_rows"],

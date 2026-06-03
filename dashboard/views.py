@@ -70,6 +70,13 @@ SYSTEM_MANAGEMENT_SUMMARY_CARD_SPECS = [
     {"key": "administrators", "label": "Administrators", "tone": "default"},
     {"key": "locked_accounts", "label": "Locked Accounts", "tone": "danger"},
 ]
+
+SYSTEM_MANAGEMENT_SHELL_NOTES = {
+    "total_users": "All accounts currently stored on the platform.",
+    "active_users": "Accounts that are presently enabled for sign-in.",
+    "administrators": "Accounts with elevated administration access.",
+    "locked_accounts": "Accounts currently affected by a lockout.",
+}
 RETENTION_EXIT_DECISIONS = {
     "excluded",
     "withdrawn",
@@ -671,16 +678,18 @@ def build_system_user_rows(users, lockout_records, current_user):
     return rows
 
 
-def build_summary_cards(specs, values=None):
+def build_summary_cards(specs, values=None, notes=None):
     """Build summary card payloads for initial render or hydrated responses."""
 
     values = values or {}
+    notes = notes or {}
     return [
         {
             "key": spec["key"],
             "label": spec["label"],
             "tone": spec.get("tone", "default"),
             "value": values.get(spec["key"], "--"),
+            "note": notes.get(spec["key"], ""),
         }
         for spec in specs
     ]
@@ -1573,6 +1582,7 @@ def system_management_view(request):
             "summary_cards": build_summary_cards(
                 SYSTEM_MANAGEMENT_SUMMARY_CARD_SPECS,
                 get_system_management_summary_values(),
+                SYSTEM_MANAGEMENT_SHELL_NOTES,
             ),
             "user_form": user_form,
             "users": page_obj.object_list,

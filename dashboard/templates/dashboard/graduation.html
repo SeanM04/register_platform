@@ -16,23 +16,16 @@
 {% block content %}
 <section class="graduation-layout" data-payload-url="{{ graduation_payload_url|default:'/metrics/graduation/payload/' }}" data-narratives-url="{{ graduation_narratives_url|default:'/metrics/graduation/narratives/' }}" data-ai-narratives-enabled="{{ graduation_ai_narratives_enabled|yesno:'true,false' }}">
     <section class="graduation-metrics">
-        <article class="graduation-metric">
-            <p class="graduation-metric-label">Graduated Students</p>
-            <p class="graduation-metric-value" data-metric-value data-metric-key="total_graduated_students">-</p>
-        </article>
-        <article class="graduation-metric">
-            <p class="graduation-metric-label">Average Graduation Rate</p>
-            <p class="graduation-metric-value" data-metric-value data-metric-key="average_graduation_rate">-</p>
-        </article>
-        <article class="graduation-metric">
-            <p class="graduation-metric-label">On-Time Graduation</p>
-            <p class="graduation-metric-value" data-metric-value data-metric-key="on_time_graduation_rate">-</p>
-        </article>
-        <article class="graduation-metric">
-            <p class="graduation-metric-label">Best Faculty Rate</p>
-            <p class="graduation-metric-value" data-metric-value data-metric-key="best_faculty_rate">-</p>
+        {% for card in summary_cards %}
+        <article class="graduation-metric" data-metric-card data-metric-key="{{ card.key }}">
+            <p class="graduation-metric-label">{{ card.label }}</p>
+            <p class="graduation-metric-value" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+            <p class="graduation-metric-note" data-metric-note data-metric-key="{{ card.key }}">{{ card.note }}</p>
+            {% if card.key == "best_faculty_rate" %}
             <p class="graduation-metric-faculty" id="best-faculty-name" data-faculty-loading></p>
+            {% endif %}
         </article>
+        {% endfor %}
     </section>
 
     <section class="completion-story-banner" id="graduation-story-banner" aria-live="polite">
@@ -261,7 +254,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'dashboard/js/graduation.js' %}?v=20260601-drilldown-numeric-align01"></script>
+<script type="module" src="{% static 'dashboard/js/graduation.js' %}?v=20260603-shared-kpi02"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const initialiseAccordion = () => {

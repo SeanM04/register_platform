@@ -67,6 +67,7 @@ genderCopy: document.getElementById("demographic-gender-copy"),
             locationMixChart: document.getElementById("demographic-location-mix-chart"),
             programmeGenderChart: document.getElementById("demographic-programme-gender-chart"),
             fullscreenButtons: Array.from(document.querySelectorAll("[data-chart-fullscreen-toggle]")),
+            metricNotes: Array.from(document.querySelectorAll("[data-metric-note]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
         },
     };

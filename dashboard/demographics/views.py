@@ -7,8 +7,10 @@ from django.views.decorators.http import require_GET
 from accounts.decorators import ajax_login_required, login_required_except_domains
 
 from .ai_insights import get_demographic_card_narratives_result
-from .presenters import build_demographic_shell_context
+from .presenters import DEMOGRAPHIC_SHELL_NOTES, DEMOGRAPHIC_SUMMARY_CARD_NOTES, build_demographic_shell_context
+from .constants import DEMOGRAPHIC_SUMMARY_CARD_SPECS
 from .services import build_demographic_data, get_demographic_summary_values
+from ..views import build_summary_cards
 
 
 @login_required_except_domains()
@@ -26,7 +28,11 @@ def demographic_metrics(request):
     """Return demographic dashboard summary metrics as JSON."""
 
     search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_demographic_summary_values(request, search_query)})
+    metrics = get_demographic_summary_values(request, search_query)
+    return JsonResponse({
+        "metrics": metrics,
+        "summary_cards": build_summary_cards(DEMOGRAPHIC_SUMMARY_CARD_SPECS, metrics, DEMOGRAPHIC_SUMMARY_CARD_NOTES),
+    })
 
 
 @ajax_login_required
@@ -36,9 +42,11 @@ def demographic_payload(request):
 
     search_query = request.GET.get("q", "").strip()
     demographic_data = build_demographic_data(request, search_query)
+    metrics = demographic_data["summary_metrics"]
     return JsonResponse(
         {
-            "metrics": demographic_data["summary_metrics"],
+            "metrics": metrics,
+            "summary_cards": build_summary_cards(DEMOGRAPHIC_SUMMARY_CARD_SPECS, metrics, DEMOGRAPHIC_SUMMARY_CARD_NOTES),
             "gender_rows": demographic_data["gender_rows"],
             "location_rows": demographic_data["location_rows"],
             "location_mix_rows": demographic_data["location_mix_rows"],

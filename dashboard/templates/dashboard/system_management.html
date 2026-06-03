@@ -19,9 +19,10 @@
 
     <section class="system-metrics">
         {% for card in summary_cards %}
-        <article class="system-metric{% if card.tone == 'danger' %} system-metric-danger{% endif %}">
+        <article class="system-metric{% if card.tone == 'danger' %} system-metric-danger{% endif %}" data-metric-card data-metric-key="{{ card.key }}">
             <p class="system-metric-label">{{ card.label }}</p>
-            <p class="system-metric-value">{{ card.value }}</p>
+            <p class="system-metric-value" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+            <p class="system-metric-note" data-metric-note data-metric-key="{{ card.key }}">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>

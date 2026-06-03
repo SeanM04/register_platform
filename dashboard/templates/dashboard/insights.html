@@ -136,7 +136,7 @@
 >
     <section class="insight-metrics">
         {% for card in summary_cards %}
-        <article class="insight-metric insight-metric-{{ card.tone }}">
+        <article class="insight-metric insight-metric-{{ card.tone }}" data-metric-card>
             <p class="insight-metric-label">{{ card.label }}</p>
             <p class="insight-metric-value" data-metric-value data-metric-index="{{ forloop.counter0 }}">{{ card.value }}</p>
             <p class="insight-metric-note" data-metric-note data-metric-index="{{ forloop.counter0 }}">{{ card.note }}</p>

@@ -105,6 +105,7 @@ class CompletionAnalysis {
             if (typeof kpis.total_cohorts === "number") {
                 this.updateMetricValue("total_cohorts", kpis.total_cohorts);
             }
+            this.updateMetricNotes(result?.summary_cards || []);
         } catch (_) {
             // payload will fill in the metrics
         }
@@ -222,15 +223,29 @@ class CompletionAnalysis {
         this.updateMetricValue("average_completion_rate", kpis.average_completion_rate || 0, true);
         this.updateMetricValue("zero_completion_students", kpis.zero_completion_students || 0);
         this.updateMetricValue("shifted_students", kpis.shifted_students || 0);
+        this.updateMetricNotes(this.currentData?.summary_cards || []);
     }
 
     updateMetricValue(key, value, isRate = false) {
-        const element = document.querySelector(`[data-metric-key="${key}"]`);
+        const element = document.querySelector(`[data-metric-value][data-metric-key="${key}"]`);
         if (!element) {
             return;
         }
 
         element.textContent = isRate ? `${Math.round(value)}%` : `${value}`;
+    }
+
+    updateMetricNotes(summaryCards = []) {
+        if (!summaryCards.length) {
+            return;
+        }
+
+        summaryCards.forEach((card) => {
+            const note = document.querySelector(`.completion-metric-note[data-metric-key="${card.key}"]`);
+            if (note) {
+                note.textContent = card.note || "";
+            }
+        });
     }
 
     updateCharts() {

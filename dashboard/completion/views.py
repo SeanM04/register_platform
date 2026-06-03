@@ -7,13 +7,27 @@ import json
 from django.conf import settings
 
 from accounts.decorators import login_required_except_domains
-from ..views import build_layout_context
+from ..views import build_layout_context, build_summary_cards
 from .json_encoder import PandasJSONEncoder
 
 logger = logging.getLogger(__name__)
 
 COMPLETION_ACTIVE_KEY = "completion"
 COMPLETION_PAGE_TITLE = "Completion Analysis"
+COMPLETION_SUMMARY_CARD_SPECS = [
+    {"key": "total_students", "label": "Total Students", "tone": "default"},
+    {"key": "total_cohorts", "label": "Effective Cohorts", "tone": "default"},
+    {"key": "average_completion_rate", "label": "Average Completion", "tone": "default"},
+    {"key": "zero_completion_students", "label": "Zero Completion", "tone": "danger"},
+    {"key": "shifted_students", "label": "Shifted Students", "tone": "default"},
+]
+COMPLETION_SUMMARY_CARD_NOTES = {
+    "total_students": "Unique students currently visible in this scope.",
+    "total_cohorts": "Cohorts contributing to the completion analysis.",
+    "average_completion_rate": "Average completion across the visible cohort set.",
+    "zero_completion_students": "Students forced to 0% under the completion rules.",
+    "shifted_students": "Students moved into a later effective cohort.",
+}
 
 
 def _completion_ai_narratives_enabled():
@@ -46,6 +60,10 @@ def completion_view(request):
     context.update({
         "page_title": COMPLETION_PAGE_TITLE,
         "completion_ai_narratives_enabled": _completion_ai_narratives_enabled(),
+        "summary_cards": build_summary_cards(
+            COMPLETION_SUMMARY_CARD_SPECS,
+            notes=COMPLETION_SUMMARY_CARD_NOTES,
+        ),
     })
     return render(request, 'dashboard/completion.html', context)
 
@@ -57,11 +75,20 @@ def completion_metrics(request):
     """
     try:
         from services.completion_service import get_cached_completion_fast_kpis
-        return JsonResponse(get_cached_completion_fast_kpis(
+        result = get_cached_completion_fast_kpis(
             year=request.GET.get('year'),
             period=request.GET.get('period'),
             faculty=request.GET.get('faculty'),
-        ))
+        )
+        metrics = result.get("kpis", {})
+        return JsonResponse({
+            **result,
+            "summary_cards": build_summary_cards(
+                COMPLETION_SUMMARY_CARD_SPECS,
+                metrics,
+                COMPLETION_SUMMARY_CARD_NOTES,
+            ),
+        })
     except Exception as e:
         logger.error(f"Error in completion_metrics: {e}")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
@@ -79,6 +106,12 @@ def completion_payload(request):
             year=request.GET.get('year'),
             period=request.GET.get('period'),
             faculty=request.GET.get('faculty'),
+        )
+        metrics = data.get("kpis", {})
+        data["summary_cards"] = build_summary_cards(
+            COMPLETION_SUMMARY_CARD_SPECS,
+            metrics,
+            COMPLETION_SUMMARY_CARD_NOTES,
         )
         return JsonResponse({'status': 'success', 'data': data}, encoder=PandasJSONEncoder)
     except Exception as e:

@@ -248,9 +248,10 @@
 >
     <section class="level-metrics">
         {% for card in summary_cards %}
-        <article class="level-metric">
+        <article class="level-metric" data-metric-card data-metric-key="{{ card.key }}">
             <p class="level-metric-label">{{ card.label }}</p>
             <p class="level-metric-value is-loading" data-metric-value data-metric-key="{{ card.key }}">{{ card.value }}</p>
+            <p class="level-metric-note" data-metric-note data-metric-key="{{ card.key }}">{{ card.note }}</p>
         </article>
         {% endfor %}
     </section>

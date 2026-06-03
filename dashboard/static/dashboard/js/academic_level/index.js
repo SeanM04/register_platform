@@ -112,7 +112,7 @@ const initialiseChartResizeHandling = (controllers, resizeCharts) => {
     });
 };
 
-const hydrateSummaryCards = (context, metrics = {}) => {
+const hydrateSummaryCards = (context, metrics = {}, summaryCards = []) => {
     context.elements.metricValues.forEach((element) => {
         const metricKey = element.dataset.metricKey;
         if (!metricKey || !Object.prototype.hasOwnProperty.call(metrics, metricKey)) {
@@ -121,6 +121,17 @@ const hydrateSummaryCards = (context, metrics = {}) => {
 
         element.textContent = metrics[metricKey];
         element.classList.remove("is-loading");
+    });
+
+    if (!summaryCards.length || !context.elements.metricNotes?.length) {
+        return;
+    }
+
+    summaryCards.forEach((card) => {
+        const note = context.elements.metricNotes.find((node) => node.dataset.metricKey === card.key);
+        if (note) {
+            note.textContent = card.note || "";
+        }
     });
 };
 
@@ -388,7 +399,7 @@ export const initialiseAcademicLevelPage = () => {
                 return;
             }
 
-            hydrateSummaryCards(shellContext, metricsResponse?.metrics || {});
+            hydrateSummaryCards(shellContext, metricsResponse?.metrics || {}, metricsResponse?.summary_cards || []);
             const storyPayload = metricsResponse?.story_payload || {};
             const storyLevelRows = storyPayload.level_rows || [];
             renderStoryBanner(
@@ -419,7 +430,7 @@ export const initialiseAcademicLevelPage = () => {
                 narrativeDiagnostics: payloadResponse?.diagnostics || {},
             });
 
-            hydrateSummaryCards(context, payloadResponse?.metrics || {});
+            hydrateSummaryCards(context, payloadResponse?.metrics || {}, payloadResponse?.summary_cards || []);
             
             // Store all rows for pagination - ALWAYS keep this data
             const allLevelRows = payloadResponse?.level_rows || [];

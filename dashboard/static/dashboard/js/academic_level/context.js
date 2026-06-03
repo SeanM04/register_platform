@@ -36,6 +36,7 @@ export const createAcademicLevelContext = (payload = {}) => {
             levelSearchInput: document.querySelector(".level-search"),
             storyBanner: document.getElementById("academic-level-story-banner"),
             narrativeStatus: document.getElementById("academic-level-narrative-status"),
+            metricNotes: Array.from(document.querySelectorAll("[data-metric-note]")),
             metricValues: Array.from(document.querySelectorAll("[data-metric-value]")),
             genderCopy: document.getElementById("academic-level-gender-copy"),
             genderNote: document.getElementById("academic-level-gender-note"),

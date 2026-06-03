@@ -206,6 +206,7 @@ class GraduationAnalysis {
         this.updateMetricValue("average_graduation_rate", kpis.average_graduation_rate || 0, true);
         this.updateMetricValue("on_time_graduation_rate", kpis.on_time_graduation_rate || 0, true);
         this.updateMetricValue("best_faculty_rate", kpis.best_faculty_rate || 0, true);
+        this.updateMetricNotes(this.currentData?.summary_cards || []);
 
         const facultyNameElement = document.getElementById("best-faculty-name");
         if (facultyNameElement) {
@@ -215,11 +216,24 @@ class GraduationAnalysis {
     }
 
     updateMetricValue(key, value, isRate = false) {
-        const element = document.querySelector(`[data-metric-key="${key}"]`);
+        const element = document.querySelector(`[data-metric-value][data-metric-key="${key}"]`);
         if (!element) {
             return;
         }
         element.textContent = isRate ? `${Math.round(value)}%` : `${value}`;
+    }
+
+    updateMetricNotes(summaryCards = []) {
+        if (!summaryCards.length) {
+            return;
+        }
+
+        summaryCards.forEach((card) => {
+            const note = document.querySelector(`.graduation-metric-note[data-metric-key="${card.key}"]`);
+            if (note) {
+                note.textContent = card.note || "";
+            }
+        });
     }
 
     updateCharts() {
