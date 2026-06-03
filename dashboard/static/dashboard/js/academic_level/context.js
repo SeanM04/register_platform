@@ -13,7 +13,7 @@ export const createAcademicLevelContext = (payload = {}) => {
     const overviewNarrativesAreAi = isTrustedAiNarrativeSource(overviewNarrativeSource);
     const topProgrammeRows = [...programmeRows]
         .sort((left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme))
-        .slice(0, 5);
+        .slice(0, Math.min(5, programmeRows.length));
 
     const levelTableBody = document.querySelector(".level-table tbody");
 
@@ -83,7 +83,7 @@ export const updateAcademicLevelContext = (context, payload = {}) => {
     context.data.narrativeDiagnostics = narrativeDiagnostics;
     context.data.topProgrammeRows = [...context.data.programmeRows]
         .sort((left, right) => right.registrations - left.registrations || left.programme.localeCompare(right.programme))
-        .slice(0, 5);
+        .slice(0, Math.min(5, context.data.programmeRows.length));
 
     const overviewNarrativeSource = String(cardNarratives?.source || "rules").trim().toLowerCase();
     context.flags.overviewNarrativeSource = overviewNarrativeSource;

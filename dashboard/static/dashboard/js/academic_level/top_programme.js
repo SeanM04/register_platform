@@ -8,6 +8,7 @@ import {
     formatAcademicLevelTick,
     formatChartLabel,
     formatLegendProgrammeName,
+    formatWholePercentage,
     initialiseChart,
     setChartClickability,
     toTitleCase,
@@ -27,13 +28,16 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
     const isCompact = chartWidth > 0 ? chartWidth < 640 : false;
     const isNarrow = chartWidth > 0 ? chartWidth < 500 : false;
     const useLegendFirstLayout = isNarrow;
+    const visibleProgrammeCount = rows.length;
+    const programmeLabel = visibleProgrammeCount === 1 ? "programme" : "programmes";
+    const registrationLabel = rows.reduce((total, row) => total + row.registrations, 0).toLocaleString();
 
     return ({
         ...buildAnimationConfig(rows),
        color: ["#4b66c1", "#78c8e8", "#9A60B4", "#6B7280", "#8B5CF6"],
         title: {
-            text: rows.reduce((total, row) => total + row.registrations, 0).toLocaleString(),
-            subtext: "top 5 registrations",
+            text: registrationLabel,
+            subtext: `top ${visibleProgrammeCount} ${programmeLabel}`,
             left: "center",
             top: isNarrow ? "34%" : "40%",
             textStyle: {
@@ -70,7 +74,7 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
                     { label: "Students", value: row.students },
                     { label: "Pass rate", value: row.pass_rate },
                     { label: "Average mark", value: row.average_mark_display },
-                    { label: "Top 5 share", value: `${params.percent}%` },
+                    { label: `Top ${visibleProgrammeCount} share`, value: formatWholePercentage(params.percent) },
                 ]);
             },
         },
@@ -105,7 +109,7 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
                     color: "#ffffff",
                     fontWeight: 800,
                     fontSize: 11,
-                    formatter: ({ percent }) => (percent >= 15 ? `${percent}%` : ""),
+                    formatter: ({ percent }) => (percent >= 15 ? formatWholePercentage(percent) : ""),
                 } : {
                     position: "outside",
                     alignTo: "edge",
@@ -115,7 +119,7 @@ const buildTopProgrammeChartOption = (rows, selectedProgramme, chartWidth = 0) =
                     color: "#082340",
                     fontWeight: 700,
                     lineHeight: 18,
-                    formatter: ({ data, percent }) => `${formatChartLabel(data.name, isCompact ? 18 : 22)}\n${percent}%`,
+                    formatter: ({ data, percent }) => `${formatChartLabel(data.name, isCompact ? 18 : 22)}\n${formatWholePercentage(percent)}`,
                 },
                 labelLine: {
                     show: false,
@@ -313,6 +317,9 @@ export const initialiseTopProgrammeSection = (context) => {
         setTopProgrammeDetailState(false);
         setChartClickability(chart, true);
         chart.setOption(buildTopProgrammeChartOption(topProgrammeRows, null, chart.getWidth()), true);
+        if (programmeTopReset) {
+            programmeTopReset.textContent = "Back to overview";
+        }
         setTopProgrammeContext(null);
         setTopProgrammeNarrative(null);
         window.requestAnimationFrame(() => {

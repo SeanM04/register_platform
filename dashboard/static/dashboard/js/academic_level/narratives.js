@@ -287,7 +287,7 @@ export const buildTopProgrammeOverviewNarrative = (rows) => {
     const topShare = totalRegistrations ? Math.round((topRow.registrations / totalRegistrations) * 100) : 0;
     const programmeName = formatStoryProgrammeName(topRow.programme);
 
-    const insight = `${programmeName} currently carries ${numberFormatter.format(topRow.registrations)} registrations, which is about ${topShare}% of the visible top-five programme load.`;
+    const insight = `${programmeName} currently carries ${numberFormatter.format(topRow.registrations)} registrations, which is about ${topShare}% of the visible programme load in this filter scope.`;
     const action = runnerUp
         ? `Drill into ${programmeName} first to see which academic levels are absorbing that load before comparing it with the next programme behind it.`
         : "Widen the current filters if you want a broader programme comparison across the cohort.";
@@ -299,7 +299,7 @@ export const buildTopProgrammeDetailNarrative = (programme) => {
     if (!programme || !programme.level_breakdown?.length) {
         return {
             insight: "No programme drilldown insight is available for the current selection.",
-            action: "Action: Go back to the top-five view and select another programme slice.",
+            action: "Action: Go back to the programme overview and select another programme slice.",
         };
     }
 

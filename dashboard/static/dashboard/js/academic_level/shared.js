@@ -39,6 +39,8 @@ export const buildGradient = (startColor, endColor) => (
     ])
 );
 
+export const formatWholePercentage = (value) => `${Math.round(Number(value || 0))}%`;
+
 export const formatChartLabel = (value, maxLength = 26) => {
     const text = String(value || "");
     return text.length > maxLength ? `${text.slice(0, Math.max(maxLength - 3, 1))}...` : text;

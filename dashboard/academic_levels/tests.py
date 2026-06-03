@@ -3,6 +3,7 @@
 import urllib.error
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -20,6 +21,12 @@ from ..test_support import DashboardFixtureMixin
 class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
     """Exercise academic-level analytics and AI narrative fallbacks."""
 
+    def setUp(self):
+        """Clear dashboard caches so each academic-level test starts from a clean scope."""
+
+        super().setUp()
+        cache.clear()
+
     def test_academic_level_view_renders_lightweight_shell(self):
         """The first academic-level render should return a lightweight shell context."""
 
@@ -29,6 +36,8 @@ class AcademicLevelViewTests(DashboardFixtureMixin, TestCase):
         self.assertNotIn("level_rows", response.context)
         self.assertNotIn("level_chart_rows", response.context)
         self.assertContains(response, reverse("dashboard:academic-level-payload"))
+        self.assertNotContains(response, "Top 5 programmes by enrolment chart")
+        self.assertNotContains(response, "Back to top 5")
 
     def test_academic_level_payload_supplies_graph_breakdowns(self):
         """Academic level payload should expose pass, gender, and programme deep-dive data."""
