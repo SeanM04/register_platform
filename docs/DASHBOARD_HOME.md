@@ -47,10 +47,8 @@ overview calculations and AI-assisted copy to arrive after the shell is visible.
   Renders `dashboard/templates/dashboard/home.html` with lightweight summary-card
   placeholders and the shared layout context.
 - `dashboard_home_metrics()`
-  Returns headline KPI values as JSON. Uses the **fast** `get_home_summary_values`
-  from `dashboard/views.py` which runs direct DB aggregate queries (~0.7 s).
-  This endpoint is intentionally decoupled from the heavy payload computation so
-  KPI cards always load quickly even when the 5-minute payload cache is cold.
+  Returns the same headline KPI values used by the overview payload so the
+  homepage cards and AJAX hydration stay in sync.
 - `dashboard_home_payload()`
   Returns the heavier chart datasets and route cards. Backed by
   `get_cached_overview_dashboard_data()` with a 5-minute TTL. Cold rebuilds
@@ -76,10 +74,9 @@ overview calculations and AI-assisted copy to arrive after the shell is visible.
   - `progress_rows`
   - `action_cards`
 - `dashboard/views.py` → `get_home_summary_values()`
-  Lightweight alternative used exclusively by `dashboard_home_metrics()`. Computes
-  enrolled, registered, pass rate, completion rate, on-time graduation, first-year
-  retention, and at-risk count using DB-level aggregations. Does not build risk
-  profiles.
+  Compatibility wrapper used by `dashboard_home_metrics()`. Delegates to the
+  overview feature package so the shared KPI set stays aligned across entry
+  points.
 
 ## 4. Frontend Modules
 
@@ -207,14 +204,11 @@ On every 5-minute cache expiry, a cold rebuild was triggered that blocked both
 endpoints for up to 71 seconds, leaving KPI cards in their skeleton loading state
 until the rebuild finished (or until the browser gave up).
 
-### Fix 1 — Decouple the Metrics Endpoint
+### Fix 1 — Keep KPI Values Consistent
 
-`dashboard_home_metrics()` now calls `get_home_summary_values()` from
-`dashboard/views.py` instead of the overview services version.
-
-The fast version runs 5–6 direct DB aggregate queries and returns in ~0.7 s
-regardless of cache state. It covers all KPI card keys except
-`students_satisfaction`, which is filled in when the payload arrives.
+`dashboard_home_metrics()` now uses the same overview summary metrics as the
+payload endpoint, which keeps the headline cards aligned across the shell and
+hydration flow.
 
 The payload endpoint continues to use `get_cached_overview_dashboard_data()` for
 the full chart and card dataset.

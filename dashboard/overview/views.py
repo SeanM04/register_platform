@@ -8,8 +8,12 @@ from accounts.decorators import ajax_login_required, login_required_except_domai
 
 from .ai_insights import get_overview_card_narratives_result
 from .presenters import build_overview_shell_context
-from .services import build_overview_drilldown_data, get_cached_overview_dashboard_data, get_filtered_registrations
-from ..views import get_home_summary_values
+from .services import (
+    build_overview_drilldown_data,
+    get_cached_overview_dashboard_data,
+    get_filtered_registrations,
+    get_home_summary_values,
+)
 
 
 @login_required_except_domains()

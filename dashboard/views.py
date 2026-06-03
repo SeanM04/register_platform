@@ -748,54 +748,11 @@ def get_filtered_results(registrations):
 
 
 def get_home_summary_values(request):
-    """Calculate overview metrics for the home dashboard asynchronously."""
+    """Return the landing-page KPI set used by the overview dashboard."""
 
-    registrations = get_filtered_registrations(request, include_course_results=False)
-    filtered_results = get_filtered_results(registrations)
+    from .overview.services import get_home_summary_values as feature_get_home_summary_values
 
-    total_registered = registrations.count()
-    total_students = registrations.values("student_id").distinct().count()
-    pass_count = filtered_results.filter(mark__gte=50).count()
-    result_count = filtered_results.count()
-    proceed_count = registrations.filter(decision__iexact="PROCEED").count()
-    completion_rate = (
-        f"{round((proceed_count / total_registered) * 100)}%"
-        if total_registered
-        else "0%"
-    )
-    avg_mark = filtered_results.aggregate(value=Avg("mark"))["value"]
-    
-    # Calculate first year retention using the new dynamic method
-    from .overview.services import _calculate_first_year_retention
-    first_year_retention = _calculate_first_year_retention(registrations)
-    
-    # Handle special cases for retention display
-    if first_year_retention == "No data available":
-        retention_display = "No data available"
-    elif first_year_retention == "0%":
-        retention_display = "Retention cannot be calculated for selected filters"
-    else:
-        retention_display = first_year_retention
-    
-    on_time_graduation = registrations.filter(decision__iexact="PROCEED", carrying=0).count()
-    at_risk_count = (
-        filtered_results.filter(mark__lt=50)
-        .values("registration__student_id")
-        .annotate(fail_count=Count("id"))
-        .filter(fail_count__gte=2)
-        .count()
-    )
-
-    return {
-        "enrolled": total_students,
-        "registered": total_registered,
-        "pass_rate": f"{round((pass_count / result_count) * 100)}%" if result_count else "0%",
-        "completion_rate": completion_rate,
-        "on_time_graduation": on_time_graduation,
-        "average_mark": round(avg_mark or 0),
-        "first_year_retention": retention_display,
-        "at_risk": at_risk_count,
-    }
+    return feature_get_home_summary_values(request)
 
 def build_programme_rows(programmes):
     """Delegate programme row shaping to the feature package for compatibility."""

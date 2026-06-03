@@ -65,8 +65,15 @@ class OverviewDashboardTests(DashboardFixtureMixin, TestCase):
         self.assertEqual(len(summary_cards), 8)
         self.assertEqual(summary_cards[0]["key"], "enrolled")
         self.assertEqual(summary_cards[0]["value"], 2)
+        at_risk_card = next(card for card in summary_cards if card["key"] == "at_risk")
+        self.assertEqual(at_risk_card["value"], 2)
         completion_card = next(card for card in summary_cards if card["key"] == "completion_rate")
         self.assertEqual(completion_card["value"], "33%")
+
+        metrics_response = self.client.get(reverse("dashboard:home-metrics"))
+        self.assertEqual(metrics_response.status_code, 200)
+        self.assertEqual(metrics_response.json()["metrics"]["at_risk"], 2)
+
         self.assertTrue(outcome_rows)
         self.assertTrue(risk_distribution_rows)
         self.assertTrue(faculty_load_rows)
