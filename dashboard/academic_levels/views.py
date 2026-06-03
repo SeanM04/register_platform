@@ -12,7 +12,7 @@ from .constants import ACADEMIC_LEVEL_SUMMARY_CARD_SPECS
 from .services import (
     build_academic_level_drilldown_data,
     get_cached_academic_level_dashboard_data,
-    get_cached_academic_level_fast_metrics,
+    get_cached_academic_level_summary_snapshot,
     get_academic_level_summary_values,
 )
 from ..views import build_summary_cards
@@ -36,7 +36,7 @@ def academic_level_metrics(request):
     """Return academic-level dashboard summary metrics as JSON."""
 
     search_query = request.GET.get("q", "").strip()
-    summary_snapshot = get_cached_academic_level_fast_metrics(request, search_query)
+    summary_snapshot = get_cached_academic_level_summary_snapshot(request, search_query)
     metrics = summary_snapshot.get("metrics", summary_snapshot)
     return JsonResponse({
         **summary_snapshot,

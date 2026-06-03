@@ -368,6 +368,16 @@ def build_academic_level_data(request, search_query=""):
         "level_chart_rows": level_chart_rows,
         "gender_performance_rows": gender_performance_rows,
         "programme_performance_rows": programme_performance_rows,
+        "summary_metrics": {
+            "levels": len(level_rows),
+            "registrations": sum(item["registrations"] for item in level_rows),
+            "students": sum(item["students"] for item in level_rows),
+            "average_pass_rate": (
+                f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in level_rows) / len(level_rows))}%"
+                if level_rows
+                else "0%"
+            ),
+        },
     }
 
 
@@ -504,6 +514,10 @@ def get_academic_level_summary_values(request, search_query="", academic_level_d
     """Calculate academic-level summary metrics for asynchronous loading."""
 
     if academic_level_data is not None:
+        summary_metrics = academic_level_data.get("summary_metrics")
+        if summary_metrics is not None:
+            return summary_metrics
+
         level_rows = academic_level_data["level_rows"]
         return {
             "levels": len(level_rows),
