@@ -2,6 +2,9 @@
 
 import logging
 from typing import Any, Dict, List
+from urllib.parse import urlencode
+
+from django.core.cache import cache
 
 from services.graduation_services import (
     _build_academic_completion_state,
@@ -174,6 +177,17 @@ def _paginate_rows(rows: List[Dict[str, Any]], page: int, page_size: int) -> Dic
     }
 
 
+def _get_cached_visible_profiles(request) -> List[Dict[str, Any]]:
+    """Return cached visible student profiles for the current filter scope."""
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    cache_key = f"dashboard:graduation:drilldown_profiles:{query_string or 'all'}"
+    result = cache.get(cache_key)
+    if result is None:
+        result = _build_visible_profiles(request)
+        cache.set(cache_key, result, 300)
+    return result
+
+
 def build_graduation_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
     """Return student rows for graduation analysis chart drill-downs."""
 
@@ -184,7 +198,7 @@ def build_graduation_drilldown_data(request, chart_key, bucket_key, page=1, page
         page,
     )
 
-    profiles = _build_visible_profiles(request)
+    profiles = _get_cached_visible_profiles(request)
     graduated_students = _build_graduated_students(profiles)
     one_step_students = _build_one_step_students(profiles)
 

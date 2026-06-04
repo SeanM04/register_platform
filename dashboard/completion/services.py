@@ -44,7 +44,6 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
         filtered_students = [
             student for student in visible_students
             if str(student.get("programme_name") or "").strip().lower() == normalized_bucket
-            or str(student.get("programme_normalized_name") or "").strip().lower() == normalized_bucket
         ]
         title = f"Students - {bucket_key}"
         subtitle = f"Students currently visible in {bucket_key}."
@@ -108,8 +107,4 @@ def build_completion_drilldown_data(request, chart_key, bucket_key, page=1, page
             "has_next": safe_page < total_pages,
             "has_previous": safe_page > 1,
         },
-        "current_page": safe_page,
-        "page_size": page_size,
-        "total_items": total_count,
-        "total_pages": total_pages,
     }

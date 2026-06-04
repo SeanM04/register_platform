@@ -65,6 +65,7 @@ def get_academic_level_registrations(request, search_query=""):
             "attendance_type_id",
             "attendance_type_record_id",
             "attendance_type_record__name",
+            "decision",
         )
         .prefetch_related(
             Prefetch(
@@ -363,6 +364,11 @@ def build_academic_level_data(request, search_query=""):
         key=lambda row: (-row["pass_rate_value"], -row["average_mark"], -row["registrations"], row["programme"])
     )
 
+    total_marks = sum(item["mark_count"] for item in level_map.values())
+    total_passes = sum(item["pass_count"] for item in level_map.values())
+    weighted_pass_rate = round((total_passes / total_marks) * 100) if total_marks else 0
+    all_student_ids = set().union(*(item["students"] for item in level_map.values())) if level_map else set()
+
     return {
         "level_rows": level_rows,
         "level_chart_rows": level_chart_rows,
@@ -371,12 +377,8 @@ def build_academic_level_data(request, search_query=""):
         "summary_metrics": {
             "levels": len(level_rows),
             "registrations": sum(item["registrations"] for item in level_rows),
-            "students": sum(item["students"] for item in level_rows),
-            "average_pass_rate": (
-                f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in level_rows) / len(level_rows))}%"
-                if level_rows
-                else "0%"
-            ),
+            "students": len(all_student_ids),
+            "average_pass_rate": f"{weighted_pass_rate}%",
         },
     }
 
@@ -491,16 +493,17 @@ def build_academic_level_summary_snapshot(request, search_query=""):
         key=lambda row: (-row["registrations"], row["programme"]),
     )
 
+    total_marks = sum(item["mark_count"] for item in level_summary.values())
+    total_passes = sum(item["pass_count"] for item in level_summary.values())
+    weighted_pass_rate = round((total_passes / total_marks) * 100) if total_marks else 0
+    all_student_ids = set().union(*(item["students"] for item in level_summary.values())) if level_summary else set()
+
     return {
         "metrics": {
             "levels": len(level_summary),
             "registrations": sum(item["registrations"] for item in level_summary.values()),
-            "students": sum(len(item["students"]) for item in level_summary.values()),
-            "average_pass_rate": (
-                f"{round(sum(round((item['pass_count'] / item['mark_count']) * 100) for item in level_summary.values() if item['mark_count']) / len(level_summary))}%"
-                if level_summary
-                else "0%"
-            ),
+            "students": len(all_student_ids),
+            "average_pass_rate": f"{weighted_pass_rate}%",
         },
         "story_payload": {
             "level_rows": level_rows,
@@ -518,17 +521,10 @@ def get_academic_level_summary_values(request, search_query="", academic_level_d
         if summary_metrics is not None:
             return summary_metrics
 
+        # summary_metrics not pre-computed — derive from level_rows as fallback
+        # (should not normally be reached since build_academic_level_data always sets it)
         level_rows = academic_level_data["level_rows"]
-        return {
-            "levels": len(level_rows),
-            "registrations": sum(row["registrations"] for row in level_rows),
-            "students": sum(row["students"] for row in level_rows),
-            "average_pass_rate": (
-                f"{round(sum(int(row['pass_rate'].replace('%', '')) for row in level_rows) / len(level_rows))}%"
-                if level_rows
-                else "0%"
-            ),
-        }
+        return build_academic_level_summary_snapshot(request, search_query)["metrics"]
 
     return build_academic_level_summary_snapshot(request, search_query)["metrics"]
 
@@ -636,7 +632,6 @@ def _academic_level_registration_rows(request, search_query=""):
     )
     if registration_level_index is None:
         registration_level_index = build_registration_display_level_index(registrations)
-    cumulative_average_index = _build_registration_cumulative_average_index(student_ids, faculty_name)
 
     rows = []
     for registration in registrations:
@@ -654,7 +649,7 @@ def _academic_level_registration_rows(request, search_query=""):
             for result in getattr(registration, "prefetched_course_results", [])
             if result.mark is not None
         ]
-        average_mark = round(sum(marks) / len(marks)) if marks else cumulative_average_index.get(registration.id)
+        average_mark = round(sum(marks) / len(marks)) if marks else None
         study_mode = _format_study_mode(registration)
 
         rows.append(
@@ -693,6 +688,8 @@ def _format_study_mode(registration):
         return "Visiting"
     if normalized in {"1", "conventional", "regular", "normal"}:
         return "Conventional"
+    if normalized.isdigit():
+        return "Not recorded"
     return str(raw_value).strip().title()
 
 
@@ -955,12 +952,22 @@ def _build_student_drilldown_payload(request, chart_key, bucket_key, matched_row
     }
 
 
+def get_cached_academic_level_drilldown_rows(request, search_query=""):
+    """Return cached per-registration rows for drill-down lookups."""
+    cache_key = _build_academic_level_cache_key(request, "drilldown-rows")
+    return cache.get_or_set(
+        cache_key,
+        lambda: _academic_level_registration_rows(request, search_query),
+        ACADEMIC_LEVEL_CACHE_TTL_SECONDS,
+    )
+
+
 def build_academic_level_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10, search_query=""):
     """Build modal drill-down data for Academic Levels charts."""
 
     chart_key = str(chart_key or "").strip().lower()
     bucket_key = str(bucket_key or "").strip()
-    rows = _academic_level_registration_rows(request, search_query)
+    rows = get_cached_academic_level_drilldown_rows(request, search_query)
     matched_rows = _filter_academic_level_drilldown_rows(rows, chart_key, bucket_key)
     hierarchy_payload = _build_hierarchy_payload(chart_key, bucket_key, matched_rows)
     payload = hierarchy_payload or _build_student_drilldown_payload(

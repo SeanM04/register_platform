@@ -18,7 +18,7 @@ const buildRequestUrl = (endpoint) => {
     return requestUrl;
 };
 
-const fetchJson = async (endpoint) => {
+export const fetchJson = async (endpoint) => {
     if (!endpoint) {
         return null;
     }
@@ -209,10 +209,9 @@ const setInsightShellErrorState = (context) => {
     }
 };
 
-export const initialiseInsightsPage = async () => {
+export const initialiseInsightsPage = async (metricsPromise = null, payloadPromise = null) => {
     const shellContext = createInsightContext();
     const { elements } = shellContext;
-    const metricsUrl = elements.root?.dataset.metricsUrl;
     const payloadUrl = elements.root?.dataset.payloadUrl;
 
     if (!payloadUrl) {
@@ -220,18 +219,17 @@ export const initialiseInsightsPage = async () => {
         return;
     }
 
-    if (metricsUrl) {
-        try {
-            const metricsResponse = await fetchJson(metricsUrl);
-            hydrateSummaryCards(shellContext, metricsResponse?.summary_cards || []);
-        } catch (_) {
-            // payload will fill in the cards
+    // Hydrate KPI cards as soon as metrics resolve (may arrive before payload)
+    const resolvedMetricsPromise = metricsPromise || Promise.resolve(null);
+    resolvedMetricsPromise.then((metricsResponse) => {
+        if (metricsResponse?.summary_cards) {
+            hydrateSummaryCards(shellContext, metricsResponse.summary_cards);
         }
-    }
+    }).catch(() => {});
 
     let payloadResponse = null;
     try {
-        payloadResponse = await fetchJson(payloadUrl);
+        payloadResponse = await (payloadPromise || fetchJson(payloadUrl));
     } catch (error) {
         setInsightShellErrorState(shellContext);
         return;

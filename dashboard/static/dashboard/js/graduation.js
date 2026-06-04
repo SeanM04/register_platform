@@ -19,6 +19,7 @@ import {
 class GraduationAnalysis {
     constructor() {
         this.root = document.querySelector(".graduation-layout");
+        this.metricsUrl = this.root?.dataset.metricsUrl || "/metrics/graduation/";
         this.payloadUrl = this.root?.dataset.payloadUrl || "/metrics/graduation/payload/";
         this.narrativesUrl = this.root?.dataset.narrativesUrl || "/metrics/graduation/narratives/";
         this.currentData = null;
@@ -34,9 +35,6 @@ class GraduationAnalysis {
 
     async openDrillDown(chartKey, bucketKey, page = 1) {
         try {
-            console.log("DEBUG: openDrillDown called with:", { chartKey, bucketKey, page });
-            
-            // Show instant loading indicator
             this.showDrilldownLoading();
             
             // Build drilldown request URL
@@ -55,8 +53,6 @@ class GraduationAnalysis {
             drilldownUrl.searchParams.set('bucket_key', bucketKey);
             drilldownUrl.searchParams.set('page', page);
             
-            console.log("DEBUG: drilldownUrl:", drilldownUrl.toString());
-            
             // Fetch drilldown data with timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
@@ -73,17 +69,13 @@ class GraduationAnalysis {
                 }
                 
                 const result = await response.json();
-                console.log("DEBUG: drilldown response:", result);
-                console.log("DEBUG: response status:", result.status);
-                console.log("DEBUG: response data:", result.data);
-                
+
                 if (result.status === 'success' && result.data) {
                     this.hideDrilldownLoading();
                     showGraduationDrillDownModal(result.data, (page) => {
                         this.openDrillDown(chartKey, bucketKey, page);
                     });
                 } else {
-                    console.log("DEBUG: response format unexpected:", result);
                     throw new Error(result.message || 'No drilldown data available');
                 }
             } catch (fetchError) {
@@ -104,11 +96,26 @@ class GraduationAnalysis {
 
     async init() {
         this.bindEvents();
-        await this.loadData();
+        await Promise.all([this.loadFastMetrics(), this.loadData()]);
         this.renderStoryBanner();
         this.renderFallbackNarratives();
         this.loadNarratives();
         this.syncFullscreenButtons();
+    }
+
+    async loadFastMetrics() {
+        try {
+            const result = await this.fetchJson(this.metricsUrl);
+            if (!result?.kpis) return;
+            const kpis = result.kpis;
+            this.updateMetricValue("total_graduated_students", kpis.total_graduated_students || 0);
+            this.updateMetricValue("average_graduation_rate", kpis.average_graduation_rate || 0, true);
+            this.updateMetricValue("on_time_graduation_rate", kpis.on_time_graduation_rate || 0, true);
+            this.updateMetricValue("best_faculty_rate", kpis.best_faculty_rate || 0, true);
+            this.updateMetricNotes(result.summary_cards || []);
+        } catch (_) {
+            // payload will fill in the cards
+        }
     }
 
     buildRequestUrl(endpoint) {
@@ -683,7 +690,6 @@ class GraduationAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: programme graduation chart clicked:", params);
             if (params.dataIndex !== undefined && topRows[params.dataIndex]) {
                 const programme = topRows[params.dataIndex];
                 if (programme.programme_name) {
@@ -799,7 +805,6 @@ class GraduationAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: cohort graduation chart clicked:", params);
             if (params.data && params.data.raw && params.data.raw.original_cohort_label) {
                 this.openDrillDown('graduation_cohorts', params.data.raw.original_cohort_label);
             }
@@ -894,7 +899,6 @@ class GraduationAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: faculty graduation chart clicked:", params);
             if (params.dataIndex !== undefined && sortedRows[params.dataIndex]) {
                 const faculty = sortedRows[params.dataIndex];
                 this.showHierarchicalDrilldown(faculty);
@@ -1017,7 +1021,6 @@ class GraduationAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: graduation timing chart clicked:", params);
             if (params.dataIndex !== undefined && rows[params.dataIndex]) {
                 const timing = rows[params.dataIndex];
                 if (timing.label) {
@@ -1107,7 +1110,6 @@ class GraduationAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: readiness programme chart clicked:", params);
             if (params.dataIndex !== undefined && topRows[params.dataIndex]) {
                 const programme = topRows[params.dataIndex];
                 if (programme.programme_name) {
@@ -1222,7 +1224,6 @@ class GraduationAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: readiness cohort chart clicked:", params);
             if (params.dataIndex !== undefined && sortedRows[params.dataIndex]) {
                 const cohort = sortedRows[params.dataIndex];
                 if (cohort.effective_cohort_label) {

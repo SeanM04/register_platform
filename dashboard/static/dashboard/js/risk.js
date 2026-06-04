@@ -1,4 +1,4 @@
-import { initialiseRiskPage } from "./risk/index.js?v=20260601-drilldown-click-reliability01";
+import { fetchJson, initialiseRiskPage } from "./risk/index.js?v=20260601-drilldown-click-reliability01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.
@@ -75,12 +75,20 @@ const initialiseCollapsibleSections = () => {
     });
 };
 
+const riskRoot = document.querySelector(".risk-layout");
+const metricsPromise = riskRoot?.dataset.metricsUrl
+    ? fetchJson(riskRoot.dataset.metricsUrl).catch(() => null)
+    : Promise.resolve(null);
+const payloadPromise = riskRoot?.dataset.payloadUrl
+    ? fetchJson(riskRoot.dataset.payloadUrl).catch(() => null)
+    : Promise.resolve(null);
+
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
-        initialiseRiskPage();
+        initialiseRiskPage(metricsPromise, payloadPromise);
         initialiseCollapsibleSections();
     }, { once: true });
 } else {
-    initialiseRiskPage();
+    initialiseRiskPage(metricsPromise, payloadPromise);
     initialiseCollapsibleSections();
 }

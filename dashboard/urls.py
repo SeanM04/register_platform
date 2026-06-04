@@ -32,12 +32,13 @@ from .completion.views import (
     completion_drilldown
 )
 from .graduation.views import (
-    graduation_view, 
-    graduation_payload, 
+    graduation_view,
+    graduation_metrics,
+    graduation_payload,
     graduation_narratives,
     graduation_programmes,
     graduation_faculties,
-    graduation_drilldown
+    graduation_drilldown,
 )
 
 app_name = "dashboard"
@@ -88,6 +89,7 @@ urlpatterns = [
     path("api/completion/periods", completion_periods, name="completion-periods"),
     path("api/completion/periods-by-year", completion_periods_by_year, name="completion-periods-by-year"),
     path("graduation/", graduation_view, name="graduation"),
+    path("metrics/graduation/", graduation_metrics, name="graduation-metrics"),
     path("metrics/graduation/payload/", graduation_payload, name="graduation-payload"),
     path("metrics/graduation/narratives/", graduation_narratives, name="graduation-narratives"),
     path("metrics/graduation/drilldown/", graduation_drilldown, name="graduation-drilldown"),

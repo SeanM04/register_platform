@@ -139,6 +139,7 @@
 {% block content %}
 <section
     class="programme-dashboard"
+    data-metrics-url="{% url 'dashboard:programme-metrics' %}"
     data-payload-url="{% url 'dashboard:programme-payload' %}"
     data-drilldown-url="{% url 'dashboard:programme-drilldown' %}"
     {% if programme_ai_narratives_enabled %}data-narratives-url="{% url 'dashboard:programme-narratives' %}"{% endif %}

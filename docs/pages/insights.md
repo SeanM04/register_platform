@@ -32,17 +32,18 @@ student table, recommendation content, and narrative state.
 flowchart TD
     A[GET /insights/] --> B[insights_view]
     B --> C[insights.html shell]
-    C --> D[insights JS modules]
-    D --> E[GET /metrics/insights/]
-    D --> F[GET /metrics/insights/payload/]
-    E --> G[Fast KPI cards ~50ms]
-    F --> H[Insights service - full build]
-    H --> I[Risk profiles]
-    H --> J[Faculty pressure]
-    H --> K[Driver and intervention summaries]
-    I --> L[Charts, student table, recommendations]
-    J --> L
-    K --> L
+    C --> D[insights.js — module load]
+    D --> E[metricsPromise fired immediately]
+    D --> F[payloadPromise fired immediately]
+    E --> G[GET /metrics/insights/ - fast KPI cards ~50ms]
+    F --> H[GET /metrics/insights/payload/ - full build]
+    G --> I[KPI cards hydrated early]
+    H --> J[Risk profiles]
+    H --> K[Faculty pressure]
+    H --> L[Driver and intervention summaries]
+    J --> M[Charts, student table, recommendations]
+    K --> M
+    L --> M
 ```
 
 ## Main Files
@@ -69,9 +70,12 @@ flowchart TD
 
 ## Performance Notes
 
+- `insights.js` fires `metricsPromise` and `payloadPromise` at module load (before `initialiseInsightsPage` runs) so both requests are in-flight from the first network tick.
+- `initialiseInsightsPage` accepts both promises as arguments. The metrics promise resolves via a `.then()` side-chain to hydrate KPI cards early; the payload promise is `await`ed for the main render.
 - The full payload build calls `build_student_risk_profiles_from_request_and_registrations`, which shares a single `get_filtered_registrations` fetch with the faculty load calculation. Earlier versions fetched registrations twice.
 - Cache TTL is 300 seconds. Fast metrics and full payload results are cached under separate keys derived from the active filter scope.
 - The fast metrics endpoint uses DB-level `Avg` and `Count` aggregates with simplified risk scoring (marks and fail count only, excluding carried modules and decisions). The numbers are directionally correct for immediate display and are replaced by exact values when the full payload arrives.
+- Drilldown profile builds are cached in `_get_cached_insights_profiles` under a key derived from the full request query string (300 s TTL). Both `build_hierarchical_drilldown_data` and `build_insights_drilldown_payload` share this cache, so the first drilldown click within a filter scope builds once and subsequent clicks read from cache.
 
 ## Data Inputs
 

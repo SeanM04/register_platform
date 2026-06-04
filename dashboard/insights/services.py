@@ -474,10 +474,20 @@ def _match_band(score, band):
     return min_score <= score <= int(max_score)
 
 
+def _get_cached_insights_profiles(request, search_query=""):
+    """Return cached student risk profiles for the current insights filter scope."""
+    cache_key = _build_insights_cache_key(request) + f":profiles:{search_query}"
+    result = cache.get(cache_key)
+    if result is None:
+        result = build_student_risk_profiles(request, search_query)
+        cache.set(cache_key, result, INSIGHTS_CACHE_TTL_SECONDS)
+    return result
+
+
 def build_hierarchical_drilldown_data(request, chart_key, bucket_key, search_query=""):
     """Build hierarchical drilldown data for faculty load (faculty → department → programme → students)."""
-    
-    risk_profiles = build_student_risk_profiles(request, search_query)
+
+    risk_profiles = _get_cached_insights_profiles(request, search_query)
     
     if chart_key == "faculty_load" or chart_key == "faculty_pressure":
         # Return departments for a faculty
@@ -546,7 +556,7 @@ def build_hierarchical_drilldown_data(request, chart_key, bucket_key, search_que
 def build_insights_drilldown_payload(request, chart_key, bucket_key, search_query="", page_number=None, page_size=10):
     """Build modal-ready drill-down payloads for insights charts."""
 
-    risk_profiles = build_student_risk_profiles(request, search_query)
+    risk_profiles = _get_cached_insights_profiles(request, search_query)
     risk_rows = [
         row
         for row in risk_profiles

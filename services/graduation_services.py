@@ -4,6 +4,8 @@ from collections import defaultdict
 import logging
 from typing import Any, Dict, List, Optional
 
+from django.core.cache import cache
+
 from dashboard.models import Registration
 from dashboard.student_history import (
     _programme_is_engineering,
@@ -1185,3 +1187,44 @@ def get_graduation_faculties() -> List[Dict[str, Any]]:
         .order_by("programme__department__faculty__name")
     )
     return [{"faculty": name} for name in faculty_names if name]
+
+
+GRADUATION_CACHE_TTL_SECONDS = 300
+
+
+def _build_graduation_cache_key(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> str:
+    parts = [year or "all", period or "all", faculty or "all"]
+    return f"dashboard:graduation:{'_'.join(parts)}"
+
+
+def get_cached_graduation_page_data(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return cached graduation analytics, rebuilding only on cold miss or TTL expiry."""
+
+    cache_key = _build_graduation_cache_key(year, period, faculty)
+    result = cache.get(cache_key)
+    if result is None:
+        result = get_graduation_page_data(year=year, period=period, faculty=faculty)
+        cache.set(cache_key, result, GRADUATION_CACHE_TTL_SECONDS)
+    return result
+
+
+def get_cached_graduation_fast_metrics(
+    year: Optional[str] = None,
+    period: Optional[str] = None,
+    faculty: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return graduation KPIs from payload cache when warm; empty placeholder on cold miss."""
+
+    payload_cache_key = _build_graduation_cache_key(year, period, faculty)
+    cached_payload = cache.get(payload_cache_key)
+    if cached_payload is not None:
+        return {"kpis": cached_payload.get("kpis", {})}
+    return {"kpis": {}}

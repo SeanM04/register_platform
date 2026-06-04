@@ -722,13 +722,18 @@ def get_cached_completion_fast_kpis(
     period: Optional[str] = None,
     faculty: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Return cached fast KPI counts for the current filter scope."""
+    """Return fast KPI counts, sourcing from the payload cache when warm to avoid number flips."""
 
-    cache_key = _build_completion_cache_key(year, period, faculty) + ":fast"
-    result = cache.get(cache_key)
+    payload_cache_key = _build_completion_cache_key(year, period, faculty)
+    cached_payload = cache.get(payload_cache_key)
+    if cached_payload is not None:
+        return {"kpis": cached_payload["kpis"]}
+
+    fast_cache_key = payload_cache_key + ":fast"
+    result = cache.get(fast_cache_key)
     if result is None:
         result = get_completion_fast_kpis(year=year, period=period, faculty=faculty)
-        cache.set(cache_key, result, COMPLETION_CACHE_TTL_SECONDS)
+        cache.set(fast_cache_key, result, COMPLETION_CACHE_TTL_SECONDS)
     return result
 
 

@@ -49,34 +49,46 @@ const buildProgrammeMixDataZoom = (rows) => {
 };
 
 const buildProgrammeMixSeries = (rows, visibleSeriesDefinitions) => {
+    const firstSeriesKey = visibleSeriesDefinitions[0]?.key;
     const lastSeriesKey = visibleSeriesDefinitions[visibleSeriesDefinitions.length - 1]?.key;
 
-    return visibleSeriesDefinitions.map((definition, index) => ({
-        name: definition.name,
-        type: "bar",
-        stack: "cohort",
-        barWidth: 18,
-        itemStyle: {
-            color: definition.color(),
-            borderWidth: 0,
-            borderColor: "transparent",
-        },
-        label: definition.key === lastSeriesKey ? {
-            show: true,
-            position: "right",
-            color: "#082340",
-            fontWeight: 700,
-            formatter: ({ dataIndex }) => rows[dataIndex]?.total ?? "",
-        } : undefined,
-        emphasis: {
-            focus: "series",
+    return visibleSeriesDefinitions.map((definition) => {
+        const isFirst = definition.key === firstSeriesKey;
+        const isLast = definition.key === lastSeriesKey;
+        const borderRadius = isFirst && isLast ? [6, 6, 6, 6]
+            : isFirst ? [6, 0, 0, 6]
+            : isLast ? [0, 6, 6, 0]
+            : [0, 0, 0, 0];
+
+        return {
+            name: definition.name,
+            type: "bar",
+            stack: "cohort",
+            barWidth: 18,
             itemStyle: {
+                color: definition.color(),
+                borderRadius,
                 borderWidth: 0,
                 borderColor: "transparent",
             },
-        },
-        data: rows.map((row) => row[definition.key]),
-    }));
+            label: isLast ? {
+                show: true,
+                position: "right",
+                color: "#082340",
+                fontWeight: 700,
+                formatter: ({ dataIndex }) => rows[dataIndex]?.total ?? "",
+            } : undefined,
+            emphasis: {
+                focus: "series",
+                itemStyle: {
+                    borderRadius,
+                    borderWidth: 0,
+                    borderColor: "transparent",
+                },
+            },
+            data: rows.map((row) => row[definition.key]),
+        };
+    });
 };
 
 const buildProgrammeMixChartOption = (rows, chartWidth = 0) => {

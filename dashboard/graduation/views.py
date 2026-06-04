@@ -2,11 +2,10 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 import logging
-import json
 
 from django.conf import settings
 
-from accounts.decorators import login_required_except_domains
+from accounts.decorators import ajax_login_required, login_required_except_domains
 from ..views import build_layout_context, build_summary_cards
 from .json_encoder import PandasJSONEncoder
 
@@ -66,44 +65,48 @@ def graduation_view(request):
     return render(request, 'dashboard/graduation.html', context)
 
 
+@ajax_login_required
+@require_GET
+def graduation_metrics(request):
+    """Return fast graduation KPI card values for first-paint hydration."""
+    from services.graduation_services import get_cached_graduation_fast_metrics
+
+    year = request.GET.get("year")
+    period = request.GET.get("period")
+    faculty = request.GET.get("faculty")
+
+    result = get_cached_graduation_fast_metrics(year=year, period=period, faculty=faculty)
+    kpis = result.get("kpis", {})
+    return JsonResponse({
+        "kpis": kpis,
+        "summary_cards": build_summary_cards(GRADUATION_SUMMARY_CARD_SPECS, kpis, GRADUATION_SUMMARY_CARD_NOTES),
+    })
+
+
+@ajax_login_required
 @require_GET
 def graduation_payload(request):
-    """
-    Return graduation analysis data as JSON.
-    This endpoint provides data for frontend graduation analysis page.
-    """
+    """Return graduation analysis data as JSON."""
     try:
-        # Get topbar filter parameters
-        year = request.GET.get('year')
-        period = request.GET.get('period')
-        faculty = request.GET.get('faculty')
-        
-        # Call graduation service
-        from services.graduation_services import get_graduation_page_data
-        
-        data = get_graduation_page_data(
-            year=year,
-            period=period,
-            faculty=faculty,
-        )
+        year = request.GET.get("year")
+        period = request.GET.get("period")
+        faculty = request.GET.get("faculty")
+
+        from services.graduation_services import get_cached_graduation_page_data
+
+        data = get_cached_graduation_page_data(year=year, period=period, faculty=faculty)
         metrics = data.get("kpis", {})
         data["summary_cards"] = build_summary_cards(
             GRADUATION_SUMMARY_CARD_SPECS,
             metrics,
             GRADUATION_SUMMARY_CARD_NOTES,
         )
-        
-        return JsonResponse({
-            'status': 'success',
-            'data': data
-        }, encoder=PandasJSONEncoder)
-        
+
+        return JsonResponse({"status": "success", "data": data}, encoder=PandasJSONEncoder)
+
     except Exception as e:
         logger.error(f"Error in graduation_payload: {e}")
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 @require_GET
@@ -129,33 +132,24 @@ def graduation_programmes(request):
         }, status=500)
 
 
+@ajax_login_required
 @require_GET
 def graduation_narratives(request):
-    """
-    Return optional AI or rule-based narratives for the graduation page.
-    """
+    """Return optional AI or rule-based narratives for the graduation page."""
     try:
-        year = request.GET.get('year')
-        period = request.GET.get('period')
-        faculty = request.GET.get('faculty')
+        year = request.GET.get("year")
+        period = request.GET.get("period")
+        faculty = request.GET.get("faculty")
 
-        from services.graduation_services import get_graduation_page_data
+        from services.graduation_services import get_cached_graduation_page_data
         from .ai_insights import get_graduation_card_narratives_result
 
-        graduation_data = get_graduation_page_data(
-            year=year,
-            period=period,
-            faculty=faculty,
-        )
-
+        graduation_data = get_cached_graduation_page_data(year=year, period=period, faculty=faculty)
         return JsonResponse(get_graduation_card_narratives_result(graduation_data))
 
     except Exception as e:
         logger.error(f"Error in graduation_narratives: {e}")
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 @require_GET

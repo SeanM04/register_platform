@@ -18,8 +18,10 @@ The graduation page answers seven related questions:
 
 - `/graduation/`
   Graduation Analysis page shell
+- `/metrics/graduation/`
+  Fast KPI values sourced from the payload cache (two-phase load phase 1)
 - `/metrics/graduation/payload/`
-  Main chart, KPI, and table payload
+  Main chart, KPI, and table payload (two-phase load phase 2)
 - `/metrics/graduation/narratives/`
   Optional AI or rule-based chart narratives with diagnostics
 - `/metrics/graduation/drilldown/`
@@ -38,7 +40,7 @@ The graduation page depends on the shared completion logic and then applies grad
 `_target_period_from_programme()` resolves the documented stage based on programme type and attendance mode:
 
 - **Masters programmes**: 3 semesters (1 year 6 months) if not delayed
-- **Engineering programmes**: 
+- **Engineering programmes**:
   - 10 semesters if conventional attendance
   - 8 semesters if visiting attendance
 - **All other undergraduate programmes**:
@@ -46,6 +48,7 @@ The graduation page depends on the shared completion logic and then applies grad
   - 6 semesters if visiting attendance
 
 The system determines attendance type by:
+
 1. Checking `Registration.attendance_type_record` first
 2. Falling back to course-result attendance type when student registration number is available
 3. Falling back to programme name analysis if no attendance signal is available
@@ -266,6 +269,16 @@ When a student is already graduation-eligible or completed, the graduation page
 now uses the documented target stage for the main table label instead of the
 latest module-bearing stage.
 
+## Caching
+
+`services/graduation_services.py` wraps the heavy build in a Django cache layer.
+
+- `GRADUATION_CACHE_TTL_SECONDS = 300` — results are valid for 5 minutes.
+- `get_cached_graduation_page_data(year, period, faculty)` is the primary entry point used by views. Builds and stores the full payload on cold miss; serves the cached copy for all subsequent requests within the TTL.
+- `get_cached_graduation_fast_metrics(year, period, faculty)` reads from the payload cache when warm, returning `{"kpis": cached_payload["kpis"]}`. On cold miss it returns `{"kpis": {}}` so the JS leaves KPI cards at `--` until the full payload arrives. This eliminates the two-number flip seen when a cheap aggregate produces a different value than the final build.
+- Cache keys are built from the active year, period, and faculty filter values so each distinct scope has its own entry.
+- `build_graduation_drilldown_data` in `dashboard/graduation/services.py` caches the expensive `_build_visible_profiles` call (300 s TTL) under a key derived from the full request query string. Subsequent drilldown clicks within the same filter scope hit the cache.
+
 ## Views Layer
 
 The page controller lives in `dashboard/graduation/views.py`.
@@ -278,15 +291,19 @@ Renders the page shell and injects:
 - the page title
 - whether AI narratives are configured to be available
 
+### `graduation_metrics()`
+
+Calls `get_cached_graduation_fast_metrics()`. Returns KPI values sourced from the payload cache when warm, or an empty `kpis` dict on cold miss. The JS uses this for the phase-1 card hydration.
+
 ### `graduation_payload()`
 
-Calls `get_graduation_page_data()` and returns the main JSON payload for the frontend.
+Calls `get_cached_graduation_page_data()` and returns the main JSON payload for the frontend. On a warm cache this is near-instant; on cold miss it builds and stores the result.
 
 ### `graduation_narratives()`
 
 Calls:
 
-- `get_graduation_page_data()`
+- `get_cached_graduation_page_data()`
 - `dashboard.graduation.ai_insights.get_graduation_card_narratives_result()`
 
 This endpoint returns:
@@ -299,6 +316,7 @@ This endpoint returns:
 Calls `build_graduation_drilldown_data()` in `dashboard/graduation/services.py` to provide student-level drilldown data.
 
 Supports chart keys:
+
 - `programme_load` - Students in specific programme
 - `cohorts` - Students in specific cohort
 - `faculties` - Students in specific faculty
@@ -306,6 +324,7 @@ Supports chart keys:
 - `programmes` - Students in specific programme
 
 Returns paginated student data with:
+
 - `rows` - Student details (name, registration number, programme, etc.)
 - `total_count` - Total matching students
 - `page` - Current page number
@@ -383,6 +402,7 @@ Responsibilities:
 
 Responsibilities:
 
+- fire `loadFastMetrics()` and `loadData()` concurrently via `Promise.all` so KPI cards populate as soon as the fast metrics endpoint responds (phase 1) while the full payload builds in parallel (phase 2)
 - fetch the graduation payload
 - render KPI values with safe data access (`data?.kpis?.key || default`)
 - render ECharts charts with proper backend key mapping
@@ -397,6 +417,23 @@ Responsibilities:
 - manage pagination with filter preservation
 - keep table pagination in place without jumping the browser to the top
 - display professional hierarchical drilldown modal with interactive department/programme cards
+
+#### Load Sequence
+
+```text
+shell renders (instant)
+  └─ loadFastMetrics() ──┐
+  └─ loadData()          ├─ both fired concurrently via Promise.all
+                         │
+  loadFastMetrics resolves first (~50ms, payload cache hit)
+       └─ /metrics/graduation/ → KPI cards populated from cached payload values
+  loadData resolves after full build
+       └─ /metrics/graduation/payload/ → all KPIs (exact), charts, student table
+  loadNarratives() — fire-and-forget
+       └─ /metrics/graduation/narratives/ → chart copy, diagnostics banner
+```
+
+On cold cache, `loadFastMetrics` returns `{}` and cards stay at `--` until `loadData` resolves. On warm cache, the fast endpoint reads directly from the cached payload so KPI values are identical to those that arrive with the full payload — no flip.
 
 #### Chart Data Mapping
 
@@ -419,6 +456,7 @@ The faculty chart supports hierarchical drilldown:
 4. **Student Level**: Click on any level to see individual student details
 
 The hierarchical modal displays:
+
 - Department cards with graduation statistics
 - Programme cards with graduation statistics
 - Interactive navigation between levels

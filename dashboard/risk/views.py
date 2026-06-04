@@ -13,6 +13,7 @@ from .services import (
     build_risk_drilldown_payload,
     build_student_risk_profiles,
     get_cached_risk_dashboard_data,
+    get_cached_risk_fast_metrics,
     paginate_risk_rows,
 )
 from ..views import build_summary_cards
@@ -171,16 +172,11 @@ def risk_programme_drilldown(request, programme):
 @ajax_login_required
 @require_GET
 def risk_metrics(request):
-    """Return risk dashboard summary metrics as JSON."""
+    """Return fast risk KPI card values for first-paint hydration."""
 
     search_query = request.GET.get("q", "").strip()
-    risk_data = get_cached_risk_dashboard_data(request, search_query)
-    metrics = {
-        "at_risk_students": risk_data["at_risk_students"],
-        "high_risk": risk_data["high_risk_count"],
-        "medium_risk": risk_data["medium_risk_count"],
-        "multi_fail": risk_data["multi_fail_count"],
-    }
+    fast_data = get_cached_risk_fast_metrics(request, search_query)
+    metrics = fast_data.get("metrics", {})
     return JsonResponse(
         {
             "metrics": metrics,

@@ -704,18 +704,18 @@ def build_registration_filter_q(request, prefix=""):
 
     filters = Q()
     if selected_year:
-        filters &= Q(**{f"{prefix}period__name__icontains": selected_year})
+        # Use the dedicated academic_year field to avoid icontains matching adjacent years
+        # e.g. "2024" must not match a period named "2023/2024 Semester 2"
+        filters &= Q(**{f"{prefix}period__academic_year": selected_year})
     if selected_period:
-        # Find all periods that match the selected display label
-        periods = AcademicPeriod.objects.all()
-        matching_period_names = []
-        for period in periods:
-            if format_period_label(period.name) == selected_period:
-                matching_period_names.append(period.name)
-        
-        if matching_period_names:
-            period_filter = Q(**{f"{prefix}period__name__in": matching_period_names})
-            filters &= period_filter
+        matching_period_names = [
+            period.name
+            for period in AcademicPeriod.objects.only("name")
+            if format_period_label(period.name) == selected_period
+        ]
+        # Explicit empty filter when no period matches — prevents silent passthrough
+        # of all data when the requested period label no longer exists in the DB.
+        filters &= Q(**{f"{prefix}period__name__in": matching_period_names})
     if selected_faculty:
         filters &= Q(**{f"{prefix}programme__department__faculty__name": selected_faculty})
 

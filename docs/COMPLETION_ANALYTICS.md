@@ -91,7 +91,7 @@ Most of these shift the effective cohort by `+1` semester. Suspension shifts by 
 
 - `COMPLETION_CACHE_TTL_SECONDS = 300` — results are valid for 5 minutes.
 - `get_cached_completion_page_data(year, period, faculty)` is the primary entry point used by views. It builds and stores the full payload on cold miss, then serves the cached copy for all subsequent requests within the TTL.
-- `get_cached_completion_fast_kpis(year, period, faculty)` caches the fast KPI response separately under a `:fast` key suffix.
+- `get_cached_completion_fast_kpis(year, period, faculty)` checks the payload cache first. When warm, it reads `kpis` directly from the cached payload so the fast endpoint returns the exact same numbers the full payload would — eliminating the KPI card value flip on cache hits. On a cold miss it falls back to a lightweight DB aggregate and stores the result under a separate `:fast` key suffix.
 - Cache keys are built from the active year, period, and faculty filter values so each distinct scope has its own entry.
 
 **Effect on concurrent requests**: `completion_payload`, `completion_narratives`, and `completion_drilldown` all share the same cache entry. Before caching was introduced, each of those endpoints rebuilt the full student history independently. Now the first request within a scope builds once and all others read from cache.

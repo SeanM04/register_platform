@@ -12,6 +12,7 @@
 {% block content %}
 <section
     class="demographic-layout"
+    data-metrics-url="{% url 'dashboard:demographic-metrics' %}"
     data-payload-url="{% url 'dashboard:demographic-payload' %}"
     data-drilldown-url="{% url 'dashboard:demographic-drilldown' %}"
     data-narratives-url="{% url 'dashboard:demographic-narratives' %}"

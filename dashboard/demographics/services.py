@@ -1,8 +1,9 @@
 """Service-layer logic for demographics analytics."""
 
 from collections import defaultdict
-from datetime import date
+from urllib.parse import urlencode
 
+from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
 
@@ -12,6 +13,7 @@ from ..student_history import extract_registration_year_semester
 from ..views import build_registration_filter_q, normalize_gender_key
 from .constants import BIRTH_LOCATION_MAP_ALIASES, BIRTH_LOCATION_MAP_POINTS
 
+DEMOGRAPHIC_CACHE_TTL_SECONDS = 300
 DEMOGRAPHIC_LOCATION_LIMIT = 10
 DEMOGRAPHIC_PROGRAMME_LIMIT = 20
 DEMOGRAPHIC_ITERATOR_CHUNK_SIZE = 2000
@@ -176,7 +178,14 @@ def build_demographic_data(request, search_query=""):
             age_gender_counts[age_group][gender_key] += 1
 
         programme_name = str(row["programme__name"] or "").strip() or "Unspecified programme"
-        programme_name = programme_name.replace("Bsc", "BSc").replace("Bcom", "BCom")
+        programme_name = (
+            programme_name
+            .replace("Bsc", "BSc")
+            .replace("Bcom", "BCom")
+            .replace(" AND ", " & ")
+            .replace(" And ", " & ")
+            .replace(" and ", " & ")
+        )
         programme_code = str(row["programme__code"] or "").strip() or "N/A"
         programme_gender_counts[programme_name][gender_key] += 1
         programme_code_map[programme_name] = programme_code
@@ -354,3 +363,68 @@ def get_demographic_summary_values(request, search_query=""):
     """Calculate demographic summary metrics for asynchronous loading."""
 
     return build_demographic_data(request, search_query)["summary_metrics"]
+
+
+def _build_demographic_cache_key(request, suffix):
+    """Create a stable cache key for the current demographic filter scope."""
+
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:demographic:{suffix}:{query_string or 'all'}"
+
+
+def get_demographic_fast_metrics(request, search_query=""):
+    """Return the 4 KPI card values via direct DB aggregates — no full data build."""
+
+    base_qs = Registration.objects.filter(build_registration_filter_q(request))
+    if search_query:
+        base_qs = base_qs.filter(
+            Q(student__first_names__icontains=search_query)
+            | Q(student__surname__icontains=search_query)
+            | Q(student__gender__icontains=search_query)
+            | Q(student__place_of_birth__icontains=search_query)
+            | Q(programme__name__icontains=search_query)
+        )
+
+    total_students = base_qs.values("student_id").distinct().count()
+    male_count = (
+        base_qs.filter(student__gender__iexact="male")
+        .values("student_id").distinct().count()
+    )
+    female_count = (
+        base_qs.filter(student__gender__iexact="female")
+        .values("student_id").distinct().count()
+    )
+    birth_locations = (
+        base_qs.exclude(student__place_of_birth__isnull=True)
+        .exclude(student__place_of_birth="")
+        .values("student__place_of_birth").distinct().count()
+    )
+
+    return {
+        "students": total_students,
+        "male": male_count,
+        "female": female_count,
+        "birth_locations": birth_locations,
+    }
+
+
+def get_cached_demographic_fast_metrics(request, search_query=""):
+    """Return cached fast KPI metrics for the demographic page header cards."""
+
+    cache_key = _build_demographic_cache_key(request, f"fast-metrics:{search_query}")
+    return cache.get_or_set(
+        cache_key,
+        lambda: get_demographic_fast_metrics(request, search_query),
+        DEMOGRAPHIC_CACHE_TTL_SECONDS,
+    )
+
+
+def get_cached_demographic_data(request, search_query=""):
+    """Return cached full demographic analytics for the current filter scope."""
+
+    cache_key = _build_demographic_cache_key(request, "payload")
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_demographic_data(request, search_query),
+        DEMOGRAPHIC_CACHE_TTL_SECONDS,
+    )

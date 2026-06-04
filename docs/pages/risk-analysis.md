@@ -31,14 +31,24 @@ payload endpoints, ECharts sections, and drill-down routes.
 flowchart TD
     A[GET /risk/] --> B[risk_view]
     B --> C[risk.html shell]
-    C --> D[risk JS modules]
-    D --> E[GET /metrics/risk/]
-    D --> F[GET /metrics/risk/payload/]
-    D --> G[GET /metrics/risk/drilldown/]
-    E --> H[Summary KPIs]
-    F --> I[Risk bands, drivers, levels, programmes]
-    G --> J[Paginated student drill-down]
+    C --> D[risk.js — module load]
+    D --> E[metricsPromise fired immediately]
+    D --> F[payloadPromise fired immediately]
+    E --> G[GET /metrics/risk/ - fast KPIs ~50ms]
+    F --> H[GET /metrics/risk/payload/ - full build]
+    G --> I[KPI cards hydrated early]
+    H --> J[Risk bands, drivers, levels, programmes]
+    J --> K[GET /metrics/risk/drilldown/ - on chart click]
 ```
+
+## Endpoints
+
+| Route | Function | Purpose |
+| --- | --- | --- |
+| `GET /risk/` | `risk_view` | Render HTML shell |
+| `GET /metrics/risk/` | `risk_metrics` | Fast KPI cards via DB aggregates |
+| `GET /metrics/risk/payload/` | `risk_payload` | Full chart rows, action register, narratives wiring |
+| `GET /metrics/risk/drilldown/` | `risk_drilldown` | Paginated student rows for chart clicks |
 
 ## Main Files
 
@@ -53,6 +63,14 @@ flowchart TD
 | Drill-down templates | `risk_band_drilldown.html`, `risk_driver_drilldown.html`, `risk_level_drilldown.html`, `risk_programme_drilldown.html` |
 | JavaScript | `dashboard/static/dashboard/js/risk.js`, `dashboard/static/dashboard/js/risk/` |
 | Tests | `dashboard/risk/tests.py` |
+
+## Performance Notes
+
+- `risk.js` fires `metricsPromise` and `payloadPromise` at module load (before `initialiseRiskPage` runs) so both requests are in-flight from the first network tick.
+- `risk_metrics` calls `get_cached_risk_fast_metrics` — cheap DB-level aggregates (marks and fail counts). It does not call the full dashboard build.
+- `initialiseRiskPage` accepts both promises as arguments. The metrics promise resolves via a `.then()` side-chain to hydrate KPI cards early; the payload promise is `await`ed for the main render.
+- `data-metrics-url` must be on the root `.risk-layout` element (not a child section) so `elements.root.dataset.metricsUrl` resolves correctly.
+- Drilldown profile builds (`build_student_risk_profiles`) are cached in `_get_cached_risk_profiles` under a key derived from the full request query string (300 s TTL). Repeated drilldown clicks within the same filter scope read from cache.
 
 ## Data Inputs
 

@@ -57,6 +57,9 @@ const demographicRoot = document.querySelector(".demographic-layout");
 const payloadPromise = demographicRoot
     ? fetchJson(demographicRoot.dataset.payloadUrl).catch(() => null)
     : Promise.resolve(null);
+const metricsPromise = demographicRoot?.dataset.metricsUrl
+    ? fetchJson(demographicRoot.dataset.metricsUrl).catch(() => null)
+    : Promise.resolve(null);
 const MAP_LIBRARY_WAIT_MS = 2400;
 
 const scheduleBackgroundTask = (callback, timeout = 1200, fallbackDelay = 48) => {
@@ -222,6 +225,12 @@ export const initialiseDemographicPage = async () => {
     if (!root || !shellContext.elements.storyBanner) {
         return;
     }
+
+    metricsPromise.then((metricsResponse) => {
+        if (metricsResponse?.summary_cards) {
+            hydrateSummaryCards(shellContext, metricsResponse.summary_cards);
+        }
+    }).catch(() => {});
 
     let chartPayload = null;
     const payloadResponse = await payloadPromise;

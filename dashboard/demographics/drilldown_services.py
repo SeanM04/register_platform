@@ -2,41 +2,46 @@
 Drilldown services for demographic charts.
 """
 
+from urllib.parse import urlencode
+
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
 
-from dashboard.models import Registration, Student
+from dashboard.models import Registration
 from dashboard.views import build_registration_filter_q
 
-from .services import build_registration_pk_to_progression_year_map
-from .services import _age_group_for_years, _calculate_age_from_dob
+from .services import (
+    DEMOGRAPHIC_CACHE_TTL_SECONDS,
+    build_registration_pk_to_progression_year_map,
+    _age_group_for_years,
+    _calculate_age_from_dob,
+)
 
 
-def build_demographic_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
-    """Build drilldown data for demographic charts."""
-    
-    # Get base filter from request
-    base_filter = build_registration_filter_q(request)
-    
-    # Build chart-specific filter
-    chart_filter = _build_chart_filter(chart_key, bucket_key)
-    
-    # Combine filters
-    combined_filter = base_filter & chart_filter
-    
-    # Get registrations with student data, but ensure unique students
-    # Use values() with distinct to get one record per student
-    registrations = Registration.objects.filter(combined_filter).select_related(
-        'student', 'programme', 'programme__department', 'programme__department__faculty', 'period'
-    ).order_by('student__registration_number', '-period__external_id', '-id')
-    
-    # Get unique students by taking the latest registration for each student
+def _build_drilldown_cache_key(request, chart_key, bucket_key):
+    """Cache key scoped to base filters + chart bucket, excluding pagination params."""
+    params = {k: v for k, v in request.GET.items() if k not in ("chart", "bucket", "page", "page_size")}
+    query_string = urlencode(sorted(params.items()))
+    return f"dashboard:demographic:drilldown:{chart_key}:{bucket_key}:{query_string or 'all'}"
+
+
+def _fetch_unique_drilldown_registrations(request, chart_key, bucket_key):
+    """Fetch, deduplicate, and apply secondary filters for a drilldown bucket."""
+
+    combined_filter = build_registration_filter_q(request) & _build_chart_filter(chart_key, bucket_key)
+    registrations = (
+        Registration.objects.filter(combined_filter)
+        .select_related("student", "programme", "programme__department", "programme__department__faculty", "period")
+        .order_by("student__registration_number", "-period__external_id", "-id")
+    )
+
     unique_students = {}
     for reg in registrations:
-        student_reg_num = reg.student.registration_number
-        if student_reg_num not in unique_students:
-            unique_students[student_reg_num] = reg
+        reg_num = reg.student.registration_number
+        if reg_num not in unique_students:
+            unique_students[reg_num] = reg
 
     if chart_key in {"year_distribution", "year_programme"}:
         year_bucket = bucket_key.split("|", 1)[0] if "|" in str(bucket_key) else bucket_key
@@ -47,22 +52,32 @@ def build_demographic_drilldown_data(request, chart_key, bucket_key, page=1, pag
         if target_year is not None and 1 <= target_year <= 5:
             student_ids = {reg.student_id for reg in unique_students.values()}
             reg_year = build_registration_pk_to_progression_year_map(student_ids)
-            unique_students = {
-                k: v
-                for k, v in unique_students.items()
-                if reg_year.get(v.id) == target_year
-            }
+            unique_students = {k: v for k, v in unique_students.items() if reg_year.get(v.id) == target_year}
 
     if chart_key in {"age_distribution", "age_programme"}:
         age_bucket = bucket_key.split("|", 1)[0] if "|" in str(bucket_key) else bucket_key
         unique_students = {
-            k: v
-            for k, v in unique_students.items()
+            k: v for k, v in unique_students.items()
             if _age_group_for_years(_calculate_age_from_dob(v.student.date_of_birth)) == age_bucket
         }
 
-    # Convert to list for pagination
-    unique_registrations = list(unique_students.values())
+    return list(unique_students.values())
+
+
+def _get_cached_drilldown_registrations(request, chart_key, bucket_key):
+    """Return cached deduplicated registrations for a drilldown bucket."""
+    cache_key = _build_drilldown_cache_key(request, chart_key, bucket_key)
+    return cache.get_or_set(
+        cache_key,
+        lambda: _fetch_unique_drilldown_registrations(request, chart_key, bucket_key),
+        DEMOGRAPHIC_CACHE_TTL_SECONDS,
+    )
+
+
+def build_demographic_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
+    """Build drilldown data for demographic charts."""
+
+    unique_registrations = _get_cached_drilldown_registrations(request, chart_key, bucket_key)
 
     hierarchy_payload = _build_hierarchy_payload(chart_key, bucket_key, unique_registrations)
     if hierarchy_payload:

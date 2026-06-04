@@ -219,7 +219,7 @@ const buildTopProgrammeDetailOption = (programme, chartWidth = 0) => {
                 type: "bar",
                 barWidth: isCompact ? 18 : 22,
                 itemStyle: {
-                    borderRadius: [0, 0, 0, 0],
+                    borderRadius: [6, 6, 0, 0],
                     color: buildGradient("#d3e9f4", "#4fb0d1"),
                 },
                 data: programme.level_breakdown.map((row) => row.registrations),

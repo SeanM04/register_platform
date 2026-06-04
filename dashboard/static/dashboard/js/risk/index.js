@@ -23,7 +23,7 @@ const buildRequestUrl = (endpoint, page = null) => {
     return requestUrl;
 };
 
-const fetchJson = async (endpoint, page = null) => {
+export const fetchJson = async (endpoint, page = null) => {
     if (!endpoint) {
         return null;
     }
@@ -164,7 +164,7 @@ const setRiskShellErrorState = (context) => {
     }
 };
 
-export const initialiseRiskPage = async () => {
+export const initialiseRiskPage = async (metricsPromise = null, payloadPromise = null) => {
     const shellContext = createRiskContext();
     const { elements } = shellContext;
     const payloadUrl = elements.root?.dataset.payloadUrl;
@@ -174,9 +174,17 @@ export const initialiseRiskPage = async () => {
         return;
     }
 
+    // Hydrate KPI cards as soon as metrics resolve (may arrive before payload)
+    const resolvedMetricsPromise = metricsPromise || Promise.resolve(null);
+    resolvedMetricsPromise.then((metricsResponse) => {
+        if (metricsResponse?.metrics || metricsResponse?.summary_cards) {
+            hydrateSummaryCards(shellContext, metricsResponse.metrics || {}, metricsResponse.summary_cards || []);
+        }
+    }).catch(() => {});
+
     let payloadResponse = null;
     try {
-        payloadResponse = await fetchJson(payloadUrl);
+        payloadResponse = await (payloadPromise || fetchJson(payloadUrl));
     } catch (error) {
         setRiskShellErrorState(shellContext);
         return;

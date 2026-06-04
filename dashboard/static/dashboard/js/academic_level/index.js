@@ -227,29 +227,8 @@ const changePageSize = (newSize) => {
 };
 
 const renderPaginatedTable = () => {
-    // Wait a bit to ensure DOM is ready after accordion animation
-    setTimeout(() => {
-        const { start, end } = calculatePagination(
-            paginationState.allRows.length,
-            paginationState.pageSize,
-            paginationState.currentPage
-        );
-
-        const paginatedRows = paginationState.allRows.slice(start, end);
-        
-        // Get fresh context with current DOM references
-        const context = createAcademicLevelContext();
-        
-        renderLevelTable({
-            ...context,
-            data: {
-                ...context.data,
-                levelRows: paginatedRows,
-            },
-        });
-        
-        renderPaginationControls();
-    }, 50);
+    renderTableImmediately(paginationState.allRows);
+    renderPaginationControls();
 };
 
 const initialisePagination = () => {
@@ -321,39 +300,6 @@ const renderTableImmediately = (rows) => {
         </tr>
     `).join("").trim();
 
-};
-
-const renderLevelTable = (context) => {
-    // Always query the DOM directly to ensure we get the current element
-    const tableBody = document.querySelector('.level-table tbody');
-    
-    if (!tableBody) {
-        console.warn('[Academic Level] Table body element not found in DOM');
-        return;
-    }
-
-    const rows = context.data.levelRows || [];
-    if (!rows.length) {
-        tableBody.innerHTML = `
-            <tr>
-                <td class="level-empty" colspan="6">No academic level data matched the current filters.</td>
-            </tr>
-        `.trim();
-        return;
-    }
-
-    tableBody.innerHTML = rows.map((row) => `
-        <tr data-level-row="${escapeTooltipHtml(row.level)}">
-            <td class="level-td-key">${escapeTooltipHtml(row.level)}</td>
-            <td>${escapeTooltipHtml(row.students)}</td>
-            <td>${escapeTooltipHtml(row.registrations)}</td>
-            <td>${escapeTooltipHtml(row.average_mark)}</td>
-            <td class="level-td-pass">
-           ${escapeTooltipHtml(row.pass_rate)}
-          </td>
-            <td class="level-td-programme">${escapeTooltipHtml(row.top_programme || "")}</td>
-        </tr>
-    `).join("").trim();
 };
 
 const setAcademicLevelShellErrorState = (context) => {

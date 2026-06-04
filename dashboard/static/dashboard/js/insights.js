@@ -1,4 +1,4 @@
-import { initialiseInsightsPage } from "./insights/index.js?v=20260601-drilldown-click-reliability01";
+import { fetchJson, initialiseInsightsPage } from "./insights/index.js?v=20260601-drilldown-click-reliability01";
 
 /**
  * Keep the section toggle button, ARIA state, and optional chart resize signal in sync.
@@ -75,12 +75,20 @@ const initialiseCollapsibleSections = () => {
     });
 };
 
+const insightRoot = document.querySelector(".insight-layout");
+const metricsPromise = insightRoot?.dataset.metricsUrl
+    ? fetchJson(insightRoot.dataset.metricsUrl).catch(() => null)
+    : Promise.resolve(null);
+const payloadPromise = insightRoot?.dataset.payloadUrl
+    ? fetchJson(insightRoot.dataset.payloadUrl).catch(() => null)
+    : Promise.resolve(null);
+
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
-        initialiseInsightsPage();
+        initialiseInsightsPage(metricsPromise, payloadPromise);
         initialiseCollapsibleSections();
     }, { once: true });
 } else {
-    initialiseInsightsPage();
+    initialiseInsightsPage(metricsPromise, payloadPromise);
     initialiseCollapsibleSections();
 }

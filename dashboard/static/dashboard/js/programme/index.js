@@ -68,6 +68,14 @@ const fetchJson = async (endpoint) => {
     return response.json();
 };
 
+const programmeRoot = document.querySelector(".programme-dashboard");
+const metricsPromise = programmeRoot?.dataset.metricsUrl
+    ? fetchJson(programmeRoot.dataset.metricsUrl).catch(() => null)
+    : Promise.resolve(null);
+const payloadPromise = programmeRoot?.dataset.payloadUrl
+    ? fetchJson(programmeRoot.dataset.payloadUrl).catch(() => null)
+    : Promise.resolve(null);
+
 const hydrateNarratives = (context) => {
     initialiseLoadNarrative(context.elements, context.data.topLoadRows, context.data.cardNarratives, context.flags);
     initialiseDepartmentNarrative(context.elements, context.data.departmentRows, context.data.cardNarratives, context.flags);
@@ -118,10 +126,21 @@ export const initialiseProgrammePage = async () => {
         return;
     }
 
+    metricsPromise.then((metricsResponse) => {
+        if (metricsResponse?.summary_cards) {
+            hydrateSummaryCards(shellContext, metricsResponse.summary_cards);
+        }
+    }).catch(() => {});
+
     let chartPayload = null;
+    const payloadResponse = await payloadPromise;
+    if (!payloadResponse) {
+        setProgrammeShellErrorState(shellContext);
+        renderProgrammeRegister(shellContext.elements.registerBody, shellContext.elements.registerMeta, [], {});
+        return;
+    }
+
     try {
-        const payloadResponse = await fetchJson(root.dataset.payloadUrl);
-        
         chartPayload = {
             topLoadRows: payloadResponse?.top_load_rows || [],
             departmentRows: payloadResponse?.department_rows || [],
@@ -139,7 +158,6 @@ export const initialiseProgrammePage = async () => {
         };
         hydrateSummaryCards(shellContext, payloadResponse?.summary_cards || []);
     } catch (error) {
-        console.error('Error fetching payload:', error);
         setProgrammeShellErrorState(shellContext);
         renderProgrammeRegister(shellContext.elements.registerBody, shellContext.elements.registerMeta, [], {});
         return;

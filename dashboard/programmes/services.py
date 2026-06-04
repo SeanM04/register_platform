@@ -1,14 +1,17 @@
 """Service-layer data shaping for the story-first programmes dashboard."""
 
 from collections import defaultdict
+from urllib.parse import urlencode
 
+from django.core.cache import cache
 from django.db.models import Avg, Count, Q
 
-from ..models import Programme
+from ..models import Programme, Registration
 from ..views import build_registration_filter_q
 from .constants import PROGRAMME_SUMMARY_CARD_SPECS
 
 EXCLUDED_PROGRAMME_CODES = {"TMPC795930"}
+PROGRAMME_CACHE_TTL_SECONDS = 300
 
 
 def _programme_name_variants(programme_name):
@@ -250,6 +253,57 @@ def get_programme_summary_values(request, search_query=""):
     return _build_summary_values_from_rows(programme_rows)
 
 
+def _build_programme_cache_key(request, suffix):
+    """Stable cache key for the current programme filter scope."""
+
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:programme:{suffix}:{query_string or 'all'}"
+
+
+def get_programme_fast_metrics(request):
+    """Return fast KPI counts via cheap DB aggregates — no mark aggregation."""
+
+    base_qs = Registration.objects.filter(build_registration_filter_q(request))
+    programme_count = (
+        base_qs
+        .exclude(programme__code__in=EXCLUDED_PROGRAMME_CODES)
+        .values("programme_id")
+        .distinct()
+        .count()
+    )
+    registration_count = base_qs.count()
+    student_count = base_qs.values("student_id").distinct().count()
+
+    return {
+        "programmes": programme_count,
+        "registrations": registration_count,
+        "students": student_count,
+        # pass rate requires mark aggregation — omitted; payload fills it in
+    }
+
+
+def get_cached_programme_fast_metrics(request):
+    """Return cached fast KPI metrics for the programme page header cards."""
+
+    cache_key = _build_programme_cache_key(request, "fast-metrics")
+    return cache.get_or_set(
+        cache_key,
+        lambda: get_programme_fast_metrics(request),
+        PROGRAMME_CACHE_TTL_SECONDS,
+    )
+
+
+def get_cached_programme_data(request, search_query=""):
+    """Return cached full programme dashboard data for the current filter scope."""
+
+    cache_key = _build_programme_cache_key(request, "payload")
+    return cache.get_or_set(
+        cache_key,
+        lambda: build_programme_dashboard_data(request, search_query),
+        PROGRAMME_CACHE_TTL_SECONDS,
+    )
+
+
 def build_programme_scope_pills(request, search_query=""):
     """Build compact scope pills describing the active programme filter context."""
 
@@ -469,151 +523,110 @@ def build_programme_dashboard_data(request, search_query=""):
     }
 
 
+def _build_programme_drilldown_cache_key(request, chart_key, bucket_key):
+    query_string = urlencode(sorted(request.GET.lists()), doseq=True)
+    return f"dashboard:programme_drilldown:{chart_key}:{bucket_key}:{query_string or 'all'}"
+
+
+def _fetch_drilldown_rows(request, chart_key, bucket_key):
+    """Execute the DB query and return the full sorted student list or hierarchy payload."""
+    base_filter = build_registration_filter_q(request)
+    registrations = Registration.objects.filter(base_filter)
+
+    if chart_key == "departments":
+        registrations = registrations.filter(
+            programme__department__name__iexact=bucket_key
+        ).select_related("student", "programme", "programme__department").order_by(
+            "student__registration_number", "-period__external_id", "-id",
+        )
+        return {"type": "hierarchy", "payload": _build_department_programme_hierarchy_payload(registrations, bucket_key)}
+
+    if chart_key == "department_programme":
+        parts = [part.strip() for part in bucket_key.split("|", 1)]
+        if len(parts) != 2:
+            raise ValueError("Department programme drill-down requires department and programme.")
+        department_name, programme_name = parts
+        registrations = registrations.filter(
+            programme__department__name__iexact=department_name,
+        ).filter(
+            _programme_name_q(programme_name)
+        ).select_related("student", "programme", "programme__department").order_by(
+            "student__registration_number", "-period__external_id", "-id",
+        )
+    elif chart_key in ("programme_load", "low_pass", "performance"):
+        registrations = registrations.filter(
+            _programme_name_q(bucket_key)
+        ).select_related("student", "programme", "programme__department").order_by(
+            "student__registration_number", "-period__external_id", "-id",
+        )
+    else:
+        raise ValueError(f"Unsupported programme drill-down chart: {chart_key}")
+
+    seen = set()
+    rows = []
+    for reg in registrations:
+        reg_number = reg.student.registration_number
+        if reg_number in seen:
+            continue
+        seen.add(reg_number)
+        rows.append({
+            "name": reg.student.full_name,
+            "programme": reg.programme.name if reg.programme else "Unassigned",
+            "department": reg.programme.department.name if reg.programme and reg.programme.department else "Unassigned",
+            "decision": reg.decision or "Unknown",
+            "carrying": reg.carrying or 0,
+            "detail_url": f"/students/{reg_number}/",
+        })
+
+    rows.sort(key=lambda s: (
+        s["name"].split()[-1].lower() if s["name"].split() else "",
+        " ".join(s["name"].split()[:-1]).lower(),
+    ))
+    return {"type": "students", "rows": rows}
+
+
 def build_programme_drilldown_data(request, chart_key, bucket_key, page=1, page_size=10):
     """Return student rows for programme chart drill-downs based on academic data."""
-    
     from urllib.parse import unquote_plus
-    from ..models import Registration, Student, Programme
-    from ..views import build_registration_filter_q
-    
-    # URL decode the bucket key to handle special characters
-    bucket_key = unquote_plus(bucket_key)
-    
-    try:
-        # Build base registration filter
-        base_filter = build_registration_filter_q(request)
-        registrations = Registration.objects.filter(base_filter)
 
-        if chart_key == "programme_load":
-            # Get students in the specified programme - use name field for matching
-            registrations = registrations.filter(
-                _programme_name_q(bucket_key)
-            ).select_related('student', 'programme', 'programme__department').order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-        elif chart_key == "departments":
-            # Get students in the specified department
-            registrations = registrations.filter(
-                programme__department__name__iexact=bucket_key
-            ).select_related('student', 'programme', 'programme__department').order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-            return _build_department_programme_hierarchy_payload(registrations, bucket_key)
-        elif chart_key == "department_programme":
-            parts = [part.strip() for part in bucket_key.split("|", 1)]
-            if len(parts) != 2:
-                raise ValueError("Department programme drill-down requires department and programme.")
-            department_name, programme_name = parts
-            registrations = registrations.filter(
-                programme__department__name__iexact=department_name,
-            ).filter(
-                _programme_name_q(programme_name)
-            ).select_related('student', 'programme', 'programme__department').order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-        elif chart_key == "low_pass":
-            # Get students in programmes with low pass rates - use name field for matching
-            registrations = registrations.filter(
-                _programme_name_q(bucket_key)
-            ).select_related('student', 'programme', 'programme__department').order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-        elif chart_key == "performance":
-            # Get students in performance chart programmes - use name field for matching
-            registrations = registrations.filter(
-                _programme_name_q(bucket_key)
-            ).select_related('student', 'programme', 'programme__department').order_by(
-                'student__registration_number',
-                '-period__external_id',
-                '-id',
-            )
-        else:
-            raise ValueError(f"Unsupported programme drill-down chart: {chart_key}")
-        
-        # First deduplicate students across all registrations
-        unique_students = {}
-        seen_students = set()  # Track seen registration numbers to avoid duplicates
-        
-        for registration in registrations:
-            student = registration.student
-            reg_number = student.registration_number
-            
-            # Skip if we've already processed this student
-            if reg_number in seen_students:
-                continue
-                
-            seen_students.add(reg_number)
-            programme = registration.programme
-            
-            # Store the latest registration for this student
-            unique_students[reg_number] = {
-                "student": student,
-                "programme": programme,
-                "registration": registration
-            }
-        
-        # Convert to list for pagination
-        unique_student_list = list(unique_students.values())
-        
-        # Get total count for pagination (now based on unique students)
-        total_count = len(unique_student_list)
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-        
-        # Apply pagination to unique students
-        offset = (page - 1) * page_size
-        paginated_students = unique_student_list[offset:offset + page_size]
-        
-        # Build student rows from paginated unique students
-        student_rows = []
-        for student_data in paginated_students:
-            student = student_data["student"]
-            programme = student_data["programme"]
-            registration = student_data["registration"]
-            reg_number = student.registration_number
-            
-            row_data = {
-                "name": student.full_name,
-                "programme": programme.name if programme else "Unassigned",
-                "department": programme.department.name if programme and programme.department else "Unassigned",
-                "decision": registration.decision or "Unknown",
-                "carrying": registration.carrying or 0,
-                "detail_url": f"/students/{reg_number}/",
-            }
-            student_rows.append(row_data)
-            
-                    
-        return {
-            "title": f"{_display_programme_bucket(chart_key, bucket_key)} Students",
-            "subtitle": f"Students currently registered in {_display_programme_bucket(chart_key, bucket_key)}.",
-            "columns": [
-                {"key": "name", "label": "Student Name"},
-                {"key": "programme", "label": "Programme"},
-                {"key": "department", "label": "Department"},
-                {"key": "decision", "label": "Decision"},
-                {"key": "carrying", "label": "Carrying"},
-            ],
-            "rows": student_rows,
-            "pagination": {
-                "current_page": page,
-                "page_size": page_size,
-                "total_items": total_count,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_previous": page > 1,
-            },
-            "breadcrumbs": _programme_breadcrumbs(chart_key, bucket_key),
-        }
-        
-    except Exception as e:
-        raise e
+    bucket_key = unquote_plus(bucket_key)
+
+    cache_key = _build_programme_drilldown_cache_key(request, chart_key, bucket_key)
+    cached = cache.get(cache_key)
+    if cached is None:
+        cached = _fetch_drilldown_rows(request, chart_key, bucket_key)
+        cache.set(cache_key, cached, PROGRAMME_CACHE_TTL_SECONDS)
+
+    if cached["type"] == "hierarchy":
+        return cached["payload"]
+
+    rows = cached["rows"]
+    total_count = len(rows)
+    total_pages = max(1, (total_count + page_size - 1) // page_size) if total_count else 1
+    safe_page = max(1, min(int(page), total_pages))
+    offset = (safe_page - 1) * page_size
+
+    return {
+        "title": f"{_display_programme_bucket(chart_key, bucket_key)} Students",
+        "subtitle": f"Students currently registered in {_display_programme_bucket(chart_key, bucket_key)}.",
+        "columns": [
+            {"key": "name", "label": "Student Name"},
+            {"key": "programme", "label": "Programme"},
+            {"key": "department", "label": "Department"},
+            {"key": "decision", "label": "Decision"},
+            {"key": "carrying", "label": "Carrying"},
+        ],
+        "rows": rows[offset:offset + page_size],
+        "pagination": {
+            "current_page": safe_page,
+            "page_size": page_size,
+            "total_items": total_count,
+            "total_pages": total_pages,
+            "has_next": safe_page < total_pages,
+            "has_previous": safe_page > 1,
+        },
+        "breadcrumbs": _programme_breadcrumbs(chart_key, bucket_key),
+    }
 
 
 def _display_programme_bucket(chart_key, bucket_key):

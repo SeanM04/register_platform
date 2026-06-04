@@ -34,8 +34,6 @@ class CompletionAnalysis {
 
     async openDrillDown(chartKey, bucketKey, page = 1) {
         try {
-            console.log("DEBUG: openDrillDown called with:", { chartKey, bucketKey, page });
-            
             // Show instant loading indicator
             this.showDrilldownLoading();
             
@@ -55,8 +53,6 @@ class CompletionAnalysis {
             drilldownUrl.searchParams.set('bucket_key', bucketKey);
             drilldownUrl.searchParams.set('page', page);
             
-            console.log("DEBUG: drilldownUrl:", drilldownUrl.toString());
-            
             // Fetch drilldown data
             const response = await fetch(drilldownUrl.toString());
             if (!response.ok) {
@@ -64,8 +60,7 @@ class CompletionAnalysis {
             }
             
             const result = await response.json();
-            console.log("DEBUG: drilldown response:", result);
-            
+
             if (result.status === 'success' && result.data) {
                 this.hideDrilldownLoading();
                 showCompletionDrillDownModal(result.data, (page) => {
@@ -113,8 +108,7 @@ class CompletionAnalysis {
 
     async init() {
         this.bindEvents();
-        await this.loadFastMetrics();
-        await this.loadData();
+        await Promise.all([this.loadFastMetrics(), this.loadData()]);
         this.renderStoryBanner();
         this.renderFallbackNarratives();
         this.loadNarratives();
@@ -697,7 +691,6 @@ class CompletionAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: cohort heatmap clicked:", params);
             if (params.data && params.data.name) {
                 // For cohort heatmap, use the cohort name as bucketKey
                 this.openDrillDown('cohorts', params.data.name);
@@ -724,7 +717,7 @@ class CompletionAnalysis {
         element.classList.remove("is-empty");
         const topRows = [...rows].slice(0, 12).reverse();
         const backgroundTrackColor = "rgba(148, 163, 184, 0.18)";
-        const barCornerRadius = 5;
+        const barCornerRadius = 6;
 
         chart.setOption({
             ...buildAnimationConfig(topRows),
@@ -802,7 +795,6 @@ class CompletionAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: programme chart clicked:", params);
             if (params.data && params.data.raw && params.data.raw.programme) {
                 // For programme chart, use the programme name as bucketKey
                 this.openDrillDown('programme_load', params.data.raw.programme);
@@ -848,7 +840,7 @@ class CompletionAnalysis {
         element.classList.remove("is-empty");
         const palette = ["#b91c1c", "#dc2626", "#ea580c", "#d97706", "#0f766e", "#0369a1", "#4338ca", "#475569"];
         const sortedRows = [...rows].sort((left, right) => right.count - left.count);
-        const barCornerRadius = 5;
+        const barCornerRadius = 6;
 
         chart.setOption({
             ...buildAnimationConfig(sortedRows),
@@ -951,15 +943,8 @@ class CompletionAnalysis {
 
         // Add click handler for drilldown
         chart.off('click').on('click', (params) => {
-            console.log("DEBUG: zero driver chart clicked:", params);
-            console.log("DEBUG: params.data:", params.data);
-            console.log("DEBUG: params.data.raw:", params.data?.raw);
             if (params.data && params.data.raw && params.data.raw.key) {
-                // For zero driver chart, use the driver key as bucketKey
-                console.log("DEBUG: opening drilldown for driver:", params.data.raw.key);
                 this.openDrillDown('drivers', params.data.raw.key);
-            } else {
-                console.log("DEBUG: no raw.key found in click data");
             }
         });
     }

@@ -8,7 +8,12 @@ from accounts.decorators import ajax_login_required, login_required_except_domai
 
 from .ai_insights import get_programme_card_narratives_result
 from .presenters import build_programme_shell_context
-from .services import build_programme_dashboard_data, get_programme_summary_values
+from .services import (
+    get_cached_programme_data,
+    get_cached_programme_fast_metrics,
+)
+from ..views import build_summary_cards
+from .constants import PROGRAMME_SUMMARY_CARD_SPECS
 
 
 @login_required_except_domains()
@@ -23,10 +28,13 @@ def programme_view(request):
 @ajax_login_required
 @require_GET
 def programme_metrics(request):
-    """Return programme dashboard headline metrics as JSON."""
+    """Return fast programme KPI counts for first-paint hydration."""
 
-    search_query = request.GET.get("q", "").strip()
-    return JsonResponse({"metrics": get_programme_summary_values(request, search_query)})
+    metrics = get_cached_programme_fast_metrics(request)
+    return JsonResponse({
+        "metrics": metrics,
+        "summary_cards": build_summary_cards(PROGRAMME_SUMMARY_CARD_SPECS, metrics),
+    })
 
 
 @ajax_login_required
@@ -35,9 +43,7 @@ def programme_payload(request):
     """Return the heavy programme chart and register payload after first paint."""
 
     search_query = request.GET.get("q", "").strip()
-    programme_data = build_programme_dashboard_data(request, search_query)
-    
-        
+    programme_data = get_cached_programme_data(request, search_query)
     return JsonResponse(
         {
             "summary_cards": programme_data["summary_cards"],
@@ -57,7 +63,7 @@ def programme_narratives(request):
     """Return the optional AI/rules narrative payload separately from the charts."""
 
     search_query = request.GET.get("q", "").strip()
-    programme_data = build_programme_dashboard_data(request, search_query)
+    programme_data = get_cached_programme_data(request, search_query)
     return JsonResponse(get_programme_card_narratives_result(programme_data))
 
 

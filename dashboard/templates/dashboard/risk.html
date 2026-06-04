@@ -127,8 +127,8 @@
 {% endblock %}
 
 {% block content %}
-<section class="risk-layout" data-payload-url="{% url 'dashboard:risk-payload' %}" data-drilldown-url="{% url 'dashboard:risk-drilldown' %}">
-    <section class="risk-metrics" data-metrics-url="{% url 'dashboard:risk-metrics' %}">
+<section class="risk-layout" data-metrics-url="{% url 'dashboard:risk-metrics' %}" data-payload-url="{% url 'dashboard:risk-payload' %}" data-drilldown-url="{% url 'dashboard:risk-drilldown' %}">
+    <section class="risk-metrics">
         {% for card in summary_cards %}
         <article class="risk-metric" data-metric-card data-metric-key="{{ card.key }}">
             <p class="risk-metric-label">{{ card.label }}</p>
