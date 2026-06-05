@@ -2,6 +2,7 @@
 
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Avg, Count, Q
 
@@ -296,7 +297,7 @@ def format_risk_monitor_drivers(risk_driver_text):
     drivers = [driver.strip() for driver in str(risk_driver_text or "").split(",") if driver.strip()]
     filtered_drivers = [
         driver for driver in drivers
-        if driver.lower() not in ["average below 50%", "3+ failed modules", "1 carried module", "repeat decision"]
+        if driver.lower() not in ["average below 50%", "repeat decision"]
     ]
 
     if filtered_drivers:
@@ -671,6 +672,17 @@ def paginate_risk_rows(risk_rows, page_number, page_size=20):
 def get_risk_fast_metrics(request, search_query=""):
     """Approximate risk KPI card values via DB aggregates — no level-index or timeline rebuild."""
 
+    if settings.DEBUG:
+        risk_data = get_cached_risk_dashboard_data(request, search_query)
+        return {
+            "metrics": {
+                "at_risk_students": risk_data["at_risk_students"],
+                "high_risk": risk_data["high_risk_count"],
+                "medium_risk": risk_data["medium_risk_count"],
+                "multi_fail": risk_data["multi_fail_count"],
+            }
+        }
+
     base_qs = get_filtered_registrations(request, include_course_results=False)
     if search_query:
         base_qs = base_qs.filter(
@@ -736,6 +748,9 @@ def get_risk_fast_metrics(request, search_query=""):
 def get_cached_risk_fast_metrics(request, search_query=""):
     """Return cached fast risk KPI metrics for the page header cards."""
 
+    if settings.DEBUG:
+        return get_risk_fast_metrics(request, search_query)
+
     cache_key = _build_risk_cache_key(request, "fast-metrics")
     return cache.get_or_set(
         cache_key,
@@ -756,6 +771,9 @@ def _build_risk_cache_key(request, suffix):
 
 def get_cached_risk_dashboard_data(request, search_query=""):
     """Return cached risk analytics for the current filter scope."""
+
+    if settings.DEBUG:
+        return build_risk_dashboard_data(request, search_query)
 
     cache_key = _build_risk_cache_key(request, "payload")
     return cache.get_or_set(

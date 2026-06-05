@@ -4,6 +4,7 @@ import re
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Prefetch
 
@@ -679,6 +680,9 @@ def get_cached_completion_page_data(
 ) -> Dict[str, Any]:
     """Return cached completion analytics, rebuilding only on cold miss or TTL expiry."""
 
+    if settings.DEBUG:
+        return get_completion_page_data(year=year, period=period, faculty=faculty)
+
     cache_key = _build_completion_cache_key(year, period, faculty)
     result = cache.get(cache_key)
     if result is None:
@@ -723,6 +727,9 @@ def get_cached_completion_fast_kpis(
     faculty: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Return fast KPI counts, sourcing from the payload cache when warm to avoid number flips."""
+
+    if settings.DEBUG:
+        return get_completion_fast_kpis(year=year, period=period, faculty=faculty)
 
     payload_cache_key = _build_completion_cache_key(year, period, faculty)
     cached_payload = cache.get(payload_cache_key)

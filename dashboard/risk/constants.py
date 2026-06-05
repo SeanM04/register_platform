@@ -46,10 +46,10 @@ RISK_DRIVER_LABELS = {
 RISK_DRIVER_PRIORITY = {
     "average_below_50": 0,
     "failed_3_plus": 1,
-    "decision_alert": 2,
-    "failed_2": 3,
-    "carrying_multi": 4,
-    "average_below_60": 5,
+    "average_below_60": 2,
+    "decision_alert": 3,
+    "failed_2": 4,
+    "carrying_multi": 5,
     "failed_1": 6,
     "carrying_1": 7,
 }

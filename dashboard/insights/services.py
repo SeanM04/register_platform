@@ -2,6 +2,7 @@
 
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Avg, Count, Q
 from django.urls import reverse
@@ -368,6 +369,9 @@ def _build_insights_cache_key(request):
 def get_cached_insights_dashboard_data(request):
     """Return cached insights analytics for the current filter scope."""
 
+    if settings.DEBUG:
+        return build_insights_dashboard_data(request)
+
     cache_key = _build_insights_cache_key(request)
     return cache.get_or_set(
         cache_key,
@@ -442,6 +446,9 @@ def get_insights_fast_metrics(request):
 
 def get_cached_insights_fast_metrics(request):
     """Return cached fast insight metrics for the current filter scope."""
+
+    if settings.DEBUG:
+        return get_insights_fast_metrics(request)
 
     cache_key = _build_insights_cache_key(request) + ":fast-metrics"
     result = cache.get(cache_key)

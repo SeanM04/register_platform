@@ -4,6 +4,7 @@ from collections import defaultdict
 import logging
 from typing import Any, Dict, List, Optional
 
+from django.conf import settings
 from django.core.cache import cache
 
 from dashboard.models import Registration
@@ -1208,6 +1209,9 @@ def get_cached_graduation_page_data(
 ) -> Dict[str, Any]:
     """Return cached graduation analytics, rebuilding only on cold miss or TTL expiry."""
 
+    if settings.DEBUG:
+        return get_graduation_page_data(year=year, period=period, faculty=faculty)
+
     cache_key = _build_graduation_cache_key(year, period, faculty)
     result = cache.get(cache_key)
     if result is None:
@@ -1222,6 +1226,9 @@ def get_cached_graduation_fast_metrics(
     faculty: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Return graduation KPIs from payload cache when warm; empty placeholder on cold miss."""
+
+    if settings.DEBUG:
+        return {"kpis": get_graduation_page_data(year=year, period=period, faculty=faculty).get("kpis", {})}
 
     payload_cache_key = _build_graduation_cache_key(year, period, faculty)
     cached_payload = cache.get(payload_cache_key)

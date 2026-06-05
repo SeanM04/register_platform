@@ -40,7 +40,7 @@ SIDEBAR_ITEMS = [
     {"key": "academic-levels", "label": "Academic Levels", "url_name": "dashboard:academic-level"},
     {"key": "completion", "label": "Completion Analysis", "url_name": "dashboard:completion"},
     {"key": "graduation", "label": "Graduation Analysis", "url_name": "dashboard:graduation"},
-    {"key": "risk", "label": "Risk Analysis", "url_name": "dashboard:risk"},
+    {"key": "risk", "label": "Risk", "url_name": "dashboard:risk"},
     {"key": "insights", "label": "Insights", "url_name": "dashboard:insights"},
     {"key": "reports", "label": "Reports", "url_name": "dashboard:reports", "requires_admin": True},
     {"key": "system-management", "label": "System Management", "url_name": "dashboard:system-management", "requires_admin": True},
@@ -380,8 +380,7 @@ def build_layout_context(request, active_key):
         # Build URL with filter parameters
         url = reverse(item["url_name"])
         if filter_params:
-            query_string = '&'.join([f"{key}={value}" for key, value in filter_params.items()])
-            url = f"{url}?{query_string}"
+            url = f"{url}?{urlencode(filter_params)}"
         
         items.append(
             {
@@ -704,14 +703,18 @@ def build_registration_filter_q(request, prefix=""):
 
     filters = Q()
     if selected_year:
-        # Use the dedicated academic_year field to avoid icontains matching adjacent years
-        # e.g. "2024" must not match a period named "2023/2024 Semester 2"
-        filters &= Q(**{f"{prefix}period__academic_year": selected_year})
+        matching_year_period_names = [
+            period.name
+            for period in AcademicPeriod.objects.only("name")
+            if extract_period_year(period.name) == selected_year
+        ]
+        # Match the calendar year shown in the topbar instead of the stored progression year.
+        filters &= Q(**{f"{prefix}period__name__in": matching_year_period_names})
     if selected_period:
         matching_period_names = [
             period.name
             for period in AcademicPeriod.objects.only("name")
-            if format_period_label(period.name) == selected_period
+            if format_period_label(period.name).strip().lower() == selected_period.strip().lower()
         ]
         # Explicit empty filter when no period matches — prevents silent passthrough
         # of all data when the requested period label no longer exists in the DB.
