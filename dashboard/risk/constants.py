@@ -7,7 +7,7 @@ RISK_SUMMARY_CARD_SPECS = [
     {"key": "at_risk_students", "label": "At Risk Students", "tone": "danger"},
     {"key": "high_risk", "label": "High Risk", "tone": "danger"},
     {"key": "medium_risk", "label": "Medium Risk", "tone": "default"},
-    {"key": "multi_fail", "label": "2+ Failed Modules", "tone": "default"},
+    {"key": "multi_fail", "label": "3+ Failed Modules", "tone": "default"},
 ]
 
 HIGH_RISK_DECISIONS = {

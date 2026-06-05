@@ -9,10 +9,10 @@ need to identify students requiring intervention.
 
 ## What This Page Does
 
-The Risk Analysis page classifies students into risk bands using academic
-signals such as failed courses, carried modules, average marks, and decisions.
-It shows where risk is concentrated and provides drill-downs to the students in
-each band or driver group.
+The Risk Analysis page classifies students into risk bands using a composite
+risk score built from failed courses, carried modules, average marks, and
+decisions. It shows where risk is concentrated and provides drill-downs to the
+students in each band or driver group.
 
 For non-technical users, this page answers:
 
@@ -90,6 +90,9 @@ flowchart TD
   scope while moving through the register.
 - In the driver summary, a single failed module and a single carried module are
   grouped together and displayed as `1 carried module`.
+- The `3+ Failed Modules` summary card counts students with three or more
+  failed modules.
+- The risk distribution note should read: `Values in brackets represent risk bands.`
 
 ## Maintenance Checklist
 

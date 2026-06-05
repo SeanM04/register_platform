@@ -115,7 +115,16 @@ Each chart card now supports three visible narrative states:
 The chapter summaries use the same narrative payload, but only show the AI badge
 when the final response source is actually AI.
 
-## 6. Fact-Pack And AI Flow
+## 6. Risk Distribution Copy
+
+The `Student Risk Distribution` card shows a short note above the chart:
+
+- `Values in brackets represent risk bands.`
+
+This wording matches the Risk and Insights pages so users do not confuse the
+distribution brackets with failed-module counts.
+
+## 7. Fact-Pack And AI Flow
 
 The landing dashboard AI helper lives in `dashboard/overview/ai_insights.py`.
 
@@ -127,7 +136,7 @@ Important implementation details:
 - successful AI responses are cached per normalized fact pack
 - provider failures fall back safely to deterministic guidance copy
 
-## 7. Chart Drill-Downs
+## 8. Chart Drill-Downs
 
 Users can click on chart slices or bars to drill into filtered student lists.
 
@@ -172,7 +181,7 @@ The drill-down feature includes three key performance optimizations:
 7. User pagination triggers new requests with updated `page` parameter
 8. Fresh cache entries are created for each page
 
-## 8. Shared Filter Bar
+## 9. Shared Filter Bar
 
 The page still uses the shared filter bar from `templates/base.html` and
 `dashboard/static/dashboard/css/base.css`.
@@ -183,7 +192,7 @@ Important behavior:
 - the current filter query string is forwarded to async endpoints in the browser
 - sidebar navigation preserves the active filter scope in generated links
 
-## 9. Files To Update Together
+## 10. Files To Update Together
 
 If you add, rename, or remove a landing-page chart card, update these together:
 
@@ -195,7 +204,7 @@ If you add, rename, or remove a landing-page chart card, update these together:
 - the relevant chart module in `dashboard/static/dashboard/js/home/`
 - `dashboard/overview/tests.py`
 
-## 10. Performance Fixes (2026-06-01)
+## 11. Performance Fixes (2026-06-01)
 
 ### Problem: KPI Cards Stuck in Loading State
 

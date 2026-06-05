@@ -69,6 +69,12 @@ The story page uses two related concepts:
   - `High`: `4-5`
   - `Moderate`: `2-3`
   - `Low`: `0-1`
+  - the bracketed values are risk bands, not failed-module counts
+
+### Driver Summary
+
+- The `3+ Failed Modules` summary card counts students with three or more failed modules.
+- The risk distribution note shown under the chart should read: `Values in brackets represent risk bands.`
 
 This distinction is intentional. The page still keeps the full cohort visible in the overview,
 but the detailed intervention views focus on students who already need support attention.

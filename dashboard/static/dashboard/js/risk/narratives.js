@@ -221,7 +221,7 @@ export const initialiseDistributionNarrative = (elements, rows, cardNarratives =
     const narrative = getOverviewCardNarrative(cardNarratives, "distribution", buildDistributionOverviewNarrative(rows));
 
    if (elements.distributionCopy) {
-    const noteText = "Values in brackets represent the number of modules.";
+    const noteText = "Values in brackets represent risk bands.";
     const insightText = String(narrative.insight || "").trim();
 
     elements.distributionCopy.innerHTML = `

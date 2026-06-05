@@ -488,7 +488,7 @@ def build_risk_dashboard_data(request, search_query=""):
         "high_risk_count": high_risk_count,
         "medium_risk_count": medium_risk_count,
         "critical_count": critical_count,
-        "multi_fail_count": sum(1 for row in risk_rows if row["failed_courses"] >= 2),
+        "multi_fail_count": sum(1 for row in risk_rows if row["failed_courses"] >= 3),
         "risk_distribution_rows": distribution_rows,
         "risk_driver_rows": driver_rows,
         "risk_level_rows": level_rows,
@@ -732,7 +732,7 @@ def get_risk_fast_metrics(request, search_query=""):
             at_risk += 1
             medium_risk += 1
 
-        if failed >= 2:
+        if failed >= 3:
             multi_fail += 1
 
     return {

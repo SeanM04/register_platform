@@ -391,6 +391,7 @@ export const buildRiskOverviewNarrative = (rows) => {
  */
 export const initialiseRiskNarrative = (elements, rows, cardNarratives = {}, flags = {}) => {
     const narrative = getOverviewCardNarrative(cardNarratives, "risk", buildRiskOverviewNarrative(rows));
+    const noteText = "Values in brackets represent risk bands.";
 
     setCardAiState(elements.riskAiState, {
         pending: flags.overviewNarrativesPending,
@@ -399,7 +400,12 @@ export const initialiseRiskNarrative = (elements, rows, cardNarratives = {}, fla
         severity: narrative.severity,
         confidence: narrative.confidence,
     });
-    setElementText(elements.riskCopy, narrative.insight);
+    if (elements.riskCopy) {
+        elements.riskCopy.innerHTML = `
+            <span>${escapeTooltipHtml(narrative.insight)}</span>
+            <span class="home-subtle-note">${escapeTooltipHtml(noteText)}</span>
+        `.trim();
+    }
     setHintMarkup(elements.riskHints, [
     ]);
     setActionText(elements.riskNote, narrative.action, {

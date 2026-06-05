@@ -390,6 +390,16 @@
     line-height: 1.45;
 }
 
+.home-subtle-note {
+    display: block;
+    margin-bottom: 0.18rem;
+    color: #7a8b9f;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
 .home-chart-hints {
     display: flex;
     flex-wrap: wrap;

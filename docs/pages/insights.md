@@ -96,6 +96,7 @@ flowchart TD
   `Prev` and `Next` controls.
 - In `Intervention Summary`, a single failed module and a single carried module
   are treated as the same driver and displayed as `1 carried module`.
+- The risk distribution note should read: `Values in brackets represent risk bands.`
 
 ## Maintenance Checklist
 
